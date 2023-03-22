@@ -93,7 +93,7 @@ fi
 if [ -n "$HEROKU" ]; then
     echo "  -> Heroku detected"
     MAX_METASPACE_SIZE=${MAX_METASPACE_SIZE:-512m}
-    JVM_MEMORY=${JVM_MEMORY:-Xmx1g}
+    JVM_MEMORY=${JVM_MEMORY:Xmx1g}
     # Set a few other options to minimize memory usage as much as possible.
     JAVA_OPTS+=" -XX:+UnlockExperimentalVMOptions"
     JAVA_OPTS+=" -XX:+UseContainerSupport"                 # Tell the JVM to use container info to set heap limit
@@ -103,7 +103,7 @@ if [ -n "$HEROKU" ]; then
     JAVA_OPTS+=" -XX:MaxMetaspaceSize=$MAX_METASPACE_SIZE" # Set a hard limit for the Metaspace (classes and other stuff), don't let it get any bigger
     JAVA_OPTS+=" -Xverify:none"                            # Skip bytecode verification, the Heroku buildpack comes from us so it's already verified. Speed up launch slightly
     JAVA_OPTS+=" -XX:+UseG1GC"                             # G1GC seems to use slightly less memory in my testing...
-    JAVA_OPTS+=" -XX:$JVM_MEMORY"
+    JAVA_OPTS+=" -XX:-$JVM_MEMORY"
     JAVA_OPTS+=" -XX:+UseStringDeduplication"              # Especially when used in combination with string deduplication
 fi
 
