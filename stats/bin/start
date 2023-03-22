@@ -103,7 +103,7 @@ if [ -n "$HEROKU" ]; then
     JAVA_OPTS+=" -XX:MaxMetaspaceSize=$MAX_METASPACE_SIZE" # Set a hard limit for the Metaspace (classes and other stuff), don't let it get any bigger
     JAVA_OPTS+=" -Xverify:none"                            # Skip bytecode verification, the Heroku buildpack comes from us so it's already verified. Speed up launch slightly
     JAVA_OPTS+=" -XX:+UseG1GC"                             # G1GC seems to use slightly less memory in my testing...
-    JAVA_OPTS+=" -XX:-Xmx3g"
+    JAVA_OPTS+=" -$JVM_MEMORY"
     JAVA_OPTS+=" -XX:+UseStringDeduplication"              # Especially when used in combination with string deduplication
 fi
 
