@@ -40,3 +40,17 @@ You will need to configure the following environment variables:
 
 You will also change the `change-me` index name in the output section of your
 logstash configuration.
+
+## Updating Logstash version
+
+To update your application with a more recent version of version of **Logstash**,
+the most straightforward method is to deploy your application. The
+[used buildpack](https://github.com/Scalingo/logstash-buildpack) is defining the
+[used version](https://github.com/Scalingo/logstash-buildpack/blob/master/bin/compile#L9),
+which can be overrided with the environment variable `LOGSTASH_VERSION`.
+
+To trigger the new deployment, either use:
+
+- The *Manual Deployment* feature of our GitHub or Gitlab
+- `git push` deployment after adding an empty commit to your project:
+  `git commit --allow-empty -m "New deployment to update logstash"`
