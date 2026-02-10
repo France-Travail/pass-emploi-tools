@@ -1,0 +1,109 @@
+name: Dependabot
+
+on:
+  workflow_call:
+    secrets:
+      GITHUB_TOKEN:
+        required: true
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  dependabot-metadata:
+    name: Fetch Dependabot metadata
+    runs-on: ubuntu-latest
+    # 49699333 = Dependabot bot user ID
+    if: github.event_name == 'pull_request_target' && github.event.pull_request.user.id == 49699333
+
+    outputs:
+      update-type: ${{ steps.metadata.outputs.update-type }}
+      should-run: ${{ steps.should_run.outputs.result }}
+
+    permissions:
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@21025c705c08248db411dc16f3619e6b5f9ea21a
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Decide if job should run
+        id: should_run
+        run: |
+          update_type="${{ steps.metadata.outputs.update-type }}"
+          echo "update_type=$update_type"
+
+          if [ "$update_type" = "version-update:semver-patch" ] || [ "$update_type" = "version-update:semver-minor" ]; then
+            echo "result=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "result=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  auto-merge:
+    name: Auto-merge patch/minor updates
+    runs-on: ubuntu-latest
+    needs: dependabot-metadata
+    # On ne lance ce job que si:
+    # - le job metadata a tourné
+    # - et should-run == 'true'
+    if: >
+      github.event_name == 'pull_request_target' &&
+      github.event.pull_request.user.id == 49699333 &&
+      needs.dependabot-metadata.outputs.should-run == 'true'
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Enable auto-merge for patch/minor
+        # On s'assure que la PR vient bien du repo (pas d'un fork)
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  auto-rebase:
+    name: Rebase stale Dependabot PRs
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Find and rebase stale PRs
+        run: |
+          echo "🔍 Recherche des PRs Dependabot stale..."
+
+          stale_prs=$(gh pr list \
+            --repo "${{ github.repository }}" \
+            --author app/dependabot \
+            --state open \
+            --json number,autoMergeRequest,mergeStateStatus \
+            --jq '.[] | select(.autoMergeRequest != null and .mergeStateStatus == "BEHIND") | .number')
+
+          if [ -z "$stale_prs" ]; then
+            echo "✅ Aucune PR stale trouvée"
+            exit 0
+          fi
+
+          echo "📋 PRs à rebaser: $(echo "$stale_prs" | wc -l)"
+
+          echo "$stale_prs" | while read pr; do
+            if [ -n "$pr" ]; then
+              echo "♻️  Rebase PR #$pr"
+              gh pr comment "$pr" --repo "${{ github.repository }}" --body "@dependabot rebase"
+            fi
+          done
+
+          echo "🎉 Terminé"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
