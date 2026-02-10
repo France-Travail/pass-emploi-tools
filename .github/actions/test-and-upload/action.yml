@@ -1,0 +1,35 @@
+name: 'Test and Upload Coverage'
+description: 'Setup Node.js, install dependencies, run tests and upload coverage'
+
+inputs:
+  install-command:
+    description: 'Command to install dependencies'
+    required: false
+    default: 'YARN_ENABLE_SCRIPTS=false yarn install --immutable'
+  test-command:
+    description: 'Command to run tests'
+    required: false
+    default: 'yarn test'
+  coverage-path:
+    description: 'Path to coverage report'
+    required: false
+    default: 'coverage/'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js and Yarn
+      uses: France-Travail/pass-emploi-tools/.github/actions/setup-node-yarn@master
+      with:
+        install-command: ${{ inputs.install-command }}
+
+    - name: Run tests with coverage
+      run: ${{ inputs.test-command }}
+      shell: bash
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+      with:
+        name: coverage-report
+        path: ${{ inputs.coverage-path }}
+        retention-days: 1

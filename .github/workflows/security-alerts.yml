@@ -1,0 +1,92 @@
+name: Security Alerts
+
+on:
+  workflow_call:
+    inputs:
+      repo-name:
+        description: 'Nom du repo pour le message Mattermost'
+        required: true
+        type: string
+    secrets:
+      DEPENDABOT_ALERTS_READER:
+        required: true
+      MATTERMOST_WEBHOOK_URL:
+        required: true
+
+jobs:
+  check-cves:
+    name: Check CVEs high/critical
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: read
+
+    steps:
+      - name: Fetch Dependabot alerts (high/critical)
+        id: fetch-alerts
+        run: |
+          echo "🔍 Recherche des CVEs high/critical ouvertes..."
+
+          # Récupérer les alertes high/critical ouvertes via l'API Dependabot
+          alerts=$(gh api \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "/repos/${{ github.repository }}/dependabot/alerts?state=open" \
+            --jq '[.[] | select(.security_advisory.severity == "high" or .security_advisory.severity == "critical")]')
+
+          alert_count=$(echo "$alerts" | jq 'length')
+
+          if [ "$alert_count" -eq 0 ]; then
+            echo "✅ Aucune CVE high/critical ouverte"
+            echo "has_alerts=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "⚠️  $alert_count CVE(s) high/critical trouvée(s)"
+          echo "has_alerts=true" >> $GITHUB_OUTPUT
+          echo "alert_count=$alert_count" >> $GITHUB_OUTPUT
+
+          # Sauvegarder les alertes
+          echo "$alerts" > /tmp/alerts.json
+        env:
+          GH_TOKEN: ${{ secrets.DEPENDABOT_ALERTS_READER }}
+
+      - name: Send Mattermost alert
+        if: steps.fetch-alerts.outputs.has_alerts == 'true'
+        run: |
+          echo "📤 Envoi alerte Mattermost..."
+
+          alerts=$(cat /tmp/alerts.json)
+          alert_count=$(echo "$alerts" | jq 'length')
+
+          # Construire la liste des CVEs
+          cve_list=$(echo "$alerts" | jq -r '.[] | "• **\(.security_advisory.cve_id // "No CVE")** - \(.dependency.package.name) (\(.security_advisory.severity)): \(.security_advisory.summary) - [Voir](\(.html_url))"' | head -n 10)
+
+          if [ "$alert_count" -gt 10 ]; then
+            cve_list="${cve_list}\n• ... et $((alert_count - 10)) autre(s)"
+          fi
+
+          # Nom du repo (depuis input ou depuis github.repository)
+          repo_name="${{ inputs.repo-name }}"
+          if [ -z "$repo_name" ]; then
+            repo_name="${{ github.event.repository.name }}"
+          fi
+
+          # Envoyer à Mattermost
+          curl -X POST "$MATTERMOST_WEBHOOK_URL" \
+            -H 'Content-Type: application/json' \
+            -d @- <<EOF
+          {
+            "text": "@here :rotating_light: **$alert_count CVE(s) high/critical sur ${repo_name}**",
+            "attachments": [
+              {
+                "color": "#FF0000",
+                "text": "${cve_list}\n\n[Voir toutes les alertes](https://github.com/${{ github.repository }}/security/dependabot)"
+              }
+            ]
+          }
+          EOF
+
+          echo "✅ Alerte envoyée"
+        env:
+          MATTERMOST_WEBHOOK_URL: ${{ secrets.MATTERMOST_WEBHOOK_URL }}

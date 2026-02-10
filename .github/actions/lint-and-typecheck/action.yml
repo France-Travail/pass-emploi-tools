@@ -1,0 +1,32 @@
+name: 'Lint and Typecheck'
+description: 'Setup Node.js, install dependencies, run lint and typecheck'
+
+inputs:
+  install-command:
+    description: 'Command to install dependencies'
+    required: false
+    default: 'YARN_ENABLE_SCRIPTS=false yarn install --immutable'
+  lint-command:
+    description: 'Command to run lint'
+    required: false
+    default: 'yarn lint'
+  typecheck-command:
+    description: 'Command to run typecheck'
+    required: false
+    default: 'yarn tsc --noEmit'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js and Yarn
+      uses: France-Travail/pass-emploi-tools/.github/actions/setup-node-yarn@master
+      with:
+        install-command: ${{ inputs.install-command }}
+
+    - name: Run lint
+      run: ${{ inputs.lint-command }}
+      shell: bash
+
+    - name: Run typecheck
+      run: ${{ inputs.typecheck-command }}
+      shell: bash

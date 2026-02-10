@@ -1,0 +1,28 @@
+name: 'SonarQube Scan'
+description: 'Download coverage report and run SonarQube scan'
+
+inputs:
+  sonar-token:
+    description: 'SonarQube authentication token'
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        fetch-depth: 0
+
+    - name: Download coverage report
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+      with:
+        name: coverage-report
+        path: coverage/
+
+    - name: SonarQube Scan
+      uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7.0.0
+      with:
+        projectBaseDir: .
+      env:
+        SONAR_TOKEN: ${{ inputs.sonar-token }}

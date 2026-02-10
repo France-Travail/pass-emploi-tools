@@ -1,0 +1,93 @@
+name: Security Checks
+
+on:
+  workflow_call:
+    inputs:
+      install-command:
+        description: 'Commande pour installer les dépendances'
+        required: false
+        type: string
+        default: 'yarn install --immutable'
+
+jobs:
+  sast:
+    name: SAST (Static Analysis)
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
+    permissions:
+      security-events: write
+      contents: read
+      actions: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@45cbd0c69e560cd9e7cd7f8c32362050c9b7ded2 # v4.32.2
+        with:
+          languages: javascript-typescript
+          queries: security-and-quality
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@45cbd0c69e560cd9e7cd7f8c32362050c9b7ded2 # v4.32.2
+        with:
+          category: /language:javascript-typescript
+          upload: true
+          output: sarif-results
+
+      - name: Check for high/critical vulnerabilities
+        run: |
+          echo "🔍 Vérification des vulnérabilités high/critical..."
+
+          # Parser le fichier SARIF généré par CodeQL
+          if [ ! -d "sarif-results" ]; then
+            echo "✅ Aucun résultat SARIF trouvé"
+            exit 0
+          fi
+
+          # Chercher les résultats avec niveau error ou warning (high/critical)
+          high_critical=$(find sarif-results -name "*.sarif" -exec jq -r '
+            .runs[].results[]? |
+            select(.level == "error" or .level == "warning") |
+            .ruleId + " (" + .level + "): " + .message.text
+          ' {} \; 2>/dev/null)
+
+          if [ -n "$high_critical" ]; then
+            echo "❌ Vulnérabilités high/critical détectées:"
+            echo "$high_critical"
+            echo ""
+            echo "🔗 Voir les détails: https://github.com/${{ github.repository }}/security/code-scanning"
+            exit 1
+          fi
+
+          echo "✅ Aucune vulnérabilité high/critical détectée"
+
+  sca:
+    name: SCA (Dependency Audit)
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Dependency Review
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@3c4e3dcb1aa7874d2c16be7d79418e9b7efd6261 # v4.8.2
+        with:
+          fail-on-severity: high
+          license-check: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+
+      - name: Install dependencies
+        run: ${{ inputs.install-command }}
+
+      - name: Yarn audit
+        run: yarn npm audit --recursive --severity high
+        continue-on-error: false

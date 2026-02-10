@@ -1,0 +1,24 @@
+name: 'Setup Node.js and Yarn'
+description: 'Setup Node.js with Yarn cache and install dependencies'
+
+inputs:
+  install-command:
+    description: 'Command to install dependencies'
+    required: false
+    default: 'YARN_ENABLE_SCRIPTS=false yarn install --immutable'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+    - name: Setup Node.js
+      uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+      with:
+        node-version-file: .nvmrc
+        cache: yarn
+
+    - name: Install dependencies
+      run: ${{ inputs.install-command }}
+      shell: bash
