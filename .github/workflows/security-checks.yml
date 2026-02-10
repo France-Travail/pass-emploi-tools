@@ -8,13 +8,6 @@ on:
         required: false
         type: string
         default: 'yarn install --immutable'
-  push:
-    branches: [develop, master]
-  pull_request:
-    branches: [develop, master]
-  schedule:
-    # Run weekly on Monday at 8:00 UTC
-    - cron: '0 8 * * 1'
 
 jobs:
   sast:

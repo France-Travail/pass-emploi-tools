@@ -12,9 +12,6 @@ on:
         required: true
       MATTERMOST_WEBHOOK_URL:
         required: true
-  schedule:
-    - cron: '0 */3 * * *' # Toutes les 3 heures
-  workflow_dispatch: # Déclenchement manuel
 
 jobs:
   check-cves:
