@@ -208,6 +208,45 @@ uses: France-Travail/pass-emploi-tools/.github/workflows/security-checks.yml@v1.
 
 ---
 
+## Configuration des Repos Appelants
+
+### Prérequis pour Dependabot Auto-Merge
+
+Pour que le workflow `dependabot.yml` fonctionne correctement, chaque repo appelant doit avoir :
+
+**1. Auto-merge activé dans les paramètres du repo**
+
+```
+Settings → General → Pull Requests
+☑ Allow auto-merge
+```
+
+**2. Required checks configurés avant merge sur `develop`**
+
+```
+Settings → Branches → Branch protection rules → develop
+☑ Require status checks to pass before merging
+```
+
+**Checks recommandés (exemple pass-emploi-web) :**
+- `SAST (Static Analysis)` - CodeQL security scan
+- `SCA (Dependency Audit)` - Dependency Review + Yarn audit
+- `Tests` - Tests unitaires avec coverage
+- `Lint and Typecheck` - ESLint + TypeScript
+
+**Important :** Sans ces checks configurés, Dependabot pourra activer l'auto-merge mais les PRs ne seront jamais mergées automatiquement (elles attendront indéfiniment que les checks passent).
+
+### Configuration Mattermost
+
+Pour recevoir les alertes de sécurité, configurer le webhook Mattermost dans les secrets du repo :
+```
+Settings → Secrets and variables → Actions → New repository secret
+Name: MATTERMOST_WEBHOOK_URL
+Value: https://mattermost.example.com/hooks/...
+```
+
+---
+
 ## Maintenance
 
 **Pour modifier un workflow ou une action :**
