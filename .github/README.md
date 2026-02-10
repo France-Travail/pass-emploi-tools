@@ -27,7 +27,7 @@ on:
 
 jobs:
   dependabot:
-    uses: France-Travail/pass-emploi-tools/.github/workflows/dependabot.yml@main
+    uses: France-Travail/pass-emploi-tools/.github/workflows/dependabot.yml@master
     secrets: inherit
 ```
 
@@ -55,7 +55,7 @@ on:
 
 jobs:
   security-alerts:
-    uses: France-Travail/pass-emploi-tools/.github/workflows/security-alerts.yml@main
+    uses: France-Travail/pass-emploi-tools/.github/workflows/security-alerts.yml@master
     with:
       repo-name: 'pass-emploi-api'  # Nom affiché dans le message Mattermost
     secrets: inherit
@@ -89,7 +89,7 @@ on:
 
 jobs:
   security-checks:
-    uses: France-Travail/pass-emploi-tools/.github/workflows/security-checks.yml@main
+    uses: France-Travail/pass-emploi-tools/.github/workflows/security-checks.yml@master
     secrets: inherit
 ```
 
@@ -97,7 +97,7 @@ jobs:
 ```yaml
 jobs:
   security-checks:
-    uses: France-Travail/pass-emploi-tools/.github/workflows/security-checks.yml@main
+    uses: France-Travail/pass-emploi-tools/.github/workflows/security-checks.yml@master
     with:
       install-command: 'YARN_ENABLE_SCRIPTS=false yarn install --immutable'
     secrets: inherit
@@ -119,7 +119,7 @@ jobs:
 **Usage :**
 ```yaml
 steps:
-  - uses: France-Travail/pass-emploi-tools/.github/actions/setup-node-yarn@main
+  - uses: France-Travail/pass-emploi-tools/.github/actions/setup-node-yarn@master
     with:
       install-command: 'yarn install --immutable'  # Optionnel (défaut)
 ```
@@ -148,7 +148,7 @@ jobs:
     needs: test  # Doit attendre que les tests soient terminés
     runs-on: ubuntu-latest
     steps:
-      - uses: France-Travail/pass-emploi-tools/.github/actions/sonarqube-scan@main
+      - uses: France-Travail/pass-emploi-tools/.github/actions/sonarqube-scan@master
         with:
           sonar-token: ${{ secrets.SONAR_TOKEN }}
 ```
@@ -177,7 +177,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: France-Travail/pass-emploi-tools/.github/actions/sonarqube-scan@main
+      - uses: France-Travail/pass-emploi-tools/.github/actions/sonarqube-scan@master
         with:
           sonar-token: ${{ secrets.SONAR_TOKEN }}
 ```
@@ -186,7 +186,7 @@ jobs:
 
 ## Versioning
 
-**Recommandation actuelle :** Utiliser `@main` pour toujours avoir la dernière version
+**Recommandation actuelle :** Utiliser `@master` pour toujours avoir la dernière version
 
 **Alternative (versioning strict) :**
 - Utiliser des tags : `@v1.0.0`
@@ -215,7 +215,7 @@ uses: France-Travail/pass-emploi-tools/.github/workflows/security-checks.yml@v1.
 1. Faire les modifications dans ce repo (pass-emploi-tools)
 2. Tester via une PR de test
 3. Merger sur `main`
-4. Les 3 repos appelants utiliseront automatiquement la nouvelle version (si `@main`)
+4. Les 3 repos appelants utiliseront automatiquement la nouvelle version (si `@master`)
 
 **Breaking changes :**
 - Documenter le changement dans ce README
@@ -261,7 +261,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: France-Travail/pass-emploi-tools/.github/actions/setup-node-yarn@main
+      - uses: France-Travail/pass-emploi-tools/.github/actions/setup-node-yarn@master
         with:
           install-command: 'YARN_ENABLE_SCRIPTS=false yarn install --immutable'
       - run: yarn lint
@@ -285,7 +285,7 @@ jobs:
       DATABASE_URL: postgres://test:test@localhost:5432/test
       REDIS_URL: redis://localhost:6767
     steps:
-      - uses: France-Travail/pass-emploi-tools/.github/actions/setup-node-yarn@main
+      - uses: France-Travail/pass-emploi-tools/.github/actions/setup-node-yarn@master
         with:
           install-command: 'YARN_ENABLE_SCRIPTS=false yarn install --immutable'
       - run: yarn test:ci
@@ -300,7 +300,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.pull_request.user.id != 49699333  # Skip Dependabot
     steps:
-      - uses: France-Travail/pass-emploi-tools/.github/actions/sonarqube-scan@main
+      - uses: France-Travail/pass-emploi-tools/.github/actions/sonarqube-scan@master
         with:
           sonar-token: ${{ secrets.SONAR_TOKEN }}
 ```
