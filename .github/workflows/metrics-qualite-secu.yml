@@ -1,0 +1,145 @@
+name: Métriques Qualité & Sécurité
+
+on:
+  schedule:
+      - cron: '0 17 * * 1'
+  workflow_dispatch:
+    inputs:
+      sprint_number:
+        description: 'Numéro de sprint (ex: 115)'
+        required: false
+        type: string
+
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: read
+      contents: read
+    steps:
+      - name: Collect metrics from all repos
+        env:
+          GH_TOKEN: ${{ secrets.DEPENDABOT_ALERTS_READER }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          DATE=$(date +%Y-%m-%d)
+
+          # Header CSV
+          echo "Date,Application,Indicateur,Métrique,Valeur,Sprint" > all-metrics.csv
+
+          # Liste des repos avec mapping des noms
+          declare -A APP_NAMES=(
+            ["France-Travail/pass-emploi-api"]="Back"
+            ["France-Travail/pass-emploi-web"]="Front"
+            ["France-Travail/pass-emploi-connect"]="Connect"
+            ["France-Travail/pass_emploi_app"]="App"
+          )
+
+          # Mapping des project keys SonarCloud (App n'a pas de Sonar)
+          declare -A SONAR_PROJECTS=(
+            ["France-Travail/pass-emploi-api"]="France-Travail_pass-emploi-api"
+            ["France-Travail/pass-emploi-web"]="France-Travail_pass-emploi-web"
+            ["France-Travail/pass-emploi-connect"]="France-Travail_pass-emploi-connect"
+          )
+
+          for REPO in "${!APP_NAMES[@]}"; do
+            APP_NAME="${APP_NAMES[$REPO]}"
+            echo "📊 Collecte des métriques pour $REPO ($APP_NAME)..."
+
+            # CVE (Dependabot) - avec gestion d'erreur
+            if CVE_DATA=$(gh api \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "/repos/$REPO/dependabot/alerts?state=open" \
+              --paginate 2>/dev/null); then
+
+              CVE_CRITICAL=$(echo "$CVE_DATA" | jq '[.[] | select(.security_advisory.severity == "critical")] | length')
+              CVE_HIGH=$(echo "$CVE_DATA" | jq '[.[] | select(.security_advisory.severity == "high")] | length')
+              CVE_MEDIUM=$(echo "$CVE_DATA" | jq '[.[] | select(.security_advisory.severity == "medium")] | length')
+              CVE_LOW=$(echo "$CVE_DATA" | jq '[.[] | select(.security_advisory.severity == "low")] | length')
+            else
+              echo "⚠️  Impossible d'accéder aux alertes Dependabot de $REPO"
+              CVE_CRITICAL=0
+              CVE_HIGH=0
+              CVE_MEDIUM=0
+              CVE_LOW=0
+            fi
+
+            # Code Scanning - avec gestion d'erreur
+            if SCAN_DATA=$(gh api \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "/repos/$REPO/code-scanning/alerts?state=open" \
+              --paginate 2>/dev/null); then
+
+              SCAN_CRITICAL=$(echo "$SCAN_DATA" | jq '[.[] | select(.rule.security_severity_level == "critical")] | length')
+              SCAN_HIGH=$(echo "$SCAN_DATA" | jq '[.[] | select(.rule.security_severity_level == "high")] | length')
+              SCAN_MEDIUM=$(echo "$SCAN_DATA" | jq '[.[] | select(.rule.security_severity_level == "medium")] | length')
+              SCAN_LOW=$(echo "$SCAN_DATA" | jq '[.[] | select(.rule.security_severity_level == "low")] | length')
+            else
+              echo "⚠️  Impossible d'accéder aux alertes Code Scanning de $REPO"
+              SCAN_CRITICAL=0
+              SCAN_HIGH=0
+              SCAN_MEDIUM=0
+              SCAN_LOW=0
+            fi
+
+            # SonarCloud Metrics - skip si pas de projet Sonar configuré
+            if [[ -n "${SONAR_PROJECTS[$REPO]}" ]]; then
+              SONAR_PROJECT="${SONAR_PROJECTS[$REPO]}"
+
+              if SONAR_DATA=$(curl -s -u "$SONAR_TOKEN:" \
+                "https://sonarcloud.io/api/measures/component?component=$SONAR_PROJECT&metricKeys=alert_status,bugs,vulnerabilities,code_smells,coverage,reliability_rating,security_rating,sqale_rating" \
+                2>/dev/null); then
+
+                BUGS=$(echo "$SONAR_DATA" | jq -r '.component.measures[] | select(.metric=="bugs") | .value // "0"')
+                VULNERABILITIES=$(echo "$SONAR_DATA" | jq -r '.component.measures[] | select(.metric=="vulnerabilities") | .value // "0"')
+                CODE_SMELLS=$(echo "$SONAR_DATA" | jq -r '.component.measures[] | select(.metric=="code_smells") | .value // "0"')
+                COVERAGE=$(echo "$SONAR_DATA" | jq -r '.component.measures[] | select(.metric=="coverage") | .value // "0"')
+                RELIABILITY=$(echo "$SONAR_DATA" | jq -r '.component.measures[] | select(.metric=="reliability_rating") | .value // "0"')
+                SECURITY=$(echo "$SONAR_DATA" | jq -r '.component.measures[] | select(.metric=="security_rating") | .value // "0"')
+                MAINTAINABILITY=$(echo "$SONAR_DATA" | jq -r '.component.measures[] | select(.metric=="sqale_rating") | .value // "0"')
+              else
+                echo "⚠️  Impossible d'accéder aux métriques SonarCloud de $REPO"
+                BUGS=0
+                VULNERABILITIES=0
+                CODE_SMELLS=0
+                COVERAGE=0
+                RELIABILITY=0
+                SECURITY=0
+                MAINTAINABILITY=0
+              fi
+            fi
+
+            SPRINT="${{ inputs.sprint_number }}"
+          
+            # Append au CSV - CVE & Code Scanning
+            echo "$DATE,$APP_NAME,cve,critical,$CVE_CRITICAL,$SPRINT" >> all-metrics.csv
+            echo "$DATE,$APP_NAME,cve,high,$CVE_HIGH,$SPRINT" >> all-metrics.csv
+            echo "$DATE,$APP_NAME,cve,medium,$CVE_MEDIUM,$SPRINT" >> all-metrics.csv
+            echo "$DATE,$APP_NAME,cve,low,$CVE_LOW,$SPRINT" >> all-metrics.csv
+            echo "$DATE,$APP_NAME,code_scanning,critical,$SCAN_CRITICAL,$SPRINT" >> all-metrics.csv
+            echo "$DATE,$APP_NAME,code_scanning,high,$SCAN_HIGH,$SPRINT" >> all-metrics.csv
+            echo "$DATE,$APP_NAME,code_scanning,medium,$SCAN_MEDIUM,$SPRINT" >> all-metrics.csv
+            echo "$DATE,$APP_NAME,code_scanning,low,$SCAN_LOW,$SPRINT" >> all-metrics.csv
+
+            # Append au CSV - SonarCloud (seulement si projet Sonar existe)
+            if [[ -n "${SONAR_PROJECTS[$REPO]}" ]]; then
+              echo "$DATE,$APP_NAME,sonar,bugs,$BUGS,$SPRINT" >> all-metrics.csv
+              echo "$DATE,$APP_NAME,sonar,vulnerabilities,$VULNERABILITIES,$SPRINT" >> all-metrics.csv
+              echo "$DATE,$APP_NAME,sonar,code_smells,$CODE_SMELLS,$SPRINT" >> all-metrics.csv
+              echo "$DATE,$APP_NAME,sonar,coverage,$COVERAGE,$SPRINT" >> all-metrics.csv
+              echo "$DATE,$APP_NAME,sonar,reliability_rating,$RELIABILITY,$SPRINT" >> all-metrics.csv
+              echo "$DATE,$APP_NAME,sonar,security_rating,$SECURITY,$SPRINT" >> all-metrics.csv
+              echo "$DATE,$APP_NAME,sonar,maintainability_rating,$MAINTAINABILITY,$SPRINT" >> all-metrics.csv
+            fi
+          done
+
+          echo "✅ Métriques collectées :"
+          cat all-metrics.csv                                                                                                                                                                                                     
+
+      - name: Upload consolidated CSV
+        uses: actions/upload-artifact@v4
+        with:
+          name: all-quality-security-metrics
+          path: all-metrics.csv
