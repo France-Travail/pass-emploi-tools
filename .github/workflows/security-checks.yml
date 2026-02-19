@@ -89,5 +89,5 @@ jobs:
         run: ${{ inputs.install-command }}
 
       - name: Yarn audit
-        run: yarn npm audit --recursive --severity high
+        run: yarn npm audit --recursive --severity high --environment production
         continue-on-error: false
