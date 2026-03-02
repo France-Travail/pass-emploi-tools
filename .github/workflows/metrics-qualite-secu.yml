@@ -42,6 +42,48 @@ jobs:
             ["France-Travail/pass-emploi-connect"]="France-Travail_pass-emploi-connect"
           )
 
+          # Fonctions utilitaires pour le calcul de dette des dépendances
+          # Retourne "<type> <valeur>" ex: "major 2" si 2 majors de retard
+          semver_gap() {
+            local current="$1" latest="$2"
+            current=$(echo "$current" | sed 's/^[^0-9]*//')
+            latest=$(echo "$latest" | sed 's/^[^0-9]*//')
+            local cur_major lat_major cur_minor lat_minor cur_patch lat_patch
+            cur_major=$(echo "$current" | cut -d. -f1); cur_major=${cur_major:-0}
+            lat_major=$(echo "$latest" | cut -d. -f1); lat_major=${lat_major:-0}
+            if [[ "$cur_major" != "$lat_major" ]]; then
+              echo "major $((lat_major - cur_major))"
+            else
+              cur_minor=$(echo "$current" | cut -d. -f2); cur_minor=${cur_minor:-0}
+              lat_minor=$(echo "$latest" | cut -d. -f2); lat_minor=${lat_minor:-0}
+              if [[ "$cur_minor" != "$lat_minor" ]]; then
+                echo "minor $((lat_minor - cur_minor))"
+              else
+                cur_patch=$(echo "$current" | cut -d. -f3 | cut -d- -f1); cur_patch=${cur_patch:-0}
+                lat_patch=$(echo "$latest" | cut -d. -f3 | cut -d- -f1); lat_patch=${lat_patch:-0}
+                echo "patch $((lat_patch - cur_patch))"
+              fi
+            fi
+          }
+
+          # Somme l'amplitude du retard (pas le nombre de packages)
+          count_gap() {
+            local section="$1" target_gap="$2" total=0
+            local pkg_name pkg_current pkg_latest gap_type gap_value
+            while IFS= read -r pkg_entry; do
+              pkg_name=$(echo "$pkg_entry" | jq -r '.name')
+              pkg_current=$(echo "$pkg_entry" | jq -r '.version')
+              pkg_latest=$(echo "$NCU_OUT" | jq -r --arg n "$pkg_name" '.[$n] // empty')
+              if [[ -n "$pkg_latest" ]]; then
+                read -r gap_type gap_value <<< "$(semver_gap "$pkg_current" "$pkg_latest")"
+                if [[ "$gap_type" == "$target_gap" ]]; then
+                  ((total += gap_value))
+                fi
+              fi
+            done < <(echo "$PKG_JSON" | jq -c --arg s "$section" '.[$s] // {} | to_entries[] | {name: .key, version: .value}')
+            echo "$total"
+          }
+
           for REPO in "${!APP_NAMES[@]}"; do
             APP_NAME="${APP_NAMES[$REPO]}"
             echo "📊 Collecte des métriques pour $REPO ($APP_NAME)..."
@@ -111,6 +153,32 @@ jobs:
               fi
             fi
 
+            # Deps freshness - Node.js repos seulement (App est Flutter, pas de package.json)
+            if [[ "$REPO" != "France-Travail/pass_emploi_app" ]]; then
+              TMP_DIR=$(mktemp -d)
+              if PKG_JSON=$(gh api "/repos/$REPO/contents/package.json" --jq '.content' 2>/dev/null | base64 -d); then
+                echo "$PKG_JSON" > "$TMP_DIR/package.json"
+                NCU_OUT=$(cd "$TMP_DIR" && npx --yes npm-check-updates --jsonUpgraded 2>/dev/null || echo "{}")
+
+                DEPS_MAJOR=$(count_gap "dependencies" "major")
+                DEPS_MINOR=$(count_gap "dependencies" "minor")
+                DEPS_PATCH=$(count_gap "dependencies" "patch")
+                DEVDEPS_MAJOR=$(count_gap "devDependencies" "major")
+                DEVDEPS_MINOR=$(count_gap "devDependencies" "minor")
+                DEVDEPS_PATCH=$(count_gap "devDependencies" "patch")
+              else
+                echo "⚠️  Impossible de récupérer package.json de $REPO"
+                DEPS_MAJOR=0; DEPS_MINOR=0; DEPS_PATCH=0
+                DEVDEPS_MAJOR=0; DEVDEPS_MINOR=0; DEVDEPS_PATCH=0
+              fi
+
+              rm -rf "$TMP_DIR"
+            else
+              # App Flutter : pas de package.json, on met 0
+              DEPS_MAJOR=0; DEPS_MINOR=0; DEPS_PATCH=0
+              DEVDEPS_MAJOR=0; DEVDEPS_MINOR=0; DEVDEPS_PATCH=0
+            fi
+
             SPRINT="${{ inputs.sprint_number }}"
           
             # Append au CSV - CVE & Code Scanning
@@ -133,6 +201,14 @@ jobs:
               echo "$DATE,$APP_NAME,sonar,security_rating,$SECURITY,$SPRINT" >> all-metrics.csv
               echo "$DATE,$APP_NAME,sonar,maintainability_rating,$MAINTAINABILITY,$SPRINT" >> all-metrics.csv
             fi
+
+            # Append au CSV - Deps freshness
+            echo "$DATE,$APP_NAME,deps,major,$DEPS_MAJOR,$SPRINT" >> all-metrics.csv
+            echo "$DATE,$APP_NAME,deps,minor,$DEPS_MINOR,$SPRINT" >> all-metrics.csv
+            echo "$DATE,$APP_NAME,deps,patch,$DEPS_PATCH,$SPRINT" >> all-metrics.csv
+            echo "$DATE,$APP_NAME,devdeps,major,$DEVDEPS_MAJOR,$SPRINT" >> all-metrics.csv
+            echo "$DATE,$APP_NAME,devdeps,minor,$DEVDEPS_MINOR,$SPRINT" >> all-metrics.csv
+            echo "$DATE,$APP_NAME,devdeps,patch,$DEVDEPS_PATCH,$SPRINT" >> all-metrics.csv
           done
 
           echo "✅ Métriques collectées :"
