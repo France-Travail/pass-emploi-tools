@@ -10,10 +10,10 @@ inputs:
     description: 'Command to run lint'
     required: false
     default: 'yarn lint'
-  typecheck-command:
-    description: 'Command to run typecheck'
+  build-command:
+    description: 'Command to run build'
     required: false
-    default: 'yarn tsc --noEmit'
+    default: 'yarn build'
 
 runs:
   using: 'composite'
@@ -27,6 +27,10 @@ runs:
       run: ${{ inputs.lint-command }}
       shell: bash
 
-    - name: Run typecheck
-      run: ${{ inputs.typecheck-command }}
+    - name: Run build
+      run: ${{ inputs.build-command }}
+      shell: bash
+
+    - name: Vérification que le build ne modifie pas de fichiers
+      run: git diff --exit-code
       shell: bash
