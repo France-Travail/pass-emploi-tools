@@ -1,0 +1,45 @@
+# Index templates. A importer en dernier (referencent ILM + component templates).
+
+PUT _index_template/logs-prod@template-custom
+{
+  "index_patterns": ["logs-prod-default"],
+  "priority": 250,
+  "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "logs@custom", "logs-prod-retention-custom"],
+  "ignore_missing_component_templates": ["logs@custom"],
+  "template": {
+    "settings": { "index": { "mode": "logsdb" } },
+    "mappings": { "_source": { "mode": "synthetic" } }
+  },
+  "data_stream": { "hidden": false, "allow_custom_routing": false },
+  "allow_auto_create": true,
+  "_meta": { "description": "Logs applicatifs pass-emploi (prod)", "managed_by": "pass-emploi-tools" },
+  "version": 19
+}
+
+PUT _index_template/logs-staging@template-custom
+{
+  "index_patterns": ["logs-staging-default"],
+  "priority": 250,
+  "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "logs@custom", "logs-staging-retention-custom"],
+  "ignore_missing_component_templates": ["logs@custom"],
+  "template": {
+    "settings": { "index": { "mode": "logsdb" } },
+    "mappings": { "_source": { "mode": "synthetic" } }
+  },
+  "data_stream": { "hidden": false, "allow_custom_routing": false },
+  "allow_auto_create": true,
+  "_meta": { "description": "Logs applicatifs pass-emploi (staging), miroir de la prod", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+PUT _index_template/logs-router
+{
+  "index_patterns": ["logs-router-*"],
+  "priority": 200,
+  "composed_of": ["logs@mappings", "logs@settings", "logs-router@mappings", "logs@custom", "logs-router@settings"],
+  "ignore_missing_component_templates": ["logs@custom"],
+  "data_stream": { "hidden": false, "allow_custom_routing": false },
+  "allow_auto_create": true,
+  "_meta": { "description": "Logs router Scalingo (prod + staging)", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
