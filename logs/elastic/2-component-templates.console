@@ -1,0 +1,86 @@
+# Component templates. A importer apres les politiques ILM.
+
+PUT _component_template/logs@custom
+{
+  "template": {
+    "mappings": {
+      "properties": {
+        "log":   { "properties": { "logger": { "type": "keyword", "ignore_above": 1024 } } },
+        "event": { "properties": {
+          "action":  { "type": "keyword", "ignore_above": 1024 },
+          "outcome": { "type": "keyword", "ignore_above": 1024 }
+        } },
+        "error": { "properties": {
+          "type":        { "type": "keyword", "ignore_above": 1024 },
+          "message":     { "type": "match_only_text" },
+          "stack_trace": { "type": "wildcard", "fields": { "text": { "type": "match_only_text" } } }
+        } }
+      }
+    }
+  },
+  "_meta": { "description": "Champs ECS custom CEJ, communs app + router", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+PUT _component_template/logs-router@mappings
+{
+  "template": {
+    "mappings": {
+      "dynamic": false,
+      "properties": {
+        "@timestamp": { "type": "date" },
+        "service": { "properties": {
+          "name": { "type": "keyword" },
+          "node": { "properties": { "name": { "type": "keyword" } } }
+        } },
+        "client": { "properties": { "ip": { "type": "ip" } } },
+        "http": { "properties": {
+          "request":  { "properties": {
+            "id": { "type": "keyword" }, "method": { "type": "keyword" }, "referrer": { "type": "keyword" }
+          } },
+          "response": { "properties": {
+            "status_code": { "type": "short" },
+            "body": { "properties": { "bytes": { "type": "long" } } }
+          } }
+        } },
+        "url": { "properties": {
+          "path": { "type": "wildcard" }, "scheme": { "type": "keyword" }, "domain": { "type": "keyword" }
+        } },
+        "event": { "properties": { "duration": { "type": "long" } } },
+        "user_agent": { "properties": {
+          "original": { "type": "keyword", "fields": { "text": { "type": "text" } } }
+        } },
+        "message": { "type": "text" }
+      }
+    }
+  },
+  "_meta": { "description": "Champs propres aux logs router Scalingo. dynamic:false ; event.action/outcome viennent de logs@custom", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+PUT _component_template/logs-router@settings
+{
+  "template": {
+    "settings": { "index": {
+      "lifecycle": { "name": "logs-prod-retention" },
+      "number_of_shards": "1",
+      "number_of_replicas": "1"
+    } }
+  },
+  "_meta": { "description": "Settings index des data streams router", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+PUT _component_template/logs-prod-retention-custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "logs-prod-retention" } } } },
+  "_meta": { "description": "Retention logs applicatifs prod", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+PUT _component_template/logs-staging-retention-custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "logs-staging-retention" } } } },
+  "_meta": { "description": "Retention logs applicatifs staging", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
