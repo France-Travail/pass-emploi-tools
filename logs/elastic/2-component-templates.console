@@ -20,12 +20,18 @@ PUT _component_template/logs@custom
             "code":    { "type": "keyword", "ignore_above": 1024 },
             "message": { "type": "match_only_text" }
           } }
+        } },
+        "http": { "properties": {
+          "response": { "properties": {
+            "www_authenticate": { "type": "keyword", "ignore_above": 1024 },
+            "retry_after":      { "type": "keyword", "ignore_above": 1024 }
+          } }
         } }
       }
     }
   },
   "_meta": { "description": "Champs ECS custom CEJ, communs app + router", "managed_by": "pass-emploi-tools" },
-  "version": 3
+  "version": 4
 }
 
 PUT _component_template/logs-router@mappings
