@@ -11,6 +11,7 @@ connect, web) et à l'infra mutualisée (`pass-emploi-tools/logs/`).
 | [couverture-api.md](./couverture-api.md) | Spécifique pass-emploi-api : taxonomie, couverture, validation E2E RDV Milo, limites connues |
 
 **Invariant à respecter** : tout nouveau log passe par le `rootLogger` au format
-ECS (`event.action` au passé + `event.outcome`, `level` info|error). Jamais de
-`console.log`. Lire [conventions.md](./conventions.md) avant d'ajouter ou modifier
-un log.
+ECS (`event.action` au passé + `event.outcome`). Les logs **opérationnels** sont
+`info`/`error` (pas de `warn`) ; `debug` existe en plus comme niveau diagnostic
+opt-in piloté par `LOG_LEVEL`. Jamais de `console.log`. Lire
+[conventions.md](./conventions.md) avant d'ajouter ou modifier un log.

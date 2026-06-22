@@ -12,7 +12,8 @@
 ## Logs ECS · durable, en prod (v9.37.x)
 
 - **Invariant** : tout log passe par le `rootLogger` au format ECS (`event.action`
-  au passé + `event.outcome`, `level` info|error). Jamais de `console.log`.
+  au passé + `event.outcome`). Logs opérationnels en `level` info|error (pas de
+  `warn`) ; `debug` en plus, opt-in via `LOG_LEVEL`. Jamais de `console.log`.
   Charger le détail **avant** d'ajouter ou modifier un log.
 - **Référence stable** : [`pass-emploi-tools/docs/logs-ecs/`](./logs-ecs/README.md)
   (conventions, infra ES, use cases Kibana, couverture api).

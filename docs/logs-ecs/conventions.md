@@ -30,7 +30,12 @@ juger ; c'est le dashboard qui classe bug / pas-bug.
 `success` / `failure` uniquement → filtre transverse des dashboards. Posé sur
 chaque log porteur d'un `event.action`.
 
-## `log.level` — `info` / `error` uniquement (pas de `warn`)
+## `log.level` — `info` / `error` pour l'opérationnel (`debug` opt-in en plus)
+
+Pour les logs **opérationnels** (ceux qu'on lit en continu), deux niveaux
+seulement : `info` / `error` (**pas de `warn`**). En plus de ça, `debug` existe
+comme **niveau diagnostic opt-in** (cf. section dédiée plus bas) — il n'entre pas
+dans la doctrine orthogonale ci-dessous, qui ne concerne que info/error.
 
 `level` et `outcome` sont **deux axes orthogonaux** :
 
@@ -70,6 +75,38 @@ body tronqué après des headers `200` (`aborted`, décompression Brotli interro
 ECONNRESET. Ces cas ont un `status_code` < 500 mais sont de vraies pannes → **error**.
 Cf. `external-api-logger.helpers.ts` : `isCrash = status>=500 || (err && status<400/undefined)`.
 Détail dans [couverture-api](./couverture-api.md).
+
+### `debug` — niveau diagnostic opt-in (activable par `LOG_LEVEL`)
+
+`debug` est un niveau **en plus** d'info/error, destiné à instrumenter des
+parcours difficiles à reproduire (bugs de déconnexion / connexion remontés par un
+utilisateur, où l'on veut un maximum de contexte si le cas se reproduit). Il est
+**piloté par la var d'env `LOG_LEVEL`** (défaut `info`) : passer `LOG_LEVEL=debug`
+sur un environnement (y compris prod, temporairement) active l'émission de ces
+lignes ; tout autre niveau les coupe à la source.
+
+- **Pas dans la doctrine info/error.** Un log `debug` ne porte pas la sémantique
+  « quelque chose a cassé » ; il sert au diagnostic. Il peut ne pas porter
+  `event.action`/`event.outcome`.
+- **Reste soumis à la redaction** (cf. ci-dessous) : un `debug` qui dumpe un
+  payload passe par `serializeBodyForLog` → secrets `[Redacted]`.
+- **Contrainte de typage ES.** Un `debug` indexé doit respecter les mappings des
+  index `logs-*`. En particulier, un champ libre qui dumpe un payload
+  hétérogène (objet **ou** string selon les cas) provoque un
+  `document_parsing_exception` (rejet 400). Cf. règle ci-dessous + [infra-elasticsearch](./infra-elasticsearch.md).
+
+## Diagnostic libre → `labels.*`
+
+Toute paire clé/valeur **arbitraire** (dump de payload, contexte de debug) va
+dans `labels.<clé>`, **jamais** dans un champ générique inventé (`data`,
+`payload`, `meta`…).
+
+- ECS mappe `labels.*` en `keyword` de façon **stable** → pas de conflit.
+- Un champ générique est mappé **dynamiquement** : son type est figé par le 1er
+  document, et tout log de forme différente (string vs objet) est **rejeté**
+  (ES 400). C'est un nom de champ qui collisionne par nature.
+- Gros blob (> 1 Ko) dans `labels.*` : stocké dans `_source` mais **non indexé**
+  (`ignore_above`) → retrouvable via `trace.id`, pas filtrable/agrégeable.
 
 ## Redaction & données sensibles
 

@@ -19,6 +19,17 @@
 Quand un élément de la couche vivante se stabilise et devient utile à l'équipe,
 on le **promeut** dans la doc versionnée.
 
+## Faut-il documenter ? (test de durabilité)
+
+Avant d'ajouter à la doc versionnée, un seul test : **« est-ce encore vrai après
+3 refactos ? »**
+
+- **Oui** (invariant, décision d'archi, vérité structurelle d'un outil) → doc versionnée.
+- **Non** (incident daté, ligne de code précise, valeur courante, WIP) → git / code / notes perso.
+
+Objectif : éviter la sur-documentation qui se périme et fait perdre confiance dans
+la doc. Une doc qu'on n'ose plus croire ne vaut pas mieux que pas de doc.
+
 ## Où vit quoi
 
 - **Contexte global du projet** (vue d'ensemble, glossaire, dispositifs, repos) :
