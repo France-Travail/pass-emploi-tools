@@ -1,0 +1,8 @@
+{
+  "name": "dependency-tools",
+  "description": "Skills d'équipe Pass Emploi pour la gestion des dépendances : montée de version (breaking changes, Dependabot/Renovate) et correction de CVE (bump prioritaire sur resolutions/overrides).",
+  "version": "0.1.0",
+  "author": {
+    "name": "Équipe Pass Emploi"
+  }
+}
