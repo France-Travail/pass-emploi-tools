@@ -9,6 +9,7 @@ connect, web) et à l'infra mutualisée (`pass-emploi-tools/logs/`).
 | [infra-elasticsearch.md](./infra-elasticsearch.md) | Cluster ES, data streams, templates versionnés, ILM, Logstash, historique incidents |
 | [kibana.md](./kibana.md) | Use cases Kibana : investigation incident, reporting métier, monitoring tech, alertes |
 | [couverture-api.md](./couverture-api.md) | Spécifique pass-emploi-api : taxonomie, couverture, validation E2E RDV Milo, limites connues |
+| [postmortem-logstash-5xx-2026-06.md](./postmortem-logstash-5xx-2026-06.md) | Post-mortem 5xx/latence Logstash : fonctionnement JVM/Netty/JRuby/GC, indicateurs (`ns_*`, GC log), diagnostic, correctif XL |
 
 **Invariant à respecter** : tout nouveau log passe par le `rootLogger` au format
 ECS (`event.action` au passé + `event.outcome`). Les logs **opérationnels** sont

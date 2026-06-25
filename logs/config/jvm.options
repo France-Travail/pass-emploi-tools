@@ -3,17 +3,26 @@
 # Xms represents the initial size of total heap space
 # Xmx represents the maximum size of total heap space
 
-# Heap fixée EXPLICITEMENT et OBLIGATOIREMENT (campagne 2026-06).
+# Heap max fixée EXPLICITEMENT et OBLIGATOIREMENT (campagne 2026-06).
 # Mesuré dans le conteneur web (`-Xlog:gc+init` → "Heap Max Capacity") : le défaut
 # JVM (25% de la RAM vue) tombe à **512 Mo même sur un conteneur XL (4 Go)**, car
 # la JVM sous-détecte la RAM du conteneur sur Scalingo (cgroup → ~2 Go vus).
 # Conséquence : 512 Mo de heap → trop petit pour Logstash → OOM/crash sous charge,
 # QUELLE QUE SOIT la taille. Le défaut n'est donc JAMAIS fiable → on fige -Xmx.
 # 1 Go suffit (pic d'usage réel mesuré ~559 Mo) ; sur XL il reste ~3 Go off-heap+OS.
+# -Xmx posé ici EST effectif (le buildpack ne réinjecte pas de -Xmx).
 # Override d'urgence sans redéploy possible via LS_JAVA_OPTS (ex: -Xmx2g), appendé
 # après ce fichier (le dernier -Xmx gagne).
--Xms1g
 -Xmx1g
+
+# -Xms (heap initial) N'EST PAS figeable ici : le buildpack Scalingo réinjecte un
+# `-Xms128m` APRÈS ce fichier, qui gagne (dernier -Xms). Vérifié dans le dump :
+# "Heap Initial Capacity: 128M" alors que ce fichier contenait -Xms1g. Le heap
+# démarre donc à 128 Mo et grossit jusqu'à -Xmx (un peu de churn GC au boot).
+# Pour un heap FIXE (Xms=Xmx, recommandé Elastic), poser la var d'env Scalingo :
+#   LS_JAVA_OPTS="-Xms1g -Xmx1g"
+# qui passe après le buildpack → gagne sur tout. C'est l'unique endroit qui pilote
+# fiablement les DEUX bornes du heap.
 
 # GC forcé en G1 indépendamment de la taille détectée. Sans ça, la JVM choisit
 # SerialGC quand elle voit < 2 CPU (cas des petits conteneurs) → pauses

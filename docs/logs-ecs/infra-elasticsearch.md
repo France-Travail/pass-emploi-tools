@@ -59,6 +59,13 @@ et son `logs-router@mappings` hand-rollé en `dynamic: false` ne déclarait pas
 `event.action` / `outcome`. Fix : `logs-router` compose désormais `logs@custom`,
 puis rollover.
 
+**Logstash — 5xx & pics de latence (juin 2026)** : 5xx constants aux heures de
+charge + crashs. Cause : heap JVM au défaut (~512 Mo sur conteneur L) → OOM +
+SerialGC à pauses multi-secondes figeant l'input Netty. Fix : conteneur **XL**
+(heap défaut ~1 Go + G1 auto) + `-Xmx1g`. Détail complet (fonctionnement
+JVM/Netty/GC, indicateurs, diagnostic) :
+[postmortem-logstash-5xx-2026-06.md](./postmortem-logstash-5xx-2026-06.md).
+
 À retenir : après tout changement de schéma d'ingestion, surveiller `_ignored`
 et prévoir un `_rollover` (non destructif).
 
