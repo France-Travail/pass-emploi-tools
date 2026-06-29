@@ -1,0 +1,16 @@
+# Persistent queue : buffer DISQUE (pas RAM) entre l'input HTTP et l'output ES.
+# Si ES décroche (ConnectTimeout au pic), les logs reçus sont mis en file sur
+# disque puis rejoués au retour d'ES — au lieu d'être droppés (cas de la file
+# mémoire par défaut, où la contre-pression bloque l'input → perte).
+# /!\ FS Scalingo éphémère : survit aux blips ES, pas à un restart du conteneur.
+queue.type: persisted
+
+# Plafond du buffer AVANT reprise de la contre-pression. Écrit sous /app (zone
+# writable Scalingo), non pré-alloué : au repos la queue se draine en continu
+# (~1 page de 64 Mo), elle ne grossit que pendant une coupure ES.
+# Borné À 512 Mo car le disque Scalingo n'a PAS de quota visible mais le
+# conteneur est TUÉ au-delà de quelques Go (doc filesystem) — budget partagé
+# avec l'install Logstash et /tmp. Mieux vaut reprendre la contre-pression
+# (comportement d'origine) que faire tuer le conteneur. Couvre ~5-7 min au pic ;
+# une panne plus longue (cf. 24/06 ~1h38) déborderait de toute façon.
+queue.max_bytes: 512mb
