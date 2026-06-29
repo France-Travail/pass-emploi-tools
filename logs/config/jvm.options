@@ -3,9 +3,31 @@
 # Xms represents the initial size of total heap space
 # Xmx represents the maximum size of total heap space
 
-# Configured by the buildpack dynamically
-# -Xms1g
-# -Xmx1g
+# Heap max fixée EXPLICITEMENT et OBLIGATOIREMENT (campagne 2026-06).
+# Mesuré dans le conteneur web (`-Xlog:gc+init` → "Heap Max Capacity") : le défaut
+# JVM (25% de la RAM vue) tombe à **512 Mo même sur un conteneur XL (4 Go)**, car
+# la JVM sous-détecte la RAM du conteneur sur Scalingo (cgroup → ~2 Go vus).
+# Conséquence : 512 Mo de heap → trop petit pour Logstash → OOM/crash sous charge,
+# QUELLE QUE SOIT la taille. Le défaut n'est donc JAMAIS fiable → on fige -Xmx.
+# 1 Go suffit (pic d'usage réel mesuré ~559 Mo) ; sur XL il reste ~3 Go off-heap+OS.
+# -Xmx posé ici EST effectif (le buildpack ne réinjecte pas de -Xmx).
+# Override d'urgence sans redéploy possible via LS_JAVA_OPTS (ex: -Xmx2g), appendé
+# après ce fichier (le dernier -Xmx gagne).
+-Xmx1g
+
+# -Xms (heap initial) N'EST PAS figeable ici : le buildpack Scalingo réinjecte un
+# `-Xms128m` APRÈS ce fichier, qui gagne (dernier -Xms). Vérifié dans le dump :
+# "Heap Initial Capacity: 128M" alors que ce fichier contenait -Xms1g. Le heap
+# démarre donc à 128 Mo et grossit jusqu'à -Xmx (un peu de churn GC au boot).
+# Pour un heap FIXE (Xms=Xmx, recommandé Elastic), poser la var d'env Scalingo :
+#   LS_JAVA_OPTS="-Xms1g -Xmx1g"
+# qui passe après le buildpack → gagne sur tout. C'est l'unique endroit qui pilote
+# fiablement les DEUX bornes du heap.
+
+# GC forcé en G1 indépendamment de la taille détectée. Sans ça, la JVM choisit
+# SerialGC quand elle voit < 2 CPU (cas des petits conteneurs) → pauses
+# stop-the-world multi-secondes qui figent l'input HTTP (Netty) → 5xx.
+-XX:+UseG1GC
 
 ################################################################
 ## Expert settings
@@ -59,16 +81,28 @@
 #-XX:HeapDumpPath=${LOGSTASH_HOME}/heapdump.hprof
 
 ## GC logging
+# Les options -XX:+PrintGC* ci-dessous sont la syntaxe JDK 8, INOPÉRANTE sur le
+# JDK 21 de Logstash 9 → remplacées par l'unified logging -Xlog ci-dessous.
 #-XX:+PrintGCDetails
 #-XX:+PrintGCTimeStamps
 #-XX:+PrintGCDateStamps
 #-XX:+PrintClassHistogram
 #-XX:+PrintTenuringDistribution
 #-XX:+PrintGCApplicationStoppedTime
-
-# log GC status to a file with time stamps
-# ensure the directory exists
 #-Xloggc:${LS_GC_LOG_FILE}
+
+# PERMANENT — empreinte JVM au démarrage : `gc+init` imprime au boot un bloc avec
+# « Heap Max Capacity: … » (= le -Xmx effectif) et le GC choisi. ~5 lignes par
+# boot → coût négligeable, valeur durable. À GARDER : sait toujours avec quoi la
+# JVM démarre (utile après tout resize/redéploiement).
+-Xlog:gc+init=info:stderr:utctime,level,tags
+
+# DIAGNOSTIC OPT-IN (incident) — NE PAS activer en permanence (des milliers de
+# lignes/h : pollution du drain + coût stockage ES). Pour investiguer des pauses
+# GC en incident, poser la variable d'env Scalingo SANS redéployer :
+#   LS_JAVA_OPTS="-Xlog:gc,safepoint:stderr:utctime,level,tags"
+# puis restart. `gc` = 1 ligne/GC avec la durée de pause ; `safepoint` = toutes
+# les pauses stop-the-world. Retirer la variable une fois l'incident clos.
 
 # Entropy source for randomness
 -Djava.security.egd=file:/dev/urandom
