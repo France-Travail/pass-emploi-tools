@@ -7,3 +7,5 @@ perf/build
 perf/.gradle
 *.secret
 commandes-secretes.md
+
+logs.txt
