@@ -11,6 +11,10 @@ connect, web) et à l'infra mutualisée (`pass-emploi-tools/logs/`).
 | [couverture-api.md](./couverture-api.md) | Spécifique pass-emploi-api : taxonomie, couverture, validation E2E RDV Milo, limites connues |
 | [postmortem-logstash-5xx-2026-06.md](./postmortem-logstash-5xx-2026-06.md) | Post-mortem 5xx/latence Logstash : fonctionnement JVM/Netty/JRuby/GC, indicateurs (`ns_*`, GC log), diagnostic, correctif XL |
 
+> **Voisin** : la **résilience/scaling de l'ingestion** (blackouts, quarantaine du
+> drain Scalingo, next steps x10) est un sujet à part →
+> [`../blackout-logs/`](../blackout-logs/README.md).
+
 **Invariant à respecter** : tout nouveau log passe par le `rootLogger` au format
 ECS (`event.action` au passé + `event.outcome`). Les logs **opérationnels** sont
 `info`/`error` (pas de `warn`) ; `debug` existe en plus comme niveau diagnostic
