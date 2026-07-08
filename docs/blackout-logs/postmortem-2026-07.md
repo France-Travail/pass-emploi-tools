@@ -191,11 +191,13 @@ Config déployée au 2026-07-02 :
 
 Décisions à trancher :
 
-- [ ] **Remettre la PQ** ? C'est le **filet du mode A** (backpressure ES). Retirée
-      pour isoler le fsync pendant le test ; à réintégrer une fois le test clos,
-      sauf si on adopte l'archi découplée (§7) qui la rend structurelle.
-- [ ] **Retirer `-Xlog:gc,safepoint`** de `JAVA_OPTS` après le test (verbeux :
-      pollue le drain + stockage ES). Garder `-Xlog:gc+init` (boot only).
+- [x] **Remettre la PQ** → **fait, et rendue structurelle** : on a adopté l'archi
+      découplée (§7 Option A). La PQ vit désormais sur le pipeline `process`
+      (`config/pipelines.yml`), donc plus jamais « à remettre » — elle est dans la
+      conf. Implémenté branche `postmortem-blackouts`, **pas encore déployé**.
+- [ ] **Retirer `-Xlog:gc,safepoint`** de `JAVA_OPTS` : test clos (les logs du
+      2026-07-08 confirment un GC sain — heap `925M→313M/1024M`, pauses <15 ms). À
+      retirer côté **var d'env Scalingo**. Garder `-Xlog:gc+init` (boot only).
 - [ ] Statuer sur la config heap durable dans `jvm.options` vs `JAVA_OPTS`
       (aujourd'hui le heap réel vient de `JAVA_OPTS`).
 
@@ -220,7 +222,13 @@ Aujourd'hui, le **pipeline lourd** (regex/kv/json/ruby de `logstash.conf`) tourn
 **sur le chemin d'ACK de l'input HTTP**. Donc un batch lent = ACK lent = le drain
 timeout (`499`) = quarantaine. **Il faut découpler *recevoir* de *traiter*.**
 
-### Option A — natif Logstash (à faire en premier, proportionné)
+### Option A — natif Logstash (à faire en premier, proportionné) — ✅ IMPLÉMENTÉE (repo, pending deploy)
+
+> **MàJ 2026-07-08** : implémentée branche `postmortem-blackouts`
+> (`ingest.conf` + `process.conf` + `config/pipelines.yml`, `Procfile` sans `-f`).
+> Validée en Logstash 9.0.1 local (`Configuration OK`, boot des 2 pipelines, PQ sur
+> `process` confirmée sur disque). **Pas encore déployée** — cf. conventions.md
+> « État déployé ».
 
 Deux pipelines (pipeline-to-pipeline) :
 

@@ -7,3 +7,7 @@ perf/build
 perf/.gradle
 *.secret
 commandes-secretes.md
+
+# Dumps de logs bruts (scalingo logs) — volumineux, jamais commités
+logs/logs.txt
+logs/*.log

@@ -2,6 +2,17 @@
 
 This repository contains a boilerplate for deploying logstash on Scalingo.
 
+> **⚠️ Setup Pass Emploi (≠ boilerplate ci-dessous).** On ne tourne PLUS en
+> mono-pipeline `-f logstash.conf`. L'ingestion est découplée en **2 pipelines**
+> (`config/pipelines.yml`) pour que l'ACK du drain ne dépende ni des filtres ni d'ES
+> (évite la quarantaine Scalingo — cf. [`../docs/blackout-logs/`](../docs/blackout-logs/README.md)) :
+> - **`ingest.conf`** — `http input → pipeline output`, 0 filtre, file mémoire (ACK rapide).
+> - **`process.conf`** — `pipeline input → filtres ECS → Elasticsearch`, `queue.type: persisted` (filet backpressure ES).
+>
+> Le `Procfile` lance donc `bin/logstash` **sans `-f`** (sinon `pipelines.yml` est
+> ignoré). La section boilerplate ci-dessous est conservée à titre de référence
+> upstream.
+
 You have three different configuration available:
 
 * `logstash.conf`: this configuration will listen for http request
