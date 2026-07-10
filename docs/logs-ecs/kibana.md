@@ -65,6 +65,24 @@ compteurs des handlers clés, évolution temporelle, heatmap structure × handle
 **Dashboard « Santé tech »** — taux d'échec par partenaire, latence p50/p95/p99,
 top `error.type`, ratio `auth_failed`, count `request_failed` par status.
 
+### SLO login (chantier perf)
+
+Le flux login de `pass-emploi-connect` est instrumenté en funnel :
+`login_initiated` → `login_redirected` → `login_completed` / `login_failed`,
+avec `labels.idp` (mode d'authent) et `login.step` (étape d'échec — les steps
+`Callback`/`UserInfo` pointent le **partenaire**, les autres pointent chez nous).
+Seuils et définition des SLI : [`docs/perf/observabilite.md`](../perf/observabilite.md).
+
+| Métrique | KQL |
+|---|---|
+| Taux de succès login (par mode) | `event.action: (login_completed OR login_failed)` — ratio `login_completed`, group by `labels.idp` |
+| Affluence (dénominateur jour J) | `event.action: login_initiated` — count par tranche de temps |
+| Échecs imputables au partenaire | `event.action: login_failed AND login.step: (Callback OR UserInfo)` |
+| Échecs chez nous | `event.action: login_failed AND NOT login.step: (Callback OR UserInfo)` |
+| Latence des appels IDP | `event.action: external_api_call AND labels.operation: (token OR userinfo)` — percentiles `event.duration`, group by `log.logger` (le service IDP) |
+
+Définitions versionnées (dashboard + watchers) : [`logs/elastic/`](../../logs/README.md).
+
 ## Alertes prioritaires (Watcher)
 
 - `external_api_call` `failure` sur un partenaire — rate élevé → Slack #ops.

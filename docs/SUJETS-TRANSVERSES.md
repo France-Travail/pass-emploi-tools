@@ -27,3 +27,24 @@
   Charger la référence **avant** de scaler ou retoucher la chaîne d'ingestion.
 - **Référence stable** : [`pass-emploi-tools/docs/blackout-logs/`](./blackout-logs/README.md)
   (2 modes de panne, garde-fous JVM/Scalingo, playbook de diagnostic, next steps x10).
+
+## App Jeune · WIP, ouvert le 2026-07-02
+
+- **Invariant** : raisonner l'élargissement des publics de la future app jeune
+  sur **3 couches distinctes** — public fonctionnel / mode d'authentification /
+  représentation API — sans les confondre (piège historique de `Core.Structure`).
+  Rappel structurant : côté FT, le mode d'authent est **unique** (FT Connect), la
+  structure est décidée par la **porte d'entrée** au login, pas par l'IDP.
+- **Référence stable** : [`pass-emploi-tools/docs/app-jeune/`](./app-jeune/README.md)
+  (routeur + cadre 3 couches, sous-chantier utilisateurs/authentification avec
+  matrice publics→modes ; couche 3 et mode invité à instruire).
+
+## Performances · WIP, ouvert le 2026-07-06
+
+- **Invariant** : aucune fonctionnalité exposée à un pic prévisible (MES,
+  communication massive, notification push de masse) sans **SLO défini** et
+  **scénario de charge identifié**. Les tirs de perf se jugent contre ces SLO
+  et une baseline mesurée — jamais « au feeling ».
+- **Référence stable** : [`pass-emploi-tools/docs/perf/`](./perf/README.md)
+  (démarche en 6 phases, principes structurants, sous-chantiers : SLO/trafic,
+  partenaires, harnais de tir, mode dégradé/runbooks, plan Scalingo).
