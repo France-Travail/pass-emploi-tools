@@ -36,10 +36,21 @@ PUT _index_template/logs-router
 {
   "index_patterns": ["logs-router-*"],
   "priority": 200,
-  "composed_of": ["logs@mappings", "logs@settings", "logs-router@mappings", "logs@custom", "logs-router@settings"],
+  "composed_of": ["logs@mappings", "logs@settings", "logs-router@mappings", "logs@custom", "logs-router@settings", "logs-router-retention-custom"],
   "ignore_missing_component_templates": ["logs@custom"],
   "data_stream": { "hidden": false, "allow_custom_routing": false },
   "allow_auto_create": true,
   "_meta": { "description": "Logs router Scalingo (prod + staging)", "managed_by": "pass-emploi-tools" },
-  "version": 1
+  "version": 2
 }
+
+# ═════════════════════════════════════════════════════════════════════════════
+# ROLLOVER (matérialisation) — action one-shot après un changement de NOM de policy
+#
+# Nécessaire UNIQUEMENT quand un flux change de policy (nouveaux backing indices à
+# repointer). Ici `logs-router` est passé de logs-prod-retention à
+# logs-router-retention → rollover. logs-prod/logs-staging gardent leur nom de
+# policy (seul le contenu a changé) → PAS de rollover.
+# Idempotence : rejouer crée un nouvel index vide, sans dommage.
+POST logs-router-prod-default/_rollover
+POST logs-router-staging-default/_rollover

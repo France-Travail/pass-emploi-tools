@@ -77,19 +77,27 @@ PUT _component_template/logs-router@settings
 {
   "template": {
     "settings": { "index": {
-      "lifecycle": { "name": "logs-prod-retention" },
       "number_of_shards": "1",
       "number_of_replicas": "1"
     } }
   },
-  "_meta": { "description": "Settings index des data streams router", "managed_by": "pass-emploi-tools" },
-  "version": 1
+  "_meta": { "description": "Settings index des data streams router (shards/replicas ; rétention portée par logs-router-retention-custom)", "managed_by": "pass-emploi-tools" },
+  "version": 2
 }
 
+# Briques de rétention (une par flux, lifecycle uniquement) — pattern homogène
+# avec les briques `<flux>@custom` de observabilite.console.
 PUT _component_template/logs-prod-retention-custom
 {
   "template": { "settings": { "index": { "lifecycle": { "name": "logs-prod-retention" } } } },
   "_meta": { "description": "Retention logs applicatifs prod", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+PUT _component_template/logs-router-retention-custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "logs-router-retention" } } } },
+  "_meta": { "description": "Retention logs router (découplée de logs-prod)", "managed_by": "pass-emploi-tools" },
   "version": 1
 }
 

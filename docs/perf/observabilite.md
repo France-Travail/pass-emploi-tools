@@ -74,17 +74,34 @@ L'adoption relève du produit ([pass-emploi-analytics]) ; le reste est ici.
 ## Spec d'instrumentation app jeune
 
 L'app n'existe pas encore : ces exigences se posent **avant** le développement,
-pour ne pas courir après l'observabilité ensuite. Conformes à l'invariant logs
-ECS (`event.action` au passé + `event.outcome`, via `rootLogger` — voir
-[conventions](../logs-ecs/conventions.md)).
+pour ne pas courir après l'observabilité ensuite. La spec exige des **signaux
+observables** (quoi mesurer), pas des `event.action` précis : le mécanisme se
+choisit à la conception, selon que l'étape traverse l'api ou non (non tranché
+à ce jour — certaines étapes pourraient l'éviter pour la soulager).
 
-| Étape du parcours | `event.action` attendu | Champs clés |
+| Étape du parcours | Signal requis | Notes |
 |---|---|---|
-| Tuto d'entrée affiché | `tuto_viewed` | identifiant de corrélation (voir ci-dessous) |
-| Login (existant connect) | `login_initiated` / `login_redirected` / `login_completed` / `login_failed` | `labels.idp`, `login.step`, + **durée de bout en bout** à ajouter |
-| Étape de questionnaire validée | `questionnaire_step_completed` | n° d'étape, `event.outcome` |
-| Plan d'action généré | `action_plan_generated` | `event.duration` (SLI ≤ 10 s), `event.outcome`, appel IA tracé en `external_api_call` |
-| Plan d'action affiché | `action_plan_viewed` | — |
+| Tuto d'entrée affiché | vue + identifiant de corrélation (voir ci-dessous) | côté client uniquement |
+| Login | existant dans connect : `login_initiated` / `login_redirected` / `login_completed` / `login_failed` (`labels.idp`, `login.step`) | manque la **durée de bout en bout** du flow |
+| Étape de questionnaire validée | n° d'étape + `event.outcome` | pour localiser où le funnel casse |
+| Plan d'action généré | `event.outcome` + `event.duration` (SLI ≤ 10 s), appel IA tracé en `external_api_call` | — |
+| Plan d'action affiché | vue côté client | le « généré » serveur ne prouve pas que le jeune l'a vu |
+
+Règle de choix du mécanisme :
+
+- **L'étape est un use case api** → la convention existante **suffit** :
+  `handler_executed` + `log.logger` + `event.outcome`/`event.duration`. Pas de
+  nouvel `event.action` ; on documente dans [kibana.md](../logs-ecs/kibana.md)
+  quel handler porte quel SLI (couplage au nom du handler assumé).
+- **L'étape ne passe pas par l'api** (autre service, ou purement côté app) →
+  événement dédié conforme à l'invariant ECS (`event.action` au passé +
+  `event.outcome`, via `rootLogger`).
+- **Point ouvert structurant** : les signaux côté client (tuto, abandon de
+  questionnaire, plan d'action *affiché*) supposent un **canal d'observabilité
+  mobile** qui n'existe pas aujourd'hui — l'app Flutter n'envoie rien dans
+  notre ES. `handler_executed` ne voit que ce qui atteint le serveur : un jeune
+  sans réseau, une app qui plante ou un abandon restent invisibles. À instruire
+  à la conception de l'app (logs applicatifs mobiles vs analytics produit).
 
 **Point dur connu** : un flux non authentifié n'a ni `user.id` ni `trace.id`
 (limite documentée dans [kibana.md](../logs-ecs/kibana.md)). Or le funnel

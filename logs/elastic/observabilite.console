@@ -1,0 +1,247 @@
+# Observabilité APM & Heartbeat — config ES custom (HORS pipeline logs)
+#
+# Bundle AUTONOME, à importer d'un bloc (pas dans la chaîne ordonnée 1→2→3 des
+# logs). Ces flux ne passent PAS par Logstash : les agents APM et Heartbeat
+# écrivent directement dans ES via des data streams gérés par Elastic.
+#
+# ÉTAT DÉSIRÉ (façon Terraform) : rejouer ce fichier amène le cluster à l'état
+# décrit. Réduire une rétention supprime les données excédentaires au prochain
+# passage ILM — c'est l'intention. Les rollovers en fin de fichier matérialisent.
+#
+# Ordre interne : policies → component templates → index templates → rollovers
+# (les templates référencent les briques et les policies).
+#
+# ⚠️ DÉPENDANCE : les index templates ci-dessous composent des component templates
+# et des pipelines fournis par l'intégration APM d'Elastic (apm@mappings,
+# traces@mappings, *-fallback@ilm, traces-apm@default-pipeline, etc.). L'intégration
+# APM doit être installée — on ne versionne QUE nos briques custom, pas ces objets
+# Elastic (référencés par nom).
+#
+# Rétentions cibles (arbitrage sizing 2026-07) :
+#   traces-apm / traces-apm.rum → 30 j   (traces brutes sans valeur au-delà)
+#   logs-apm.error              → 90 j   (découplé : suivi des régressions)
+#   heartbeat-9.1.5             → 90 j   (reporting SLA trimestriel)
+#
+# Fenêtre HOT = ~14 j : `warm.min_age: 14d` (depuis le rollover) sur tous ces flux
+# → 14 j de données récentes sur SSD, puis warm. Rééquilibre hot (inutilisé) / warm
+# (saturé). metrics-apm.* reste géré par Elastic (hors de ce fichier).
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 1. POLITIQUES ILM
+# ═════════════════════════════════════════════════════════════════════════════
+
+# Traces / RUM APM — 30 j (partagée par traces-apm-default + traces-apm.rum-default)
+PUT _ilm/policy/traces-apm-retention
+{
+  "policy": {
+    "phases": {
+      "hot": {
+        "min_age": "0ms",
+        "actions": {
+          "set_priority": { "priority": 100 },
+          "rollover": { "max_age": "30d", "max_primary_shard_size": "20gb" }
+        }
+      },
+      "warm": {
+        "min_age": "14d",
+        "actions": { "set_priority": { "priority": 50 } }
+      },
+      "delete": {
+        "min_age": "30d",
+        "actions": { "delete": { "delete_searchable_snapshot": true } }
+      }
+    }
+  }
+}
+
+# Erreurs APM — 90 j (logs-apm.error-default)
+PUT _ilm/policy/logs-apm.error-retention
+{
+  "policy": {
+    "phases": {
+      "hot": {
+        "min_age": "0ms",
+        "actions": {
+          "set_priority": { "priority": 100 },
+          "rollover": { "max_age": "30d", "max_primary_shard_size": "20gb" }
+        }
+      },
+      "warm": {
+        "min_age": "14d",
+        "actions": { "set_priority": { "priority": 50 } }
+      },
+      "delete": {
+        "min_age": "90d",
+        "actions": { "delete": {} }
+      }
+    }
+  }
+}
+
+# Heartbeat / Uptime — 90 j (heartbeat-9.1.5 ; corrige l'absence de delete = ∞)
+PUT _ilm/policy/heartbeat
+{
+  "policy": {
+    "phases": {
+      "hot": {
+        "min_age": "0ms",
+        "actions": {
+          "rollover": { "max_age": "30d", "max_primary_shard_size": "50gb" }
+        }
+      },
+      "warm": {
+        "min_age": "14d",
+        "actions": { "set_priority": { "priority": 50 } }
+      },
+      "delete": {
+        "min_age": "90d",
+        "actions": { "delete": {} }
+      }
+    }
+  }
+}
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 2. BRIQUES DE RÉTENTION PAR FLUX (component templates)
+#
+# La rétention APM était centralisée dans `apm-retention-custom` (composée en
+# dernier par les 3 templates → gagnait sur tout). On la VIDE et on porte la
+# rétention PAR FLUX dans les briques `<flux>@custom` (miroir de `logs@custom`).
+# ═════════════════════════════════════════════════════════════════════════════
+
+# Brique partagée VIDÉE : ne pose plus de lifecycle (no-op, toujours composée).
+PUT _component_template/apm-retention-custom
+{
+  "template": { "settings": {} },
+  "_meta": { "description": "Rétention APM portée par flux dans <flux>@custom ; brique partagée neutralisée", "managed_by": "pass-emploi-tools" }
+}
+
+# Traces APM → traces-apm-retention (30 j)
+PUT _component_template/traces-apm@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "traces-apm-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+# RUM APM → traces-apm-retention (30 j)
+PUT _component_template/traces-apm.rum@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "traces-apm-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+# Erreurs APM → logs-apm.error-retention (90 j)
+PUT _component_template/logs-apm.error@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "logs-apm.error-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 3. INDEX TEMPLATES APM (managed:false = à nous ; clonés des défauts APM pour
+#    attacher notre rétention). Versionnés pour reproductibilité complète.
+#    Composent des briques Elastic (apm@mappings…) + nos `<flux>@custom`.
+# ═════════════════════════════════════════════════════════════════════════════
+
+PUT _index_template/traces-apm@template-custom
+{
+  "index_patterns": ["traces-apm-default"],
+  "template": {
+    "settings": {
+      "index": {
+        "mode": "standard",
+        "default_pipeline": "traces-apm@default-pipeline",
+        "final_pipeline": "traces-apm@pipeline"
+      }
+    },
+    "mappings": {
+      "properties": {
+        "data_stream.dataset": { "type": "constant_keyword", "value": "apm" },
+        "data_stream.type": { "type": "constant_keyword", "value": "traces" }
+      }
+    }
+  },
+  "composed_of": [
+    "traces@mappings", "apm@mappings", "apm@settings", "traces-apm@mappings",
+    "traces-apm-fallback@ilm", "ecs@mappings", "apm-retention-custom",
+    "traces@custom", "traces-apm@custom"
+  ],
+  "priority": 250,
+  "version": 101,
+  "_meta": { "description": "Custom index template for traces-apm-* with custom policy", "managed": false },
+  "data_stream": { "hidden": false, "allow_custom_routing": false },
+  "allow_auto_create": true,
+  "ignore_missing_component_templates": ["traces@custom", "traces-apm@custom", "traces-apm-fallback@ilm"]
+}
+
+PUT _index_template/traces-apm.rum@template-custom
+{
+  "index_patterns": ["traces-apm.rum-default"],
+  "template": {
+    "settings": {
+      "index": {
+        "mode": "standard",
+        "default_pipeline": "traces-apm.rum@default-pipeline",
+        "final_pipeline": "traces-apm@pipeline"
+      }
+    },
+    "mappings": {
+      "properties": {
+        "data_stream.dataset": { "type": "constant_keyword", "value": "apm.rum" },
+        "data_stream.type": { "type": "constant_keyword", "value": "traces" }
+      }
+    }
+  },
+  "composed_of": [
+    "traces@mappings", "apm@mappings", "apm@settings", "traces-apm@mappings",
+    "traces-apm.rum@mappings", "traces-apm.rum-fallback@ilm", "ecs@mappings",
+    "traces@custom", "traces-apm.rum@custom", "apm-retention-custom"
+  ],
+  "priority": 250,
+  "version": 101,
+  "_meta": { "managed": false, "description": "Index custom template for traces-apm.rum-* with custom policy" },
+  "data_stream": { "hidden": false, "allow_custom_routing": false },
+  "allow_auto_create": true,
+  "ignore_missing_component_templates": ["traces@custom", "traces-apm.rum@custom", "traces-apm.rum-fallback@ilm"]
+}
+
+PUT _index_template/logs-apm.error@template-custom
+{
+  "index_patterns": ["logs-apm.error-default"],
+  "template": {
+    "settings": {
+      "index": {
+        "mode": "standard",
+        "default_pipeline": "logs-apm.error@default-pipeline",
+        "final_pipeline": "logs-apm@pipeline"
+      }
+    },
+    "mappings": {
+      "properties": {
+        "processor.event": { "type": "constant_keyword", "value": "error" }
+      }
+    }
+  },
+  "composed_of": [
+    "logs@mappings", "apm@mappings", "apm@settings", "logs-apm@settings",
+    "logs-apm.error@mappings", "logs-apm.error-fallback@ilm", "ecs@mappings",
+    "logs@custom", "logs-apm.error@custom", "apm-retention-custom"
+  ],
+  "priority": 250,
+  "version": 101,
+  "_meta": { "description": "Index custom template for logs-apm.error-* with custom policy", "managed": false },
+  "data_stream": { "hidden": false, "allow_custom_routing": false },
+  "allow_auto_create": true,
+  "ignore_missing_component_templates": ["logs@custom", "logs-apm.error@custom", "logs-apm.error-fallback@ilm"]
+}
+
+# ═════════════════════════════════════════════════════════════════════════════
+# 4. ROLLOVER (matérialisation) — action one-shot après un changement de NOM de policy
+#
+# Nécessaire UNIQUEMENT pour `error` : sa policy passe de traces-apm-retention à
+# logs-apm.error-retention → les nouveaux backing indices doivent la prendre.
+# traces / rum : la policy garde son nom (traces-apm-retention), le passage à 30 j
+# s'applique SANS rollover. heartbeat : idem (phase delete ajoutée à la policy
+# existante). Idempotence : rejouer crée un index vide, sans dommage.
+# ═════════════════════════════════════════════════════════════════════════════
+POST logs-apm.error-default/_rollover
