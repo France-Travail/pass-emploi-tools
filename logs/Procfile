@@ -1,1 +1,1 @@
-web: bin/logstash -f /app/logstash.conf
+web: bin/logstash --config.reload.automatic --path.settings /app/config
