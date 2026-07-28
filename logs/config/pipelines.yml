@@ -1,0 +1,54 @@
+# Deux pipelines découplés pour supprimer la quarantaine du drain Scalingo.
+#
+# Problème résolu : avec un pipeline unique, les filtres lourds (kv/json/ruby)
+# tournent sur le chemin d'ACK de l'input HTTP. Un batch lent → ACK lent →
+# le drain Scalingo timeout (499) → 10 consécutifs → quarantaine 5 min.
+#
+# Solution : découpler "recevoir" de "traiter".
+#   - ingest  : http input → Persistent Queue (disque). Zéro filtre.
+#               ACK en ~1ms (juste écriture disque). Le drain ne timeout plus jamais.
+#   - process : lit la PQ → filtres lourds → ES. À son rythme, découplé de l'ACK.
+#
+# La PQ couvre aussi le mode A (backpressure ES) : un décrochage ES court
+# s'accumule sur disque et est rejoué, au lieu de remonter en contre-pression
+# et de jeter les logs.
+#
+# Cf. docs/blackout-logs/conventions.md pour le contexte complet.
+
+- pipeline.id: ingest
+  path.config: "/app/pipeline-ingest.conf"
+  # Persistent Queue : buffer disque entre l'input HTTP et le pipeline process.
+  # Survit aux blips ES et aux pauses GC. Éphémère (disque Scalingo) : survit
+  # aux hoquets, pas aux restarts complets — acceptable (les restarts sont rares
+  # et courts vs les quarantaines de 5-20 min).
+  queue.type: persisted
+  queue.max_bytes: 512mb
+  # Checkpoint toutes les 1024 écritures (défaut) : bon compromis fsync/perf.
+  # Si les pics de latence reviennent, investiguer le fsync avant d'augmenter.
+  queue.checkpoint.writes: 1024
+  # Workers : configurable via variable d'env Scalingo (défaut : 1).
+  # 1 suffit — le pipeline ne fait qu'écrire sur la PQ disque (I/O pur).
+  # Augmenter LOGSTASH_INGEST_WORKERS si l'écriture PQ devient le goulot (rare).
+  pipeline.workers: "${LOGSTASH_INGEST_WORKERS:1}"
+  # L'ordre des événements dans la PQ n'a aucune importance.
+  # false évite l'overhead de synchronisation du mode ordonné.
+  pipeline.ordered: false
+
+- pipeline.id: process
+  path.config: "/app/pipeline-process.conf"
+  # Mémoire suffisante ici : la PQ du pipeline ingest est le vrai buffer.
+  queue.type: memory
+  # Workers : configurable via variable d'env Scalingo (défaut : 1).
+  # Scalingo n'expose pas le nombre de vCPU — fixer une valeur statique
+  # serait arbitraire. Augmenter LOGSTASH_PROCESS_WORKERS si le pipeline
+  # process devient le goulot (mesurable via les tests de charge Gatling).
+  pipeline.workers: "${LOGSTASH_PROCESS_WORKERS:1}"
+  # Batch plus grand = moins de round-trips ES = meilleur débit.
+  # 250 est un bon point de départ ; augmenter si ES le supporte.
+  pipeline.batch.size: 250
+  # Délai d'attente pour remplir un batch avant de l'envoyer.
+  # 50ms : bon compromis latence/débit pour des logs.
+  pipeline.batch.delay: 50
+  # Chaque log est indépendant : l'ordre d'indexation dans ES n'a aucune importance.
+  # false évite l'overhead de synchronisation du mode ordonné.
+  pipeline.ordered: false

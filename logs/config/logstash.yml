@@ -1,0 +1,38 @@
+# Configuration globale Logstash.
+#
+# Chargé via --path.settings /app/config (cf. Procfile).
+# Les paramètres pipeline-spécifiques (workers, batch, queue) sont dans
+# config/pipelines.yml — ils y sont plus lisibles car associés à chaque pipeline.
+#
+# Cf. docs/blackout-logs/conventions.md pour le contexte de l'architecture
+# 2 pipelines + Persistent Queue.
+
+# --- Chemins ---
+# Logstash sur Scalingo est déployé dans /app (buildpack).
+# Les pipelines sont à la racine de /app (pas dans /app/config) car Scalingo
+# déploie les fichiers du repo à la racine de /app.
+path.data: /app/data
+path.logs: /app/logs
+
+# --- Pipeline-to-pipeline ---
+# Nécessaire pour que le pipeline "ingest" puisse envoyer au pipeline "process"
+# via `output { pipeline { send_to => ["process"] } }`.
+# Sans cette option, Logstash ne charge pas le bus inter-pipelines.
+pipeline.ordered: auto
+
+# --- Reload automatique ---
+# Activé via --config.reload.automatic dans le Procfile.
+# Intervalle de vérification des changements de config.
+config.reload.interval: 3s
+
+# --- Logs Logstash lui-même ---
+# "warn" pour réduire le bruit dans les logs Scalingo.
+# Passer à "info" temporairement pour diagnostiquer un problème de démarrage.
+log.level: warn
+log.format: json
+
+# --- Monitoring Logstash ---
+# xpack.monitoring est deprecated depuis Logstash 8.x.
+# La solution recommandée est Elastic Agent Fleet avec l'intégration Logstash,
+# qui collecte les métriques via l'API locale /_node/stats (port 9600).
+# Cf. https://www.elastic.co/docs/reference/logstash/monitoring-logstash-with-elastic-agent
