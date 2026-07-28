@@ -35,9 +35,18 @@
   représentation API — sans les confondre (piège historique de `Core.Structure`).
   Rappel structurant : côté FT, le mode d'authent est **unique** (FT Connect), la
   structure est décidée par la **porte d'entrée** au login, pas par l'IDP.
+- **Invariant invité** : l'invité est un utilisateur **authentifié à identité
+  pseudonyme** (JWT, structure `INVITE`, table `jeune_invite`), pas un appelant
+  anonyme. Son accès est **fermé par défaut** : l'autorisation « jeune »
+  standard le rejette, chaque route doit être ouverte explicitement. Charger la
+  référence **avant** d'exposer une fonctionnalité à l'invité.
+- **Invariant plan d'action** : le plan de fin d'onboarding est produit par un
+  **service externe au stade POC**, hors SLA, exposé via un **proxy** dans
+  `pass-emploi-api` — dont la raison d'être est d'absorber les évolutions du
+  POC **sans livraison mobile**. Rien n'est persisté côté API.
 - **Référence stable** : [`pass-emploi-tools/docs/app-jeune/`](./app-jeune/README.md)
-  (routeur + cadre 3 couches, sous-chantier utilisateurs/authentification avec
-  matrice publics→modes ; couche 3 et mode invité à instruire).
+  (routeur + cadre 3 couches ; sous-chantiers utilisateurs/authentification —
+  mode invité livré —, parcours & fonctionnalités, et plan d'action).
 
 ## Performances · WIP, ouvert le 2026-07-06
 

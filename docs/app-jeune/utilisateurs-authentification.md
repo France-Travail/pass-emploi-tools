@@ -1,13 +1,14 @@
 # App Jeune — Utilisateurs & Authentification
 
 > **Reference.** Recensement des publics de la future app jeune, de leur mode
-> d'authentification technique, et (à venir) de leur représentation dans l'API.
+> d'authentification technique, et de leur représentation dans l'API.
 > Sous-chantier de [`README.md`](./README.md) — lire le **cadre 3 couches**
 > avant.
 >
 > **Statut : WIP.** Itération 1 (2026-07-02) : couches 1→2 (matrice
-> publics→modes). Couche 3 (entités / droits) et mode invité = `TODO` explicites
-> en bas.
+> publics→modes). Itération 2 (2026-07-28) : le **mode invité est livré**, la
+> couche 3 est renseignée pour ce public. Restent ouverts : le candidat FT non
+> accompagné, et la **transition invité → inscrit**.
 
 ## Rappel du cadre
 
@@ -15,20 +16,21 @@
 |---|---|---|
 | 1 — Public fonctionnel | Qui, vu produit (dispositif / parcours) | `Core.Structure` (api) + porte d'entrée choisie au login (connect) |
 | 2 — Mode d'authentification | Comment il prouve son identité (IDP, flow) | IDP dans `pass-emploi-connect/src/idp/*` |
-| 3 — Représentation API | Comment on le range pour ses droits | `Authentification.Type`, `Core.Structure`, entité `Jeune` |
+| 3 — Représentation API | Comment on le range pour ses droits | `Authentification.Type`, `Core.Structure`, entités `Jeune` et `JeuneInvite` |
 
-## Couche 2 — Modes d'authentification existants (bénéficiaires)
+## Couche 2 — Modes d'authentification (bénéficiaires)
 
-Source : `pass-emploi-connect/src/idp/`. Aujourd'hui, côté **bénéficiaire (jeune)**,
-il n'existe en réalité que **deux IDP** :
+Source : `pass-emploi-connect/src/idp/`. Côté **bénéficiaire (jeune)**, il existe
+désormais **trois** modes :
 
 | Mode | IDP connect | Particularité |
 |---|---|---|
 | **OIDC MILO** | `milo-jeune` | IDP dédié Mission Locale |
 | **FT Connect** | `francetravail-jeune` | IDP France Travail **unique** ; la structure est choisie par le path (`cej` / `aij` / `brsa` / …) au login, pas renvoyée par l'IDP |
+| **Invité** | `invite` | **Aucun IDP externe** — voir ci-dessous |
 
-> À venir dans ce chantier : le **mode invité** (3ᵉ mode), et la question du
-> **candidat FT non accompagné** (nouveau path FT Connect ? nouvel IDP ?).
+> Reste à trancher : le **candidat FT non accompagné** (nouveau path FT Connect ?
+> nouvel IDP ?).
 
 ## Matrice publics → modes (couches 1 → 2)
 
@@ -60,34 +62,79 @@ il n'existe en réalité que **deux IDP** :
 |---|---|---|---|
 | Accompagné hors MILO/FT (ex. assos) | **post-MVP** | `TODO` | Nouvel IDP ? Rattachement à quelle structure ? |
 | Candidat FT **inscrit**, non accompagné | MVP | FT Connect (path candidat ?) ou compte candidat FT | Quelle structure ? Quels droits ? |
-| **Non-inscrit** demandeur d'emploi FT — collégiens, lycéens, étudiants, NEET.<br>14-25 ans (non handicapé) / 14-30 ans (handicapé) | MVP | **Mode invité** (à définir) | Voir couche 3 ci-dessous : comment authentifier/identifier/stocker, quelle entité |
+| **Non-inscrit** demandeur d'emploi FT — collégiens, lycéens, étudiants, NEET.<br>14-25 ans (non handicapé) / 14-30 ans (handicapé) | MVP | **Mode invité** (`INVITE`) | Livré — voir ci-dessous |
 
-## Couche 3 — Représentation dans l'API `TODO`
+## Mode invité — réalisé
 
-> À instruire aux prochaines itérations. Points de départ identifiés :
+### Principe : une identité fabriquée, pas vérifiée
 
-- **Tension de fond** : `Core.Structure` (`src/domain/core.ts`) surcharge deux
-  notions — *dispositif d'accompagnement* et *structure d'appartenance / IDP*.
-  Les nouveaux publics « non accompagné » et « invité » n'entrent proprement
-  dans aucune. Question : éclater `Core.Structure`, ou ajouter une dimension ?
-- **Hypothèse cassée** : le modèle actuel suppose que *tout jeune a une
-  structure + un `idAuthentification` OIDC stable* (cf.
-  `Authentification.Utilisateur` dans `src/domain/authentification.ts`). L'invité
-  n'a ni l'un ni l'autre.
-- **`Authentification.Type`** (`JEUNE` / `CONSEILLER` / `SUPPORT`) : suffit-il, ou
-  faut-il un type/sous-type pour l'invité et le candidat non accompagné ?
+L'invité **ne revendique aucune identité et ne présente aucune preuve** : il n'y
+a donc rien à vérifier, et aucun IDP à interroger. `pass-emploi-connect`
+**fabrique** l'identité, la fait enregistrer par l'API, puis termine
+l'interaction OIDC — sans le moindre aller-retour réseau vers un fournisseur
+d'identité, et sans stocker de token IDP.
 
-## Mode invité `TODO`
+Trois choix structurants, à ne pas défaire sans comprendre pourquoi :
 
-> Cas le plus structurant. À instruire :
+- **L'identifiant est généré côté serveur**, jamais fourni par le client : un
+  identifiant envoyé par le mobile serait forgeable, donc usurpable.
+- **Ce qui rattache durablement l'invité à son appareil, c'est le refresh
+  token** — il n'y a pas d'autre ancrage.
+- **Un grant OIDC neuf est créé à chaque enregistrement**, jamais celui de
+  l'interaction en cours : chaque enregistrement fabrique un identifiant neuf,
+  donc réutiliser un grant antérieur y laisserait l'ancien compte et ferait
+  échouer l'autorisation.
 
-- **Authentifier / identifier** : a-t-on un identifiant stable (device,
-  `installationId`, compte anonyme) ou vraiment éphémère ?
-- **Stocker les données** : mêmes tables que `Jeune` avec attributs nuls, table
-  dédiée, ou stockage volatil ?
-- **Représenter dans le code** : nouvelle entité ? extension de `Jeune` ?
-- **Transition** : que devient l'invité qui s'inscrit / se fait accompagner
-  (récupération de ses données) ?
+Conséquence importante pour tout le reste : **l'invité dispose d'un JWT normal**.
+Ce n'est pas un utilisateur anonyme au sens HTTP — c'est un utilisateur
+authentifié dont l'identité est pseudonyme.
+
+### Couche 3 — représentation dans l'API
+
+| Question | Réponse retenue |
+|---|---|
+| Public fonctionnel | `Core.Structure.INVITE`, avec un helper de test dédié |
+| Type d'utilisateur | `Authentification.Type.JEUNE` — **pas** de nouveau type |
+| Stockage | **Table dédiée `jeune_invite`** — ni la table `jeune` avec des colonnes nulles, ni du volatil |
+| Contenu stocké | Identifiant, prénom d'affichage, dates de connexion, données d'appareil (push, version, installation, fuseau), acceptation des CGU |
+| Autorisation | Autorisation dédiée à l'invité ; l'autorisation « jeune » standard **le rejette explicitement** |
+
+Le modèle d'accès est donc **fermé par défaut, ouvert route par route** : une
+fonctionnalité n'est accessible à l'invité que si elle a été explicitement
+ouverte. C'est volontairement conservateur — l'invité n'a pas de conseiller, pas
+de structure d'appartenance, et une partie du modèle de droits existant n'a
+aucun sens pour lui.
+
+Routes ouvertes à ce jour : configuration de l'application, formulaire de
+contact Immersion, prénom d'affichage.
+
+### Ce que ça règle de la tension de fond
+
+`Core.Structure` (`src/domain/core.ts`) surchargeait deux notions — *dispositif
+d'accompagnement* et *structure d'appartenance / IDP*. L'invité n'entrait
+proprement dans aucune, et le modèle supposait que *tout jeune a une structure
+et un identifiant OIDC stable*.
+
+La réponse retenue est **une valeur de structure supplémentaire plus une entité
+séparée**, plutôt que l'éclatement de l'enum. C'est un compromis assumé :
+l'enum reste surchargée, mais l'entité distincte évite de diluer `Jeune` avec
+des colonnes optionnelles.
+
+À réévaluer quand le **candidat FT non accompagné** arrivera : lui a une
+identité vérifiée mais pas de conseiller, et n'entre donc ni dans `Jeune` ni
+dans `JeuneInvite` tels qu'ils sont aujourd'hui.
+
+## Questions ouvertes `TODO`
+
+- **Transition invité → inscrit.** Que devient un invité qui se crée un compte
+  ou se fait accompagner ? Récupère-t-il ses données — réponses au questionnaire,
+  [plan d'action](./plan-action.md), progression ? Aujourd'hui **rien n'est
+  prévu**, et l'ancrage étant le refresh token, la perte de l'appareil suffit à
+  perdre le rattachement. C'est le principal sujet non traité.
+- **Candidat FT non accompagné** : structure, droits, entité.
+- **Accompagné hors MILO/FT** (post-MVP) : IDP et rattachement.
+- **Cycle de vie de l'invité** : purge des invités inactifs, durée de
+  conservation.
 
 ## Hors scope MVP mais à identifier quand même
 

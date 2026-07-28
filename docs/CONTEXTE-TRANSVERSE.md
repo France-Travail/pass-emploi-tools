@@ -78,6 +78,7 @@ parties du code legacy.
 | **pass-emploi-tools**   | Outillage / infra logs mutualisée (Logstash, templates Elasticsearch versionnés) | Logstash, ES `.console` | - |
 | **pass-emploi-auth**    | Keycloak (IdP), configuré via Terraform, packagé buildpack Scalingo | Keycloak, Terraform | - |
 | **pass-emploi-analytics** | Pipeline de données / suivi analytics (ex. taux de pénétration) | Make | - |
+| **1jeune-des-solutions** | Génération du plan d'action de fin d'onboarding (**POC**). Repo **bayesimpact**, hors orga France-Travail | NestJS, Gemini / Vertex AI | Bénéficiaires (jeunes) |
 
 ## Dispositifs d'accompagnement
 
@@ -242,6 +243,7 @@ git checkout master && git merge develop && git push
 - pass-emploi-tools (outillage / infra logs mutualisée)
 - pass-emploi-auth (Keycloak / IdP)
 - pass-emploi-analytics (pipeline données / analytics)
+- [1jeune-des-solutions](https://github.com/bayesimpact/1jeune-des-solutions) (POC plan d'action — orga bayesimpact)
 
 ### Documentation officielle des dispositifs
 

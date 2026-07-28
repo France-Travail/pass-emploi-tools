@@ -48,8 +48,9 @@ flèches entre elles.
 
 | Sous-chantier | Doc | Statut |
 |---|---|---|
-| Nouveaux utilisateurs / authentification | [`utilisateurs-authentification.md`](./utilisateurs-authentification.md) | WIP — matrice publics→modes posée ; couches 3 (entités/droits) et mode invité à instruire |
+| Nouveaux utilisateurs / authentification | [`utilisateurs-authentification.md`](./utilisateurs-authentification.md) | WIP — matrice publics→modes posée ; **mode invité livré** (couche 3 renseignée) ; transition invité→inscrit et candidat FT non accompagné à instruire |
 | Parcours & fonctionnalités | [`parcours-fonctionnalites.md`](./parcours-fonctionnalites.md) | WIP — parcours d'entrée, pages, matrice profils→accès posés ; typologie et règle de détermination à trancher |
+| Plan d'action | [`plan-action.md`](./plan-action.md) | WIP — archi proxy posée, branchement en cours ; service de génération au stade **POC** |
 
 > **Performances / montée en charge** : sujet transverse à part entière (il
 > dépasse l'app jeune et survit à la MES), traité dans le
@@ -58,6 +59,11 @@ flèches entre elles.
 
 ## Historique
 
+- **2026-07-28** — sous-chantier « Plan d'action » ouvert : archi proxy
+  `pass-emploi-api` → service de génération externe (POC), mapping de contrat,
+  trace analytique. Mise à jour des deux autres sous-chantiers suite à la
+  livraison du **mode invité** (connect + api) et à l'implémentation du
+  questionnaire invité côté mobile.
 - **2026-07-10** — sous-chantier « Parcours & fonctionnalités » ouvert :
   parcours d'entrée (tuto → authent → questionnaire → plan d'action), pages de
   l'app, matrice profils→accès (première capture produit, à fiabiliser).
