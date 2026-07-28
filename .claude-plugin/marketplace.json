@@ -1,0 +1,16 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "pass-emploi",
+  "description": "Marketplace de skills/plugins partagés de l'équipe Pass Emploi (CEJ).",
+  "owner": {
+    "name": "Équipe Pass Emploi"
+  },
+  "plugins": [
+    {
+      "name": "dependency-tools",
+      "description": "Skills de gestion des dépendances : upgrade-dependency (montée de version) et fix-cve (correction de vulnérabilités).",
+      "category": "dependencies",
+      "source": "./plugins/dependency-tools"
+    }
+  ]
+}
