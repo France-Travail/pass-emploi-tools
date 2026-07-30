@@ -47,6 +47,8 @@ digraph fixcve {
   "Direct or transitive? + top-level declared parent" [shape=box];
   "Can a version bump fix the CVE?" [shape=diamond];
   "Propose the bump + surface ALL impacts (version-upgrade workflow)" [shape=box];
+  "Wrapper RENAMED / MERGED / EOL, or blocked upstream? (step 3b)" [shape=diamond];
+  "STOP - migration candidate: name it + upstream state, HAND THE DECISION TO THE USER" [shape=box];
   "FALLBACK: resolutions/overrides (per repo convention)" [shape=box];
   "Recap + validation gate" [shape=box];
   "Apply -> install -> re-audit -> verify" [shape=box];
@@ -58,7 +60,9 @@ digraph fixcve {
   "Loosen/remove the pin -> install -> re-audit (CVE gone?)" -> "Direct or transitive? + top-level declared parent" [label="still vulnerable"];
   "Direct or transitive? + top-level declared parent" -> "Can a version bump fix the CVE?";
   "Can a version bump fix the CVE?" -> "Propose the bump + surface ALL impacts (version-upgrade workflow)" [label="yes (even a major)"];
-  "Can a version bump fix the CVE?" -> "FALLBACK: resolutions/overrides (per repo convention)" [label="no bump fixes it"];
+  "Can a version bump fix the CVE?" -> "Wrapper RENAMED / MERGED / EOL, or blocked upstream? (step 3b)" [label="no bump fixes it"];
+  "Wrapper RENAMED / MERGED / EOL, or blocked upstream? (step 3b)" -> "STOP - migration candidate: name it + upstream state, HAND THE DECISION TO THE USER" [label="yes"];
+  "Wrapper RENAMED / MERGED / EOL, or blocked upstream? (step 3b)" -> "FALLBACK: resolutions/overrides (per repo convention)" [label="no"];
   "Propose the bump + surface ALL impacts (version-upgrade workflow)" -> "Recap + validation gate";
   "FALLBACK: resolutions/overrides (per repo convention)" -> "Recap + validation gate";
   "Recap + validation gate" -> "Apply -> install -> re-audit -> verify";
@@ -85,10 +89,17 @@ yarn npm audit --recursive --environment production          # yarn berry
 npm audit                                                    # npm
 pnpm audit                                                   # pnpm
 ```
-- ⚠️ `--environment production` scopes to **prod** dependencies only (the default, and the
-  scope of the multi-CVE regime). If the CVE is in a **dev** dependency, it won't show — drop
-  the flag or use `--environment all` (yarn) / `npm audit` without `--omit=dev`. Match the flag
-  to the dependency scope you're fixing.
+- ⚠️ **Prod is the default scope. Dev dependencies are OUT of scope unless the user asks for
+  them.** `--environment production` scopes to prod only. A dev-only CVE never ships to users:
+  chasing it means bumping build/test tooling, which buys regression risk for no
+  attacker-reachable gain. Widen — `--environment all` (yarn) / `npm audit` without
+  `--omit=dev` — **only** when the user explicitly asked for dev too, or when the id they gave
+  you resolves to a dev dependency (that is the single-CVE regime, scoped to that id).
+  Widening on your own is a scope violation, and an expensive one: on `pass-emploi-web` it
+  turned a 1-item plan into a 10-item plan, 9 of them dev-only.
+- If a dev CVE is genuinely alarming (critical, or a package that also has a prod path), do not
+  silently fold it into the plan — **name it in one line as out-of-scope** and let the user pull
+  it in.
 - **CVE / GHSA id given** → enrich via the public, no-auth CIRCL API:
   `curl -s https://cve.circl.lu/api/cve/CVE-YYYY-NNNNN`
 
@@ -98,8 +109,20 @@ object per line**, not one document. Each line is
 Two traps:
 - **Deprecation notices are mixed in and are NOT vulnerabilities.** They have `ID` of the form
   `"<pkg> (deprecation)"` and no `URL` (e.g. `"async-cache (deprecation)"`, severity `moderate`).
-  **Filter them out before counting or fixing anything** — on `pass-emploi-api`, 8 of 30 lines
-  were deprecations. They are dependency hygiene, not security work.
+  **Filter them out of the CVE count and out of the remediation work** — on `pass-emploi-api`,
+  8 of 30 lines were deprecations. They are dependency hygiene, not security work.
+  > **But filtered out ≠ silently dropped — COLLECT them and surface them.** The user cannot
+  > decide on what you never showed them. Report them as a short, clearly-labelled
+  > **non-security** block at the end of the recap/plan, and split it:
+  > - **deprecations on a package declared in `package.json`** → actionable now, name the
+  >   documented replacement (e.g. `lodash.isequal` → `node:util.isDeepStrictEqual`,
+  >   `@types/pino-http` → stub, `pino-http` ships its own types). Ask whether to fix them —
+  >   these are usually a 2-line change the user is glad to be told about.
+  > - **deprecations buried in transitives** → informational only, one line, no action proposed
+  >   (nothing the repo can do until the parent moves).
+  >
+  > Never expand this into an investigation, never let it delay the security work, and never
+  > count it in the CVE totals. One block, at the end, then move on.
 - **There is no "fixed version" field.** Only `Vulnerable Versions` as a range (`<2.8.0`) — the
   fixed version is its upper bound (here `2.8.0`). `Tree Versions` is what is installed, and
   `Dependents` lists the **immediate** parents (not the declared top-level one — that needs
@@ -169,11 +192,93 @@ The choice is **binary** — there is no third path:
 
 **Delegate the impact analysis — do NOT investigate inline.** When the bump is the remediation, invoke the `upgrade-dependency` skill (via the Skill tool) passing the declared parent package, BEFORE writing the recap. That skill owns the target-version choice (it defaults to the latest stable, one major at a time), the breaking-change / runtime investigation, and the version-range writing convention — so fix-cve does not duplicate those rules. Resume fix-cve only once it returns. (If no version-upgrade skill is installed, fall back to investigating inline: changelog/PRs of the target + grep the repo for affected usages.)
 
-Only proceed to step 4 if **no bump fixes the CVE**, or if the user — after seeing the impacts — explicitly declines the bump and asks for the lighter pin.
+Only proceed to **step 3b** if **no bump fixes the CVE**, or if the user — after seeing the impacts — explicitly declines the bump and asks for the lighter pin.
 
 Verify the resolved version actually moves: `yarn why -R <pkg>` must show `>=` fixed.
 
-### 4. FALLBACK — force the version (only when no bump fixes it)
+### 3b. MANDATORY GATE before the fallback — is this actually a migration, not a pin?
+
+**"No bump fixes it" is NOT a licence to reach for `resolutions`.** Run these four checks first.
+Any one of them positive → this is **not** yours to fix with a pin: STOP and hand the decision
+to the user (bottom of this step).
+
+**(a) Query the registry under the ADVISORY's package name, not the wrapper's.**
+The audit names the vulnerable package; you may depend on a *wrapper* around it (you declare
+`react-router-dom`, the advisory affects `react-router`).
+```bash
+curl -s -H 'Accept: application/vnd.npm.install-v1+json' https://registry.npmjs.org/<advisory-pkg-name> \
+  | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log('latest:',JSON.parse(s)['dist-tags'].latest))"
+```
+> ⚠️ **Two traps in these one-liners, both verified the hard way.** (1) `process.stdin.on('data',
+> d => JSON.parse(d))` parses only the **first chunk** (~28 KB) and dies with
+> `SyntaxError: Unterminated string in JSON` — always accumulate then parse on `'end'`.
+> (2) The full registry document is megabytes; the `Accept: application/vnd.npm.install-v1+json`
+> header asks for the **abbreviated** doc, which still carries `dist-tags` and `versions`. Keep
+> both in every registry call below.
+
+**(b) Distinguish "stalled" from "ABSORBED / EOL".** A wrapper with no newer release is not the
+same as a wrapper that will never have one:
+```bash
+# does the WRAPPER still publish the major that carries the fix?
+curl -s -H 'Accept: application/vnd.npm.install-v1+json' https://registry.npmjs.org/<wrapper> \
+  | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);console.log('latest:',j['dist-tags'].latest);console.log('majors:',[...new Set(Object.keys(j.versions).map(v=>v.split('.')[0]))].sort((a,b)=>a-b).join(','))})"
+```
+Verified example — `react-router-dom` prints `latest: 7.18.2` / `majors: 0,4,5,6,7` while
+`react-router` prints `latest: 8.3.0`: **no major 8 exists under the wrapper's name**, so the
+fix is unreachable by any bump of what the repo declares. That is the signature of an absorption.
+Wrapper's highest major < the fixed version's major, **and** the fix shipped under the other
+name → the family **merged** and the wrapper is dead. Say "absorbed into `<pkg>` at v<N>",
+never "no newer release" — the second wording invites a pin, the first forces the real question.
+Inspect the wrapper's own code to confirm it is a shim (`cat node_modules/<wrapper>/dist/index.mjs`
+— a re-export file of a few hundred bytes is the tell).
+
+**(c) Find WHO blocks the migration, and check the UPSTREAM repo — not just npm.**
+The registry says a package is stuck; only the upstream tracker says *why* and *for how long*.
+Grep the blocker's actual import, then search its repo:
+```bash
+grep -rn "<wrapper>" node_modules/<blocking-pkg>/src node_modules/<blocking-pkg>/dist 2>/dev/null | head
+# then, on the upstream repo (public JSON API — works without auth, unlike the HTML pages):
+curl -s "https://api.github.com/search/issues?q=repo:<org>/<repo>+<wrapper>+in:title" \
+  | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>(JSON.parse(s).items||[]).slice(0,5).forEach(i=>console.log(i.state,'|',i.pull_request?'PR ':'issue',i.number,'|',i.title)))"
+```
+Verified example — on `elastic/apm-agent-rum-js` this returns `open | issue 1656` and
+`open | PR 1655`: a fix exists, is written, and is **not merged**. Read the PR's discussion for
+the reason (there, a maintainer objecting that dropping router < v7 is a breaking change).
+A hard-coded `import ... from '<wrapper>'` in a third-party package means **the migration is
+blocked by that third party**, not by the repo — you cannot swap the declared dependency, the
+import would fail at runtime. Report the blocker by name, and report the upstream state: open
+issue? PR pending? maintainer objection? That is what turns "accept the risk" from open-ended
+into "accept until `<repo>#<PR>` ships".
+
+**(d) Is the advisory even reachable in THIS application?** Read the advisory text for a
+scope condition — many are narrower than the severity suggests (`"only affects your application
+if you are using the unstable RSC APIs"`, "only when parsing untrusted input", "server-side
+only"). Cross-check against how the repo actually uses the package:
+```bash
+curl -s https://api.github.com/advisories/<GHSA-id> \
+  | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);console.log(j.severity,'|',j.summary,'\n---\n',(j.description||'').slice(0,1200))})"
+grep -rn "<pkg>" --include='*.ts' --include='*.tsx' --include='*.js' . 2>/dev/null | grep -v node_modules | head
+```
+**Zero imports in application code + a scope condition the repo does not meet = not
+exploitable here.** State that explicitly. It is decision-grade information: it can turn a
+"high" into a documented acceptance instead of a risky forced major.
+
+**Then STOP — this is the user's call, not yours.** Do not put a `resolutions` entry for this
+package in the plan's actionable tiers. Name the finding and let them choose:
+```
+<pkg> (<GHSA>, <severity>) — SPECIAL CASE, your decision
+- Family merged: <wrapper> absorbed into <pkg> at v<N>; <wrapper> stops at <last> (dead package).
+- Migration blocked upstream by <blocking-pkg>: hard-codes `import from '<wrapper>'`
+  (<file>). Upstream: <org>/<repo>#<n> open since <date>, PR #<m> unmerged (<maintainer objection>).
+- Exploitability here: <advisory scope condition> + <zero app imports> → <assessment>.
+- Options: (1) accept the risk, documented, revisit when <repo>#<m> ships
+           (2) forced pin ">=<fixed>" — overrides <wrapper>'s exact pin ACROSS A MAJOR,
+               untested combination, requires full build + test verification
+           (3) drop/replace <blocking-pkg> (it costs you <what> for <what benefit>)
+Nothing decided — which way?
+```
+
+### 4. FALLBACK — force the version (only when no bump fixes it AND step 3b is clean)
 Pick the package manager's mechanism and follow the repo's existing convention/format for security pins:
 ```jsonc
 // package.json (yarn) — npm: "overrides", pnpm: "pnpm.overrides"
@@ -229,24 +334,14 @@ npm audit                                                             # npm
 Use the **same scope as the fix**: `--environment production` for a prod dependency, or drop it / `--environment all` if the CVE was in a dev dependency (otherwise the re-audit can't confirm it's gone).
 Fixing ONE CVE → do not require zero findings; confirm the **specific** package/advisory no longer appears. Then run the project's build / lint / test (a bump or a forced version can break things) — or hand off if the repo convention is that the human runs them (check `CLAUDE.md`).
 
-### Before declaring "no patch available" — check the advisory's package name, not just yours
-The audit output names the vulnerable package (e.g. under "Dependents" or as the advisory's own
-`affected[].package.name`). When that name is a TRANSITIVE package pulled in by a wrapper you
-depend on directly (e.g. you depend on `react-router-dom`, the advisory affects `react-router`),
-query the registry using the advisory's exact name — `yarn npm info <that-exact-name> versions` —
-not just the wrapper's own version history. Package families sometimes rename, split, or merge
-across a major (e.g. `react-router-dom` folded into `react-router` at v8): the wrapper can look
-frozen with "no new version" while the underlying package the advisory names has shipped the fix
-under a different package name entirely.
+### Before declaring "no patch available" — run step 3b
+Renames, merges and EOL wrappers (`react-router-dom` absorbed into `react-router` at v8),
+third-party packages hard-coding a dead import, and advisories that are not reachable in this
+application are all handled by **step 3b**, which is a mandatory gate on the path to the
+fallback. Do not conclude "no patch available" — and do not write a `resolutions` entry —
+without having run it.
 
-If a fix exists but only reachable by dropping/replacing the wrapper (not a same-family bump):
-do NOT silently fall through to "no patch available". This is a package-migration candidate —
-STOP, name the finding (old package → new package, why the wrapper is stuck), and ask the user
-whether to open an impact investigation (delegate to `upgrade-dependency`) before deciding. The
-choice — investigate now, defer, or accept the risk documented — is the user's, not yours to
-make by default.
-
-### No patch available (confirmed — the vulnerable package itself has no fix, under any name)
+### No patch available (confirmed — step 3b clean, and the vulnerable package has no fix under any name)
 No fixed version yet anywhere in the package's own history or a known successor → do NOT
 improvise. Surface options: mitigate (config/feature flag), remove/replace the package, or accept
 the risk **documented**. Let the user decide.
@@ -260,6 +355,20 @@ the risk **documented**. Let the user decide.
   the plan IS the approval; applying it is not a new decision.
 - **Counting / investigating deprecation notices as vulnerabilities** → `ID` ending in
   `(deprecation)` with no `URL` is dependency hygiene, not a CVE. Filter them out (step 1).
+- **Dropping deprecations SILENTLY** → the opposite failure, equally wrong: filtered out of the
+  CVE count still means *reported*, in a labelled non-security block, with the ones on
+  `package.json`-declared packages named and a fix offered (step 1). The user decides; they
+  can't decide on what they never saw.
+- **Auditing dev dependencies when the user did not ask for them** → prod is the default scope.
+  A plan whose items are mostly dev-only is a scope violation, not thoroughness (step 1).
+- **Proposing a `resolutions` pin for a package whose family RENAMED / MERGED / went EOL, or
+  whose migration is blocked by a third party** → that is step 3b's STOP, and the decision is
+  the user's. Writing `"react-router": ">=8.3.0"` in an actionable tier instead of naming the
+  `react-router-dom` → `react-router` merge, the blocking package, and the upstream PR is the
+  exact failure step 3b exists to prevent.
+- **Assessing an advisory without reading its scope condition** → "high" severity says nothing
+  about reachability. An RSC-only / untrusted-input-only / server-only advisory in a repo that
+  does neither is a documented acceptance, not a forced major (step 3b-d).
 - **Widening a scoped request** (user asked for one package or one id) into a whole-repo sweep
   on your own → stay in the single-CVE regime, mention the others exist if useful.
 - **Jumping to parent-bump analysis without checking existing `resolutions`/`overrides` first** → a stale `^`/exact pin on the vulnerable package is often the cause; loosen it to `>=` and re-audit before anything heavier (step 1b).

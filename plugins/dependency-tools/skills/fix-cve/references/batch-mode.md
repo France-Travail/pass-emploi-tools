@@ -52,15 +52,21 @@ digraph batch {
 yarn npm audit --recursive --environment production --json > /tmp/audit.ndjson
 ```
 NDJSON, one object per line (see `SKILL.md` step 1 for the field layout). Parse it and
-**drop the deprecation notices** — `ID` matching `(deprecation)` and no `URL`. They are not
-vulnerabilities; on `pass-emploi-api` they were 8 lines out of 30.
+**separate the deprecation notices** — `ID` matching `(deprecation)` and no `URL`. They are not
+vulnerabilities and never enter the CVE count or the groups; on `pass-emploi-api` they were 8
+lines out of 30. **Separate ≠ discard: keep them aside for the plan's hygiene block (phase 5).**
 
 ```bash
 node -e "
 const rows=require('fs').readFileSync('/tmp/audit.ndjson','utf8').trim().split('\n').map(l=>JSON.parse(l));
-const vuln=rows.filter(r=>!String(r.children.ID).includes('deprecation'));
+const isDep=r=>String(r.children.ID).includes('deprecation');
+const vuln=rows.filter(r=>!isDep(r));
 for (const r of vuln) console.log([r.children.Severity, r.value, r.children['Tree Versions'].join(','), r.children['Vulnerable Versions'], r.children.URL].join(' | '));
 console.log('advisories:', vuln.length, '/ lines:', rows.length);
+// keep for phase 5 — declared-in-package.json ones are actionable, transitives are informational
+const declared=new Set(Object.keys({...require('./package.json').dependencies, ...require('./package.json').devDependencies}));
+console.log('\n-- deprecations (NOT security) --');
+for (const r of rows.filter(isDep)) console.log((declared.has(r.value)?'[declared] ':'[transitive] ')+r.value+' | '+r.children.Issue);
 "
 ```
 
@@ -74,8 +80,16 @@ Per advisory, record: package, resolved version (`Tree Versions`), fixed version
 > when it isn't. Same rule as `SKILL.md`'s "anchor the `>=` floor on the major that will
 > actually be installed", one level up.
 
-Scope is **prod** (`--environment production`). If the user explicitly asks for dev too, use
-`--environment all` and carry the scope into the plan — a dev-only CVE is not a prod emergency.
+Scope is **prod** (`--environment production`) — **not negotiable unless the user asks**. Only
+if they explicitly request dev too, use `--environment all` and carry the scope into the plan.
+A dev-only CVE is not a prod emergency: it never ships, and fixing it means bumping build/test
+tooling, i.e. paying regression risk for no attacker-reachable gain.
+
+> ⚠️ **This is the single easiest way to wreck this regime.** Auditing "prod + dev to be
+> thorough" is not thoroughness, it is a scope violation that drowns the real finding: on
+> `pass-emploi-web` it produced a 10-item plan of which **9 were dev-only**, burying the one
+> prod advisory that actually needed a decision. If a dev CVE looks genuinely alarming, give it
+> **one line** under "Out of plan" and let the user pull it in.
 
 ### Phase 2 — run step 1b ONCE, globally, then revert
 
@@ -115,10 +129,13 @@ Group first, fan out second. Skipping this makes N subagents investigate the sam
 
 ### Phase 4 — fan out one read-only subagent per group
 
-One subagent **per group** (not per CVE). Each applies `SKILL.md` steps 1b→4 to its group and
-returns a structured recap: chosen remediation, target version, impacts / breaking changes, CVEs
-covered, risk level (low = pin removal or patch/minor, medium = `resolutions`, high = major or
-package migration).
+One subagent **per group** (not per CVE). Each applies `SKILL.md` steps 1b→4 to its group —
+**including step 3b, which is mandatory before any `resolutions` proposal** — and returns a
+structured recap: chosen remediation, target version, impacts / breaking changes, CVEs covered,
+risk level (low = pin removal or patch/minor, medium = `resolutions`, high = major, **out-of-plan
+= step 3b triggered**). Say in the prompt that a step-3b hit must come back as a named finding
+(family merge, blocking package, upstream issue/PR state, exploitability in this repo) and
+**not** as a pin — otherwise the subagent will quietly resolve the user's decision for them.
 
 Both skills already stop before writing when nobody can answer (`fix-cve` step 5 and
 `upgrade-dependency` step 5: *"In a non-interactive context, stop here and return the recap"*).
@@ -146,21 +163,31 @@ majors. Then present:
 | 3 | resolutions "<pkg>": ">=<fixed>" | GHSA-a, GHSA-b | moderate | collapses 2.x and 4.x to <v> | medium |
 | 4 | bump <parent> <v1> → <v2> (MAJOR) | GHSA-c | high | <breaking changes + files to touch> | high |
 
-Out of plan — needs a separate decision:
+Out of plan — needs a separate decision (see `SKILL.md` step 3b):
 - <pkg> (GHSA-d): no patch available anywhere → mitigate / replace / accept documented
-- <pkg> (GHSA-e): package migration (<old> → <new>) → separate investigation
+- <pkg> (GHSA-e): family merged (<old> absorbed into <new> at v<N>), migration blocked upstream
+  by <blocking-pkg> (<org>/<repo>#<n>, PR #<m> unmerged). Exploitable here: <yes/no + why>.
+  → accept documented / forced pin across a major / drop <blocking-pkg>
+- <pkg> (GHSA-f): dev-only, out of the requested prod scope — say the word to pull it in
+
+Not security — dependency hygiene (no action taken, tell me if you want any):
+- [declared] <pkg> deprecated → <documented replacement>          # 2-line fix, your call
+- [transitive] <pkg> deprecated via <parent>                      # nothing to do until <parent> moves
 
 Nothing has changed yet (the pin probe was reverted).
 Apply groups 1-4? You can drop any of them in your answer — I won't ask again after this.
 ```
 
-Two rules for this gate:
+Three rules for this gate:
 
 - **It must accept a partial answer in one round.** "Yes, but not group 4" is a complete answer.
   If the user has to answer twice to exclude a group, the regime has failed.
 - **"Out of plan" items are named, not executed.** No-patch cases and package migrations
-  (`SKILL.md`'s "check the advisory's package name" section) need a decision the plan cannot
-  bundle.
+  (`SKILL.md` step 3b) need a decision the plan cannot bundle. A step-3b package must **never**
+  appear in the numbered tiers with a `resolutions` pin — that is deciding for the user.
+- **The hygiene block is always present, even when empty** ("no deprecations"). It is the proof
+  you looked, and it costs two lines. Never let it grow into an investigation or delay the
+  security work.
 
 In a non-interactive context, stop here and return the plan.
 
@@ -224,6 +251,14 @@ reason**. Never report "all CVEs fixed" without that re-audit output.
 - **Fanning out before grouping** → redundant investigations of the same bump.
 - **Grouping on the audit's `Dependents`** → that's the immediate parent, not the bumpable one.
 - **Counting deprecation notices as CVEs** → filter `(deprecation)` in phase 1.
+- **Filtering deprecations and never mentioning them again** → they belong in the plan's hygiene
+  block (phase 5), split declared / transitive. Filtered from the count, not from the report.
+- **Auditing dev deps unasked** → prod scope (phase 1). A plan that is mostly dev-only items has
+  buried the real finding.
+- **Putting a `SKILL.md` step 3b package (renamed/merged/EOL family, or a migration blocked
+  upstream) into a numbered tier as a `resolutions` pin** → it goes under "Out of plan", with
+  the blocking package, the upstream issue/PR state, and its real exploitability. Deciding it
+  yourself is the failure step 3b exists to prevent.
 - **Targeting the lowest fixed version when a package has several advisories** → aim at the
   highest floor, or the group ships half-fixed.
 - **Starting on a dirty working tree** → no revert, no per-group commit possible.
