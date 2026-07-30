@@ -54,7 +54,7 @@ claude plugin install dependency-tools@pass-emploi --scope user
 | Plugin             | Skill                | À quoi ça sert                                                              |
 |--------------------|----------------------|-----------------------------------------------------------------------------|
 | `dependency-tools` | `upgrade-dependency` | Monter une dépendance de version (breaking changes, PR Dependabot/Renovate) |
-| `dependency-tools` | `fix-cve`            | Corriger une CVE / alerte Dependabot (GHSA, sortie `yarn audit`)            |
+| `dependency-tools` | `fix-cve`            | Corriger une CVE, ou toutes les CVE d'un repo en un seul plan validé        |
 
 ### Utilisation
 

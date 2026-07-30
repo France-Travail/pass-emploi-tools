@@ -1,21 +1,41 @@
 ---
 name: fix-cve
-description: Use when fixing a security vulnerability in dependencies - a Dependabot alert link (github.com/.../security/dependabot/N), a CVE or GHSA id, or npm/yarn audit output. Triggers - "corriger une CVE", "fix vulnerability", "alerte Dependabot", "GHSA-", "faille de sécu".
+description: Use when fixing dependency vulnerabilities - a single one, or every CVE in a repo. Takes a CVE/GHSA id, a package name, or npm/yarn audit output. Triggers - "fix les CVE", "corrige toutes les CVE du repo", "corriger la CVE de <dep>", "fix vulnerability", "GHSA-", "CVE-", "faille de sécu".
 ---
 
 # Fix CVE
 
 ## Overview
 
-Fix one dependency vulnerability at a time.
+Fix dependency vulnerabilities. **Two regimes — pick one in step 0 and never mix them:**
+one CVE (a single validation gate, below) or several (a consolidated plan, ONE gate,
+see `references/batch-mode.md`).
 
 **First, rule out a self-inflicted cause (step 1b):** if the vulnerable package is *already* in `resolutions`/`overrides` with a `^`/exact pin, that pin may be what blocks the fix — loosening it to `>=<fixed>` is the cheapest remediation and short-circuits everything below.
 
 Otherwise: **Strict priority — a version bump that fixes the CVE ALWAYS wins over a `resolutions`/`overrides` pin.** A bump removes the vulnerable version cleanly; a forced pin is a patch that masks the tree. So: **try to fix it with a bump first. If a bump fixes it, do NOT even look at resolutions** — propose the bump and surface its impacts. Only force a version when no bump can fix the CVE (or the user declines the bump after seeing its cost).
 
-Process: investigate → recap → user validation → apply → re-audit. Never edit before the user approves the recap.
+Single-CVE process: investigate → recap → user validation → apply → re-audit. Never edit before the user approves the recap. (Multi-CVE: same remediation rules, but the gate is the consolidated plan — see step 0.)
 
 Self-contained: needs only the project's package manager + git. When a bump is the fix, delegate the impact analysis to the `upgrade-dependency` skill if installed (it owns target-version choice + breaking-change investigation); only investigate inline if no such skill exists.
+
+## Step 0 — count the CVEs, pick the regime (do this FIRST)
+
+Run the audit (step 1) and count the **real advisories** (deprecation notices are not
+vulnerabilities — see step 1). Then:
+
+| Advisories in scope | Regime | Gates |
+|---|---|---|
+| **1** | Continue in this file, steps 1 → 7. | one gate (step 5) |
+| **2 or more** | **Read `references/batch-mode.md` and follow it.** It reuses steps 1b→4 below per group, but owns the collection, grouping, planning and apply phases. | **exactly ONE** gate (the consolidated plan) |
+
+> ⚠️ **The multi-CVE regime has EXACTLY ONE validation gate — the consolidated plan.**
+> Once the user has approved that plan, NEVER ask for a per-CVE or per-group validation
+> again: applying the approved plan is not a new decision. Running this file's single-CVE
+> gate N times is the failure this regime exists to prevent.
+
+If the user scoped the request to one package or one id, that is the single-CVE regime even
+when the repo has other CVEs — do not widen the scope on your own.
 
 ## Decision tree — follow in order, do NOT shortcut to resolutions
 
@@ -45,7 +65,7 @@ digraph fixcve {
 }
 ```
 
-### 0. Detect the package manager
+### Preliminary — detect the package manager
 ```bash
 ls yarn.lock package-lock.json pnpm-lock.yaml 2>/dev/null   # which lockfile exists
 grep '"packageManager"' package.json                        # exact version if set
@@ -55,11 +75,35 @@ yarn.lock + `packageManager: yarn@4` → **Yarn berry** (commands below use it).
 ### 1. Get the advisory facts
 > ⚠️ **The audit and every "resolved" version below reflect the INSTALLED / locked tree, not what `package.json` would resolve to.** If `package.json` or the lockfile were touched since the last install (`git status`, or a recent commit on the deps), run `yarn install` (npm/pnpm equivalent) **first** — otherwise the audit can lie both ways (report a CVE already fixed on paper, or read a stale "resolved" version → faulty investigation). On a clean checkout the tree is already in sync, so don't install reflexively — only when there's a reason to suspect drift.
 
-Details come from the **user** (pasted) or a local audit — do NOT try to read a GitHub/Dependabot page (authenticated even on public repos).
-- **Dependabot link only** → ask the user to paste: package, vulnerable version, fixed version, CVE/GHSA id, severity.
-- **CVE / GHSA id** → enrich via the public, no-auth CIRCL API: `curl -s https://cve.circl.lu/api/cve/CVE-YYYY-NNNNN`
-- Surface it locally: `yarn npm audit --recursive --environment production` (npm: `npm audit`, pnpm: `pnpm audit`).
-  - ⚠️ `--environment production` scopes to **prod** dependencies only (the common case). If the CVE is in a **dev** dependency, it won't show — drop the flag or use `--environment all` (yarn) / `npm audit` without `--omit=dev`. Match the flag to the dependency scope you're fixing.
+**The local audit is the single source of truth.** It reflects the tree actually installed.
+Never rely on a web page for the facts: a GitHub advisory / alert URL is not readable (those
+pages are authenticated even on public repos). An id the user gives you is a *filter*, not a
+source — resolve it against the audit output.
+
+```bash
+yarn npm audit --recursive --environment production          # yarn berry
+npm audit                                                    # npm
+pnpm audit                                                   # pnpm
+```
+- ⚠️ `--environment production` scopes to **prod** dependencies only (the default, and the
+  scope of the multi-CVE regime). If the CVE is in a **dev** dependency, it won't show — drop
+  the flag or use `--environment all` (yarn) / `npm audit` without `--omit=dev`. Match the flag
+  to the dependency scope you're fixing.
+- **CVE / GHSA id given** → enrich via the public, no-auth CIRCL API:
+  `curl -s https://cve.circl.lu/api/cve/CVE-YYYY-NNNNN`
+
+**Reading `yarn npm audit --json` (verified against Yarn 4.9):** it emits **NDJSON — one JSON
+object per line**, not one document. Each line is
+`{"value":"<pkg>","children":{ID, Issue, URL, Severity, "Vulnerable Versions", "Tree Versions", Dependents}}`.
+Two traps:
+- **Deprecation notices are mixed in and are NOT vulnerabilities.** They have `ID` of the form
+  `"<pkg> (deprecation)"` and no `URL` (e.g. `"async-cache (deprecation)"`, severity `moderate`).
+  **Filter them out before counting or fixing anything** — on `pass-emploi-api`, 8 of 30 lines
+  were deprecations. They are dependency hygiene, not security work.
+- **There is no "fixed version" field.** Only `Vulnerable Versions` as a range (`<2.8.0`) — the
+  fixed version is its upper bound (here `2.8.0`). `Tree Versions` is what is installed, and
+  `Dependents` lists the **immediate** parents (not the declared top-level one — that needs
+  step 2).
 
 Capture: vulnerable package, current **resolved** version, **fixed** version, severity, prod-or-dev scope.
 
@@ -185,11 +229,39 @@ npm audit                                                             # npm
 Use the **same scope as the fix**: `--environment production` for a prod dependency, or drop it / `--environment all` if the CVE was in a dev dependency (otherwise the re-audit can't confirm it's gone).
 Fixing ONE CVE → do not require zero findings; confirm the **specific** package/advisory no longer appears. Then run the project's build / lint / test (a bump or a forced version can break things) — or hand off if the repo convention is that the human runs them (check `CLAUDE.md`).
 
-### No patch available
-No fixed version yet → do NOT improvise. Surface options: mitigate (config/feature flag), remove/replace the package, or accept the risk **documented**. Let the user decide.
+### Before declaring "no patch available" — check the advisory's package name, not just yours
+The audit output names the vulnerable package (e.g. under "Dependents" or as the advisory's own
+`affected[].package.name`). When that name is a TRANSITIVE package pulled in by a wrapper you
+depend on directly (e.g. you depend on `react-router-dom`, the advisory affects `react-router`),
+query the registry using the advisory's exact name — `yarn npm info <that-exact-name> versions` —
+not just the wrapper's own version history. Package families sometimes rename, split, or merge
+across a major (e.g. `react-router-dom` folded into `react-router` at v8): the wrapper can look
+frozen with "no new version" while the underlying package the advisory names has shipped the fix
+under a different package name entirely.
+
+If a fix exists but only reachable by dropping/replacing the wrapper (not a same-family bump):
+do NOT silently fall through to "no patch available". This is a package-migration candidate —
+STOP, name the finding (old package → new package, why the wrapper is stuck), and ask the user
+whether to open an impact investigation (delegate to `upgrade-dependency`) before deciding. The
+choice — investigate now, defer, or accept the risk documented — is the user's, not yours to
+make by default.
+
+### No patch available (confirmed — the vulnerable package itself has no fix, under any name)
+No fixed version yet anywhere in the package's own history or a known successor → do NOT
+improvise. Surface options: mitigate (config/feature flag), remove/replace the package, or accept
+the risk **documented**. Let the user decide.
 
 ## Red Flags — STOP
 
+- **Running this file's single-CVE gate once per CVE when several are in scope** → that is N
+  validations for one job. Several CVEs = the multi-CVE regime (`references/batch-mode.md`),
+  ONE consolidated gate (step 0).
+- **Asking for a per-CVE or per-group validation after the consolidated plan was approved** →
+  the plan IS the approval; applying it is not a new decision.
+- **Counting / investigating deprecation notices as vulnerabilities** → `ID` ending in
+  `(deprecation)` with no `URL` is dependency hygiene, not a CVE. Filter them out (step 1).
+- **Widening a scoped request** (user asked for one package or one id) into a whole-repo sweep
+  on your own → stay in the single-CVE regime, mention the others exist if useful.
 - **Jumping to parent-bump analysis without checking existing `resolutions`/`overrides` first** → a stale `^`/exact pin on the vulnerable package is often the cause; loosen it to `>=` and re-audit before anything heavier (step 1b).
 - **Keeping (loosening) a pin that should be removed** → if all consumers already request a range covering the fixed version, the pin is dead weight; default to removing the entry, don't loosen "to be safe" (step 1b).
 - **Assuming `yarn install` keeps the old locked version after removing a pin (so "you also need `yarn up`")** → Yarn Berry re-resolves removed/loosened `resolutions` from scratch; remove + `yarn install` is the complete fix. That stale-version assumption is the npm / yarn v1 model.
