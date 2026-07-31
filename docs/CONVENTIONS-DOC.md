@@ -52,8 +52,13 @@ global est tiré dans chaque `CLAUDE.md` de repo via un import relatif :
 
 `CONTEXTE-TRANSVERSE.md` importe à son tour `SUJETS-TRANSVERSES.md`. Conséquence :
 l'index des sujets (invariants + pointeurs) est **toujours présent**, mais la doc
-détaillée d'un sujet n'est lue **qu'à la demande** (sujet évoqué, ou invariant qui
-impose d'aller voir avant d'agir).
+détaillée d'un sujet n'est lue **qu'à la demande**.
+
+> **La règle de lecture vit dans l'index lui-même**, pas ici : voir « Règle de
+> chargement » en tête de [`SUJETS-TRANSVERSES.md`](./SUJETS-TRANSVERSES.md).
+> Ce fichier-ci n'est **jamais chargé** en session — une règle de consommation
+> écrite ici ne se déclenche pas. Ne la dupliquer sous aucun prétexte : la faire
+> évoluer dans l'index.
 
 - **Toujours chargé** (petit) : contexte global + index des sujets + invariants.
 - **À la demande** (volumineux) : `docs/<sujet>/`.
@@ -66,6 +71,13 @@ existe et où la trouver.
 
 1. Créer `docs/<sujet>/` (un `README.md` index + les fichiers de référence).
 2. Ajouter une entrée dans [`SUJETS-TRANSVERSES.md`](./SUJETS-TRANSVERSES.md) :
-   **invariant** + **référence stable**. Rien de personnel.
+   **ouvrir quand** + **invariant** + **référence stable**. Rien de personnel.
+   - Le **« ouvrir quand »** se formule en *situations et questions* (« on parle
+     de X », « on cherche à savoir si Y »), pas en actions de code. Sans lui, le
+     sujet ne se charge que si quelqu'un est sur le point de modifier du code —
+     donc jamais sur une question d'analyse, de conception ou d'organisation.
+   - La **référence** doit **nommer les fichiers** du sous-dossier, pas seulement
+     son `README.md` : un routeur qui pointe vers un routeur s'arrête au premier
+     palier.
 3. Garder le style **team-facing** : lisible sans contexte de session, pas de
    jargon interne, liens relatifs entre docs.

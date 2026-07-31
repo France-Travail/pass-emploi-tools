@@ -192,21 +192,53 @@ npx dotvault encrypt
 
 ### Déploiement
 
+> Concerne les **repos Node** (`api`, `web`, `connect`). L'app mobile ne se
+> déploie pas : elle se **publie sur les stores** (voir Release ci-dessous).
+
 **Plateforme : Scalingo**
 
-- **Staging** : déploiement automatique sur push `develop`
-- **Production** : déploiement automatique sur push `master`
+- **Staging** : déploiement automatique sur push de la branche d'intégration (`develop`)
+- **Production** : déploiement automatique sur push de la branche de production
 - **Review Apps** : création automatique sur PR
 
 ### Release
 
-Process similaire dans tous les repos :
+**Deux process distincts** — ne pas supposer qu'ils sont alignés.
+
+#### Repos Node (`api`, `web`, `connect`)
+
+Tag `vX.Y.Z`, livraison par merge dans la branche de production, déploiement continu.
 
 ```bash
 yarn release:patch  # ou :minor / :major
 git push --tags && git push origin develop
-git checkout master && git merge develop && git push
+git checkout <branche-de-prod> && git merge develop && git push
 ```
+
+| Repo | Intégration | Production |
+|---|---|---|
+| `pass-emploi-api` | `develop` | `master` |
+| `pass-emploi-web` | `develop` | `master` |
+| `pass-emploi-connect` | `develop` | **`main`** |
+
+#### App mobile (`pass_emploi_app`)
+
+Process **différent** : Flutter, pas de yarn, **une seule branche au long cours**
+(`main`, pas de `develop`), et **pas de déploiement continu** — la livraison passe
+par les stores.
+
+```bash
+scripts/release.sh 4.12.3   # bump pubspec.yaml sur main + commit + tag + push --tags
+```
+
+- **Version** : `pubspec.yaml`. **Tag sans préfixe `v`** (`4.12.3`, pas `v4.12.3`).
+- Le **tag** déclenche `release-workflow.yml` (build Android + iOS prod).
+- **Correctifs** : branches `release/X.Y.Z` + `scripts/hotfix.sh`, qui tague depuis
+  la branche de release puis rebumpe `main` — le report du correctif sur `main` est
+  **manuel** (le script se contente d'avertir).
+- Le repo build **plusieurs apps** depuis la même base (`cej_main.dart`,
+  `brsa_main.dart`, `app_main.dart`) ; le flavor staging/prod est déduit du
+  *package name*.
 
 ## Fonctionnalités principales
 
