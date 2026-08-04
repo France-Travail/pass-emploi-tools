@@ -1,0 +1,22 @@
+{
+  "level": 30,
+  "time": {{ currentTimeMs }},
+  "pid": 42,
+  "hostname": "web-1",
+  "trace.id": "{{ traceId }}",
+  "transaction.id": "{{ transactionId }}",
+  "req": {
+    "id": "req-{{ reqId }}",
+    "method": "{{ httpMethod }}",
+    "url": "{{ url }}",
+    "headers": {
+      "user-agent": "Mozilla/5.0 (Gatling load test)",
+      "x-real-ip": "1.2.3.4"
+    }
+  },
+  "res": { "statusCode": {{ statusCode }} },
+  "responseTime": {{ responseTime }},
+  "event": { "action": "{{ eventAction }}", "outcome": "{{ eventOutcome }}" },
+  "user": { "id": "user-{{ reqId }}", "type": "CONSEILLER", "structure": "MILO" },
+  "msg": "{{ msg }}"
+}

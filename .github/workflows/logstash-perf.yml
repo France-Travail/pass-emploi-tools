@@ -1,0 +1,283 @@
+# Test de charge Logstash — validation de l'architecture 2 pipelines + PQ.
+#
+# Objectif : vérifier que le pipeline-ingest ACK le drain Scalingo en < 600ms
+# (p95) à 200 logs/s, sans aucun timeout HTTP (taux d'erreur < 0,1%).
+# Un échec signale un risque de quarantaine du drain en production.
+#
+# Déclenchement :
+#   - Manuel (workflow_dispatch) : pour valider avant un déploiement Logstash
+#   - Sur PR modifiant logs/** : pour détecter les régressions de config
+#
+# Prérequis (secrets GitHub à configurer) :
+#   LOGSTASH_PERF_URL         URL HTTPS de l'instance Logstash perf Scalingo
+#   LOGSTASH_PERF_USER        Identifiant Basic Auth
+#   LOGSTASH_PERF_PASSWORD    Mot de passe Basic Auth
+#   ELASTICSEARCH_HOST        URL Elasticsearch Cloud (pour la purge post-test)
+#   ELASTICSEARCH_USER        Identifiant ES (doit avoir DELETE sur logs-perf-*)
+#   ELASTICSEARCH_PASSWORD    Mot de passe ES
+#
+# Cible : instance Logstash dédiée perf (pass-emploi-logstash-perf sur Scalingo).
+# Données isolées dans logs-perf-default (appname=*-perf), purgées après chaque test.
+# Cf. docs/blackout-logs/conventions.md pour le contexte.
+
+name: Logstash - Test de non régression des performances
+
+on:
+  pull_request:
+    paths:
+      - "logs/**"
+  workflow_dispatch:
+    inputs:
+      users_per_sec:
+        description: "Débit cible en logs/s"
+        required: false
+      duration_seconds:
+        description: "Durée de la montée en charge en secondes"
+        required: false
+
+jobs:
+  load-test:
+    name: Test de charge Logstash
+    runs-on: ubuntu-latest
+    environment: Performance
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: "21"
+          distribution: "temurin"
+          cache: "gradle"
+
+      - name: Vérification des secrets requis
+        env:
+          LOGSTASH_URL: ${{ secrets.LOGSTASH_PERF_URL }}
+          LOGSTASH_USER: ${{ secrets.LOGSTASH_PERF_USER }}
+          LOGSTASH_PASSWORD: ${{ secrets.LOGSTASH_PERF_PASSWORD }}
+          ES_HOST: ${{ secrets.ELASTICSEARCH_HOST }}
+          ES_USER: ${{ secrets.ELASTICSEARCH_USER }}
+          ES_PASSWORD: ${{ secrets.ELASTICSEARCH_PASSWORD }}
+        run: |
+          echo "LOGSTASH_URL  : length=${#LOGSTASH_URL}  prefix=${LOGSTASH_URL:0:8}"
+          echo "LOGSTASH_USER : length=${#LOGSTASH_USER}"
+          echo "ES_HOST       : length=${#ES_HOST}  prefix=${ES_HOST:0:8}"
+          echo "ES_USER       : length=${#ES_USER}"
+          [ -n "$LOGSTASH_URL" ]      || { echo "::error::Secret LOGSTASH_PERF_URL manquant"; exit 1; }
+          [ -n "$LOGSTASH_USER" ]     || { echo "::error::Secret LOGSTASH_PERF_USER manquant"; exit 1; }
+          [ -n "$LOGSTASH_PASSWORD" ] || { echo "::error::Secret LOGSTASH_PERF_PASSWORD manquant"; exit 1; }
+          [ -n "$ES_HOST" ]           || { echo "::error::Secret ELASTICSEARCH_HOST manquant"; exit 1; }
+          [ -n "$ES_USER" ]           || { echo "::error::Secret ELASTICSEARCH_USER manquant"; exit 1; }
+          [ -n "$ES_PASSWORD" ]       || { echo "::error::Secret ELASTICSEARCH_PASSWORD manquant"; exit 1; }
+
+      - name: Définir les paramètres du test
+        run: |
+          echo "USERS_PER_SEC=${{ github.event.inputs.users_per_sec || '200' }}" >> $GITHUB_ENV
+          echo "DURATION_IN_SECONDS=${{ github.event.inputs.duration_seconds || '120' }}" >> $GITHUB_ENV
+
+      - name: Enregistrer le timestamp de début du test
+        run: echo "TEST_START=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
+
+      - name: Run Gatling load test
+        working-directory: perf
+        env:
+          LOGSTASH_URL: ${{ secrets.LOGSTASH_PERF_URL }}
+          LOGSTASH_USER: ${{ secrets.LOGSTASH_PERF_USER }}
+          LOGSTASH_PASSWORD: ${{ secrets.LOGSTASH_PERF_PASSWORD }}
+        run: |
+          ulimit -n 65536
+          set +e # désactive l'arrêt automatique du shell sur erreur
+          ./gradlew gatlingRun --simulation passemploi.test.LogstashIngestSimulation --no-daemon
+          echo "GATLING_EXIT_CODE=$?" >> $GITHUB_ENV
+
+      - name: Enregistrer le timestamp de fin du test
+        if: always()
+        run: echo "TEST_END=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_ENV
+
+      # Si gatlingRun est tué (SIGKILL OOM ou timeout), le rapport HTML n'est pas généré
+      # mais le simulation.log est présent. Ce step génère le rapport depuis le simulation.log.
+      # Le plugin Gatling 3.15.x n'a pas de tâche gatlingReport — on utilise gatlingRun
+      # avec -Dgatling.reportsOnly=<dossier> pour générer le HTML depuis le simulation.log.
+      - name: Générer le rapport Gatling depuis simulation.log
+        if: always()
+        working-directory: perf
+        run: |
+          SIMULATION_DIR=$(ls -td build/reports/gatling/*/ 2>/dev/null | head -1 | xargs basename 2>/dev/null || true)
+          if [ -n "$SIMULATION_DIR" ]; then
+            echo "Génération du rapport depuis : $SIMULATION_DIR"
+            ./gradlew gatlingRun --no-daemon -Dgatling.reportsOnly="$SIMULATION_DIR" || true
+          else
+            echo "Aucun dossier de simulation trouvé, rapport HTML non généré"
+          fi
+
+      - name: Upload Gatling report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gatling-report-${{ github.run_id }}
+          path: perf/build/reports/gatling/
+          retention-days: 21
+
+      - name: Vérifier le résultat du test Gatling
+        if: always()
+        run: |
+          if [ "${GATLING_EXIT_CODE}" != "0" ]; then
+            echo "::error::Le test Gatling a échoué (exit code ${GATLING_EXIT_CODE})"
+            exit 1
+          fi
+
+      # Convention Scalingo : l'URL publique d'une app a la forme
+      #   https://<app-name>.<region>.scalingo.io
+      # où <app-name> suit la convention pass-emploi-<service>-<env>.
+      # Ce step extrait le service.name ECS et l'environnement depuis l'URL,
+      # pour construire dynamiquement le nom de l'index router ES.
+      - name: Extraire les métadonnées Scalingo depuis l'URL Logstash
+        if: always()
+        env:
+          LOGSTASH_URL: ${{ secrets.LOGSTASH_PERF_URL }}
+        run: |
+          # https://pass-emploi-logstash-prod.osc-secnum-fr1.scalingo.io
+          #   → LOGSTASH_SERVICE_NAME = pass-emploi-logstash-prod  (= service.name dans les logs ECS)
+          #   → LOGSTASH_ENV          = prod                        (dernier segment du nom d'app)
+          #   → ROUTER_INDEX          = logs-router-prod-default    (index ES des logs nginx Scalingo)
+          LOGSTASH_SERVICE_NAME=$(echo "$LOGSTASH_URL" | sed 's|https\?://||' | cut -d'.' -f1 | sed 's/-pr[0-9]*$//')
+          LOGSTASH_ENV=$(echo "$LOGSTASH_SERVICE_NAME" | rev | cut -d'-' -f1 | rev)
+          ROUTER_INDEX="logs-router-${LOGSTASH_ENV}-default"
+          echo "LOGSTASH_SERVICE_NAME=${LOGSTASH_SERVICE_NAME}" >> "$GITHUB_ENV"
+          echo "LOGSTASH_ENV=${LOGSTASH_ENV}"                   >> "$GITHUB_ENV"
+          echo "ROUTER_INDEX=${ROUTER_INDEX}"                   >> "$GITHUB_ENV"
+          echo "service.name : $LOGSTASH_SERVICE_NAME  |  env : $LOGSTASH_ENV  |  index : $ROUTER_INDEX"
+
+      - name: Rapport Elasticsearch post-test
+        if: always()
+        env:
+          ES_HOST: ${{ secrets.ELASTICSEARCH_HOST }}
+          ES_USER: ${{ secrets.ELASTICSEARCH_USER }}
+          ES_PASSWORD: ${{ secrets.ELASTICSEARCH_PASSWORD }}
+        run: |
+          echo "Fenêtre : $TEST_START → $TEST_END"
+
+          # Compter les 499 nginx sur le routeur Logstash pendant le test
+          QUERY_499=$(cat <<EOF
+          {
+            "query": {
+              "bool": {
+                "filter": [
+                  { "term": { "http.response.status_code": 499 } },
+                  { "term": { "service.name": "${LOGSTASH_SERVICE_NAME}" } },
+                  { "range": { "@timestamp": { "gte": "${TEST_START}", "lte": "${TEST_END}" } } }
+                ]
+              }
+            },
+            "track_total_hits": true,
+            "size": 0
+          }
+          EOF
+          )
+          COUNT_499=$(curl -s \
+            -u "${ES_USER}:${ES_PASSWORD}" \
+            -H "Content-Type: application/json" \
+            -X POST "${ES_HOST}/${ROUTER_INDEX}/_search" \
+            -d "$QUERY_499" | jq '.hits.total.value // "N/A"')
+
+          # Compter les logs applicatifs indexés pendant le test
+          QUERY_INDEXED=$(cat <<EOF
+          {
+            "query": {
+              "bool": {
+                "filter": [
+                  { "term": { "service.name": "pass-emploi-api-perf" } },
+                  { "range": { "@timestamp": { "gte": "${TEST_START}", "lte": "${TEST_END}" } } }
+                ]
+              }
+            },
+            "track_total_hits": true,
+            "size": 0
+          }
+          EOF
+          )
+          COUNT_INDEXED=$(curl -s \
+            -u "${ES_USER}:${ES_PASSWORD}" \
+            -H "Content-Type: application/json" \
+            -X POST "${ES_HOST}/logs-*/_search" \
+            -d "$QUERY_INDEXED" | jq '.hits.total.value // "N/A"')
+
+          # Histogramme par tranche de 1 minute pour détecter le seuil de saturation
+          # Si une tranche tombe à 0, Logstash a saturé à ce moment-là
+          QUERY_HISTO=$(cat <<EOF
+          {
+            "query": {
+              "bool": {
+                "filter": [
+                  { "term": { "service.name": "pass-emploi-api-perf" } },
+                  { "range": { "@timestamp": { "gte": "${TEST_START}", "lte": "${TEST_END}" } } }
+                ]
+              }
+            },
+            "aggs": {
+              "par_1min": {
+                "date_histogram": {
+                  "field": "@timestamp",
+                  "fixed_interval": "1m",
+                  "min_doc_count": 0,
+                  "extended_bounds": { "min": "${TEST_START}", "max": "${TEST_END}" }
+                }
+              }
+            },
+            "size": 0
+          }
+          EOF
+          )
+          HISTO=$(curl -s \
+            -u "${ES_USER}:${ES_PASSWORD}" \
+            -H "Content-Type: application/json" \
+            -X POST "${ES_HOST}/logs-*/_search" \
+            -d "$QUERY_HISTO" | jq -r '
+              .aggregations.par_1min.buckets[]
+              | "| \(.key_as_string) | \(.doc_count) |"
+            ')
+
+          echo "499 nginx : $COUNT_499"
+          echo "Logs indexés : $COUNT_INDEXED"
+
+          # Écrire dans le Job Summary GitHub
+          {
+            echo "## 📊 Métriques Elasticsearch"
+            echo "| Métrique                                     | Valeur                              |"
+            echo "|----------------------------------------------|-------------------------------------|"
+            echo "| Logs indexés (pass-emploi-api-perf)          | ${COUNT_INDEXED}                    |"
+            echo "| 499 nginx routeur (${LOGSTASH_SERVICE_NAME}) | ${COUNT_499}                        |"
+            echo "| Fenêtre                                      | \`${TEST_START}\` → \`${TEST_END}\` |"
+            echo ""
+            echo "### 📈 Indexation par tranche de 1 minute"
+            echo "_Une tranche à 0 indique que Logstash a saturé à ce moment._"
+            echo ""
+            echo "| Tranche | Logs indexés |"
+            echo "|---------|--------------|"
+            echo "$HISTO"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Purge logs de test Elasticsearch
+        if: always()
+        env:
+          ES_HOST: ${{ secrets.ELASTICSEARCH_HOST }}
+          ES_USER: ${{ secrets.ELASTICSEARCH_USER }}
+          ES_PASSWORD: ${{ secrets.ELASTICSEARCH_PASSWORD }}
+        run: |
+          QUERY=$(cat <<EOF
+          {
+            "query": {
+              "term": { "service.name": "pass-emploi-api-perf" }
+            }
+          }
+          EOF
+          )
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST \
+            -u "${ES_USER}:${ES_PASSWORD}" \
+            -H "Content-Type: application/json" \
+            -d "$QUERY" \
+            "${ES_HOST}/logs-*/_delete_by_query?conflicts=proceed")
+          echo "Purge service.name=pass-emploi-api-perf : HTTP $RESPONSE"
