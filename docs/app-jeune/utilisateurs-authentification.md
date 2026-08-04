@@ -7,8 +7,11 @@
 >
 > **Statut : WIP.** Itération 1 (2026-07-02) : couches 1→2 (matrice
 > publics→modes). Itération 2 (2026-07-28) : le **mode invité est livré**, la
-> couche 3 est renseignée pour ce public. Restent ouverts : le candidat FT non
-> accompagné, et la **transition invité → inscrit**.
+> couche 3 est renseignée pour ce public. Itération 3 (2026-08-03) : matrice
+> **publics → droits** posée. Restent ouverts : le candidat FT non accompagné,
+> et la **transition invité → inscrit**.
+>
+> **Calendrier** : bêta septembre/octobre 2026, ouverture à tous novembre 2026.
 
 ## Rappel du cadre
 
@@ -64,6 +67,49 @@ désormais **trois** modes :
 | Candidat FT **inscrit**, non accompagné | MVP | FT Connect (path candidat ?) ou compte candidat FT | Quelle structure ? Quels droits ? |
 | **Non-inscrit** demandeur d'emploi FT — collégiens, lycéens, étudiants, NEET.<br>14-25 ans (non handicapé) / 14-30 ans (handicapé) | MVP | **Mode invité** (`INVITE`) | Livré — voir ci-dessous |
 
+## Publics → droits (couche 3, vue d'ensemble)
+
+Les droits ne se déduisent pas du mode d'authentification (couche 2) ni
+directement de `Core.Structure`. Trois questions les déterminent : le
+bénéficiaire a-t-il un conseiller **chez nous** (Pass Emploi), a-t-il un
+dossier de demandeur d'emploi France Travail, relève-t-il d'une Mission Locale.
+
+| Public | Messagerie | Agenda / création d'actions | Compteur d'heures | Offres |
+|---|:--:|:--:|:--:|:--:|
+| CEJ MILO | ✅ | ✅ | ✅ | ✅ |
+| CEJ / AIJ / Avenir Pro FT | ✅ | ✅ | ❌ | ✅ |
+| Migrants Pass Emploi, « suivi et guidé » | ❌ | ✅ | ❌ | ✅ |
+| Candidat FT non demandeur d'emploi | ❌ | ❌ | ❌ | ✅ |
+| Invité | ❌ | ❌ | ❌ | ✅ |
+
+Le **compteur d'heures** est propre à MiLo, et seulement pour le dispositif CEJ.
+L'**agenda et la création d'actions** supposent soit un dossier de demandeur
+d'emploi France Travail, soit un rattachement à une Mission Locale.
+
+### Pourquoi les migrants Pass Emploi perdent la messagerie
+
+Ces bénéficiaires ont aujourd'hui un conseiller enregistré. Mais leurs
+conseillers migrent vers **Parcours Emploi** (application interne France
+Travail) et y perdent l'accès au web conseiller Pass Emploi. En régime établi,
+ils n'ont donc **plus de conseiller côté Pass Emploi**, et l'absence de
+messagerie en découle d'elle-même — ce n'est pas une restriction propre à ce
+public.
+
+La difficulté est la **période de recouvrement** : entre la sortie de l'app
+jeune et la fin de la migration de leurs conseillers, ces bénéficiaires ont
+encore un conseiller en base sans que la messagerie soit souhaitable.
+L'identification se fera comme aux phases de migration précédentes — par les
+conseillers concernés — ou à défaut par le dispositif.
+
+### Un bénéficiaire change de public
+
+Le public d'un bénéficiaire n'est pas figé : un candidat pris en accompagnement
+par un conseiller devient accompagné ; un accompagné dont le conseiller migre
+cesse de l'être. **Le public est un état, pas une identité** — l'identifiant et
+les données du bénéficiaire restent les mêmes au fil de ces transitions. Les
+invités ont vocation à être poussés vers la création d'un compte France
+Travail.
+
 ## Mode invité — réalisé
 
 ### Principe : une identité fabriquée, pas vérifiée
@@ -99,11 +145,18 @@ authentifié dont l'identité est pseudonyme.
 | Contenu stocké | Identifiant, prénom d'affichage, dates de connexion, données d'appareil (push, version, installation, fuseau), acceptation des CGU |
 | Autorisation | Autorisation dédiée à l'invité ; l'autorisation « jeune » standard **le rejette explicitement** |
 
-Le modèle d'accès est donc **fermé par défaut, ouvert route par route** : une
-fonctionnalité n'est accessible à l'invité que si elle a été explicitement
-ouverte. C'est volontairement conservateur — l'invité n'a pas de conseiller, pas
-de structure d'appartenance, et une partie du modèle de droits existant n'a
-aucun sens pour lui.
+Le modèle d'accès **vise** à être fermé par défaut, ouvert route par route :
+une fonctionnalité ne devrait être accessible à l'invité que si elle a été
+explicitement ouverte. C'est volontairement conservateur — l'invité n'a pas de
+conseiller, pas de structure d'appartenance, et une partie du modèle de droits
+existant n'a aucun sens pour lui.
+
+> ⚠️ **Cette fermeture par défaut n'est pas encore effective (vérifié
+> 2026-08-03).** Le seul verrou existant est le rejet de l'invité par
+> l'autorisation « jeune » standard. Tout cas d'usage qui ne passe pas par elle
+> reste accessible à un JWT invité — c'est le cas aujourd'hui pour plusieurs
+> endpoints de référentiels et de détail d'offres. Ne pas s'appuyer sur
+> « fermé par défaut » comme garantie tant que ce point n'est pas corrigé.
 
 Routes ouvertes à ce jour : configuration de l'application, formulaire de
 contact Immersion, prénom d'affichage.
@@ -135,6 +188,11 @@ dans `JeuneInvite` tels qu'ils sont aujourd'hui.
 - **Accompagné hors MILO/FT** (post-MVP) : IDP et rattachement.
 - **Cycle de vie de l'invité** : purge des invités inactifs, durée de
   conservation.
+- **Messagerie des migrants pendant la période de recouvrement** : comment
+  identifier fiablement, avant la sortie de l'app jeune, les conseillers déjà
+  en cours de migration vers Parcours Emploi.
+- **Rangement de « suivi et guidé »** : structure et dispositif à confirmer
+  avec le PO (cf. matrice couches 1→2 ci-dessus).
 
 ## Hors scope MVP mais à identifier quand même
 
