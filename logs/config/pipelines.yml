@@ -1,0 +1,35 @@
+# Deux pipelines pour découpler *recevoir* de *traiter* (postmortem blackouts §7,
+# Option A). Objectif : l'ACK du drain HTTP ne dépend plus des filtres lourds ni
+# d'Elasticsearch → plus de 499 → plus de quarantaine Scalingo sur
+# pass-emploi-api (mode B).
+#
+#   drain ──http──► [ingest] ──pipeline──► [process] ──bulk──► Elasticsearch
+#                   0 filtre,              PQ persistée         à son rythme
+#                   ACK rapide             (disque = filet A)
+#
+# La persistent queue est sur `process` (PAS `ingest`) : c'est là que la
+# contre-pression ES prend naissance. Elle encaisse un décrochage ES sur DISQUE
+# puis le rejoue, au lieu de remonter en contre-pression jusqu'à l'input http
+# (429) et de faire jeter les logs par le drain. Et son fsync reste HORS du
+# chemin d'ACK http (l'ACK se fait à l'enqueue mémoire de `ingest`) → on évite le
+# piège fsync-vs-499 signalé dans docs/blackout-logs/conventions.md (garde-fou 4).
+#
+# NB : la découverte de ce fichier suppose que le Procfile n'utilise PLUS `-f`
+# (sinon Logstash l'ignore : « Ignoring the 'pipelines.yml' file because command
+# line options are specified »). Le buildpack copie config/* dans le dossier
+# config de Logstash → path.settings → pipelines.yml auto-découvert.
+
+- pipeline.id: ingest
+  path.config: "/app/ingest.conf"
+  # File mémoire : `ingest` ne fait que recevoir et relayer, rien à bufferiser
+  # sur disque ici — on veut l'ACK le plus rapide et régulier possible.
+  queue.type: memory
+
+- pipeline.id: process
+  path.config: "/app/process.conf"
+  # Filet du mode A : buffer DISQUE entre la réception et ES. Un décrochage ES
+  # est absorbé ici puis rejoué. Dimensionnement : un trou ES de ~44 s ≈ ~11 Mo
+  # de backlog (postmortem §2) → 1 Go couvre un décrochage très long au volume
+  # actuel. Éphémère (sous /app) : survit aux blips ES, pas à un restart.
+  queue.type: persisted
+  queue.max_bytes: 1gb

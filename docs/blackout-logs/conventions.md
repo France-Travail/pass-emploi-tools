@@ -101,11 +101,29 @@ Détail et justification : [postmortem-2026-07.md § 7](./postmortem-2026-07.md#
 ## État déployé — VOLATILE, vérifier avant d'agir
 
 > ⚠️ Cette section date (≠ invariant). Vérifier l'état réel sur Scalingo avant toute
-> action. Au **2026-07-02** :
+> action.
 
-- **4× XL** (2 Go), heap **`-Xms1g -Xmx1g`** via `JAVA_OPTS`.
-- **PQ retirée** temporairement (test GC-vs-ES) ; `-Xlog:gc,safepoint` activé
-  temporairement via `JAVA_OPTS`.
-- Plus de perte observée, response time plat au pic (~35k req/min).
-- Décisions ouvertes : remettre la PQ (filet mode A), retirer le GC verbeux après
-  test, statuer heap `jvm.options` vs `JAVA_OPTS`. Cf. postmortem § 6.
+**Au 2026-07-08 — architecture 2 pipelines implémentée dans le repo (branche
+`postmortem-blackouts`), NON encore déployée.** Le mono-pipeline `logstash.conf` est
+remplacé par le découplage recevoir/traiter (Option A du postmortem §7) :
+
+- **`ingest.conf`** : `http input → pipeline output` vers `process`, **0 filtre**
+  → ACK rapide et constant → supprime la cause racine de la quarantaine (mode B).
+- **`process.conf`** : `pipeline input → filtres ECS → ES` (logique identique à
+  l'ex-`logstash.conf`, à l'octet près).
+- **`config/pipelines.yml`** : `ingest` en file **mémoire**, `process` en
+  **`queue.type: persisted` (1 Go)** → la PQ (filet mode A) est **structurelle** et
+  son fsync reste **hors** du chemin d'ACK http.
+- **`Procfile`** : `web: bin/logstash` (plus de `-f`, sinon `pipelines.yml` ignoré).
+- Validé en Logstash 9.0.1 local : `Configuration OK` sur les 2 confs, boot des 2
+  pipelines, PQ confirmée sur disque pour `process` uniquement.
+
+Reste à faire **côté Scalingo** (pas dans le repo) :
+- [ ] **Déployer** cette branche sur une **review app** puis prod, et vérifier en
+      Kibana la disparition des 429/499 sur `pass-emploi-api`.
+- [ ] **Retirer `-Xlog:gc,safepoint` de la var d'env `JAVA_OPTS`** (test GC clos : GC
+      sain, cause = ES/drain). Garder `-Xlog:gc+init` (dans `jvm.options`, boot only).
+- [ ] Statuer heap `jvm.options` vs `JAVA_OPTS` (aujourd'hui `-Xms1g -Xmx1g` via env).
+
+Rappel état **2026-07-02** (avant cette branche) : 4× XL, mono-pipeline, **PQ retirée**
+temporairement pour le test GC-vs-ES, `-Xlog:gc,safepoint` actif via `JAVA_OPTS`.
