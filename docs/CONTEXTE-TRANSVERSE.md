@@ -174,6 +174,30 @@ Tous les repos partagent des conventions similaires :
 - Pas de `process.env` direct → utiliser la config centralisée
 - Pas de `any` sans justification
 
+### Commentaires — par défaut, on n'en écrit pas
+
+**Le code se documente par ses noms**, pas par des commentaires. Un commentaire
+qui décrit *ce que fait* le code est du bruit : il duplique une information déjà
+lisible, et il ment dès que le code change sans lui. Si un bout de code a besoin
+d'être expliqué, le premier réflexe est de le renommer ou de l'extraire, pas de
+le commenter.
+
+**Trois exceptions, et seulement trois :**
+
+1. **Un fait non-évident et indispensable**, que le lecteur ne peut pas déduire
+   du code : subtilité de fuseau horaire, contrainte métier contre-intuitive,
+   contournement d'un bug externe, invariant garanti ailleurs (ex. « ce `WHERE`
+   garantit la non-nullité »). Le test : *est-ce que quelqu'un risque de casser
+   ça en toute bonne foi sans ce commentaire ?*
+2. **`// TODO:`** — tracer une dette assumée ou une suite de refacto. À rendre
+   **actionnable** (quoi migrer, vers quoi, pourquoi ça n'est pas fait maintenant).
+3. **Les marqueurs de structure de test** (`// Given` / `// When` / `// Then`) :
+   convention de lisibilité, pas des commentaires explicatifs.
+
+Tout le reste — en-têtes de fichier décoratifs, sections « Contexte / Utilité »,
+paraphrase d'une ligne, commentaire qui répète le nom de la fonction — est à
+supprimer, y compris dans le code existant qu'on touche au passage.
+
 ### Secrets & Variables d'environnement
 
 **Outil : dotvault**

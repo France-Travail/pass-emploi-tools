@@ -25,6 +25,37 @@ juger ; c'est le dashboard qui classe bug / pas-bug.
   (`http.*`, `url.*`, `error.*`).
 - Chaque repo définit sa liste de `event.action` selon ses étapes métier.
 
+### Doctrine : quand créer un `event.action` (test d'agrégation)
+
+`event.action` est une **clé de regroupement**, pas une étiquette descriptive :
+sa valeur vient de sa faible cardinalité. Une taxonomie qui grossit à chaque
+mode d'échec de chaque composant redevient un champ libre déguisé — et entre en
+concurrence avec les actions génériques qui couvraient déjà le cas.
+
+Deux conditions **cumulatives** pour en créer un :
+
+1. **On va l'agréger ou alerter dessus** — compter par période, filtrer un
+   dashboard, poser une règle rate-based. Si la réponse est « on lira la ligne
+   quand on investiguera », ce n'est pas une action : c'est du diagnostic, qui
+   va en texte libre (+ `toEcsError`) ou en `debug`.
+2. **L'état n'est pas déjà capturé** par une action existante et ses dimensions
+   (`log.logger`, `labels.*`). Les actions génériques (`handler_executed`,
+   `external_api_call`) sont conçues pour couvrir N composants via leurs
+   dimensions — s'appuyer dessus plutôt que les doubler.
+
+Exemple qui justifie une action dédiée : `accueil_sessions_milo_recuperees`
+(`failure`). `request_completed` voit un 200 et `handler_executed` un succès —
+la dégradation (accueil rendu sans sessions) n'est visible nulle part ailleurs,
+et on veut pouvoir la compter.
+
+Contre-exemple : un échec unitaire dans la boucle d'un job. Le volume agrégé est
+déjà dans `SuiviJob.resultat` (compteurs persistés + notifiés) et l'échec du run
+dans `handler_executed`. La ligne ne sert qu'à savoir *lequel* a échoué et
+*pourquoi* → texte libre, pas d'entrée de taxonomie.
+
+Comme pour le `warn` : on ajoute sur **besoin réel constaté**, pas par
+anticipation ni par souci de symétrie.
+
 ## `event.outcome`
 
 `success` / `failure` uniquement → filtre transverse des dashboards. Posé sur
