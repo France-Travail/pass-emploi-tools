@@ -139,11 +139,14 @@ jobs:
           LOGSTASH_URL: ${{ secrets.LOGSTASH_PERF_URL }}
         run: |
           # https://pass-emploi-logstash-prod.osc-secnum-fr1.scalingo.io
-          #   → LOGSTASH_SERVICE_NAME = pass-emploi-logstash-prod  (= service.name dans les logs ECS)
+          #   → LOGSTASH_APP          = pass-emploi-logstash-prod  (nom d'app Scalingo)
           #   → LOGSTASH_ENV          = prod                        (dernier segment du nom d'app)
+          #   → LOGSTASH_SERVICE_NAME = pass-emploi-logstash        (= service.name ECS,
+          #     SANS suffixe d'env : le pipeline le strippe — cf. pipeline-process.conf)
           #   → ROUTER_INDEX          = logs-router-prod-default    (index ES des logs nginx Scalingo)
-          LOGSTASH_SERVICE_NAME=$(echo "$LOGSTASH_URL" | sed 's|https\?://||' | cut -d'.' -f1 | sed 's/-pr[0-9]*$//')
-          LOGSTASH_ENV=$(echo "$LOGSTASH_SERVICE_NAME" | rev | cut -d'-' -f1 | rev)
+          LOGSTASH_APP=$(echo "$LOGSTASH_URL" | sed 's|https\?://||' | cut -d'.' -f1 | sed 's/-pr[0-9]*$//')
+          LOGSTASH_ENV=$(echo "$LOGSTASH_APP" | rev | cut -d'-' -f1 | rev)
+          LOGSTASH_SERVICE_NAME=$(echo "$LOGSTASH_APP" | sed -E 's/-(staging|prod|perf)$//')
           ROUTER_INDEX="logs-router-${LOGSTASH_ENV}-default"
           echo "LOGSTASH_SERVICE_NAME=${LOGSTASH_SERVICE_NAME}" >> "$GITHUB_ENV"
           echo "LOGSTASH_ENV=${LOGSTASH_ENV}"                   >> "$GITHUB_ENV"
@@ -182,16 +185,15 @@ jobs:
             -X POST "${ES_HOST}/${ROUTER_INDEX}/_search" \
             -d "$QUERY_499" | jq '.hits.total.value // "N/A"')
 
-          # Compter les logs applicatifs indexés pendant le test
+          # Compter les logs applicatifs indexés pendant le test.
+          # Identification par INDEX (logs-perf-default, routé via appname=*-perf),
+          # pas par service.name : le strip du suffixe d'env rend service.name
+          # identique entre perf et prod ("pass-emploi-api") — seul l'index (et
+          # service.environment) distingue les données de test.
           QUERY_INDEXED=$(cat <<EOF
           {
             "query": {
-              "bool": {
-                "filter": [
-                  { "term": { "service.name": "pass-emploi-api-perf" } },
-                  { "range": { "@timestamp": { "gte": "${TEST_START}", "lte": "${TEST_END}" } } }
-                ]
-              }
+              "range": { "@timestamp": { "gte": "${TEST_START}", "lte": "${TEST_END}" } }
             },
             "track_total_hits": true,
             "size": 0
@@ -201,7 +203,7 @@ jobs:
           COUNT_INDEXED=$(curl -s \
             -u "${ES_USER}:${ES_PASSWORD}" \
             -H "Content-Type: application/json" \
-            -X POST "${ES_HOST}/logs-*/_search" \
+            -X POST "${ES_HOST}/logs-perf-default/_search?ignore_unavailable=true" \
             -d "$QUERY_INDEXED" | jq '.hits.total.value // "N/A"')
 
           # Histogramme par tranche de 1 minute pour détecter le seuil de saturation
@@ -209,12 +211,7 @@ jobs:
           QUERY_HISTO=$(cat <<EOF
           {
             "query": {
-              "bool": {
-                "filter": [
-                  { "term": { "service.name": "pass-emploi-api-perf" } },
-                  { "range": { "@timestamp": { "gte": "${TEST_START}", "lte": "${TEST_END}" } } }
-                ]
-              }
+              "range": { "@timestamp": { "gte": "${TEST_START}", "lte": "${TEST_END}" } }
             },
             "aggs": {
               "par_1min": {
@@ -233,7 +230,7 @@ jobs:
           HISTO=$(curl -s \
             -u "${ES_USER}:${ES_PASSWORD}" \
             -H "Content-Type: application/json" \
-            -X POST "${ES_HOST}/logs-*/_search" \
+            -X POST "${ES_HOST}/logs-perf-default/_search?ignore_unavailable=true" \
             -d "$QUERY_HISTO" | jq -r '
               .aggregations.par_1min.buckets[]
               | "| \(.key_as_string) | \(.doc_count) |"
@@ -247,7 +244,7 @@ jobs:
             echo "## 📊 Métriques Elasticsearch"
             echo "| Métrique                                     | Valeur                              |"
             echo "|----------------------------------------------|-------------------------------------|"
-            echo "| Logs indexés (pass-emploi-api-perf)          | ${COUNT_INDEXED}                    |"
+            echo "| Logs indexés (logs-perf-default)             | ${COUNT_INDEXED}                    |"
             echo "| 499 nginx routeur (${LOGSTASH_SERVICE_NAME}) | ${COUNT_499}                        |"
             echo "| Fenêtre                                      | \`${TEST_START}\` → \`${TEST_END}\` |"
             echo ""
@@ -266,18 +263,14 @@ jobs:
           ES_USER: ${{ secrets.ELASTICSEARCH_USER }}
           ES_PASSWORD: ${{ secrets.ELASTICSEARCH_PASSWORD }}
         run: |
-          QUERY=$(cat <<EOF
-          {
-            "query": {
-              "term": { "service.name": "pass-emploi-api-perf" }
-            }
-          }
-          EOF
-          )
+          # Purge par INDEX : logs-perf-default ne contient QUE les données de
+          # test (routage appname=*-perf dans pipeline-process.conf) → match_all
+          # sans risque pour staging/prod. Ne PAS purger par service.name : avec
+          # le strip du suffixe d'env, "pass-emploi-api" matcherait AUSSI la prod.
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
             -X POST \
             -u "${ES_USER}:${ES_PASSWORD}" \
             -H "Content-Type: application/json" \
-            -d "$QUERY" \
-            "${ES_HOST}/logs-*/_delete_by_query?conflicts=proceed")
-          echo "Purge service.name=pass-emploi-api-perf : HTTP $RESPONSE"
+            -d '{ "query": { "match_all": {} } }' \
+            "${ES_HOST}/logs-perf-default/_delete_by_query?conflicts=proceed&ignore_unavailable=true")
+          echo "Purge logs-perf-default : HTTP $RESPONSE"
