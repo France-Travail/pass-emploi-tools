@@ -104,12 +104,20 @@ jobs:
         if: always()
         working-directory: perf
         run: |
-          SIMULATION_DIR=$(ls -td build/reports/gatling/*/ 2>/dev/null | head -1 | xargs basename 2>/dev/null || true)
-          if [ -n "$SIMULATION_DIR" ]; then
-            echo "Génération du rapport depuis : $SIMULATION_DIR"
-            ./gradlew gatlingRun --no-daemon -Dgatling.reportsOnly="$SIMULATION_DIR" || true
-          else
+          SIMULATION_DIR=$(ls -td build/reports/gatling/*/ 2>/dev/null | head -1 || true)
+          if [ -z "$SIMULATION_DIR" ]; then
             echo "Aucun dossier de simulation trouvé, rapport HTML non généré"
+          elif [ -f "${SIMULATION_DIR}index.html" ]; then
+            echo "Rapport HTML déjà présent (${SIMULATION_DIR}index.html), rien à générer"
+          else
+            SIMULATION_NAME=$(basename "$SIMULATION_DIR")
+            echo "Génération du rapport depuis : $SIMULATION_NAME"
+            # --simulation borne ce run à LogstashIngestSimulation : si
+            # -Dgatling.reportsOnly n'était pas propagé à la JVM forkée par le
+            # plugin Gradle, gatlingRun relancerait sinon TOUTES les simulations
+            # (dont ConnectionSimulation/PremierScenario qui ciblent l'auth et l'API).
+            ./gradlew gatlingRun --simulation passemploi.test.LogstashIngestSimulation \
+              --no-daemon -Dgatling.reportsOnly="$SIMULATION_NAME"
           fi
 
       - name: Upload Gatling report

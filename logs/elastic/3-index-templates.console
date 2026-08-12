@@ -1,4 +1,8 @@
 # Index templates. A importer en dernier (referencent ILM + component templates).
+#
+# _source synthetic : posé via le setting `index.mapping.source.mode` — la forme
+# `mappings._source.mode` est dépréciée depuis ES 8.17/9.x (warning au PUT).
+# (logsdb implique déjà synthetic par défaut ; on l'explicite volontairement.)
 
 PUT _index_template/logs-prod@template-custom
 {
@@ -7,13 +11,12 @@ PUT _index_template/logs-prod@template-custom
   "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "logs@custom", "logs-prod-retention-custom"],
   "ignore_missing_component_templates": ["logs@custom"],
   "template": {
-    "settings": { "index": { "mode": "logsdb" } },
-    "mappings": { "_source": { "mode": "synthetic" } }
+    "settings": { "index": { "mode": "logsdb", "mapping": { "source": { "mode": "synthetic" } } } }
   },
   "data_stream": { "hidden": false, "allow_custom_routing": false },
   "allow_auto_create": true,
   "_meta": { "description": "Logs applicatifs pass-emploi (prod)", "managed_by": "pass-emploi-tools" },
-  "version": 19
+  "version": 20
 }
 
 PUT _index_template/logs-staging@template-custom
@@ -23,13 +26,12 @@ PUT _index_template/logs-staging@template-custom
   "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "logs@custom", "logs-staging-retention-custom"],
   "ignore_missing_component_templates": ["logs@custom"],
   "template": {
-    "settings": { "index": { "mode": "logsdb" } },
-    "mappings": { "_source": { "mode": "synthetic" } }
+    "settings": { "index": { "mode": "logsdb", "mapping": { "source": { "mode": "synthetic" } } } }
   },
   "data_stream": { "hidden": false, "allow_custom_routing": false },
   "allow_auto_create": true,
   "_meta": { "description": "Logs applicatifs pass-emploi (staging), miroir de la prod", "managed_by": "pass-emploi-tools" },
-  "version": 1
+  "version": 2
 }
 
 # Logs du test de charge Gatling (workflow logstash-perf : appname=*-perf).
@@ -44,13 +46,12 @@ PUT _index_template/logs-perf@template-custom
   "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "logs@custom", "logs-perf-retention-custom"],
   "ignore_missing_component_templates": ["logs@custom"],
   "template": {
-    "settings": { "index": { "mode": "logsdb" } },
-    "mappings": { "_source": { "mode": "synthetic" } }
+    "settings": { "index": { "mode": "logsdb", "mapping": { "source": { "mode": "synthetic" } } } }
   },
   "data_stream": { "hidden": false, "allow_custom_routing": false },
   "allow_auto_create": true,
   "_meta": { "description": "Logs de test de perf Logstash (Gatling), purgés après chaque run", "managed_by": "pass-emploi-tools" },
-  "version": 1
+  "version": 2
 }
 
 PUT _index_template/logs-router
