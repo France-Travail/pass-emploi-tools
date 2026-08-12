@@ -107,3 +107,10 @@ PUT _component_template/logs-staging-retention-custom
   "_meta": { "description": "Retention logs applicatifs staging", "managed_by": "pass-emploi-tools" },
   "version": 1
 }
+
+PUT _component_template/logs-perf-retention-custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "logs-perf-retention" } } } },
+  "_meta": { "description": "Retention logs de test de perf (courte ; filet du workflow logstash-perf)", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}

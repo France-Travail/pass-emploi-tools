@@ -32,6 +32,27 @@ PUT _index_template/logs-staging@template-custom
   "version": 1
 }
 
+# Logs du test de charge Gatling (workflow logstash-perf : appname=*-perf).
+# Sans ce template, logs-perf-default tombe sur le template built-in logs-*-*
+# d'Elasticsearch → mappings non iso-prod (pas d'ECS custom, pas de logsdb) et
+# rétention infinie sur le cluster. Miroir de logs-prod, avec la rétention
+# courte logs-perf-retention.
+PUT _index_template/logs-perf@template-custom
+{
+  "index_patterns": ["logs-perf-default"],
+  "priority": 250,
+  "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "logs@custom", "logs-perf-retention-custom"],
+  "ignore_missing_component_templates": ["logs@custom"],
+  "template": {
+    "settings": { "index": { "mode": "logsdb" } },
+    "mappings": { "_source": { "mode": "synthetic" } }
+  },
+  "data_stream": { "hidden": false, "allow_custom_routing": false },
+  "allow_auto_create": true,
+  "_meta": { "description": "Logs de test de perf Logstash (Gatling), purgés après chaque run", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
 PUT _index_template/logs-router
 {
   "index_patterns": ["logs-router-*"],
