@@ -35,10 +35,11 @@ PUT _index_template/logs-staging@template-custom
 }
 
 # Logs du test de charge Gatling (workflow logstash-perf : appname=*-perf).
-# Sans ce template, logs-perf-default tombe sur le template built-in logs-*-*
-# d'Elasticsearch → mappings non iso-prod (pas d'ECS custom, pas de logsdb) et
-# rétention infinie sur le cluster. Miroir de logs-prod, avec la rétention
-# courte logs-perf-retention.
+# Sans ce template, logs-perf-default tomberait sur le template built-in
+# logs-*-* d'Elasticsearch, dont la policy ILM (`logs`) n'a PAS de phase
+# delete → rétention infinie sur le cluster de prod. Ce template = miroir de
+# logs-prod (mêmes composants → mesures de perf représentatives) + la
+# rétention courte logs-perf-retention.
 PUT _index_template/logs-perf@template-custom
 {
   "index_patterns": ["logs-perf-default"],
@@ -62,8 +63,8 @@ PUT _index_template/logs-router
   "ignore_missing_component_templates": ["logs@custom"],
   "data_stream": { "hidden": false, "allow_custom_routing": false },
   "allow_auto_create": true,
-  "_meta": { "description": "Logs router Scalingo (prod + staging)", "managed_by": "pass-emploi-tools" },
-  "version": 2
+  "_meta": { "description": "Logs router Scalingo (prod + staging + perf)", "managed_by": "pass-emploi-tools" },
+  "version": 3
 }
 
 # ═════════════════════════════════════════════════════════════════════════════
