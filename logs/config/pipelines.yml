@@ -52,3 +52,22 @@
   # Chaque log est indépendant : l'ordre d'indexation dans ES n'a aucune importance.
   # false évite l'overhead de synchronisation du mode ordonné.
   pipeline.ordered: false
+  # Dead Letter Queue : Capte les events rejetés définitivement par ES (erreurs de mapping, documents trop grands)
+  dead_letter_queue.enable: true
+  dead_letter_queue.max_bytes: 256mb
+  dead_letter_queue.storage_policy: drop_older
+  dead_letter_queue.retain.age: 2d
+  # Chemin explicite pour que le pipeline lecteur sache où la trouver
+  path.dead_letter_queue: "/app/data/dead_letter_queue"
+
+- pipeline.id: dead_letter_queue
+  path.config: "/app/pipeline-dlq-logstash.conf"
+  # Mémoire suffisante ici : la PQ du pipeline ingest est le vrai buffer.
+  queue.type: memory
+  # Workers : configurable via variable d'env Scalingo (défaut : 1).
+  pipeline.workers: "${LOGSTASH_DLQ_WORKERS:1}"
+  # Chaque log est indépendant : l'ordre d'indexation dans ES n'a aucune importance.
+  # false évite l'overhead de synchronisation du mode ordonné.
+  pipeline.ordered: false
+  # Ce pipeline lit une DLQ mais n'en produit pas lui-même.
+  dead_letter_queue.enable: false

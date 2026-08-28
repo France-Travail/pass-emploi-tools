@@ -16,7 +16,7 @@ apps (api / web / connect)  ──drain HTTP Scalingo──►  Logstash mutuali
 ```
 
 - Infra : `pass-emploi-tools/logs/` — app Scalingo `pass-emploi-logstash-prod`,
-  région `osc-secnum-fr1`, buildpack `Scalingo/logstash-buildpack`.
+  région `osc-secnum-fr1`, buildpacks custom dans `pass-emploi-tools` (répertoires `logstash/` et `elastic-agent/`).
 - Chaque app source a **son propre drain** (indépendant) vers l'app logstash ; le
   **router Scalingo** répartit sur les instances logstash.
 - **Architecture 2 pipelines** (depuis 2026-07) : pipeline `ingest` (ACK rapide,
@@ -170,11 +170,14 @@ Il se déclenche automatiquement sur les PR modifiant `logs/**`, ou manuellement
 
 **Changements et configurations appliqués :**
 - **3× XL** (2 Go), heap **`-Xms1g -Xmx1g`** via `JAVA_OPTS` (variable Scalingo).
-- **Logstash 9.4.2** — buildpack aligné sur le commit de release (`ba050c2e`).
-  ⚠️ **Alignement des versions** : Elastic Cloud est en **9.1.5**, Logstash en **9.4.2** —
+- **Logstash 9.4.5** — buildpack custom dans `pass-emploi-tools/logstash/`.
+- **Elastic Agent 9.4.5** — buildpack custom dans `pass-emploi-tools/elastic-agent/`, installé en mode colocalisé pour le monitoring Logstash via Fleet.
+- **Heartbeat** — buildpack `SocialGouv/heartbeat-buildpack` (défaut 7.16.1, surchargeable via `HEARTBEAT_VERSION` sur Scalingo). ⚠️ Version à vérifier sur Scalingo.
+- **APM** — géré via Fleet/Elastic Cloud, version pilotée par le plan Elastic Cloud (9.1.5).
+  ⚠️ **Alignement des versions** : Elastic Cloud est en **9.1.5**, Logstash et Elastic Agent en **9.4.5** —
   les versions majeures sont alignées (9.x/9.x), mais il faudra **monter Elastic Cloud à 9.4.x**
-  pour être en phase avec Logstash et bénéficier de toutes les fonctionnalités.
-- **Java 21** (upgrade depuis Java 11 via buildpack Scalingo).
+  pour être en phase et bénéficier de toutes les fonctionnalités. Heartbeat et APM doivent également être alignés.
+- **Java 21** (upgrade depuis Java 11 via buildpack custom).
 - **`pipeline.ordered: false`** sur les 2 pipelines (supprime l'overhead de synchronisation).
 - **`pipeline.batch.size: 250`** sur le pipeline `process` (défaut Logstash = 125) :
   réduit les round-trips ES → meilleur débit d'indexation.
@@ -225,10 +228,7 @@ Il se déclenche automatiquement sur les PR modifiant `logs/**`, ou manuellement
    - En dernier recours : broker Kafka/Redis (option B) pour découpler complètement
      le volume d'ingestion du débit ES.
 
-3. **Métriques à surveiller avec la nouvelle architecture** : installer et activer un
-   **Elastic Agent de monitoring** sur l'app Logstash pour avoir dans Kibana :
-   - Débit d'entrée/sortie des 2 pipelines (events/s)
-   - Taille de la PQ (octets utilisés vs `queue.max_bytes`)
-   - Latence du pipeline `process` (temps de traitement par batch)
-   - Alertes sur PQ > 80% ou taux d'erreur ES > 0
-   Configuration : dashboard Scalingo → ajouter l'Elastic Agent dans le Procfile.
+3. **Métriques à surveiller avec la nouvelle architecture** : 
+   **Elastic Agent de monitoring installé en mode colocalisé** (buildpack `pass-emploi-tools/elastic-agent/`, lancé 
+   via `start.sh`). Pour avoir dans Kibana les métriques Logstash (débit pipelines, taille PQ, latence, alertes), 
+   il faut configurer Fleet. Voir le guide complet : [`elastic-agent/README.md`](../../elastic-agent/README.md).

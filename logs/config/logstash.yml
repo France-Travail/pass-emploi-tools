@@ -32,7 +32,13 @@ log.level: warn
 log.format: json
 
 # --- Monitoring Logstash ---
-# xpack.monitoring est deprecated depuis Logstash 8.x.
+# xpack.monitoring est deprecated depuis Logstash 8.x et supprimé en 9.x.
 # La solution recommandée est Elastic Agent Fleet avec l'intégration Logstash,
 # qui collecte les métriques via l'API locale /_node/stats (port 9600).
 # Cf. https://www.elastic.co/docs/reference/logstash/monitoring-logstash-with-elastic-agent
+# API locale utilisée par Elastic Agent pour collecter les métriques.
+api.enabled: true
+api.http.host: "127.0.0.1"
+api.http.port: 9600
+# Permet de distinguer facilement les environnements dans l'API.
+api.environment: "${ENVIRONMENT}"

@@ -10,6 +10,7 @@ connect, web) et à l'infra mutualisée (`pass-emploi-tools/logs/`).
 | [kibana.md](./kibana.md) | Use cases Kibana : investigation incident, reporting métier, monitoring tech, alertes |
 | [couverture-api.md](./couverture-api.md) | Spécifique pass-emploi-api : taxonomie, couverture, validation E2E RDV Milo, limites connues |
 | [postmortem-logstash-5xx-2026-06.md](./postmortem-logstash-5xx-2026-06.md) | Post-mortem 5xx/latence Logstash : fonctionnement JVM/Netty/JRuby/GC, indicateurs (`ns_*`, GC log), diagnostic, correctif XL |
+| [runbook-astreinte-logstash.md](./runbook-astreinte-logstash.md) | Runbook d'astreinte : 4 scénarios de panne (backpressure ES, gel GC, DLQ, crash conteneur) — indicateurs Kibana, KQL, actions correctives |
 
 > **Voisin** : la **résilience/scaling de l'ingestion** (blackouts, quarantaine du
 > drain Scalingo, next steps x10) est un sujet à part →
