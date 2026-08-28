@@ -17,6 +17,11 @@ Templates et politiques de rétention ES custom de pass-emploi : pipeline logs
 > component templates/pipelines x-pack & APM (`logs@mappings`, `apm@mappings`,
 > `ecs@mappings`, `*-fallback@ilm`, `*@default-pipeline`…, référencés seulement), et
 > tout l'écosystème système (Kibana, Fleet, Security…).
+>
+> **Alertes Kibana** : les définitions des alertes de supervision Logstash (DLQ,
+> index erreurs, absence de logs, webhook Scalingo) sont dans
+> [`4-kibana-alerts.md`](./4-kibana-alerts.md). À configurer manuellement dans
+> Kibana → Stack Management → Rules.
 
 ## Vue d'ensemble
 

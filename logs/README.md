@@ -1,56 +1,47 @@
-# Logstash boilerplate
+# Logstash + Elastic Agent — pass-emploi-tools/logs
 
-This repository contains a boilerplate for deploying logstash on Scalingo.
+Application Scalingo déployant **Logstash** et **Elastic Agent** en mode colocalisé :
+- Logstash reçoit les drains de logs des apps Scalingo (api, connect, web) et les ingère dans Elasticsearch
+- Elastic Agent monitore Logstash via l'API locale (`/_node/stats` sur le port 9600) et envoie les métriques à Fleet
 
-You have three different configuration available:
+## Buildpacks
 
-* `logstash.conf`: this configuration will listen for http request
-  authenticated by the authentication information passed in the `USER` and
-  `PASSWORD` environment variables and send it to and elasticsearch database.
-  This will also parse url defined variables.
-* `logstash-json.conf` this configuration is based on the previous one but if
-  the content is a valid json it will parse it
-* `logstash-kv.conf` this configuration is based on `logstash.conf` but it will
-  also parse the content to search and parse patterns like `key=value`
+Définis dans `.buildpacks`, dans cet ordre :
 
-By default we are using the `logstash.conf` configuration, but you can use
-another one by changing the `web` process of the `Procfile` from: ``` web:
-bin/logstash -f logstash.conf ```
-
-To:
 ```
-web: bin/logstash -f logstash-json.conf
+https://github.com/France-Travail/elastic-agent-buildpack
+https://github.com/France-Travail/logstash-buildpack
 ```
 
-To:
-```
-web: bin/logstash -f logstash-kv.conf
-```
+## Variables d'environnement
 
-## Configuration
+### Logstash
 
-You will need to configure the following environment variables:
+| Variable                   | Description                                                                              |
+|----------------------------|------------------------------------------------------------------------------------------|
+| `LOGSTASH_VERSION`         | Version de Logstash à installer (ex: `9.4.5`)                                            |
+| `ENVIRONMENT`              | Environnement de fallback (`prod`, `staging`, `perf`…) si non détecté via appname        |
+| `ELASTICSEARCH_URL`        | URL du cluster Elasticsearch, credentials inclus (ex: `https://user:password@host:port`) |
+| `USER`                     | Utilisateur HTTP pour l'authentification du drain Scalingo                               |
+| `PASSWORD`                 | Mot de passe HTTP pour l'authentification du drain Scalingo                              |
+| `LOGSTASH_INGEST_THREADS`  | Threads Netty du pipeline ingest (optionnel, défaut : `4`)                               |
 
-* `USER` the username that you will use to authenticate against your logstash
-  instance
-* `PASSWORD` the password that you will use to authenticate against your
-  logstash instance
-* `ELASTICSEARCH_URL` the URL of your elasticsearch instance. (If you use our
-  Elasticsearch addon, this will be automatically added)
+### Elastic Agent (Fleet)
 
-You will also change the `change-me` index name in the output section of your
-logstash configuration.
+| Variable                    | Description                                                                            |
+|-----------------------------|----------------------------------------------------------------------------------------|
+| `ELASTIC_AGENT_VERSION`     | Version d'Elastic Agent à installer (ex: `9.4.5`) — doit être ≤ version du cluster ES  |
+| `ELASTIC_AGENT_FLAVOR`      | Flavor OCI : `basic` (défaut), `servers`, `complete`                                   |
+| `FLEET_ENROLL`              | Mettre à `1` pour activer l'enrollment Fleet                                           |
+| `FLEET_URL`                 | URL du Fleet Server (ex: `https://xxx.fleet.eu-west-1.aws.elastic-cloud.com:443`)      |
+| `FLEET_ENROLLMENT_TOKEN`    | Token d'enrollment Fleet                                                               |
+| `FLEET_REPLACE_TOKEN`       | Token de remplacement pour les redéploiements                                          |
+| `ELASTIC_AGENT_TAGS`        | Tags Fleet (ex: `scalingo,pass-emploi-logstash`)                                       |
+| `ELASTIC_AGENT_GO_OPTS`     | Options Go runtime (ex: `GOMEMLIMIT=256MiB`)                                           |
 
-## Updating Logstash version
+> **`ELASTIC_AGENT_ID` n'est pas à configurer dans Scalingo.** Il est dérivé automatiquement
+> dans `start.sh` à partir du `HOSTNAME` du container (`uuid5(NAMESPACE_DNS, HOSTNAME)`),
+> ce qui garantit un UUID stable et unique par instance (`web-1`, `web-2`…) sans configuration manuelle.
 
-To update your application with a more recent version of version of **Logstash**,
-the most straightforward method is to deploy your application. The
-[used buildpack](https://github.com/Scalingo/logstash-buildpack) is defining the
-[used version](https://github.com/Scalingo/logstash-buildpack/blob/master/bin/compile#L9),
-which can be overrided with the environment variable `LOGSTASH_VERSION`.
-
-To trigger the new deployment, either use:
-
-- The *Manual Deployment* feature of our GitHub or Gitlab
-- `git push` deployment after adding an empty commit to your project:
-  `git commit --allow-empty -m "New deployment to update logstash"`
+Pour la configuration Fleet complète (création de la policy, enrollment tokens, etc.), voir le
+[README du buildpack elastic-agent](https://github.com/France-Travail/elastic-agent-buildpack).
