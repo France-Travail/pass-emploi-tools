@@ -45,7 +45,7 @@ PUT _ilm/policy/logs-perf-retention
   }
 }
 
-# Erreurs de traitement Logstash — 30 j.
+# Erreurs de traitement Logstash.
 # Indexés par le pipeline "process" quand un event déclenche _mutate_error,
 # _jsonparsefailure, etc. Volume faible (anomalies) mais à conserver assez
 # longtemps pour investiguer une régression de pipeline.
@@ -60,10 +60,10 @@ PUT _ilm/policy/logs-logstash-errors-retention
   }
 }
 
-# Events en Dead Letter Queue Logstash — 30 j.
+# Events en Dead Letter Queue Logstash.
 # Indexés par le pipeline "dead_letter_queue" quand dlq_on_failed_indexing
 # renvoie un event (rejet ES : conflit de mapping, document trop grand, etc.).
-# Même rétention que logs-logstash-errors : fenêtre d'investigation identique.
+# Même fenêtre d'investigation que logs-logstash-errors.
 PUT _ilm/policy/logs-logstash-dlq-retention
 {
   "policy": {

@@ -90,14 +90,14 @@ PUT _component_template/logs-router@settings
 PUT _component_template/logs-logstash-errors-retention-custom
 {
   "template": { "settings": { "index": { "lifecycle": { "name": "logs-logstash-errors-retention" } } } },
-  "_meta": { "description": "Retention logs d'erreurs de traitement Logstash (30j)", "managed_by": "pass-emploi-tools" },
+  "_meta": { "description": "Retention logs d'erreurs de traitement Logstash", "managed_by": "pass-emploi-tools" },
   "version": 1
 }
 
 PUT _component_template/logs-logstash-dlq-retention-custom
 {
   "template": { "settings": { "index": { "lifecycle": { "name": "logs-logstash-dlq-retention" } } } },
-  "_meta": { "description": "Retention events Dead Letter Queue Logstash (30j)", "managed_by": "pass-emploi-tools" },
+  "_meta": { "description": "Retention events Dead Letter Queue Logstash", "managed_by": "pass-emploi-tools" },
   "version": 1
 }
 
