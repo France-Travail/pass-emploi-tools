@@ -57,18 +57,66 @@ http.response.status_code: 429
 Grouper par `service.name` → si les 429 sont répartis sur toutes les apps, c'est le
 mode A (backpressure ES). Si concentrés sur une seule app → voir scénario 4.
 
+### Cause racine connue — management queue ES saturée
+
+La backpressure observée en juillet 2026 avait pour cause racine une **saturation de la
+management queue Elasticsearch** (file interne qui orchestre les opérations ILM, merges,
+rollovers). Quand cette queue est pleine, ES ralentit l'indexation → les workers
+`process` de Logstash se bloquent sur les bulk requests → le bus pipeline-to-pipeline
+(entre `ingest` et `process`) se remplit → les workers `ingest` se bloquent → l'input
+HTTP ralentit → les drains reçoivent des 429 → quarantaine.
+
+> **Important** : la Persistent Queue de `ingest` n'était **pas** pleine (41 MB / 512 MB)
+> lors de l'incident. La PQ protège contre les redémarrages, mais pas contre la
+> contre-pression en temps réel du bus pipeline-to-pipeline (qui est une
+> `LinkedBlockingQueue` en mémoire, séparée de la PQ disque). La PQ non pleine ne
+> signifie donc **pas** l'absence de backpressure.
+
 ### Actions correctives
 
-1. **Vérifier l'état du cluster ES** : Kibana → Stack Monitoring → Elasticsearch.
-   Chercher des nœuds en rouge, une indexation throttlée, ou des rejets de bulk.
-2. **Vérifier la Persistent Queue** : si `logstash.pipeline.total.queues.events` monte
-   mais ne dépasse pas `queue.max_bytes` (512 Mo), la PQ absorbe le blip → attendre
-   que ES se rétablisse.
-3. **Si la PQ est pleine** (`queues.events` atteint le plafond) : la contre-pression
-   remonte jusqu'à l'input HTTP → risque de quarantaine drain.
-   Scaler le plan Elastic Cloud ou réduire temporairement `pipeline.batch.size`.
+1. **Vérifier l'état du cluster ES via AutoOps** :
+   Kibana → [AutoOps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/management/data/auto_ops)
+   → onglet **Indexing** → regarder :
+   - **Indexing rate** : une chute soudaine (ex. de 5 000 docs/s à ~0) confirme le
+     ralentissement ES.
+   - **Management queue size** : si elle monte, ES est occupé à traiter des opérations
+     internes (merges, rollovers ILM) et ne peut plus indexer normalement.
+   - **Recommandations AutoOps** : "Template Optimization", "Empty Indices" — ces
+     signaux indiquent un cluster surchargé par trop de shards.
+
+2. **Vérifier la Persistent Queue** : `logstash.pipeline.total.queues.events` dans
+   Pipeline Health Report. La PQ peut être faible même en cas de backpressure sévère
+   (voir note ci-dessus). Se concentrer sur `queue_backpressure.current` plutôt que
+   sur la profondeur de la PQ.
+
+3. **Si la management queue ES est saturée** (cause racine) :
+   - **Court terme** : vérifier la policy ILM de `logs-prod-default` dans
+     Kibana → Stack Management → Index Lifecycle Policies. Si le seuil de rollover
+     est ≥ 45 GB, le réduire à **20 GB** pour éviter les gros merges :
+     ```
+     # Dans la policy ILM → Phase Hot → Rollover
+     max_primary_shard_size: 20gb
+     ```
+     Appliquer la même correction à `logs-router-prod-default`.
+   - **Moyen terme** : supprimer les indices vides (signalés par AutoOps "Empty Indices")
+     pour réduire le nombre de shards. Chaque index supprimé = 2 shards en moins
+     (1 primary + 1 replica). En Dev Tools :
+     ```
+     # Lister les indices vides sur les data streams gérés par Logstash
+     GET _cat/indices/logs-*?v&h=index,docs.count,store.size&s=docs.count:asc
+     # Supprimer uniquement les indices à docs.count=0 sur nos data streams
+     # ⚠️ Ne jamais toucher aux indices .ds-* système (APM, Fleet, Kibana)
+     DELETE logs-perf-default-YYYY.MM.DD-000XXX
+     ```
+
 4. **Si ES est sain** mais Logstash bloque : vérifier les logs Logstash sur Scalingo
    (onglet Logs de l'app) pour des `ConnectTimeout` ou `BulkIndexError`.
+
+5. **Si la backpressure persiste malgré ES sain** : scaler le plan Elastic Cloud ou
+   réduire temporairement la taille des batches via la variable d'environnement
+   Scalingo `LOGSTASH_PROCESS_BATCH_SIZE` (défaut : 250). Réduire à 50 diminue la
+   pression sur les bulk requests ES au prix d'un débit légèrement inférieur.
+   Remettre à 250 une fois ES stabilisé.
 
 ### Références
 
