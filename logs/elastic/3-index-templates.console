@@ -118,3 +118,16 @@ POST logs-router-staging-default/_rollover
 POST logs-prod-default/_rollover
 POST logs-staging-default/_rollover
 POST logs-perf-default/_rollover
+
+# logs-logstash-errors et logs-logstash-dlq : rollover one-shot après création
+# des templates custom. Sans ce rollover, les backing indices créés avant
+# l'application du template restent avec ilm_policy: logs (built-in, sans phase
+# delete) au lieu de la policy de rétention dédiée. À rejouer si les data
+# streams existaient déjà.
+POST logs-logstash-errors-prod-default/_rollover
+POST logs-logstash-errors-staging-default/_rollover
+POST logs-logstash-errors-perf-default/_rollover
+
+POST logs-logstash-dlq-prod-default/_rollover
+POST logs-logstash-dlq-staging-default/_rollover
+POST logs-logstash-dlq-perf-default/_rollover
