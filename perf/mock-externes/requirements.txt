@@ -1,0 +1,4 @@
+fastapi
+uvicorn
+pyjwt[crypto]
+python-multipart
