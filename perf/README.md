@@ -44,8 +44,10 @@ Gatling ──► connect-perf ──► mock-externes   (IdP France Travail)
 2. **`mock-externes` lancé**, avec `connect` et l'API branchés dessus : voir
    [`mock-externes/README.md`](./mock-externes/README.md) pour les variables des
    deux côtés.
-3. **Les jeunes du pool semés en base**, avec un `id_authentification` égal au
-   `sub` que rend le mock (`{POOL_PREFIX}{i}`).
+3. **Les jeunes du pool semés en base** : voir [`seed/README.md`](./seed/README.md).
+   Le marqueur d'environnement se pose une fois, à la main ; le seed se rejoue
+   avant chaque tir. `pool_prefix` et `pool_size` doivent valoir exactement
+   `POOL_PREFIX` et `POOL_SIZE` du mock.
 
 > **État d'avancement.** `mock-externes` est en place (lot 1). La simulation
 > Gatling se logue encore avec un `USER_TOKEN` fourni à la main : le login via
