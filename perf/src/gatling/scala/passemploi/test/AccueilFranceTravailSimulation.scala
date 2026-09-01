@@ -15,7 +15,7 @@ import java.time.temporal.ChronoUnit
 // dans perf/README.md.
 //
 // Prérequis : le jeune FT existe en base sur l'environnement cible, l'API
-// pointe sur perf/api-simulator (cf. son README), et USER_TOKEN est un JWT
+// pointe sur perf/mock-externes (cf. son README), et USER_TOKEN est un JWT
 // valide et non expiré de ce jeune. Ne JAMAIS cibler la production.
 //
 // Variables d'environnement :
@@ -36,7 +36,7 @@ class AccueilFranceTravailSimulation extends Simulation {
 
   require(
     userToken.nonEmpty,
-    "USER_TOKEN manquant : JWT du jeune FT, signé par le Keycloak dont l'api-simulator sert les clés"
+    "USER_TOKEN manquant : JWT du jeune FT émis par connect. Transitoire — le lot 3 remplace cette variable par un login via connect"
   )
 
   val maxUsers: Int                  = Helpers.getProperty("MAX_USERS", "10").toInt
