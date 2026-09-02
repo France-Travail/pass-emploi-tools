@@ -45,6 +45,35 @@ PUT _ilm/policy/logs-perf-retention
   }
 }
 
+# Erreurs de traitement Logstash.
+# Indexés par le pipeline "process" quand un event déclenche _mutate_error,
+# _jsonparsefailure, etc. Volume faible (anomalies) mais à conserver assez
+# longtemps pour investiguer une régression de pipeline.
+# Rollover à 1 GB : ces index sont petits, on évite les gros shards.
+PUT _ilm/policy/logs-logstash-errors-retention
+{
+  "policy": {
+    "phases": {
+      "hot": { "min_age": "0ms", "actions": { "rollover": { "max_age": "30d", "max_primary_shard_size": "1gb" } } },
+      "delete": { "min_age": "30d", "actions": { "delete": {} } }
+    }
+  }
+}
+
+# Events en Dead Letter Queue Logstash.
+# Indexés par le pipeline "dead_letter_queue" quand dlq_on_failed_indexing
+# renvoie un event (rejet ES : conflit de mapping, document trop grand, etc.).
+# Même fenêtre d'investigation que logs-logstash-errors.
+PUT _ilm/policy/logs-logstash-dlq-retention
+{
+  "policy": {
+    "phases": {
+      "hot": { "min_age": "0ms", "actions": { "rollover": { "max_age": "30d", "max_primary_shard_size": "1gb" } } },
+      "delete": { "min_age": "30d", "actions": { "delete": {} } }
+    }
+  }
+}
+
 # Logs applicatifs staging — 14 j (jetable).
 PUT _ilm/policy/logs-staging-retention
 {

@@ -87,6 +87,20 @@ PUT _component_template/logs-router@settings
 
 # Briques de rétention (une par flux, lifecycle uniquement) — pattern homogène
 # avec les briques `<flux>@custom` de observabilite.console.
+PUT _component_template/logs-logstash-errors-retention-custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "logs-logstash-errors-retention" } } } },
+  "_meta": { "description": "Retention logs d'erreurs de traitement Logstash", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+PUT _component_template/logs-logstash-dlq-retention-custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "logs-logstash-dlq-retention" } } } },
+  "_meta": { "description": "Retention events Dead Letter Queue Logstash", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
 PUT _component_template/logs-prod-retention-custom
 {
   "template": { "settings": { "index": { "lifecycle": { "name": "logs-prod-retention" } } } },

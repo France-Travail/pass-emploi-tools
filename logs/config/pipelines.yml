@@ -44,8 +44,10 @@
   # process devient le goulot (mesurable via les tests de charge Gatling).
   pipeline.workers: "${LOGSTASH_PROCESS_WORKERS:1}"
   # Batch plus grand = moins de round-trips ES = meilleur débit.
-  # 250 est un bon point de départ ; augmenter si ES le supporte.
-  pipeline.batch.size: 250
+  # Configurable via variable d'env Scalingo (défaut : 250).
+  # Réduire LOGSTASH_PROCESS_BATCH_SIZE temporairement (ex: 50) en cas de
+  # backpressure ES pour diminuer la pression sur les bulk requests.
+  pipeline.batch.size: "${LOGSTASH_PROCESS_BATCH_SIZE:250}"
   # Délai d'attente pour remplir un batch avant de l'envoyer.
   # 50ms : bon compromis latence/débit pour des logs.
   pipeline.batch.delay: 50

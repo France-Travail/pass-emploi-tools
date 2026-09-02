@@ -12,21 +12,21 @@ Définitions des alertes de supervision de la chaîne d'ingestion Logstash.
 
 ## Récapitulatif des alertes
 
-| #  | Signal                                        | Index / source                              | Condition                      | Fréquence | Sévérité    |
-| -- |-----------------------------------------------|---------------------------------------------| ------------------------------ | --------- | ----------- |
-| 1a | DLQ non vide — prod                           | `logs-logstash-dlq-prod-default`            | `Is above 0` / 5 min           | 1 min     | 🚨 Critical |
-| 1b | DLQ non vide — staging/perf                   | `logs-logstash-dlq-staging/perf-default`    | `Is above 0` / 5 min           | 5 min     | ⚠️ Warning   |
-| 2a | Erreurs traitement — prod                     | `logs-logstash-errors-prod-default`         | `Is above 0` / 5 min           | 1 min     | 🚨 Critical |
-| 2b | Erreurs traitement — staging/perf             | `logs-logstash-errors-staging/perf-default` | `Is above 0` / 5 min           | 5 min     | ⚠️ Warning   |
-| 3a | Silence logs applicatifs — prod               | `logs-prod-default`                         | `Is below or equals 0` / 5 min | 2 min     | 🚨 Critical |
-| 3b | Silence logs router — prod                    | `logs-router-prod-default`                  | `Is below or equals 0` / 5 min | 2 min     | 🚨 Critical |
-| 3c | Silence logs applicatifs — staging/perf       | `logs-staging/perf-default`                 | `Is below or equals 0` / 5 min | 5 min     | ⚠️ Warning   |
-| 3d | Silence logs router — staging/perf            | `logs-router-staging/perf-default`          | `Is below or equals 0` / 5 min | 5 min     | ⚠️ Warning   |
-| 4a | Backpressure — workers bloqués — prod         | `metrics-logstash.pipeline-default`         | `Is above 0.5` / 5 min         | 2 min     | 🚨 Critical |
-| 4b | Backpressure — workers bloqués — staging/perf | `metrics-logstash.pipeline-default`         | `Is above 0.5` / 5 min         | 5 min     | ⚠️ Warning   |
-| 5a | Heap JVM élevé — prod                         | `metrics-logstash.node-default`             | `Is above 85` / 5 min          | 2 min     | 🚨 Critical |
-| 5b | Heap JVM élevé — staging/perf                 | `metrics-logstash.node-default`             | `Is above 85` / 5 min          | 5 min     | ⚠️ Warning   |
-| 6  | Restart conteneur                             | Scalingo webhook                            | `app_crashed/app_restarted`    | —         | 🚨 Critical |
+| #  | Signal                                        | Index / source                              | Condition                      | Fréquence | Throttle | Sévérité    |
+| -- |-----------------------------------------------|---------------------------------------------| ------------------------------ | --------- | -------- | ----------- |
+| 1a | DLQ non vide — prod                           | `logs-logstash-dlq-prod-default`            | `Is above 0` / 5 min           | 1 min     | 6h       | 🚨 Critical |
+| 1b | DLQ non vide — staging/perf                   | `logs-logstash-dlq-staging/perf-default`    | `Is above 0` / 5 min           | 5 min     | 6h       | ⚠️ Warning   |
+| 2a | Erreurs traitement — prod                     | `logs-logstash-errors-prod-default`         | `Is above 0` / 5 min           | 1 min     | 6h       | 🚨 Critical |
+| 2b | Erreurs traitement — staging/perf             | `logs-logstash-errors-staging/perf-default` | `Is above 0` / 5 min           | 5 min     | 6h       | ⚠️ Warning   |
+| 3a | Silence logs applicatifs — prod               | `logs-prod-default`                         | `Is below or equals 0` / 5 min | 2 min     | 6h       | 🚨 Critical |
+| 3b | Silence logs router — prod                    | `logs-router-prod-default`                  | `Is below or equals 0` / 5 min | 2 min     | 6h       | 🚨 Critical |
+| 3c | Silence logs applicatifs — staging/perf       | `logs-staging/perf-default`                 | `Is below or equals 0` / 5 min | 5 min     | 6h       | ⚠️ Warning   |
+| 3d | Silence logs router — staging/perf            | `logs-router-staging/perf-default`          | `Is below or equals 0` / 5 min | 5 min     | 6h       | ⚠️ Warning   |
+| 4a | Backpressure — workers bloqués — prod         | `metrics-logstash.pipeline-default`         | `Is above 0.5` / 5 min         | 2 min     | 6h       | 🚨 Critical |
+| 4b | Backpressure — workers bloqués — staging/perf | `metrics-logstash.pipeline-default`         | `Is above 0.5` / 5 min         | 5 min     | 6h       | ⚠️ Warning   |
+| 5a | Heap JVM élevé — prod                         | `metrics-logstash.node-default`             | `Is above 85` / 5 min          | 2 min     | 6h       | 🚨 Critical |
+| 5b | Heap JVM élevé — staging/perf                 | `metrics-logstash.node-default`             | `Is above 85` / 5 min          | 5 min     | 6h       | ⚠️ Warning   |
+| 6  | Restart conteneur                             | Scalingo webhook                            | `app_crashed/app_restarted`    | —         | —        | 🚨 Critical |
 
 ---
 
@@ -73,6 +73,7 @@ erreur de transformation) qui n'a **pas** été indexé dans `logs-*`.
 | **Fenêtre**             | 5 min                                                                                                                                                                                                         |
 | **Fréquence**           | 1 min                                                                                                                                                                                                         |
 | **Sévérité**            | Critical                                                                                                                                                                                                      |
+| **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                              |
 | **Action**              | Connecteur Kibana **Mattermost-monitoring-production** — voir body ci-dessous                                                                                                                                 |
 | **Related dashboards**  | `[Metrics Logstash] Pipeline Health Report`                                                                                                                                                                   |
 | **Investigation guide** | Voir [runbook scénario — Rejet de mapping / DLQ](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue) |
@@ -84,18 +85,19 @@ erreur de transformation) qui n'a **pas** été indexé dans `logs-*`.
 
 ### 1b — DLQ staging / perf (Warning)
 
-| Paramètre              | Valeur                                                                                                                                                                                                         |
-| ---------------------- |--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Rule name**          | `Logstash - Hors-Prod - Détection présence event dans DLQ`                                                                                                                                                     |
-| **Type**               | Elasticsearch query rule                                                                                                                                                                                       |
-| **Index**              | `logs-logstash-dlq-staging-default,logs-logstash-dlq-perf-default`                                                                                                                                             |
-| **Condition**          | `Is above` `0`                                                                                                                                                                                                 |
-| **Fenêtre**            | 5 min                                                                                                                                                                                                          |
-| **Fréquence**          | 5 min                                                                                                                                                                                                          |
-| **Sévérité**           | Warning                                                                                                                                                                                                        |
-| **Action**             | Connecteur Kibana **Mattermost-monitoring-staging** — voir body ci-dessous                                                                                                                                     |
-| **Related dashboards** | `[Metrics Logstash] Pipeline Health Report`                                                                                                                                                                    |
-| **Investigation guide** | Voir [runbook scénario — Rejet de mapping / DLQ](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue) |
+| Paramètre               | Valeur                                                                                                                                                                                                         |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Rule name**           | `Logstash - Hors-Prod - Détection présence event dans DLQ`                                                                                                                                                     |
+| **Type**                | Elasticsearch query rule                                                                                                                                                                                       |
+| **Index**               | `logs-logstash-dlq-staging-default,logs-logstash-dlq-perf-default`                                                                                                                                             |
+| **Condition**           | `Is above` `0`                                                                                                                                                                                                 |
+| **Fenêtre**             | 5 min                                                                                                                                                                                                          |
+| **Fréquence**           | 5 min                                                                                                                                                                                                          |
+| **Sévérité**            | Warning                                                                                                                                                                                                        |
+| **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                               |
+| **Action**              | Connecteur Kibana **Mattermost-monitoring-staging** — voir body ci-dessous                                                                                                                                     |
+| **Related dashboards**  | `[Metrics Logstash] Pipeline Health Report`                                                                                                                                                                    |
+| **Investigation guide** | Voir [runbook scénario — Rejet de mapping / DLQ](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)  |
 
 **Body du webhook** :
 ```json
@@ -125,18 +127,19 @@ Logstash (`_mutate_error`, `_jsonparsefailure`, `_rubyexception`…) et n'ont **
 
 ### 2a — Erreurs prod (Critical)
 
-| Paramètre              | Valeur                                                                                                                                                                                                         |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Rule name**          | `Logstash - Prod - Détection erreurs pipeline process`                                                                                                                                                         |
-| **Type**               | Elasticsearch query rule                                                                                                                                                                                       |
-| **Index**              | `logs-logstash-errors-prod-default`                                                                                                                                                                            |
-| **Condition**          | `Is above` `0`                                                                                                                                                                                                 |
-| **Fenêtre**            | 5 min                                                                                                                                                                                                          |
-| **Fréquence**          | 1 min                                                                                                                                                                                                          |
-| **Sévérité**           | Critical                                                                                                                                                                                                       |
-| **Action**             | Connecteur Kibana **Mattermost-monitoring-production** — voir body ci-dessous                                                                                                                                  |
-| **Related dashboards** | `[Metrics Logstash] Pipeline Health Report`                                                                                                                                                                    |
-| **Investigation guide** | Voir [runbook scénario — Rejet de mapping / DLQ](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue) |
+| Paramètre               | Valeur                                                                                                                                                                                                         |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Rule name**           | `Logstash - Prod - Détection erreurs pipeline process`                                                                                                                                                         |
+| **Type**                | Elasticsearch query rule                                                                                                                                                                                       |
+| **Index**               | `logs-logstash-errors-prod-default`                                                                                                                                                                            |
+| **Condition**           | `Is above` `0`                                                                                                                                                                                                 |
+| **Fenêtre**             | 5 min                                                                                                                                                                                                          |
+| **Fréquence**           | 1 min                                                                                                                                                                                                          |
+| **Sévérité**            | Critical                                                                                                                                                                                                       |
+| **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                               |
+| **Action**              | Connecteur Kibana **Mattermost-monitoring-production** — voir body ci-dessous                                                                                                                                  |
+| **Related dashboards**  | `[Metrics Logstash] Pipeline Health Report`                                                                                                                                                                    |
+| **Investigation guide** | Voir [runbook scénario — Rejet de mapping / DLQ](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)  |
 
 **Body du webhook** :
 ```json
@@ -145,18 +148,19 @@ Logstash (`_mutate_error`, `_jsonparsefailure`, `_rubyexception`…) et n'ont **
 
 ### 2b — Erreurs staging / perf (Warning)
 
-| Paramètre              | Valeur                                                                                                                                                                                                         |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Rule name**          | `Logstash - Hors-Prod - Détection erreurs pipeline process`                                                                                                                                                    |
-| **Type**               | Elasticsearch query rule                                                                                                                                                                                       |
-| **Index**              | `logs-logstash-errors-staging-default,logs-logstash-errors-perf-default`                                                                                                                                       |
-| **Condition**          | `Is above` `0`                                                                                                                                                                                                 |
-| **Fenêtre**            | 5 min                                                                                                                                                                                                          |
-| **Fréquence**          | 5 min                                                                                                                                                                                                          |
-| **Sévérité**           | Warning                                                                                                                                                                                                        |
-| **Action**             | Connecteur Kibana **Mattermost-monitoring-staging** — voir body ci-dessous                                                                                                                                     |
-| **Related dashboards** | `[Metrics Logstash] Pipeline Health Report`                                                                                                                                                                    |
-| **Investigation guide** | Voir [runbook scénario — Rejet de mapping / DLQ](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue) |
+| Paramètre               | Valeur                                                                                                                                                                                                         |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Rule name**           | `Logstash - Hors-Prod - Détection erreurs pipeline process`                                                                                                                                                    |
+| **Type**                | Elasticsearch query rule                                                                                                                                                                                       |
+| **Index**               | `logs-logstash-errors-staging-default,logs-logstash-errors-perf-default`                                                                                                                                       |
+| **Condition**           | `Is above` `0`                                                                                                                                                                                                 |
+| **Fenêtre**             | 5 min                                                                                                                                                                                                          |
+| **Fréquence**           | 5 min                                                                                                                                                                                                          |
+| **Sévérité**            | Warning                                                                                                                                                                                                        |
+| **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                               |
+| **Action**              | Connecteur Kibana **Mattermost-monitoring-staging** — voir body ci-dessous                                                                                                                                     |
+| **Related dashboards**  | `[Metrics Logstash] Pipeline Health Report`                                                                                                                                                                    |
+| **Investigation guide** | Voir [runbook scénario — Rejet de mapping / DLQ](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)  |
 
 **Body du webhook** :
 ```json
@@ -185,58 +189,71 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 
 ### 3a — Absence dans `logs-prod-default`
 
-| Paramètre              | Valeur                                                                                                                                                                                                      |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Rule name**          | `Logstash - Prod - Détection absence ingestion logs applicatifs`                                                                                                                                            |
-| **Type**               | Elasticsearch query rule                                                                                                                                                                                    |
-| **Index**              | `logs-prod-default`                                                                                                                                                                                         |
-| **Condition**          | `Is below or equals` `0`                                                                                                                                                                                    |
-| **Fenêtre**            | 5 min                                                                                                                                                                                                       |
-| **Fréquence**          | 2 min                                                                                                                                                                                                       |
-| **Sévérité**           | Critical                                                                                                                                                                                                    |
-| **Action**             | Connecteur Kibana **Mattermost-monitoring-production** — voir body ci-dessous                                                                                                                               |
-| **Related dashboards** | `[Metrics Logstash] Logstash Overview`                                                                                                                                                                      |
-| **Investigation guide** | Voir [runbook scénario — Crash du conteneur Logstash](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-4--crash-du-conteneur-logstash) |
+| Paramètre                 | Valeur                                                                                                                                                                                                      |
+|---------------------------| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Rule name**             | `Logstash - Prod - Détection absence ingestion logs applicatifs`                                                                                                                                            |
+| **Type**                  | Elasticsearch query rule                                                                                                                                                                                    |
+| **Index**                 | `logs-prod-default`                                                                                                                                                                                         |
+| **Condition**             | `Is below or equals` `0`                                                                                                                                                                                    |
+| **Fenêtre**               | 5 min                                                                                                                                                                                                       |
+| **Fréquence**             | 2 min                                                                                                                                                                                                       |
+| **Sévérité**              | Critical                                                                                                                                                                                                    |
+| **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-monitoring-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — voir body ci-dessous                  |
+| **Action 2 (résolution)** | Connecteur Kibana **Mattermost-monitoring-production** — `On status changes` / `Run when: Recovered` (onglet Actions → Settings) — voir body ci-dessous                                                    |
+| **Related dashboards**    | `[Metrics Logstash] Logstash Overview`                                                                                                                                                                      |
+| **Investigation guide**   | Voir [runbook scénario — Crash du conteneur Logstash](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-4--crash-du-conteneur-logstash)  |
 
-**Body du webhook** :
+**Body du webhook — Action 1 (alerte)** :
 ```json
 {"text": "🚨 **Silence Logstash** — aucun log dans `logs-prod-default` depuis 5 min. Drain en quarantaine ou Logstash crashé.\n- Règle : `{{rule.name}}`\n- Déclenchée à : `{{date}}`\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-4--crash-du-conteneur-logstash)"}
 ```
 
+**Body du webhook — Action 2 (résolution)** :
+```json
+{"text": "✅ **Silence Logstash résolu** — les logs sont revenus dans `logs-prod-default`.\n- Règle : `{{rule.name}}`\n- Résolue à : `{{date}}`"}
+```
+
 ### 3b — Absence dans `logs-router-prod-default`
 
-| Paramètre              | Valeur                                                                                                                                                                                                      |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Rule name**          | `Logstash - Prod - Détection absence ingestion logs router`                                                                                                                                                 |
-| **Type**               | Elasticsearch query rule                                                                                                                                                                                    |
-| **Index**              | `logs-router-prod-default`                                                                                                                                                                                  |
-| **Condition**          | `Is below or equals` `0`                                                                                                                                                                                    |
-| **Fenêtre**            | 5 min                                                                                                                                                                                                       |
-| **Fréquence**          | 2 min                                                                                                                                                                                                       |
-| **Sévérité**           | Critical                                                                                                                                                                                                    |
-| **Action**             | Connecteur Kibana **Mattermost-monitoring-production** — voir body ci-dessous                                                                                                                               |
-| **Related dashboards** | `[Metrics Logstash] Logstash Overview`                                                                                                                                                                      |
-| **Investigation guide** | Voir [runbook scénario — Crash du conteneur Logstash](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-4--crash-du-conteneur-logstash) |
+| Paramètre                 | Valeur                                                                                                                                                                                                      |
+|---------------------------| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Rule name**             | `Logstash - Prod - Détection absence ingestion logs router`                                                                                                                                                 |
+| **Type**                  | Elasticsearch query rule                                                                                                                                                                                    |
+| **Index**                 | `logs-router-prod-default`                                                                                                                                                                                  |
+| **Condition**             | `Is below or equals` `0`                                                                                                                                                                                    |
+| **Fenêtre**               | 5 min                                                                                                                                                                                                       |
+| **Fréquence**             | 2 min                                                                                                                                                                                                       |
+| **Sévérité**              | Critical                                                                                                                                                                                                    |
+| **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-monitoring-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — voir body ci-dessous                  |
+| **Action 2 (résolution)** | Connecteur Kibana **Mattermost-monitoring-production** — `On status changes` / `Run when: Recovered` (onglet Actions → Settings) — voir body ci-dessous                                                    |
+| **Related dashboards**    | `[Metrics Logstash] Logstash Overview`                                                                                                                                                                      |
+| **Investigation guide**   | Voir [runbook scénario — Crash du conteneur Logstash](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-4--crash-du-conteneur-logstash)  |
 
-**Body du webhook** :
+**Body du webhook — Action 1 (alerte)** :
 ```json
 {"text": "🚨 **Silence Logstash** — aucun log router dans `logs-router-prod-default` depuis 5 min. Drain en quarantaine ou Logstash crashé.\n- Règle : `{{rule.name}}`\n- Déclenchée à : `{{date}}`\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-4--crash-du-conteneur-logstash)"}
 ```
 
+**Body du webhook — Action 2 (résolution)** :
+```json
+{"text": "✅ **Silence Logstash résolu** — les logs router sont revenus dans `logs-router-prod-default`.\n- Règle : `{{rule.name}}`\n- Résolue à : `{{date}}`"}
+```
+
 ### 3c — Absence dans `logs-staging-default` / `logs-perf-default`
 
-| Paramètre              | Valeur                                                                                                                                                                                                      |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Rule name**          | `Logstash - Hors-Prod - Détection absence ingestion logs applicatifs`                                                                                                                                       |
-| **Type**               | Elasticsearch query rule                                                                                                                                                                                    |
-| **Index**              | `logs-staging-default,logs-perf-default`                                                                                                                                                                    |
-| **Condition**          | `Is below or equals` `0`                                                                                                                                                                                    |
-| **Fenêtre**            | 5 min                                                                                                                                                                                                       |
-| **Fréquence**          | 5 min                                                                                                                                                                                                       |
-| **Sévérité**           | Warning                                                                                                                                                                                                     |
-| **Action**             | Connecteur Kibana **Mattermost-monitoring-staging** — voir body ci-dessous                                                                                                                                  |
-| **Related dashboards** | `[Metrics Logstash] Logstash Overview`                                                                                                                                                                      |
-| **Investigation guide** | Voir [runbook scénario — Crash du conteneur Logstash](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-4--crash-du-conteneur-logstash) |
+| Paramètre               | Valeur                                                                                                                                                                                                      |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Rule name**           | `Logstash - Hors-Prod - Détection absence ingestion logs applicatifs`                                                                                                                                       |
+| **Type**                | Elasticsearch query rule                                                                                                                                                                                    |
+| **Index**               | `logs-staging-default,logs-perf-default`                                                                                                                                                                    |
+| **Condition**           | `Is below or equals` `0`                                                                                                                                                                                    |
+| **Fenêtre**             | 5 min                                                                                                                                                                                                       |
+| **Fréquence**           | 5 min                                                                                                                                                                                                       |
+| **Sévérité**            | Warning                                                                                                                                                                                                     |
+| **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                            |
+| **Action**              | Connecteur Kibana **Mattermost-monitoring-staging** — voir body ci-dessous                                                                                                                                  |
+| **Related dashboards**  | `[Metrics Logstash] Logstash Overview`                                                                                                                                                                      |
+| **Investigation guide** | Voir [runbook scénario — Crash du conteneur Logstash](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-4--crash-du-conteneur-logstash)  |
 
 **Body du webhook** :
 ```json
@@ -245,18 +262,19 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 
 ### 3d — Absence dans `logs-router-staging-default` / `logs-router-perf-default`
 
-| Paramètre              | Valeur                                                                                                                                                                                                      |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Rule name**          | `Logstash - Hors-Prod - Détection absence ingestion logs router`                                                                                                                                            |
-| **Type**               | Elasticsearch query rule                                                                                                                                                                                    |
-| **Index**              | `logs-router-staging-default,logs-router-perf-default`                                                                                                                                                      |
-| **Condition**          | `Is below or equals` `0`                                                                                                                                                                                    |
-| **Fenêtre**            | 5 min                                                                                                                                                                                                       |
-| **Fréquence**          | 5 min                                                                                                                                                                                                       |
-| **Sévérité**           | Warning                                                                                                                                                                                                     |
-| **Action**             | Connecteur Kibana **Mattermost-monitoring-staging** — voir body ci-dessous                                                                                                                                  |
-| **Related dashboards** | `[Metrics Logstash] Logstash Overview`                                                                                                                                                                      |
-| **Investigation guide** | Voir [runbook scénario — Crash du conteneur Logstash](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-4--crash-du-conteneur-logstash) |
+| Paramètre               | Valeur                                                                                                                                                                                                      |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Rule name**           | `Logstash - Hors-Prod - Détection absence ingestion logs router`                                                                                                                                            |
+| **Type**                | Elasticsearch query rule                                                                                                                                                                                    |
+| **Index**               | `logs-router-staging-default,logs-router-perf-default`                                                                                                                                                      |
+| **Condition**           | `Is below or equals` `0`                                                                                                                                                                                    |
+| **Fenêtre**             | 5 min                                                                                                                                                                                                       |
+| **Fréquence**           | 5 min                                                                                                                                                                                                       |
+| **Sévérité**            | Warning                                                                                                                                                                                                     |
+| **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                            |
+| **Action**              | Connecteur Kibana **Mattermost-monitoring-staging** — voir body ci-dessous                                                                                                                                  |
+| **Related dashboards**  | `[Metrics Logstash] Logstash Overview`                                                                                                                                                                      |
+| **Investigation guide** | Voir [runbook scénario — Crash du conteneur Logstash](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-4--crash-du-conteneur-logstash)  |
 
 **Body du webhook** :
 ```json
@@ -291,24 +309,30 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 
 ### 4a — Backpressure prod (Critical)
 
-| Paramètre               | Valeur                                                                                                                                                                                                   |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Rule name**           | `Logstash - Prod - Détection backpressure ES (workers bloqués)`                                                                                                                                          |
-| **Type**                | Elasticsearch query rule                                                                                                                                                                                 |
-| **Index**               | `metrics-logstash.pipeline-default`                                                                                                                                                                      |
-| **KQL filter**          | `logstash.pipeline.host.name: pass-emploi-logstash-prod-*`                                                                                                                                               |
-| **Aggregation**         | `Max` de `logstash.pipeline.total.flow.queue_backpressure.current`                                                                                                                                       |
-| **Condition**           | `Is above` `0.5`                                                                                                                                                                                         |
-| **Fenêtre**             | 5 min                                                                                                                                                                                                    |
-| **Fréquence**           | 2 min                                                                                                                                                                                                    |
-| **Sévérité**            | Critical                                                                                                                                                                                                 |
-| **Action**              | Connecteur Kibana **Mattermost-monitoring-production** — voir body ci-dessous                                                                                                                            |
-| **Related dashboards**  | `[Metrics Logstash] Pipeline Health Report`                                                                                                                                                              |
-| **Investigation guide** | Voir [runbook scénario — Backpressure Elasticsearch](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-1--backpressure-elasticsearch) |
+| Paramètre                 | Valeur                                                                                                                                                                                                   |
+|---------------------------| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Rule name**             | `Logstash - Prod - Détection backpressure ES (workers bloqués)`                                                                                                                                          |
+| **Type**                  | Elasticsearch query rule                                                                                                                                                                                 |
+| **Index**                 | `metrics-logstash.pipeline-default`                                                                                                                                                                      |
+| **KQL filter**            | `logstash.pipeline.host.name: pass-emploi-logstash-prod-*`                                                                                                                                               |
+| **Aggregation**           | `Max` de `logstash.pipeline.total.flow.queue_backpressure.current`                                                                                                                                       |
+| **Condition**             | `Is above` `0.5`                                                                                                                                                                                         |
+| **Fenêtre**               | 5 min                                                                                                                                                                                                    |
+| **Fréquence**             | 2 min                                                                                                                                                                                                    |
+| **Sévérité**              | Critical                                                                                                                                                                                                 |
+| **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-monitoring-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — voir body ci-dessous               |
+| **Action 2 (résolution)** | Connecteur Kibana **Mattermost-monitoring-production** — `On status changes` / `Run when: Recovered` (onglet Actions → Settings) — voir body ci-dessous                                               |
+| **Related dashboards**    | `[Metrics Logstash] Pipeline Health Report`                                                                                                                                                              |
+| **Investigation guide**   | Voir [runbook scénario — Backpressure Elasticsearch](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-1--backpressure-elasticsearch) |
 
-**Body du webhook** :
+**Body du webhook — Action 1 (alerte)** :
 ```json
 {"text": "🚨 **Backpressure Logstash prod** — workers bloqués > 50 % du temps sur la queue (`queue_backpressure > 0.5`). Elasticsearch ne consomme plus assez vite.\n- Règle : `{{rule.name}}`\n- Déclenchée à : `{{date}}`\n- Vérifier `logstash.pipeline.total.queues.events` dans Pipeline Health Report\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-1--backpressure-elasticsearch)"}
+```
+
+**Body du webhook — Action 2 (résolution)** :
+```json
+{"text": "✅ **Backpressure Logstash prod résolue** — `queue_backpressure` est retombé sous 0.5.\n- Règle : `{{rule.name}}`\n- Résolue à : `{{date}}`"}
 ```
 
 ### 4b — Backpressure staging / perf (Warning)
@@ -324,6 +348,7 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 | **Fenêtre**             | 5 min                                                                                                                                                                                                    |
 | **Fréquence**           | 5 min                                                                                                                                                                                                    |
 | **Sévérité**            | Warning                                                                                                                                                                                                  |
+| **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                         |
 | **Action**              | Connecteur Kibana **Mattermost-monitoring-staging** — voir body ci-dessous                                                                                                                               |
 | **Related dashboards**  | `[Metrics Logstash] Pipeline Health Report`                                                                                                                                                              |
 | **Investigation guide** | Voir [runbook scénario — Backpressure Elasticsearch](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-1--backpressure-elasticsearch) |
@@ -356,6 +381,7 @@ pouvant provoquer des pauses stop-the-world (scénario 2 du runbook) ou un OOM-k
 | **Fenêtre**             | 5 min                                                                                                                                                                    |
 | **Fréquence**           | 2 min                                                                                                                                                                    |
 | **Sévérité**            | Critical                                                                                                                                                                 |
+| **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                         |
 | **Action**              | Connecteur Kibana **Mattermost-monitoring-production** — voir body ci-dessous                                                                                            |
 | **Related dashboards**  | `[Metrics Logstash] Node Health Report`                                                                                                                                  |
 | **Investigation guide** | Voir [runbook scénario — Gel GC JVM](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-2--gel-gc-jvm) |
@@ -378,6 +404,7 @@ pouvant provoquer des pauses stop-the-world (scénario 2 du runbook) ou un OOM-k
 | **Fenêtre**             | 5 min                                                                                                                                                                    |
 | **Fréquence**           | 5 min                                                                                                                                                                    |
 | **Sévérité**            | Warning                                                                                                                                                                  |
+| **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                         |
 | **Action**              | Connecteur Kibana **Mattermost-monitoring-staging** — voir body ci-dessous                                                                                               |
 | **Related dashboards**  | `[Metrics Logstash] Node Health Report`                                                                                                                                  |
 | **Investigation guide** | Voir [runbook scénario — Gel GC JVM](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-2--gel-gc-jvm) |
@@ -409,6 +436,9 @@ Pour chaque app :
 3. Choisir le type **Webhook**.
 4. Événements à surveiller : `app_restarted`, `app_crashed`, `app_stopped`.
 5. URL du webhook : URL du webhook entrant Mattermost du canal correspondant.
+
+> **Note** : le throttle ne s'applique pas aux webhooks Scalingo — chaque événement
+> `app_crashed` / `app_restarted` est une notification unitaire envoyée par Scalingo.
 
 **Payload Scalingo** (exemple pour un restart OOM) :
 ```json

@@ -55,6 +55,41 @@ PUT _index_template/logs-perf@template-custom
   "version": 2
 }
 
+# Erreurs de traitement Logstash (mutate_error, jsonparsefailure, etc.).
+# dynamic:false + logsdb : même structure que les flux applicatifs pour
+# pouvoir corréler avec les logs normaux via trace.id / @timestamp.
+PUT _index_template/logs-logstash-errors@template-custom
+{
+  "index_patterns": ["logs-logstash-errors-*"],
+  "priority": 250,
+  "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "logs@custom", "logs-logstash-errors-retention-custom"],
+  "ignore_missing_component_templates": ["logs@custom"],
+  "template": {
+    "settings": { "index": { "mode": "logsdb", "mapping": { "source": { "mode": "synthetic" } } } }
+  },
+  "data_stream": { "hidden": false, "allow_custom_routing": false },
+  "allow_auto_create": true,
+  "_meta": { "description": "Logs d'erreurs de traitement Logstash (pipeline process)", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+# Events Dead Letter Queue Logstash (rejetés par ES via dlq_on_failed_indexing).
+# dynamic:true volontairement : le document original peut avoir n'importe quelle
+# structure (on ne sait pas à l'avance ce qui a été rejeté).
+PUT _index_template/logs-logstash-dlq@template-custom
+{
+  "index_patterns": ["logs-logstash-dlq-*"],
+  "priority": 250,
+  "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "logs-logstash-dlq-retention-custom"],
+  "template": {
+    "settings": { "index": { "mode": "logsdb", "mapping": { "source": { "mode": "synthetic" } } } }
+  },
+  "data_stream": { "hidden": false, "allow_custom_routing": false },
+  "allow_auto_create": true,
+  "_meta": { "description": "Events Dead Letter Queue Logstash (rejetés par ES)", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
 PUT _index_template/logs-router
 {
   "index_patterns": ["logs-router-*"],
@@ -68,12 +103,31 @@ PUT _index_template/logs-router
 }
 
 # ═════════════════════════════════════════════════════════════════════════════
-# ROLLOVER (matérialisation) — action one-shot après un changement de NOM de policy
+# ROLLOVER (matérialisation) — action one-shot après un changement de template
 #
-# Nécessaire UNIQUEMENT quand un flux change de policy (nouveaux backing indices à
-# repointer). Ici `logs-router` est passé de logs-prod-retention à
-# logs-router-retention → rollover. logs-prod/logs-staging gardent leur nom de
-# policy (seul le contenu a changé) → PAS de rollover.
+# Nécessaire après tout changement de composed_of ou de settings qui doit
+# s'appliquer aux nouveaux backing indices (les existants ne sont pas modifiés).
 # Idempotence : rejouer crée un nouvel index vide, sans dommage.
+#
+# logs-router : passage de logs-prod-retention à logs-router-retention (historique)
 POST logs-router-prod-default/_rollover
 POST logs-router-staging-default/_rollover
+
+# logs-prod/staging/perf : rollover one-shot pour forcer la rotation du write index
+# (ex: index actif trop volumineux, changement de template à matérialiser).
+POST logs-prod-default/_rollover
+POST logs-staging-default/_rollover
+POST logs-perf-default/_rollover
+
+# logs-logstash-errors et logs-logstash-dlq : rollover one-shot après création
+# des templates custom. Sans ce rollover, les backing indices créés avant
+# l'application du template restent avec ilm_policy: logs (built-in, sans phase
+# delete) au lieu de la policy de rétention dédiée. À rejouer si les data
+# streams existaient déjà.
+POST logs-logstash-errors-prod-default/_rollover
+POST logs-logstash-errors-staging-default/_rollover
+POST logs-logstash-errors-perf-default/_rollover
+
+POST logs-logstash-dlq-prod-default/_rollover
+POST logs-logstash-dlq-staging-default/_rollover
+POST logs-logstash-dlq-perf-default/_rollover

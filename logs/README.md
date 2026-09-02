@@ -17,14 +17,18 @@ https://github.com/France-Travail/logstash-buildpack
 
 ### Logstash
 
-| Variable                   | Description                                                                              |
-|----------------------------|------------------------------------------------------------------------------------------|
-| `LOGSTASH_VERSION`         | Version de Logstash à installer (ex: `9.4.5`)                                            |
-| `ENVIRONMENT`              | Environnement de fallback (`prod`, `staging`, `perf`…) si non détecté via appname        |
-| `ELASTICSEARCH_URL`        | URL du cluster Elasticsearch, credentials inclus (ex: `https://user:password@host:port`) |
-| `USER`                     | Utilisateur HTTP pour l'authentification du drain Scalingo                               |
-| `PASSWORD`                 | Mot de passe HTTP pour l'authentification du drain Scalingo                              |
-| `LOGSTASH_INGEST_THREADS`  | Threads Netty du pipeline ingest (optionnel, défaut : `4`)                               |
+| Variable                      | Description                                                                                                                        |
+|-------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
+| `LOGSTASH_VERSION`            | Version de Logstash à installer (ex: `9.4.5`)                                                                                      |
+| `ENVIRONMENT`                 | Environnement de fallback (`prod`, `staging`, `perf`…) si non détecté via appname                                                  |
+| `ELASTICSEARCH_URL`           | URL du cluster Elasticsearch, credentials inclus (ex: `https://user:password@host:port`)                                           |
+| `USER`                        | Utilisateur HTTP pour l'authentification du drain Scalingo                                                                         |
+| `PASSWORD`                    | Mot de passe HTTP pour l'authentification du drain Scalingo                                                                        |
+| `LOGSTASH_INGEST_THREADS`     | Threads Netty du pipeline ingest (optionnel, défaut : `4`)                                                                         |
+| `LOGSTASH_INGEST_WORKERS`     | Workers du pipeline `ingest` (optionnel, défaut : `1`) — augmenter si l'écriture PQ est le goulot                                  |
+| `LOGSTASH_PROCESS_WORKERS`    | Workers du pipeline `process` (optionnel, défaut : `1`) — augmenter si le traitement ES est le goulot                              |
+| `LOGSTASH_PROCESS_BATCH_SIZE` | Taille des batches du pipeline `process` (optionnel, défaut : `250`) — réduire temporairement (ex: `50`) en cas de backpressure ES |
+| `LOGSTASH_DLQ_WORKERS`        | Workers du pipeline `dead_letter_queue` (optionnel, défaut : `1`)                                                                  |
 
 ### Elastic Agent (Fleet)
 
