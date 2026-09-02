@@ -4,12 +4,13 @@ Harnais Gatling du chantier perf (démarche et SLO : [`docs/perf/`](../docs/perf
 
 ## Simulations
 
-| Simulation                       | Cible           | Description                                                       |
-| -------------------------------- | --------------- | ----------------------------------------------------------------- |
-| `AccueilFranceTravailSimulation` | pass-emploi-api | Page d'accueil jeune France Travail                               |
-| `LogstashIngestSimulation`       | Logstash        | Non-régression du pipeline d'ingestion (CI : `logstash-perf.yml`) |
-| `ConnectionSimulation`           | Keycloak        | Parcours de login                                                 |
-| `PremierScenario`                | pass-emploi-api | Scénario conseiller historique (2022)                             |
+| Simulation                               | Cible                   | Description                                                       |
+| ---------------------------------------- | ----------------------- | ----------------------------------------------------------------- |
+| `LoginEtAccueilFranceTravailSimulation`  | connect + pass-emploi-api | **Bout en bout** : login FT réel puis page d'accueil jeune      |
+| `AccueilFranceTravailSimulation`         | pass-emploi-api         | Page d'accueil jeune seule, avec un JWT fourni à la main          |
+| `LogstashIngestSimulation`               | Logstash                | Non-régression du pipeline d'ingestion (CI : `logstash-perf.yml`) |
+| `ConnectionSimulation`                   | Keycloak                | Parcours de login (legacy)                                        |
+| `PremierScenario`                        | pass-emploi-api         | Scénario conseiller historique (2022)                             |
 
 ## Le workflow accueil FT, étape par étape
 
@@ -49,9 +50,34 @@ Gatling ──► connect-perf ──► mock-externes   (IdP France Travail)
    avant chaque tir. `pool_prefix` et `pool_size` doivent valoir exactement
    `POOL_PREFIX` et `POOL_SIZE` du mock.
 
-> **État d'avancement.** `mock-externes` est en place (lot 1). La simulation
-> Gatling se logue encore avec un `USER_TOKEN` fourni à la main : le login via
-> `connect` arrive au lot 3, et fera disparaître cette variable. Voir
+## Le login, étape par étape
+
+`LoginEtAccueilFranceTravailSimulation` suit la chaîne de redirections **à la
+main**, sans `followRedirect`. Deux raisons : la redirection finale vise le
+schéma d'URL du client mobile, que Gatling ne sait pas suivre ; et le découpage
+donne un **temps de réponse par étape**, qui est la matière du SLO I2.
+
+| Étape | Qui répond | Ce qui s'y passe |
+|---|---|---|
+| 01 authorize | connect | `kc_idp_hint=pe-jeune` → structure `POLE_EMPLOI` |
+| 02 interaction | connect | `/francetravail-jeune/connect/{uid}?type=cej` |
+| 03 authorize | mock IDP | le mock **tire une identité** dans le pool |
+| 04 callback IDP | connect | token exchange, userinfo, coordonnées, `PUT /auth/users` |
+| 05 reprise interaction | connect | reprise de l'interaction oidc-provider |
+| 06 token | connect | échange du code contre le JWT |
+| 07 accueil FT | api | la page mesurée |
+
+L'étape 04 est la plus coûteuse, et **c'est elle qui échoue si le pool n'est pas
+semé** : l'API ne crée aucun bénéficiaire France Travail inconnu.
+
+Gatling ne choisit pas l'identité du jeune — le mock l'a tirée au sort. Il la lit
+dans le claim `userId` du token, celui-là même que l'API lit pour autoriser
+l'appel.
+
+> **État d'avancement.** Lots 1 à 3 en place. La simulation **compile** mais n'a
+> pas encore été jouée contre un `connect` réel : le nombre exact de sauts entre
+> l'`authorize` et le `token` reste à confirmer au premier tir. Le découpage
+> nommé rendra tout écart lisible immédiatement. Voir
 > [`docs/superpowers/specs/2026-09-01-harnais-tir-perf-design.md`](../docs/superpowers/specs/2026-09-01-harnais-tir-perf-design.md).
 
 ## Setup
@@ -62,13 +88,14 @@ Gatling ──► connect-perf ──► mock-externes   (IdP France Travail)
 ## Run locally
 
 ```sh
-make accueilFT        # tir accueil FT (crée .env depuis .env.template au 1er lancement)
+make loginFT        # tir de bout en bout : login FT réel puis accueil
+make accueilFT      # accueil seul, avec un JWT fourni à la main
 make report         # ouvre le dernier rapport HTML
 ```
 
 Le Makefile source `.env` à chaque lancement — pas de `source .env` à faire
-(ni à oublier) : modifier le fichier suffit. Au premier lancement, renseigner
-`USER_TOKEN` dans le `.env` créé.
+(ni à oublier) : modifier le fichier suffit. Le premier lancement crée `.env`
+depuis `.env.template` ; le renseigner puis relancer.
 
 Autres cibles :
 
