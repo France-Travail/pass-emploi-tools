@@ -20,8 +20,17 @@ run: .env
 compile:
 	./gradlew compileGatlingScala
 
+# Servi en HTTP plutôt qu'ouvert en file:// : un navigateur en bac à sable
+# (Flatpak, snap) reçoit le fichier via le portail de documents, qui n'expose
+# que l'index.html demandé — sans ses répertoires style/ et js/, d'où un
+# rapport sans CSS ni graphiques.
+REPORT_PORT ?= 8123
+
 report:
-	xdg-open "$$(ls -td build/reports/gatling/*/ | head -1)index.html"
+	@dir="$$(ls -td build/reports/gatling/*/ | head -1)"; \
+	  echo "Rapport servi sur http://localhost:$(REPORT_PORT)/ (Ctrl-C pour arrêter)"; \
+	  xdg-open "http://localhost:$(REPORT_PORT)/" >/dev/null 2>&1 & \
+	  python3 -m http.server $(REPORT_PORT) --directory "$$dir" --bind 127.0.0.1
 
 loginFT: .env
 	. ./.env && ./gradlew gatlingRun --simulation passemploi.test.LoginEtAccueilFranceTravailSimulation
