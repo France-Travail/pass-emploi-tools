@@ -1,0 +1,23 @@
+<configuration>
+  <!-- Sans ce fichier, Logback applique sa configuration par défaut — root à
+       DEBUG sur la console — et le debug de Netty et du moteur HTTP noie le
+       résumé de progression du tir. Celui-ci est écrit par le ConsoleDataWriter
+       de Gatling sur System.out et ne passe pas par Logback : il survit donc à
+       ce filtrage. -->
+
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} [%-5level] %logger{15} - %msg%n%rEx</pattern>
+      <immediateFlush>false</immediateFlush>
+    </encoder>
+  </appender>
+
+  <!-- Pour déboguer un scénario, passer à DEBUG (requêtes et réponses en échec)
+       ou TRACE (toutes les requêtes et réponses). Jamais pendant un vrai tir :
+       le coût de log fausse la mesure. -->
+  <logger name="io.gatling.http.engine.response" level="INFO"/>
+
+  <root level="WARN">
+    <appender-ref ref="CONSOLE"/>
+  </root>
+</configuration>
