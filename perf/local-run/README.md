@@ -85,8 +85,21 @@ Chaque étape est aussi un target isolé : `make mock`, `make apidb`,
   required-non-empty sont contradictoires côté `connect`. `mock-externes`
   ignore les query params qu'il ne déclare pas, donc la valeur elle-même
   n'a pas d'importance.
-- L'accueil jeune peut appeler Firebase réel (`FIREBASE_SECRET_KEY` du
-  `.environment` de l'api) — à surveiller au premier run, pas encore mocké.
+- **Firebase est mocké par des credentials factices** (`make firebase-fake`,
+  générés dans `.run/`, jamais committés) : sans ça l'API se connecte au vrai
+  projet `pass-emploi-staging` — FCM vers de vrais appareils de recette et
+  quotas Firestore partagés avec l'équipe. Au démarrage l'API loggue
+  « Connexion à firebase KO », c'est attendu et sans effet : le parcours
+  accueil FT n'appelle ni Firestore ni FCM à l'exécution.
+  Quand un scénario touchera la **messagerie**, il faudra l'émulateur
+  Firestore (`firebase emulators:start` + `FIRESTORE_EMULATOR_HOST`) ; FCM
+  n'a pas d'émulateur et devra être neutralisé autrement. La question d'un
+  projet Firebase dédié pour les tirs de perf reste ouverte.
+- Les deux contournements liés à `connect` (mock servi en TLS,
+  `IDP_FT_JEUNE_REALM` non vide) ne sont nécessaires que **tant que le
+  correctif `fix/idp-agent-http-et-realm-vide` n'est pas mergé** dans
+  `pass-emploi-connect`. Une fois mergé, le mock peut repasser en HTTP simple
+  et le realm peut valoir `""`.
 
 ## Diagnostic
 
