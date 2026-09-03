@@ -86,11 +86,28 @@ connect:
 	    echo $$! > $(HERE)/$(RUN_DIR)/connect.pid )
 	@echo "connect : démarrage (log $(RUN_DIR)/connect.log)"
 
-api:
+# Credentials Firebase factices : l'API se connecte sinon au vrai projet
+# pass-emploi-staging avec les clés du .environment. Générés plutôt que
+# committés — une clé privée en dur dans git, même bidon, fait sonner les
+# scanners de secrets.
+firebase-fake:
+	@mkdir -p $(RUN_DIR)
+	@test -f $(RUN_DIR)/firebase-fake.json || { \
+	  openssl genrsa 2048 2>/dev/null > $(RUN_DIR)/firebase-fake.key && \
+	  python3 -c "import json,sys; k=open('$(RUN_DIR)/firebase-fake.key').read(); \
+	    json.dump({'type':'service_account','project_id':'pass-emploi-local-fake', \
+	    'private_key_id':'fake','private_key':k, \
+	    'client_email':'fake@pass-emploi-local-fake.iam.gserviceaccount.com', \
+	    'client_id':'000000000000000000000','auth_uri':'https://accounts.google.com/o/oauth2/auth', \
+	    'token_uri':'https://oauth2.googleapis.com/token'}, open('$(RUN_DIR)/firebase-fake.json','w'))" && \
+	  rm -f $(RUN_DIR)/firebase-fake.key && \
+	  echo "credentials Firebase factices générés"; }
+
+api: firebase-fake
 	@mkdir -p $(RUN_DIR)
 	@fuser -k 5000/tcp >/dev/null 2>&1 || true
 	@cd $(API_DIR) && \
-	  ( set -a && . $(HERE)/local-run/api.sh && set +a && \
+	  ( set -a && LOCAL_RUN_DIR=$(HERE)/local-run . $(HERE)/local-run/api.sh && set +a && \
 	    setsid yarn start > $(HERE)/$(RUN_DIR)/api.log 2>&1 & \
 	    echo $$! > $(HERE)/$(RUN_DIR)/api.pid )
 	@echo "api : démarrage (log $(RUN_DIR)/api.log)"

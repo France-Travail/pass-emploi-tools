@@ -28,3 +28,20 @@ export OIDC_ISSUER_URL="http://localhost:5050/auth/realms/pass-emploi"
 
 # APIs partenaires France Travail -> mock-externes (perf/mock-externes, :8080)
 export POLE_EMPLOI_API_BASE_URL="https://127.0.0.1:8080/poleemploi"
+
+# Firebase : credentials factices, pour ne pas toucher le vrai projet
+# pass-emploi-staging (FCM vers de vrais appareils de recette, quotas
+# Firestore partagés). Générés par `make firebase-fake` dans local-run/.run/.
+#
+# Portée : le parcours accueil FT n'appelle ni Firestore ni FCM à l'exécution
+# — seule la connexion au démarrage a lieu, et elle échoue proprement
+# ("Connexion à firebase KO", capturée dans firebase-client.ts). Un scénario
+# qui touche la messagerie aura besoin de l'émulateur Firestore
+# (FIRESTORE_EMULATOR_HOST, `firebase emulators:start`) ; FCM n'a pas
+# d'émulateur et devra être neutralisé autrement.
+if [ -f "${LOCAL_RUN_DIR:-.}/.run/firebase-fake.json" ]; then
+  export FIREBASE_SECRET_KEY="$(cat "${LOCAL_RUN_DIR:-.}/.run/firebase-fake.json")"
+else
+  echo "ATTENTION : credentials Firebase factices absents, l'API utiliserait" >&2
+  echo "le vrai projet staging. Lancer 'make firebase-fake' depuis perf/." >&2
+fi
