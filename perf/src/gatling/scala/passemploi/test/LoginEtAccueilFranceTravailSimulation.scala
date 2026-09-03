@@ -71,6 +71,11 @@ class LoginEtAccueilFranceTravailSimulation extends Simulation {
     .acceptEncodingHeader("gzip, deflate")
     .userAgentHeader("Gatling")
     .disableFollowRedirect
+    // Gatling pose un Origin comme le ferait un navigateur. oidc-provider le
+    // confronte aux origines autorisées du client et rejette le POST /token
+    // ("origin ... not allowed for client"). Un client mobile natif n'en
+    // envoie pas : on l'enlève, ici comme sur un environnement de tir.
+    .disableAutoOrigin
 
   // Chaque utilisateur virtuel a ses propres state et nonce : les réutiliser
   // ferait collisionner les interactions côté connect sous charge.
@@ -99,7 +104,7 @@ class LoginEtAccueilFranceTravailSimulation extends Simulation {
 
   private val login = exec(
     http("01 authorize (connect)")
-      .get(s"$connectUrl/protocol/openid-connect/auth")
+      .get(s"$connectUrl/auth/realms/pass-emploi/protocol/openid-connect/auth")
       .queryParam("client_id", clientId)
       .queryParam("redirect_uri", redirectUri)
       .queryParam("response_type", "code")
@@ -132,7 +137,7 @@ class LoginEtAccueilFranceTravailSimulation extends Simulation {
     }
     .exec(
       http("06 token (connect)")
-        .post(s"$connectUrl/protocol/openid-connect/token")
+        .post(s"$connectUrl/auth/realms/pass-emploi/protocol/openid-connect/token")
         .header("Authorization", authentificationClient)
         .formParam("grant_type", "authorization_code")
         .formParam("code", "#{code}")
