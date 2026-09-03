@@ -79,8 +79,10 @@ En notant `{MOCK}` l'URL à laquelle `connect` joint le mock :
 
 `IDP_FT_JEUNE_CLIENT_ID` et `IDP_FT_JEUNE_CLIENT_SECRET` peuvent valoir n'importe
 quoi : le mock ne les vérifie pas, il se contente de reprendre le `client_id`
-comme `aud`. **Laisser `IDP_FT_JEUNE_REALM` vide** — s'il est défini, `connect`
-ajoute un paramètre `realm` que le mock n'attend pas.
+comme `aud`. `IDP_FT_JEUNE_REALM` doit être **non-vide** côté `connect`
+(`configuration.schema.ts` l'exige, `Joi.string().required()`), mais sa valeur
+n'a pas d'importance ici : les routes du mock (FastAPI) ignorent les query
+params qu'elles ne déclarent pas, `realm` y compris.
 
 ### De `pass-emploi-api`
 
