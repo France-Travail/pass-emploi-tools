@@ -1,4 +1,4 @@
-FROM openjdk:11.0.10-jdk
+FROM eclipse-temurin:21-jdk
 
 COPY . /gatling
 WORKDIR /gatling

@@ -1,0 +1,10 @@
+# Injecteur Gatling — aucun service permanent.
+#
+# Les tirs sont des conteneurs one-off (`scalingo run`), pas un process qui
+# tourne : ce type est déclaré uniquement parce que Scalingo exige au moins un
+# conteneur pour accepter un déploiement, et il est scalé à 0 juste après.
+# Ce n'est volontairement PAS un `web` : un `web` doit écouter sur $PORT dans
+# le délai de boot, ce qu'un injecteur n'a aucune raison de faire.
+#
+# Cf. README.md, § Tirer depuis Scalingo.
+injecteur: sleep infinity
