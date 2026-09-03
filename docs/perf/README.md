@@ -64,7 +64,7 @@ Principes structurants :
 | Observabilité & SLO | [`observabilite.md`](./observabilite.md) | WIP — SLI/SLO I1-I5 actés en atelier (2026-07-10), spec d'instrumentation app jeune posée |
 | Estimation de trafic | `TODO` | Non démarré (les SLO qualitatifs sont posés dans `observabilite.md` ; reste le volume attendu) |
 | État des lieux partenaires et dépendances | `TODO` | Non démarré — inclut FT Connect, MILO, et le **service IA** de génération du plan d'action (découvert le 2026-07-10, dans le chemin critique du parcours d'entrée) |
-| Harnais de tir (env, jeu de données, outillage) | `TODO` | Non démarré |
+| Harnais de tir (env, jeu de données, outillage) | [`harnais.md`](./harnais.md), [`volumetrie-prod.md`](./volumetrie-prod.md) | WIP — mock, seed et simulation en place, parcours accueil FT joué de bout en bout en local (2026-09-03). Reste : environnements dédiés, puis automatisation du tir. |
 | Mode dégradé et runbooks incidents | `TODO` | Non démarré |
 | Plan Scalingo jour J | `TODO` | Non démarré |
 

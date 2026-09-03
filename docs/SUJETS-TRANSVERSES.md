@@ -82,4 +82,5 @@
 - **Référence stable** : [`pass-emploi-tools/docs/perf/`](./perf/README.md)
   — `README.md` (démarche en 6 phases, principes, sous-chantiers : SLO/trafic,
   partenaires, harnais de tir, mode dégradé/runbooks, plan Scalingo),
-  `observabilite.md`.
+  `observabilite.md`, `harnais.md` (ce qui est mocké et pourquoi, invariants du
+  harnais), `volumetrie-prod.md`.
