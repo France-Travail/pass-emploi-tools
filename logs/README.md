@@ -13,18 +13,49 @@ https://github.com/France-Travail/elastic-agent-buildpack
 https://github.com/France-Travail/logstash-buildpack
 ```
 
+## Déploiement
+
+L'app Scalingo est linkée au repo `pass-emploi-tools`. Ce repo étant un
+monorepo, c'est **`PROJECT_DIR=logs`** qui dit au buildpack quel sous-dossier
+builder — sans elle le build échoue (`PROJECT_DIR: 'logs' is not a valid
+directory` si elle pointe ailleurs). Même mécanisme que `mock-externes-perf`
+(`PROJECT_DIR=perf/mock-externes`).
+
+### Dimensionnement — 2 Go minimum
+
+Logstash et Elastic Agent tournent **dans le même conteneur** (cf. `start.sh`).
+Il faut donc au moins un conteneur **XL (2 Go)** : Logstash à lui seul consomme
+plusieurs centaines de Mo de non-heap (metaspace, code cache, buffers directs)
+en plus de son heap, et l'agent Go tourne à côté avec son propre `GOMEMLIMIT`.
+Sur un conteneur plus petit, le boot est tué par l'OOM killer
+(`Killed ... memory quota exceeded`) quel que soit le heap configuré.
+
+> ⚠️ **Poule et œuf sur une app neuve** : Scalingo refuse `scale` tant qu'aucun
+> déploiement n'a réussi, et le vrai code ne peut pas booter dans la taille par
+> défaut. Débloquer en déployant une archive placeholder qui boote
+> (`scalingo --app <app> deploy <archive>.tar.gz`, avec un `Procfile` trivial
+> dans un dossier `<projet>/logs/` — l'archive doit avoir un répertoire racine
+> qui enveloppe le tout), puis `scale web:1:XL`, puis redéployer le vrai code.
+
 ## Variables d'environnement
 
 ### Logstash
 
 | Variable                   | Description                                                                              |
 |----------------------------|------------------------------------------------------------------------------------------|
+| `PROJECT_DIR`              | Sous-dossier du monorepo à builder — toujours `logs` (cf. Déploiement)                   |
 | `LOGSTASH_VERSION`         | Version de Logstash à installer (ex: `9.4.5`)                                            |
 | `ENVIRONMENT`              | Environnement de fallback (`prod`, `staging`, `perf`…) si non détecté via appname        |
 | `ELASTICSEARCH_URL`        | URL du cluster Elasticsearch, credentials inclus (ex: `https://user:password@host:port`) |
 | `USER`                     | Utilisateur HTTP pour l'authentification du drain Scalingo                               |
 | `PASSWORD`                 | Mot de passe HTTP pour l'authentification du drain Scalingo                              |
+| `LS_JAVA_OPTS`             | Options JVM, heap compris (ex: `-Xms1g -Xmx1g` dans un conteneur XL)                     |
 | `LOGSTASH_INGEST_THREADS`  | Threads Netty du pipeline ingest (optionnel, défaut : `4`)                               |
+
+> **Le heap se règle via `LS_JAVA_OPTS`, pas `JAVA_OPTS`.** Le lanceur Logstash
+> ignore explicitement le second (`warning: ignoring JAVA_OPTS=…; pass JVM
+> parameters via LS_JAVA_OPTS`). Garder `-Xmx` ≤ ~1 Go dans un conteneur 2 Go
+> pour laisser la place au non-heap et à Elastic Agent.
 
 ### Elastic Agent (Fleet)
 

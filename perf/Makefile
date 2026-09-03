@@ -9,7 +9,8 @@ RUN_DIR := local-run/.run
 HERE := $(CURDIR)
 
 .PHONY: accueilFT loginFT run compile report \
-        start stop status logs mock apidb seed connect api marquer-environnement
+        start stop status logs mock apidb seed connect api marquer-environnement \
+        firebase-fake
 
 accueilFT: .env
 	. ./.env && ./gradlew gatlingRun --simulation passemploi.test.AccueilFranceTravailSimulation
@@ -57,12 +58,10 @@ marquer-environnement:
 mock:
 	@mkdir -p $(RUN_DIR)
 	@fuser -k 8080/tcp >/dev/null 2>&1 || true
-	@cd mock-externes && $(MAKE) install certs
+	@cd mock-externes && $(MAKE) install
 	@cd mock-externes && \
 	  ( . pass-emploi-perf-venv/bin/activate && \
-	    IDP_ISSUER=https://127.0.0.1:8080/idp \
 	    setsid uvicorn app:app --port 8080 --workers 10 \
-	      --ssl-keyfile key.pem --ssl-certfile cert.pem \
 	      > $(HERE)/$(RUN_DIR)/mock.log 2>&1 & \
 	    echo $$! > $(HERE)/$(RUN_DIR)/mock.pid )
 	@echo "mock-externes : démarrage (log $(RUN_DIR)/mock.log)"
