@@ -115,6 +115,28 @@ make run SIMULATION=passemploi.test.ConnectionSimulation   # une autre simulatio
 make compile                                               # compilation seule
 ```
 
+## Tirer depuis Scalingo
+
+`gatling-perf` héberge l'injecteur : les tirs y sont des conteneurs one-off
+(`scalingo run`), pas un process permanent — voir `Procfile` pour pourquoi le
+type `web` déclaré ne sert qu'à satisfaire le boot initial de Scalingo.
+
+```sh
+make tir                                    # login FT réel puis accueil, MAX_USERS=20
+make tir MAX_USERS=50 RAMP_DURATION_IN_SECONDS=120
+make tir TIR_SIMULATION=passemploi.test.ConnectionSimulation
+```
+
+> ⚠️ **`pool_size ≥ 5 × MAX_USERS`** côté seed (`perf/seed/README.md`) : à pool
+> trop petit devant `MAX_USERS`, les mêmes bénéficiaires restent chauds en
+> cache PostgreSQL et le tir mesure le cache plutôt que l'application. Avec le
+> pool par défaut (`pool_size=200`), rester sous `MAX_USERS=40`.
+
+Le système de fichiers d'un one-off est éphémère : le rapport HTML disparaît
+avec le conteneur. Ce qui compte pour un tir manuel est le résumé écrit sur la
+console pendant l'exécution (requêtes, p95, taux d'erreur) — rapatrier le
+rapport en artifact est le travail du futur workflow GitHub Actions.
+
 ## Run with docker
 
 ### Build

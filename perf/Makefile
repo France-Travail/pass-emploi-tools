@@ -10,7 +10,7 @@ HERE := $(CURDIR)
 
 .PHONY: accueilFT loginFT run compile report \
         start stop status logs mock apidb seed connect api marquer-environnement \
-        firebase-fake
+        firebase-fake tir
 
 accueilFT: .env
 	. ./.env && ./gradlew gatlingRun --simulation passemploi.test.AccueilFranceTravailSimulation
@@ -35,6 +35,33 @@ report:
 
 loginFT: .env
 	. ./.env && ./gradlew gatlingRun --simulation passemploi.test.LoginEtAccueilFranceTravailSimulation
+
+# --- Tir sur Scalingo (gatling-perf) — voir README.md, § Tirer depuis Scalingo ---
+
+GATLING_APP ?= gatling-perf
+SCALINGO_REGION ?= osc-secnum-fr1
+MAX_USERS ?= 20
+RAMP_DURATION_IN_SECONDS ?= 60
+HOLD_DURATION_IN_SECONDS ?= 120
+# Simulation par défaut différente de celle de `run` : AccueilFranceTravailSimulation
+# attend un JWT fourni à la main, inutilisable en tir sans intervention — tandis
+# que LoginEtAccueilFranceTravailSimulation se logue elle-même via connect-perf.
+TIR_SIMULATION ?= passemploi.test.LoginEtAccueilFranceTravailSimulation
+
+# --size XL : un injecteur sous-dimensionné devient le facteur limitant du
+# tir, et on mesurerait l'injecteur plutôt que l'application (même logique
+# que le choix Scalingo plutôt qu'un runner GitHub partagé).
+# --no-daemon : le daemon Gradle n'a aucun intérêt dans un conteneur
+# one-off jetable — il accélère les builds *suivants*, qu'il n'y aura pas.
+# --console=plain -q : la barre de progression ANSI de Gradle est illisible
+# une fois relayée par `scalingo run` ; -q coupe le bruit de cycle de vie
+# de Gradle sans toucher à la sortie du process forké (résumé Gatling).
+tir:
+	scalingo --region $(SCALINGO_REGION) --app $(GATLING_APP) run --size XL \
+	  --env MAX_USERS=$(MAX_USERS) \
+	  --env RAMP_DURATION_IN_SECONDS=$(RAMP_DURATION_IN_SECONDS) \
+	  --env HOLD_DURATION_IN_SECONDS=$(HOLD_DURATION_IN_SECONDS) \
+	  "./gradlew --no-daemon --console=plain -q gatlingRun --simulation $(TIR_SIMULATION)"
 
 .env:
 	cp .env.template .env
