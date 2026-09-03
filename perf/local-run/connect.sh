@@ -15,18 +15,12 @@
 # docker-compose.yml de connect.
 export REDIS_URL="redis://:myredispassword@localhost:6777/0"
 
-# LOCAL UNIQUEMENT — jamais dans un vrai environnement. connect impose HTTPS à
-# ses appels IdP (https.Agent global posé sur openid-client dans
-# src/main.ts) : le mock sert donc en TLS avec un cert auto-signé, que Node
-# refuse sans ça. Ne désactive la vérification que pour ce process local.
-export NODE_TLS_REJECT_UNAUTHORIZED="0"
-
 # IdP France Travail -> mock-externes (perf/mock-externes, make start, :8080)
-export IDP_FT_JEUNE_ISSUER="https://127.0.0.1:8080/idp"
-export IDP_FT_JEUNE_AUTHORIZATION_URL="https://127.0.0.1:8080/idp/protocol/openid-connect/auth"
-export IDP_FT_JEUNE_TOKEN_URL="https://127.0.0.1:8080/idp/protocol/openid-connect/token"
-export IDP_FT_JEUNE_JWKS="https://127.0.0.1:8080/idp/protocol/openid-connect/certs"
-export IDP_FT_JEUNE_USERINFO="https://127.0.0.1:8080/idp/protocol/openid-connect/userinfo"
+export IDP_FT_JEUNE_ISSUER="http://127.0.0.1:8080/idp"
+export IDP_FT_JEUNE_AUTHORIZATION_URL="http://127.0.0.1:8080/idp/protocol/openid-connect/auth"
+export IDP_FT_JEUNE_TOKEN_URL="http://127.0.0.1:8080/idp/protocol/openid-connect/token"
+export IDP_FT_JEUNE_JWKS="http://127.0.0.1:8080/idp/protocol/openid-connect/certs"
+export IDP_FT_JEUNE_USERINFO="http://127.0.0.1:8080/idp/protocol/openid-connect/userinfo"
 # Le mock ne vérifie ni client_id ni client_secret : les valeurs du
 # .environment conviennent, pas besoin de les surcharger.
 
@@ -35,16 +29,11 @@ export IDP_FT_JEUNE_USERINFO="https://127.0.0.1:8080/idp/protocol/openid-connect
 # tape alors un vrai domaine externe. Doit valoir le connect local.
 export IDP_FT_JEUNE_REDIRECT_URI="http://localhost:5050/auth/realms/pass-emploi/broker/pe-jeune/endpoint"
 
-# NON-VIDE, malgré perf/mock-externes/README.md : le schéma Joi de connect
-# (configuration.schema.ts) exige realm non vide (`Joi.string().required()`,
-# pas de `.allow('')`), alors que idp.service.ts ne l'ajoute à la requête que
-# si truthy — une chaîne vide y serait le bon signal, mais le schéma la
-# rejette avant. mock-externes ignore les query params qu'il ne déclare pas
-# (FastAPI), donc n'importe quelle valeur non vide passe sans effet.
-export IDP_FT_JEUNE_REALM="perf"
+# Vide = pas de realm : idp.service.ts n'ajoute le paramètre que si truthy.
+export IDP_FT_JEUNE_REALM=""
 
 # API partenaire France Travail -> mock-externes
-export FT_JEUNE_API_URL="https://127.0.0.1:8080/poleemploi"
+export FT_JEUNE_API_URL="http://127.0.0.1:8080/poleemploi"
 
 # pass-emploi-api en local (voir api.sh)
 export PASS_EMPLOI_API_URL="http://localhost:5000"

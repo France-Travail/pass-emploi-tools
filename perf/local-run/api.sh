@@ -27,7 +27,7 @@ export DATABASE_URL="postgresql://passemploi:passemploi@localhost:55432/passempl
 export OIDC_ISSUER_URL="http://localhost:5050/auth/realms/pass-emploi"
 
 # APIs partenaires France Travail -> mock-externes (perf/mock-externes, :8080)
-export POLE_EMPLOI_API_BASE_URL="https://127.0.0.1:8080/poleemploi"
+export POLE_EMPLOI_API_BASE_URL="http://127.0.0.1:8080/poleemploi"
 
 # Firebase : credentials factices, pour ne pas toucher le vrai projet
 # pass-emploi-staging (FCM vers de vrais appareils de recette, quotas
