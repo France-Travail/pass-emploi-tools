@@ -101,7 +101,7 @@ l'appel.
 ```sh
 make loginFT        # tir de bout en bout : login FT réel puis accueil
 make accueilFT      # accueil seul, avec un JWT fourni à la main
-make report         # ouvre le dernier rapport HTML
+make report         # sert le dernier rapport HTML sur http://localhost:8123
 ```
 
 Le Makefile source `.env` à chaque lancement — pas de `source .env` à faire
