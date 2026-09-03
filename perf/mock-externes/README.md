@@ -54,6 +54,21 @@ make start   # venv + deps + uvicorn sur :8080
 make test    # 11 tests
 ```
 
+## Déploiement Scalingo (`mock-externes-perf`)
+
+L'app Scalingo est linkée au repo `pass-emploi-tools`, déploiement auto
+désactivé : on déclenche à la main depuis le dashboard.
+
+Ce repo étant un monorepo, c'est la variable d'environnement **`PROJECT_DIR`**
+qui dit au buildpack quel sous-dossier builder — sans elle il chercherait un
+projet à la racine et échouerait :
+
+```
+PROJECT_DIR=perf/mock-externes
+```
+
+Même mécanisme que `pass-emploi-logstash-*` (`PROJECT_DIR=logs`).
+
 ## Variables
 
 ### Du mock
@@ -79,10 +94,14 @@ En notant `{MOCK}` l'URL à laquelle `connect` joint le mock :
 
 `IDP_FT_JEUNE_CLIENT_ID` et `IDP_FT_JEUNE_CLIENT_SECRET` peuvent valoir n'importe
 quoi : le mock ne les vérifie pas, il se contente de reprendre le `client_id`
-comme `aud`. `IDP_FT_JEUNE_REALM` doit être **non-vide** côté `connect`
-(`configuration.schema.ts` l'exige, `Joi.string().required()`), mais sa valeur
-n'a pas d'importance ici : les routes du mock (FastAPI) ignorent les query
-params qu'elles ne déclarent pas, `realm` y compris.
+comme `aud`. **`IDP_FT_JEUNE_REALM` vide** fait que `connect` n'ajoute pas de
+paramètre `realm`, que le mock n'attend pas — une valeur non vide passe quand
+même : les routes FastAPI ignorent les query params qu'elles ne déclarent pas.
+En local (`.environment`), laisser la variable vide fonctionne. **Sur
+Scalingo, une env var ne peut pas être vide** (rejeté en CLI comme en
+dashboard) : y mettre une valeur factice non vide (ex. `unused`) à la place —
+`connect` reste satisfait par sa validation Joi (`required`) et le mock
+ignore la valeur de toute façon.
 
 ### De `pass-emploi-api`
 

@@ -73,18 +73,16 @@ préalable.
 Chaque étape est aussi un target isolé : `make mock`, `make apidb`,
 `make seed`, `make connect`, `make api` — toujours depuis `perf/`.
 
-## Écarts connus, à lever à l'usage
+## Prérequis de version
 
-- `perf/.env.template` indique encore `CONNECT_URL=http://localhost:8081` —
-  `connect` écoute en réalité sur **5050** par défaut. À corriger dans le
-  template une fois ce port confirmé en environnement Scalingo.
-- `IDP_FT_JEUNE_REALM` doit être **non-vide** en local (`connect.sh` met
-  `"perf"`) : le schéma Joi de `connect` (`configuration.schema.ts`) exige
-  `realm` non vide, alors que le code qui l'utilise (`idp.service.ts`) ne
-  l'ajoute à la requête que s'il est *truthy* — chaîne vide et schéma
-  required-non-empty sont contradictoires côté `connect`. `mock-externes`
-  ignore les query params qu'il ne déclare pas, donc la valeur elle-même
-  n'a pas d'importance.
+Le mock est servi en **HTTP simple** et `IDP_FT_JEUNE_REALM` vaut `""`. Les
+deux supposent `pass-emploi-connect` **à partir du correctif
+« agent HTTP par protocole, et realm vide autorisé »** (mergé dans `develop`,
+pas encore dans `main`). Sur un `connect` antérieur, `openid-client` échoue
+sur toute cible en `http://` et le schéma rejette un realm vide.
+
+## Points à connaître
+
 - **Firebase est mocké par des credentials factices** (`make firebase-fake`,
   générés dans `.run/`, jamais committés) : sans ça l'API se connecte au vrai
   projet `pass-emploi-staging` — FCM vers de vrais appareils de recette et
@@ -95,11 +93,9 @@ Chaque étape est aussi un target isolé : `make mock`, `make apidb`,
   Firestore (`firebase emulators:start` + `FIRESTORE_EMULATOR_HOST`) ; FCM
   n'a pas d'émulateur et devra être neutralisé autrement. La question d'un
   projet Firebase dédié pour les tirs de perf reste ouverte.
-- Les deux contournements liés à `connect` (mock servi en TLS,
-  `IDP_FT_JEUNE_REALM` non vide) ne sont nécessaires que **tant que le
-  correctif `fix/idp-agent-http-et-realm-vide` n'est pas mergé** dans
-  `pass-emploi-connect`. Une fois mergé, le mock peut repasser en HTTP simple
-  et le realm peut valoir `""`.
+- **`IDP_FT_JEUNE_REDIRECT_URI` et `PUBLIC_ADDRESS` sont surchargés**, et
+  doivent le rester : sans eux, `connect` et le mock renvoient le tir vers
+  `id.pass-emploi.incubateur.net`, un vrai domaine, en plein run « local ».
 
 ## Diagnostic
 

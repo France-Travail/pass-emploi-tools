@@ -13,5 +13,3 @@ __pycache__
 *.py[oc]
 .venv
 
-perf/mock-externes/cert.pem
-perf/mock-externes/key.pem
