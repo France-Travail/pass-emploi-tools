@@ -23,8 +23,14 @@ psql "$DATABASE_URL" -f marquer-environnement.sql
 
 ```sh
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
-     -v pool_size=200 -v pool_prefix="'perf-ft-'" -f seed.sql
+     -v pool_size=200 -v pool_prefix=perf-ft- -f seed.sql
 ```
+
+> ⚠️ **`pool_prefix` sans guillemets.** Les scripts interpolent avec `:'pool_prefix'`,
+> la forme psql qui quote elle-même la valeur. Des guillemets dans le `-v` se
+> retrouvent donc *dans* la chaîne : le pool est semé sous `'perf-ft-'0` au lieu
+> de `perf-ft-0`, `verifier.sql` annonce `0 jeunes en base`, et un tir échouerait
+> en `UTILISATEUR_INEXISTANT`.
 
 Idempotent : rejouable autant de fois que voulu, la base finit dans le même
 état. Les FK cascadent depuis le conseiller de perf, donc le nettoyage tient en
@@ -86,5 +92,5 @@ tir, pas le fond de charge.
 |---|---|
 | `GARDE-FOU : la base "…" ne porte pas le marqueur` | Marqueur non posé — vérifier **qu'on vise bien la base de perf** avant de le poser |
 | Login en échec `UTILISATEUR_INEXISTANT` | `pool_prefix` / `pool_size` désalignés avec le mock |
-| `Pool : 0 jeunes en base` au vérificateur | Seed joué sur une autre base que celle vérifiée |
+| `Pool : 0 jeunes en base` au vérificateur | `pool_prefix` passé avec des guillemets, ou seed joué sur une autre base que celle vérifiée |
 | Le tir frappe toujours les mêmes jeunes | `pool_size` trop petit devant `MAX_USERS` |
