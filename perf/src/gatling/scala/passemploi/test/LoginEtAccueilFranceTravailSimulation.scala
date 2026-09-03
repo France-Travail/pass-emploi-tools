@@ -92,15 +92,20 @@ class LoginEtAccueilFranceTravailSimulation extends Simulation {
         .get(s"#{$urlSource}")
         .check(status.in(302, 303, 307))
         .check(header("location").saveAs("location"))
-    ).exec { session =>
-      session.set(
-        urlCible,
-        Redirections.resoudre(
-          session(urlSource).as[String],
-          session("location").as[String]
+    )
+      // Un statut hors 302/303/307 (page d'erreur connect/mock) peut laisser
+      // "location" absent de la session : sans ce garde, le bloc suivant
+      // plante en NoSuchElementException au lieu d'un KO lisible sur `nom`.
+      .exitHereIfFailed
+      .exec { session =>
+        session.set(
+          urlCible,
+          Redirections.resoudre(
+            session(urlSource).as[String],
+            session("location").as[String]
+          )
         )
-      )
-    }
+      }
 
   private val login = exec(
     http("01 authorize (connect)")
@@ -145,6 +150,11 @@ class LoginEtAccueilFranceTravailSimulation extends Simulation {
         .check(status.is(200))
         .check(jsonPath("$.access_token").saveAs("accessToken"))
     )
+    // Sans ce garde, un échec du token exchange (check ci-dessus KO, qui
+    // n'arrête pas le scénario par défaut) laisse `accessToken` absent de la
+    // session, et le bloc suivant plante en NoSuchElementException au lieu
+    // d'un KO lisible sur "06 token (connect)".
+    .exitHereIfFailed
     .exec { session =>
       // L'identité du jeune n'est pas choisie par Gatling : le mock l'a tirée
       // au sort. On la lit dans le token, là où l'API la lira aussi.
