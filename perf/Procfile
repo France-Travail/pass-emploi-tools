@@ -1,10 +1,14 @@
 # Injecteur Gatling — aucun service permanent.
 #
-# Les tirs sont des conteneurs one-off (`scalingo run`), pas un process qui
-# tourne : ce type est déclaré uniquement parce que Scalingo exige au moins un
-# conteneur pour accepter un déploiement, et il est scalé à 0 juste après.
-# Ce n'est volontairement PAS un `web` : un `web` doit écouter sur $PORT dans
-# le délai de boot, ce qu'un injecteur n'a aucune raison de faire.
+# Les tirs sont des conteneurs one-off (`scalingo run`), qui n'exigent aucun
+# conteneur en marche : ce type existe uniquement parce que Scalingo scale
+# `web:1` d'office au premier déploiement d'une app neuve et refuse le
+# déploiement si le Procfile n'en déclare pas. Il est scalé à 0 juste après.
+#
+# `jwebserver` (fourni avec le JDK depuis Java 18) est le plus petit process qui
+# écoute sur $PORT dans le délai de boot, ce qu'un `web` Scalingo doit faire.
+# Effet de bord utile : scaler ce type à 1 après un tir sert le rapport Gatling
+# (build/reports/gatling) en HTTP.
 #
 # Cf. README.md, § Tirer depuis Scalingo.
-injecteur: sleep infinity
+web: jwebserver -b 0.0.0.0 -p $PORT -o none
