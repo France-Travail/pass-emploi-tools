@@ -1,7 +1,10 @@
 -- Sème le pool de bénéficiaires que mock-externes tire au sort.
 --
 --   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
---        -v pool_size=200 -v pool_prefix="'perf-ft-'" -f seed.sql
+--        -v pool_size=200 -v pool_prefix=perf-ft- -f seed.sql
+--
+-- pool_prefix se passe sans guillemets : l'interpolation :'pool_prefix' quote
+-- déjà la valeur, des guillemets dans le -v finiraient dans la chaîne.
 --
 -- DESTRUCTEUR : supprime et recrée tout le périmètre du pool. Le garde-fou
 -- refuse de s'exécuter sur une base non marquée (cf. garde-fou.sql).
