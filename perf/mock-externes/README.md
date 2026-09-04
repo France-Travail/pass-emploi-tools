@@ -26,14 +26,22 @@ Gatling ──► connect-perf ──► mock-externes   (IdP France Travail)
 
 ## Deux principes de conception
 
-**Aucune clé d'un environnement réel.** Le mock génère sa paire RSA au démarrage
-et publie la publique sur son `certs`. C'est lui qui signe les `id_token`. Il n'y
-a donc plus de JWT à renouveler à la main avant chaque tir — Gatling se logue.
+**Aucune clé d'un environnement réel.** Le mock génère sa paire RSA au premier
+démarrage et publie la publique sur son `certs`. C'est lui qui signe les
+`id_token`. Il n'y a donc plus de JWT à renouveler à la main avant chaque tir —
+Gatling se logue.
 
-**Aucun état.** L'identité est tirée au hasard dans le pool à l'autorisation,
-puis **encodée dans le `code`** rendu à `connect`, que le `/token` décode. Rien
-n'est partagé entre les workers uvicorn, ce qui serait un point de
-synchronisation — et un mensonge sous charge.
+La clé est **la même pour tous les workers uvicorn**, et c'est un invariant : le
+`certs` servi par un worker doit valider un `id_token` signé par n'importe quel
+autre. Elle transite par un fichier (`IDP_CLE_PRIVEE_PEM`, `/tmp` par défaut),
+écrit par le premier worker qui démarre. Une clé par worker ferait échouer la
+fraction `1 - 1/workers` des logins, en `RPError: no valid key found in
+issuer's jwks_uri` côté `connect`.
+
+**Aucun état de session.** L'identité est tirée au hasard dans le pool à
+l'autorisation, puis **encodée dans le `code`** rendu à `connect`, que le
+`/token` décode. Rien à synchroniser entre les workers pendant un tir — ce qui
+serait un point de contention, et un mensonge sous charge.
 
 ## Le pool d'identités
 
@@ -78,6 +86,7 @@ Même mécanisme que `pass-emploi-logstash-*` (`PROJECT_DIR=logs`).
 | `IDP_ISSUER` | `http://127.0.0.1:8080/idp` | `iss` des `id_token`. **Doit valoir exactement `IDP_FT_JEUNE_ISSUER`** côté `connect`, sinon `openid-client` rejette le token |
 | `POOL_SIZE` | `50` | Taille du pool d'identités |
 | `POOL_PREFIX` | `perf-ft-` | Préfixe des `sub` |
+| `IDP_CLE_PRIVEE_PEM` | `$TMPDIR/mock-externes-idp.pem` | Où la clé de signature est écrite puis relue par tous les workers |
 
 ### De `pass-emploi-connect`
 
@@ -115,6 +124,7 @@ ignore la valeur de toute façon.
 | Symptôme | Cause probable |
 |---|---|
 | `connect` rejette l'`id_token` | `IDP_ISSUER` ≠ `IDP_FT_JEUNE_ISSUER` |
+| `RPError: no valid key found in issuer's jwks_uri`, sur ~`1 - 1/workers` des logins | Les workers ne partagent pas la clé : `IDP_CLE_PRIVEE_PEM` pointe sur un chemin non partagé (ou non inscriptible) |
 | Login en échec `UTILISATEUR_INEXISTANT` | Le pool ne correspond pas à ce qu'a semé le seed |
 | 401 côté API après un login réussi | `OIDC_ISSUER_URL` pointe encore sur le mock au lieu de `connect-perf` |
 | Toutes les requêtes frappent le même jeune | `POOL_SIZE` trop petit devant `MAX_USERS` |
