@@ -6,6 +6,28 @@ export PATH="/app/bin:$PATH"
 
 mkdir -p /app/data/elastic-agent-state
 
+# Génération de /app/config/pipelines.yml à chaque démarrage.
+# Par défaut (INGEST_ENABLED et PROCESS_ENABLED non définies) : tous les pipelines sont actifs.
+# Avec INGEST_ENABLED=true seul : seul le pipeline ingest tourne (HTTP → Redis).
+# Avec PROCESS_ENABLED=true seul : seuls les pipelines process + dead_letter_queue tournent (Redis → ES).
+PIPELINES_GENERATED_CONF_FILE="/app/config/pipelines.yml"
+
+rm -f "$PIPELINES_GENERATED_CONF_FILE"
+
+if [ -z "$INGEST_ENABLED" ] && [ -z "$PROCESS_ENABLED" ]; then
+  ACTIVATION_NON_PARAMETREE=true
+else
+  ACTIVATION_NON_PARAMETREE=false
+fi
+
+if [ "$ACTIVATION_NON_PARAMETREE" = "true" ] || [ "${INGEST_ENABLED}" = "true" ]; then
+  cat /app/config/pipelines-ingest.yml >> "$PIPELINES_GENERATED_CONF_FILE"
+fi
+
+if [ "$ACTIVATION_NON_PARAMETREE" = "true" ] || [ "${PROCESS_ENABLED}" = "true" ]; then
+  cat /app/config/pipelines-process.yml >> "$PIPELINES_GENERATED_CONF_FILE"
+fi
+
 # Génère un ELASTIC_AGENT_ID unique et stable par instance à partir du HOSTNAME Scalingo
 # (ex: pass-emploi-logstash-perf-web-1 → UUID déterministe).
 # Cela évite l'erreur ErrAgentIdentity quand plusieurs instances tournent en parallèle.
@@ -18,9 +40,15 @@ export ELASTIC_AGENT_ID=$(python3 -c "import uuid; print(uuid.uuid5(uuid.NAMESPA
 # en dessous, sans crasher le processus si la limite est dépassée.
 # Valeur par défaut : 256 MiB — conservatrice pour cohabiter avec Logstash dans 2 Go.
 # À ajuster via la variable d'env Scalingo ELASTIC_AGENT_GO_OPTS après mesure réelle.
-STATE_PATH="/app/data/elastic-agent-state" \
-  env ${ELASTIC_AGENT_GO_OPTS:-GOMEMLIMIT=256MiB} \
-  elastic-agent container &
+#
+# Elastic Agent ne démarre que si FLEET_ENROLL=1.
+# Sur les containers avec peu de RAM (ex: S/512 Mo), ne pas définir FLEET_ENROLL
+# permet de réserver toute la mémoire à Logstash.
+if [ "${FLEET_ENROLL}" = "1" ]; then
+  STATE_PATH="/app/data/elastic-agent-state" \
+    env ${ELASTIC_AGENT_GO_OPTS:-GOMEMLIMIT=256MiB} \
+    elastic-agent container &
+fi
 
 exec logstash \
   --config.reload.automatic \
