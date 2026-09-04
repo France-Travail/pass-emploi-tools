@@ -2,10 +2,12 @@
 #
 # Chargé via --path.settings /app/config (cf. Procfile).
 # Les paramètres pipeline-spécifiques (workers, batch, queue) sont dans
-# config/pipelines.yml — ils y sont plus lisibles car associés à chaque pipeline.
+# config/pipelines-ingest.yml et config/pipelines-process.yml — assemblés
+# dynamiquement dans /app/config/pipelines.yml au démarrage par start.sh
+# selon les variables INGEST_ENABLED / PROCESS_ENABLED.
 #
 # Cf. docs/blackout-logs/conventions.md pour le contexte de l'architecture
-# 2 pipelines + Persistent Queue.
+# 2 services Logstash + Redis.
 
 # --- Chemins ---
 # Logstash sur Scalingo est déployé dans /app (buildpack).
@@ -14,11 +16,11 @@
 path.data: /app/data
 path.logs: /app/logs
 
-# --- Pipeline-to-pipeline ---
-# Nécessaire pour que le pipeline "ingest" puisse envoyer au pipeline "process"
-# via `output { pipeline { send_to => ["process"] } }`.
-# Sans cette option, Logstash ne charge pas le bus inter-pipelines.
-pipeline.ordered: auto
+# --- Pipelines ---
+# Pointe sur le fichier généré dynamiquement par start.sh à chaque démarrage.
+# Ce fichier est assemblé depuis config/pipelines-ingest.yml et/ou
+# config/pipelines-process.yml selon INGEST_ENABLED / PROCESS_ENABLED.
+path.pipelines: /app/config/pipelines.yml
 
 # --- Reload automatique ---
 # Activé via --config.reload.automatic dans le Procfile.
