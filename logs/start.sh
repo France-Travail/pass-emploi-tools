@@ -6,6 +6,28 @@ export PATH="/app/bin:$PATH"
 
 mkdir -p /app/data/elastic-agent-state
 
+# Génération de /app/config/pipelines.yml à chaque démarrage.
+# Par défaut (INGEST_ENABLED et PROCESS_ENABLED non définies) : tous les pipelines sont actifs.
+# Avec INGEST_ENABLED=true seul : seul le pipeline ingest tourne (HTTP → Redis).
+# Avec PROCESS_ENABLED=true seul : seuls les pipelines process + dead_letter_queue tournent (Redis → ES).
+PIPELINES_GENERATED_CONF_FILE="/app/config/pipelines.yml"
+
+rm -f "$PIPELINES_GENERATED_CONF_FILE"
+
+if [ -z "$INGEST_ENABLED" ] && [ -z "$PROCESS_ENABLED" ]; then
+  ACTIVATION_NON_PARAMETREE=true
+else
+  ACTIVATION_NON_PARAMETREE=false
+fi
+
+if [ "$ACTIVATION_NON_PARAMETREE" = "true" ] || [ "${INGEST_ENABLED}" = "true" ]; then
+  cat /app/config/pipelines-ingest.yml >> "$PIPELINES_GENERATED_CONF_FILE"
+fi
+
+if [ "$ACTIVATION_NON_PARAMETREE" = "true" ] || [ "${PROCESS_ENABLED}" = "true" ]; then
+  cat /app/config/pipelines-process.yml >> "$PIPELINES_GENERATED_CONF_FILE"
+fi
+
 # Génère un ELASTIC_AGENT_ID unique et stable par instance à partir du HOSTNAME Scalingo
 # (ex: pass-emploi-logstash-perf-web-1 → UUID déterministe).
 # Cela évite l'erreur ErrAgentIdentity quand plusieurs instances tournent en parallèle.
