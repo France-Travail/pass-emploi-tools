@@ -39,7 +39,7 @@ pas un objectif.
 
 | Pièce | Où | Rôle |
 |---|---|---|
-| **`mock-externes`** | [`perf/mock-externes/`](../../perf/mock-externes/README.md) | Se fait passer pour l'IdP FT et ses APIs partenaires. Signe ses propres `id_token` avec une paire RSA générée au démarrage — aucune clé d'un environnement réel. Sans état : l'identité tirée au sort est encodée dans le `code`, jamais partagée entre workers. |
+| **`mock-externes`** | [`perf/mock-externes/`](../../perf/mock-externes/README.md) | Se fait passer pour l'IdP FT et ses APIs partenaires. Signe ses propres `id_token` avec une paire RSA générée au premier démarrage — aucune clé d'un environnement réel. Sans état de session : l'identité tirée au sort est encodée dans le `code`, jamais partagée entre workers. |
 | **Le seed** | [`perf/seed/`](../../perf/seed/README.md) | Crée en base le pool de bénéficiaires que le mock tire au sort, aux volumétries mesurées en production. Idempotent, protégé par un marqueur anti-prod. |
 | **La simulation** | [`perf/src/gatling/`](../../perf/README.md) | Suit la chaîne de redirections **à la main**, étape nommée par étape — ce qui donne un temps de réponse par saut, et rend tout écart immédiatement lisible. |
 | **Le run local** | [`perf/local-run/`](../../perf/local-run/README.md) | Fait tourner `connect` et `api` en natif contre le mock, pour valider le parcours sans environnement dédié. |
@@ -68,6 +68,12 @@ pas un objectif.
   sa valeur d'origine, le tir **sort vers le vrai domaine** au milieu de la
   chaîne de login, sans erreur visible côté Gatling. C'est le piège le plus
   coûteux à diagnostiquer du harnais.
+- **Les workers du mock partagent une seule clé de signature.** Le `certs`
+  servi par un worker doit valider un `id_token` signé par n'importe quel autre.
+  Une clé par worker n'échoue pas franchement : elle fait passer `1/workers` des
+  logins et rejette le reste en `RPError: no valid key found in issuer's
+  jwks_uri`, ce qui se lit comme un taux d'erreur sous charge alors que c'est un
+  défaut de configuration. La clé transite par `IDP_CLE_PRIVEE_PEM`.
 - **Un client de charge n'est pas un navigateur.** Gatling pose spontanément des
   en-têtes de navigateur (`Origin`) qu'`oidc-provider` confronte aux origines
   autorisées du client, et rejette. Le protocole HTTP de la simulation doit

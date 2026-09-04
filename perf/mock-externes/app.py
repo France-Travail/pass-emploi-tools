@@ -3,11 +3,13 @@ import hashlib
 import json
 import os
 import random
+import tempfile
 import time
 from urllib.parse import quote
 
 import jwt
 import uvicorn
+from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import FastAPI, Header, Request
 from fastapi.responses import RedirectResponse
@@ -24,7 +26,46 @@ IDP_ISSUER = os.getenv("IDP_ISSUER", "http://127.0.0.1:8080/idp")
 POOL_SIZE = int(os.getenv("POOL_SIZE", "50"))
 POOL_PREFIX = os.getenv("POOL_PREFIX", "perf-ft-")
 
-_CLE_PRIVEE = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+CHEMIN_CLE = os.getenv(
+    "IDP_CLE_PRIVEE_PEM",
+    os.path.join(tempfile.gettempdir(), "mock-externes-idp.pem"),
+)
+
+
+def _charger_ou_creer_cle(chemin: str) -> rsa.RSAPrivateKey:
+    # Les workers uvicorn sont des process distincts qui importent chacun ce
+    # module : une clé générée à l'import serait différente par worker, et le
+    # /jwks servi par l'un ne validerait pas l'id_token signé par l'autre —
+    # connect rejette alors en RPError "no valid key found in issuer's
+    # jwks_uri", et seule la fraction 1/workers des logins aboutit.
+    #
+    # La clé transite donc par un fichier, écrit par le premier worker qui y
+    # arrive. Le os.link est atomique et échoue si la cible existe : un seul
+    # gagnant, et les perdants relisent son fichier plutôt que le leur.
+    if not os.path.exists(chemin):
+        provisoire = f"{chemin}.{os.getpid()}"
+        nouvelle = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        descripteur = os.open(provisoire, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        with os.fdopen(descripteur, "wb") as fichier:
+            fichier.write(
+                nouvelle.private_bytes(
+                    encoding=serialization.Encoding.PEM,
+                    format=serialization.PrivateFormat.PKCS8,
+                    encryption_algorithm=serialization.NoEncryption(),
+                )
+            )
+        try:
+            os.link(provisoire, chemin)
+        except FileExistsError:
+            pass
+        finally:
+            os.unlink(provisoire)
+
+    with open(chemin, "rb") as fichier:
+        return serialization.load_pem_private_key(fichier.read(), password=None)
+
+
+_CLE_PRIVEE = _charger_ou_creer_cle(CHEMIN_CLE)
 
 
 def _entier_en_b64(valeur: int) -> str:
@@ -72,8 +113,9 @@ def _sub_du_porteur(entete_authorization: str) -> str:
 ##  connect ne fait aucun discovery : il construit son client à partir des
 ##  quatre URLs ci-dessous, fournies par variables d'environnement.
 ##
-##  Sans état : l'identité tirée au /auth est encodée dans le code, que le
-##  /token décode. Rien à partager entre les workers uvicorn.
+##  Sans état de session : l'identité tirée au /auth est encodée dans le code,
+##  que le /token décode. Rien à synchroniser entre les workers pendant un tir
+##  (la clé de signature, elle, leur est commune : cf. _charger_ou_creer_cle).
 ##
 ##################################################
 

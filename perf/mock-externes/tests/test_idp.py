@@ -1,5 +1,8 @@
 import base64
 import json
+import os
+import subprocess
+import sys
 from urllib.parse import parse_qs, urlparse
 
 import jwt
@@ -130,3 +133,27 @@ def _echanger_le_code(code: str) -> dict:
 def _sub_depuis_jeton(jeton: str) -> str:
     padding = "=" * (-len(jeton) % 4)
     return json.loads(base64.urlsafe_b64decode(jeton + padding))["sub"]
+
+
+def test_les_workers_partagent_la_meme_cle(tmp_path):
+    # Régression : la clé était générée à l'import, donc une par worker
+    # uvicorn — le /jwks d'un worker ne validait pas l'id_token signé par un
+    # autre, et seule la fraction 1/workers des logins aboutissait.
+    chemin = tmp_path / "idp.pem"
+
+    kids = {_kid_dun_process_neuf(chemin) for _ in range(4)}
+
+    assert len(kids) == 1
+
+
+def _kid_dun_process_neuf(chemin) -> str:
+    programme = "import app; print(app._KID)"
+    resultat = subprocess.run(
+        [sys.executable, "-c", programme],
+        capture_output=True,
+        text=True,
+        check=True,
+        cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        env={**os.environ, "IDP_CLE_PRIVEE_PEM": str(chemin)},
+    )
+    return resultat.stdout.strip()
