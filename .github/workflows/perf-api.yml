@@ -94,6 +94,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # `inputs.*` n'existe que sur workflow_dispatch : sur le déclencheur
+      # `push` temporaire (§ ci-dessus), le contexte est vide et chaque
+      # `inputs.x` s'évalue en chaîne vide. On normalise une fois ici, avec les
+      # mêmes défauts que les inputs, pour que les deux déclencheurs se
+      # comportent pareil.
+      - name: Normaliser les paramètres du tir
+        run: |
+          echo "INJECTEUR=${{ inputs.injecteur || 'scalingo' }}" >> "$GITHUB_ENV"
+          echo "MAX_USERS=${{ inputs.max_users || '20' }}" >> "$GITHUB_ENV"
+          echo "RAMP_DURATION_IN_SECONDS=${{ inputs.ramp_duration_in_seconds || '60' }}" >> "$GITHUB_ENV"
+          echo "HOLD_DURATION_IN_SECONDS=${{ inputs.hold_duration_in_seconds || '120' }}" >> "$GITHUB_ENV"
+          echo "P95_THRESHOLD_MS=${{ inputs.p95_threshold_ms || '5000' }}" >> "$GITHUB_ENV"
+          echo "FAILED_PERCENT_THRESHOLD=${{ inputs.failed_percent_threshold || '1.0' }}" >> "$GITHUB_ENV"
+          echo "TIR_SIMULATION=${{ inputs.simulation || 'passemploi.test.LoginEtAccueilFranceTravailSimulation' }}" >> "$GITHUB_ENV"
+          echo "ARRET_APRES_TIR=${{ inputs.arret_apres_tir == true }}" >> "$GITHUB_ENV"
+
       - name: Vérifier les secrets requis
         env:
           SCALINGO_API_TOKEN: ${{ secrets.SCALINGO_API_TOKEN }}
@@ -107,7 +123,7 @@ jobs:
         run: scalingo login --api-token "${{ secrets.SCALINGO_API_TOKEN }}"
 
       - uses: actions/setup-java@v4
-        if: inputs.injecteur == 'runner'
+        if: env.INJECTEUR == 'runner'
         with:
           distribution: temurin
           java-version: '21'
@@ -172,9 +188,9 @@ jobs:
       # restent chaudes en cache PostgreSQL et le tir mesure le cache.
       - name: Vérifier pool_size >= 5 x max_users
         run: |
-          minimum=$(( 5 * ${{ inputs.max_users }} ))
+          minimum=$(( 5 * MAX_USERS ))
           [ "$POOL_SIZE" -ge "$minimum" ] || {
-            echo "::error::POOL_SIZE=$POOL_SIZE < $minimum (5 x max_users=${{ inputs.max_users }}) : agrandir le pool sur $MOCK_APP ou baisser max_users"
+            echo "::error::POOL_SIZE=$POOL_SIZE < $minimum (5 x max_users=$MAX_USERS) : agrandir le pool sur $MOCK_APP ou baisser max_users"
             exit 1
           }
 
@@ -192,17 +208,17 @@ jobs:
                -v pool_size="$POOL_SIZE" -f perf/seed/verifier.sql
 
       - name: Tirer sur Scalingo
-        if: inputs.injecteur == 'scalingo'
+        if: env.INJECTEUR == 'scalingo'
         working-directory: perf
         run: |
           set -o pipefail
           make tir \
-            MAX_USERS='${{ inputs.max_users }}' \
-            RAMP_DURATION_IN_SECONDS='${{ inputs.ramp_duration_in_seconds }}' \
-            HOLD_DURATION_IN_SECONDS='${{ inputs.hold_duration_in_seconds }}' \
-            P95_THRESHOLD_MS='${{ inputs.p95_threshold_ms }}' \
-            FAILED_PERCENT_THRESHOLD='${{ inputs.failed_percent_threshold }}' \
-            TIR_SIMULATION='${{ inputs.simulation }}' \
+            MAX_USERS="$MAX_USERS" \
+            RAMP_DURATION_IN_SECONDS="$RAMP_DURATION_IN_SECONDS" \
+            HOLD_DURATION_IN_SECONDS="$HOLD_DURATION_IN_SECONDS" \
+            P95_THRESHOLD_MS="$P95_THRESHOLD_MS" \
+            FAILED_PERCENT_THRESHOLD="$FAILED_PERCENT_THRESHOLD" \
+            TIR_SIMULATION="$TIR_SIMULATION" \
             2>&1 | tee "$GITHUB_WORKSPACE/sortie-tir.txt"
 
       # Les identifiants OIDC sont lus sur gatling-perf plutôt que dupliqués en
@@ -210,7 +226,7 @@ jobs:
       # quand il change. `make run` n'est pas utilisable ici — la cible dépend
       # d'un .env absent en CI.
       - name: Tirer sur le runner
-        if: inputs.injecteur == 'runner'
+        if: env.INJECTEUR == 'runner'
         working-directory: perf
         run: |
           set -o pipefail
@@ -220,13 +236,8 @@ jobs:
             echo "::add-mask::$valeur"
             export "$v=$valeur"
           done
-          export MAX_USERS='${{ inputs.max_users }}'
-          export RAMP_DURATION_IN_SECONDS='${{ inputs.ramp_duration_in_seconds }}'
-          export HOLD_DURATION_IN_SECONDS='${{ inputs.hold_duration_in_seconds }}'
-          export P95_THRESHOLD_MS='${{ inputs.p95_threshold_ms }}'
-          export FAILED_PERCENT_THRESHOLD='${{ inputs.failed_percent_threshold }}'
           ./gradlew --no-daemon --console=plain -q gatlingRun \
-            --simulation '${{ inputs.simulation }}' \
+            --simulation "$TIR_SIMULATION" \
             2>&1 | tee "$GITHUB_WORKSPACE/sortie-tir.txt"
 
       # Filet de sécurité : le verdict tient normalement au code de sortie de
@@ -255,13 +266,13 @@ jobs:
           done
           jq -n \
             --arg debut "$DEBUT" --arg fin "$fin" \
-            --arg injecteur '${{ inputs.injecteur }}' \
-            --arg simulation '${{ inputs.simulation }}' \
-            --arg max_users '${{ inputs.max_users }}' \
-            --arg ramp '${{ inputs.ramp_duration_in_seconds }}' \
-            --arg hold '${{ inputs.hold_duration_in_seconds }}' \
-            --arg p95 '${{ inputs.p95_threshold_ms }}' \
-            --arg echecs '${{ inputs.failed_percent_threshold }}' \
+            --arg injecteur "$INJECTEUR" \
+            --arg simulation "$TIR_SIMULATION" \
+            --arg max_users "$MAX_USERS" \
+            --arg ramp "$RAMP_DURATION_IN_SECONDS" \
+            --arg hold "$HOLD_DURATION_IN_SECONDS" \
+            --arg p95 "$P95_THRESHOLD_MS" \
+            --arg echecs "$FAILED_PERCENT_THRESHOLD" \
             --arg pool_size "$POOL_SIZE" --arg pool_prefix "$POOL_PREFIX" \
             --arg seed_sha "$(git log -1 --format=%h -- perf/seed)" \
             --arg image_de_base "aucune (hors périmètre v1)" \
@@ -297,7 +308,7 @@ jobs:
       # toute façon, et un tir de milieu de journée est presque toujours suivi
       # d'un autre. L'input sert au tir de fin de soirée.
       - name: Éteindre les apps
-        if: always() && inputs.arret_apres_tir
+        if: always() && env.ARRET_APRES_TIR == 'true'
         run: |
           for app in $APPS; do
             scalingo --region "$SCALINGO_REGION" --app "$app" scale web:0
