@@ -38,10 +38,19 @@ jobs:
       - name: Se connecter à Scalingo
         run: scalingo login --api-token "${{ secrets.SCALINGO_API_TOKEN }}"
 
+      # Le CLI Scalingo répond 400 "no change in containers formation" quand
+      # l'app est déjà au scale demandé (ex. déjà éteinte par une extinction
+      # précédente) — une erreur de son point de vue, un no-op du nôtre. On
+      # tolère ce seul message ; toute autre sortie fait échouer le step.
       - name: Scaler chaque app à 0
         run: |
           for app in $APPS; do
             echo "::group::$app"
-            scalingo --region "$SCALINGO_REGION" --app "$app" scale web:0
+            sortie="$(scalingo --region "$SCALINGO_REGION" --app "$app" scale web:0 2>&1)" && {
+              echo "$sortie"
+            } || {
+              echo "$sortie"
+              echo "$sortie" | grep -qi 'no change in containers formation' || { echo "::endgroup::"; exit 1; }
+            }
             echo "::endgroup::"
           done
