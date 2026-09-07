@@ -148,8 +148,21 @@ sème le pool, tire et archive.
 | `p95_threshold_ms` / `failed_percent_threshold` | `5000` / `1.0` | Les seuils SLO I3 et I1 assertés |
 | `arret_apres_tir` | `false` | Rescale les apps à 0 en fin de tir |
 
-Le rapport, la console et les métadonnées du tir sont dans l'artefact
-`tir-<run_id>`, conservé 90 jours.
+**Le verdict et les seuils sont résumés dans l'onglet Actions**, en haut de la
+page du run (`$GITHUB_STEP_SUMMARY`) — pas besoin de télécharger quoi que ce
+soit pour lire un verdict. Pour le détail (console complète, état des apps
+Scalingo, métadonnées), l'artefact `tir-<run_id>` (conservé 90 jours) contient
+trois fichiers texte bruts, à ouvrir avec n'importe quel éditeur — ce ne sont
+pas des rapports formatés, juste la sortie des commandes.
+
+**Rapport HTML Gatling** (graphiques interactifs, détail par requête) :
+absent en régime `scalingo` par défaut — le tir tourne dans un conteneur
+one-off dont le système de fichiers meurt avec lui. Pour l'obtenir, relancer
+avec `injecteur: runner` : Gatling tourne alors sur le runner GitHub, et
+`perf/build/reports/gatling/` est inclus dans l'artefact
+(`tir-<run_id>/perf/build/reports/gatling/<horodatage>/index.html`, à ouvrir
+en local après extraction du zip). Contrepartie : le p95 mesuré porte le
+jitter d'un runner mutualisé — ne pas s'en servir pour juger un SLO.
 
 > Le workflow **ne restaure aucune image de base** : la base ne contient que le
 > pool semé. Les chiffres valident la chaîne, pas un p95 de production.

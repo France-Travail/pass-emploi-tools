@@ -287,6 +287,37 @@ jobs:
               run: $run, verdict: $verdict}' > metadonnees.json
           cat metadonnees.json
 
+      # Rendu dans l'onglet Actions, en haut de la page du run : évite de
+      # télécharger le zip pour lire un verdict. Le détail (console complète,
+      # rapport HTML si régime runner) reste dans l'artefact.
+      - name: Résumer le tir
+        if: always()
+        run: |
+          {
+            echo "## Tir de performance — \`$TIR_SIMULATION\`"
+            echo
+            echo "| | |"
+            echo "|---|---|"
+            echo "| Verdict du job | ${{ job.status }} |"
+            echo "| Fenêtre | \`$DEBUT\` → \`$(jq -r .fenetre.fin metadonnees.json)\` |"
+            echo "| Injecteur | \`$INJECTEUR\` |"
+            echo "| Charge | max_users=$MAX_USERS, ramp=${RAMP_DURATION_IN_SECONDS}s, hold=${HOLD_DURATION_IN_SECONDS}s |"
+            echo "| Pool | $POOL_SIZE identités, préfixe \`$POOL_PREFIX\` |"
+            echo "| Seuils SLO | p95 < ${P95_THRESHOLD_MS} ms (I3), échecs < ${FAILED_PERCENT_THRESHOLD} % (I1) |"
+            echo
+            echo "### Assertions Gatling"
+            echo
+            echo '```'
+            grep -E '^[0-9]{2} .*: .*(true|false)|^Global:' sortie-tir.txt || echo "(aucune assertion — le tir a échoué avant la fin)"
+            echo '```'
+            echo
+            if [ "$INJECTEUR" = "runner" ]; then
+              echo "Rapport HTML complet dans l'artefact \`tir-${{ github.run_id }}\` (\`perf/build/reports/gatling/\`)."
+            else
+              echo "Pas de rapport HTML : régime \`scalingo\`, système de fichiers éphémère. Relancer avec \`injecteur: runner\` pour l'obtenir."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
       # perf/build/reports/gatling/** n'existe qu'en régime runner : le système
       # de fichiers d'un one-off Scalingo est éphémère et le rapport HTML meurt
       # avec le conteneur. En régime scalingo, l'artefact se réduit à la console
