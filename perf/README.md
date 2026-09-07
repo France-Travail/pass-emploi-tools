@@ -122,28 +122,35 @@ make compile                                               # compilation seule
 type `web` déclaré ne sert qu'à satisfaire le boot initial de Scalingo.
 
 ```sh
+make deployer                               # ⚠️ après toute modification de perf/
 make tir                                    # login FT réel puis accueil, MAX_USERS=20
 make tir MAX_USERS=50 RAMP_DURATION_IN_SECONDS=120
 make tir TIR_SIMULATION=passemploi.test.ConnectionSimulation
 ```
+
+> ⚠️ **L'injecteur tourne sur son slug déployé, pas sur tes fichiers locaux**,
+> et le déploiement automatique est désactivé sur l'app. Sans `make deployer`,
+> un tir mesure la simulation du dernier déploiement — silencieusement, sans
+> aucune erreur. Le workflow CI, lui, déploie la branche courante avant chaque
+> tir.
 
 > ⚠️ **`pool_size ≥ 5 × MAX_USERS`** côté seed (`perf/seed/README.md`) : à pool
 > trop petit devant `MAX_USERS`, les mêmes bénéficiaires restent chauds en
 > cache PostgreSQL et le tir mesure le cache plutôt que l'application. Avec le
 > pool par défaut (`pool_size=200`), rester sous `MAX_USERS=40`.
 
-Le système de fichiers d'un one-off est éphémère : le rapport HTML disparaît
-avec le conteneur. Ce qui compte pour un tir manuel est le résumé écrit sur la
-console pendant l'exécution (requêtes, p95, taux d'erreur).
+Le système de fichiers d'un one-off est éphémère : ce qui compte pour un tir
+manuel est le résumé écrit sur la console pendant l'exécution (requêtes, p95,
+taux d'erreur). Pour récupérer le rapport HTML malgré tout, voir
+`RAPPORT_STDOUT` plus bas.
 
 ## Tirer depuis la CI
 
 `Actions → Perf - Tir API → Run workflow`. Le workflow réveille les apps,
-sème le pool, tire et archive.
+déploie l'injecteur depuis la branche courante, sème le pool, tire et archive.
 
 | Input | Défaut | Ce qu'il change |
 |---|---|---|
-| `injecteur` | `scalingo` | `runner` joue le tir depuis GitHub au lieu de `gatling-perf` — dépannage si Scalingo est indisponible. Son p95 porte le jitter d'un runner mutualisé : ne pas s'en servir pour juger un SLO |
 | `max_users` | `20` | Refusé si `POOL_SIZE < 5 × max_users` |
 | `p95_threshold_ms` / `failed_percent_threshold` | `5000` / `1.0` | Les seuils SLO I3 et I1 assertés |
 | `arret_apres_tir` | `false` | Rescale les apps à 0 en fin de tir |
@@ -156,11 +163,11 @@ trois fichiers texte bruts, à ouvrir avec n'importe quel éditeur — ce ne son
 pas des rapports formatés, juste la sortie des commandes.
 
 **Rapport HTML Gatling** (graphiques interactifs, détail par requête) : présent
-dans l'artefact **dans les deux régimes**. Décompresser le zip, puis ouvrir
+dans l'artefact. Décompresser le zip, puis ouvrir
 `perf/build/reports/gatling/<horodatage>/index.html` — c'est un rapport avec
 ses dossiers `style/` et `js/` à côté, pas un fichier autonome.
 
-En régime `scalingo`, il traverse **stdout du conteneur one-off** en base64
+Il traverse **stdout du conteneur one-off** en base64
 (`tir-et-rapport.sh` + `scalingo run --silent`), parce qu'un one-off n'est ni
 routé en HTTP ni persistant : sa sortie standard est le seul canal. Le
 workflow le rétablit en arborescence après le tir. Un tir manuel n'émet rien

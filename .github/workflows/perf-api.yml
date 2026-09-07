@@ -17,11 +17,6 @@ name: Perf - Tir API
 on:
   workflow_dispatch:
     inputs:
-      injecteur:
-        description: "Où s'exécute Gatling"
-        type: choice
-        options: [scalingo, runner]
-        default: scalingo
       max_users:
         description: "Utilisateurs virtuels au palier (pool_size >= 5 x max_users)"
         default: "20"
@@ -101,7 +96,6 @@ jobs:
       # comportent pareil.
       - name: Normaliser les paramètres du tir
         run: |
-          echo "INJECTEUR=${{ inputs.injecteur || 'scalingo' }}" >> "$GITHUB_ENV"
           echo "MAX_USERS=${{ inputs.max_users || '20' }}" >> "$GITHUB_ENV"
           echo "RAMP_DURATION_IN_SECONDS=${{ inputs.ramp_duration_in_seconds || '60' }}" >> "$GITHUB_ENV"
           echo "HOLD_DURATION_IN_SECONDS=${{ inputs.hold_duration_in_seconds || '120' }}" >> "$GITHUB_ENV"
@@ -121,13 +115,6 @@ jobs:
 
       - name: Se connecter à Scalingo
         run: scalingo login --api-token "${{ secrets.SCALINGO_API_TOKEN }}"
-
-      - uses: actions/setup-java@v4
-        if: env.INJECTEUR == 'runner'
-        with:
-          distribution: temurin
-          java-version: '21'
-          cache: gradle
 
       # Le CLI Scalingo répond 400 "no change in containers formation" quand
       # l'app est déjà au scale demandé (ex. déjà réveillée par le cron de 8h,
@@ -163,6 +150,16 @@ jobs:
               sleep 10
             done
           done
+
+      # L'injecteur tourne sur son slug déployé, pas sur le checkout du runner :
+      # sans ce déploiement, un tir mesure la simulation d'un commit antérieur,
+      # silencieusement. Le déploiement auto est désactivé sur l'app (pour ne
+      # pas déployer à chaque push sur master), donc on le déclenche ici.
+      # ~1 min, le prix de savoir ce qu'on mesure.
+      - name: Déployer l'injecteur depuis la branche courante
+        run: |
+          scalingo --region "$SCALINGO_REGION" --app "$GATLING_APP" \
+            integration-link-manual-deploy --follow "${GITHUB_REF_NAME}"
 
       - name: Marquer le début de la fenêtre de tir
         run: echo "DEBUT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
@@ -207,8 +204,7 @@ jobs:
           psql "$url" -v ON_ERROR_STOP=1 \
                -v pool_size="$POOL_SIZE" -f perf/seed/verifier.sql
 
-      - name: Tirer sur Scalingo
-        if: env.INJECTEUR == 'scalingo'
+      - name: Tirer
         working-directory: perf
         run: |
           set -o pipefail
@@ -227,7 +223,7 @@ jobs:
       # rétablit ici en arborescence, à l'endroit où l'archivage l'attend.
       # `if: always()` : un tir rouge est justement celui qu'on veut regarder.
       - name: Extraire le rapport du flux du one-off
-        if: always() && env.INJECTEUR == 'scalingo'
+        if: always()
         run: |
           if ! grep -q -- '---RAPPORT-GATLING-DEBUT---' sortie-tir.txt; then
             echo "::warning::Pas de rapport dans la sortie du tir"
@@ -248,25 +244,6 @@ jobs:
           # Le base64 pollue la console archivée ; le rapport est désormais à
           # part, on le retire de la trace lisible.
           sed -i '/---RAPPORT-GATLING-DEBUT---/,/---RAPPORT-GATLING-FIN---/d' sortie-tir.txt
-
-      # Les identifiants OIDC sont lus sur gatling-perf plutôt que dupliqués en
-      # secrets GitHub : une seule source de vérité, qui suit le client OIDC
-      # quand il change. `make run` n'est pas utilisable ici — la cible dépend
-      # d'un .env absent en CI.
-      - name: Tirer sur le runner
-        if: env.INJECTEUR == 'runner'
-        working-directory: perf
-        run: |
-          set -o pipefail
-          for v in CLIENT_ID CLIENT_SECRET REDIRECT_URI CONNECT_URL API_URL; do
-            valeur="$(scalingo --region "$SCALINGO_REGION" --app "$GATLING_APP" env-get "$v")"
-            [ -n "$valeur" ] || { echo "::error::$v absent de $GATLING_APP"; exit 1; }
-            echo "::add-mask::$valeur"
-            export "$v=$valeur"
-          done
-          ./gradlew --no-daemon --console=plain -q gatlingRun \
-            --simulation "$TIR_SIMULATION" \
-            2>&1 | tee "$GITHUB_WORKSPACE/sortie-tir.txt"
 
       # Filet de sécurité : le verdict tient normalement au code de sortie de
       # Gatling, non nul dès qu'une assertion tombe. Reste à confirmer que
@@ -294,7 +271,6 @@ jobs:
           done
           jq -n \
             --arg debut "$DEBUT" --arg fin "$fin" \
-            --arg injecteur "$INJECTEUR" \
             --arg simulation "$TIR_SIMULATION" \
             --arg max_users "$MAX_USERS" \
             --arg ramp "$RAMP_DURATION_IN_SECONDS" \
@@ -306,7 +282,7 @@ jobs:
             --arg image_de_base "aucune (hors périmètre v1)" \
             --arg run "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
             --arg verdict '${{ job.status }}' \
-            '{fenetre: {debut: $debut, fin: $fin}, injecteur: $injecteur,
+            '{fenetre: {debut: $debut, fin: $fin},
               simulation: $simulation,
               charge: {max_users: $max_users, ramp_s: $ramp, hold_s: $hold},
               seuils: {p95_ms: $p95, echecs_pct: $echecs},
@@ -317,7 +293,7 @@ jobs:
 
       # Rendu dans l'onglet Actions, en haut de la page du run : évite de
       # télécharger le zip pour lire un verdict. Le détail (console complète,
-      # rapport HTML si régime runner) reste dans l'artefact.
+      # rapport HTML) reste dans l'artefact.
       - name: Résumer le tir
         if: always()
         run: |
@@ -328,7 +304,6 @@ jobs:
             echo "|---|---|"
             echo "| Verdict du job | ${{ job.status }} |"
             echo "| Fenêtre | \`$DEBUT\` → \`$(jq -r .fenetre.fin metadonnees.json)\` |"
-            echo "| Injecteur | \`$INJECTEUR\` |"
             echo "| Charge | max_users=$MAX_USERS, ramp=${RAMP_DURATION_IN_SECONDS}s, hold=${HOLD_DURATION_IN_SECONDS}s |"
             echo "| Pool | $POOL_SIZE identités, préfixe \`$POOL_PREFIX\` |"
             echo "| Seuils SLO | p95 < ${P95_THRESHOLD_MS} ms (I3), échecs < ${FAILED_PERCENT_THRESHOLD} % (I1) |"
@@ -346,10 +321,8 @@ jobs:
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # Le rapport est là dans les deux régimes : produit sur place en régime
-      # runner, rapatrié par stdout du one-off en régime scalingo. Le
-      # if-no-files-found reste en warn : un tir qui échoue avant Gatling n'en
-      # produit aucun, et ce n'est pas une raison de perdre la console.
+      # if-no-files-found en warn : un tir qui échoue avant Gatling ne produit
+      # aucun rapport, et ce n'est pas une raison de perdre la console.
       - name: Archiver
         if: always()
         uses: actions/upload-artifact@v4

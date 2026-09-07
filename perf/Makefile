@@ -10,7 +10,7 @@ HERE := $(CURDIR)
 
 .PHONY: accueilFT loginFT run compile report \
         start stop status logs mock apidb seed connect api marquer-environnement \
-        firebase-fake tir
+        firebase-fake tir deployer
 
 accueilFT: .env
 	. ./.env && ./gradlew gatlingRun --simulation passemploi.test.AccueilFranceTravailSimulation
@@ -52,6 +52,15 @@ TIR_SIMULATION ?= passemploi.test.LoginEtAccueilFranceTravailSimulation
 # Émission du rapport HTML en base64 sur stdout (voir tir-et-rapport.sh).
 # Opt-in : à 1, la CI le rapatrie ; à 0, un tir manuel garde un terminal lisible.
 RAPPORT_STDOUT ?= 0
+BRANCHE ?= $(shell git rev-parse --abbrev-ref HEAD)
+
+# L'injecteur tourne sur son slug déployé, pas sur les fichiers locaux, et le
+# déploiement automatique est désactivé sur l'app. Toute modification de perf/
+# (simulation, script de tir) exige donc un `make deployer` avant `make tir`,
+# sous peine de mesurer le commit précédent sans s'en apercevoir.
+deployer:
+	scalingo --region $(SCALINGO_REGION) --app $(GATLING_APP) \
+	  integration-link-manual-deploy --follow $(BRANCHE)
 
 # --size XL : un injecteur sous-dimensionné devient le facteur limitant du
 # tir, et on mesurerait l'injecteur plutôt que l'application (même logique
