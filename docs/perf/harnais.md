@@ -93,6 +93,25 @@ pas un objectif.
   — tous de vrais scénarios de charge, que l'architecture accueille sans
   redécoupage.
 
+## Orchestration
+
+Un tir se déclenche depuis GitHub Actions (`Perf - Tir API`), qui enchaîne
+réveil de l'environnement, seed, tir, verdict et archivage. Les commandes
+équivalentes en manuel sont dans [`perf/README.md`](../../perf/README.md).
+
+Trois gestes restent **délibérément** hors du workflow :
+
+| Geste | Pourquoi |
+|---|---|
+| Poser le marqueur d'environnement de perf | C'est le garde-fou anti-prod du seed. Un workflow qui sait le poser sait le poser sur la production. |
+| Restaurer l'image de base PostgreSQL | Mécanique non décidée, et le fond de charge n'existe pas encore. **Tant qu'elle manque, un tir porte sur une base ne contenant que le pool semé.** |
+| Choisir les seuils SLO | Ils viennent de l'atelier SLO, pas d'un défaut de workflow. |
+
+Les apps de perf sont éteintes la nuit et le week-end par
+`perf-env-shutdown.yml` et rallumées à 8h par `perf-env-wakeup.yml`. Le
+workflow de tir ne s'appuie pas sur ce cron : il réveille lui-même et attend
+que les sondes de santé répondent.
+
 ## Références
 
 - [`perf/README.md`](../../perf/README.md) — mode d'emploi, étapes du login

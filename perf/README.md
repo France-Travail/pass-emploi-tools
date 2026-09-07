@@ -134,8 +134,25 @@ make tir TIR_SIMULATION=passemploi.test.ConnectionSimulation
 
 Le système de fichiers d'un one-off est éphémère : le rapport HTML disparaît
 avec le conteneur. Ce qui compte pour un tir manuel est le résumé écrit sur la
-console pendant l'exécution (requêtes, p95, taux d'erreur) — rapatrier le
-rapport en artifact est le travail du futur workflow GitHub Actions.
+console pendant l'exécution (requêtes, p95, taux d'erreur).
+
+## Tirer depuis la CI
+
+`Actions → Perf - Tir API → Run workflow`. Le workflow réveille les apps,
+sème le pool, tire et archive.
+
+| Input | Défaut | Ce qu'il change |
+|---|---|---|
+| `injecteur` | `scalingo` | `runner` archive le rapport HTML complet, mais son p95 porte le jitter d'un runner mutualisé |
+| `max_users` | `20` | Refusé si `POOL_SIZE < 5 × max_users` |
+| `p95_threshold_ms` / `failed_percent_threshold` | `5000` / `1.0` | Les seuils SLO I3 et I1 assertés |
+| `arret_apres_tir` | `false` | Rescale les apps à 0 en fin de tir |
+
+Le rapport, la console et les métadonnées du tir sont dans l'artefact
+`tir-<run_id>`, conservé 90 jours.
+
+> Le workflow **ne restaure aucune image de base** : la base ne contient que le
+> pool semé. Les chiffres valident la chaîne, pas un p95 de production.
 
 ## Run with docker
 

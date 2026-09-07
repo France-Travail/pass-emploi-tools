@@ -43,6 +43,8 @@ SCALINGO_REGION ?= osc-secnum-fr1
 MAX_USERS ?= 20
 RAMP_DURATION_IN_SECONDS ?= 60
 HOLD_DURATION_IN_SECONDS ?= 120
+P95_THRESHOLD_MS ?= 5000
+FAILED_PERCENT_THRESHOLD ?= 1.0
 # Simulation par défaut différente de celle de `run` : AccueilFranceTravailSimulation
 # attend un JWT fourni à la main, inutilisable en tir sans intervention — tandis
 # que LoginEtAccueilFranceTravailSimulation se logue elle-même via connect-perf.
@@ -61,6 +63,8 @@ tir:
 	  --env MAX_USERS=$(MAX_USERS) \
 	  --env RAMP_DURATION_IN_SECONDS=$(RAMP_DURATION_IN_SECONDS) \
 	  --env HOLD_DURATION_IN_SECONDS=$(HOLD_DURATION_IN_SECONDS) \
+	  --env P95_THRESHOLD_MS=$(P95_THRESHOLD_MS) \
+	  --env FAILED_PERCENT_THRESHOLD=$(FAILED_PERCENT_THRESHOLD) \
 	  "./gradlew --no-daemon --console=plain -q gatlingRun --simulation $(TIR_SIMULATION)"
 
 .env:

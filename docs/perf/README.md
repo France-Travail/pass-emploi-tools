@@ -64,7 +64,7 @@ Principes structurants :
 | Observabilité & SLO | [`observabilite.md`](./observabilite.md) | WIP — SLI/SLO I1-I5 actés en atelier (2026-07-10), spec d'instrumentation app jeune posée |
 | Estimation de trafic | `TODO` | Non démarré (les SLO qualitatifs sont posés dans `observabilite.md` ; reste le volume attendu) |
 | État des lieux partenaires et dépendances | `TODO` | Non démarré — inclut FT Connect, MILO, et le **service IA** de génération du plan d'action (découvert le 2026-07-10, dans le chemin critique du parcours d'entrée) |
-| Harnais de tir (env, jeu de données, outillage) | [`harnais.md`](./harnais.md), [`volumetrie-prod.md`](./volumetrie-prod.md) | WIP — mock, seed et simulation en place, parcours accueil FT joué de bout en bout en local (2026-09-03). Reste : environnements dédiés, puis automatisation du tir. |
+| Harnais de tir (env, jeu de données, outillage) | [`harnais.md`](./harnais.md), [`volumetrie-prod.md`](./volumetrie-prod.md) | WIP — tir déclenchable depuis la CI (réveil, seed, tir, verdict, archivage). Reste : image de base PostgreSQL (fond de charge), sans laquelle un tir ne juge pas un p95. |
 | Mode dégradé et runbooks incidents | `TODO` | Non démarré |
 | Plan Scalingo jour J | `TODO` | Non démarré |
 
@@ -74,6 +74,9 @@ disponibilité), à instruire avec Scalingo.
 
 ## Historique
 
+- **2026-09-07** — lot 4 livré : le tir se déclenche depuis GitHub Actions, sur
+  environnement dédié réveillé à la demande. Limite assumée : pas de fond de
+  charge en base tant que l'image de base n'existe pas.
 - **2026-07-10** — atelier SLO mené (Tech Lead + métier) : sous-chantier
   [Observabilité & SLO](./observabilite.md) ouvert avec les indicateurs I1-I5 et
   leurs seuils. Décisions utiles aux autres sous-chantiers : pages

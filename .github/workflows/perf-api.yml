@@ -1,0 +1,294 @@
+# Tir de performance sur l'environnement dédié : réveil, seed, tir, verdict,
+# archivage. Le mode d'emploi manuel équivalent est dans perf/README.md.
+#
+# Hors périmètre v1 : le restore de l'image de base PostgreSQL (fond de
+# charge). Un tir de ce workflow porte donc sur une base ne contenant que le
+# pool semé — cf. docs/perf/harnais.md.
+#
+# Prérequis (environnement GitHub « Performance ») :
+#   SCALINGO_API_TOKEN   token API Scalingo
+#
+# Le marqueur d'environnement de perf (perf/seed/marquer-environnement.sql)
+# est posé à la main, une fois par base. Ce workflow ne le pose jamais : c'est
+# le garde-fou anti-prod du seed.
+
+name: Perf - Tir API
+
+on:
+  workflow_dispatch:
+    inputs:
+      injecteur:
+        description: "Où s'exécute Gatling"
+        type: choice
+        options: [scalingo, runner]
+        default: scalingo
+      max_users:
+        description: "Utilisateurs virtuels au palier (pool_size >= 5 x max_users)"
+        default: "20"
+      ramp_duration_in_seconds:
+        description: "Durée de la montée en charge"
+        default: "60"
+      hold_duration_in_seconds:
+        description: "Durée du palier"
+        default: "120"
+      p95_threshold_ms:
+        description: "Seuil SLO I3 : p95 en millisecondes"
+        default: "5000"
+      failed_percent_threshold:
+        description: "Seuil SLO I1 : pourcentage de requêtes en échec toléré"
+        default: "1.0"
+      simulation:
+        description: "Simulation Gatling à jouer"
+        default: passemploi.test.LoginEtAccueilFranceTravailSimulation
+      arret_apres_tir:
+        description: "Rescaler les apps à 0 en fin de tir"
+        type: boolean
+        default: false
+
+  pull_request:
+    paths:
+      - 'perf/**'
+      - '.github/workflows/perf-api.yml'
+
+  # TEMPORAIRE — à retirer une fois la branche mergée : workflow_dispatch exige
+  # que le fichier soit sur la branche par défaut, ce qui interdit de tester
+  # avant d'avoir mergé. Un push sur la branche de dev tient lieu de
+  # déclencheur, avec les valeurs par défaut des inputs.
+  push:
+    branches: [new-tests-perf]
+    paths: ['.github/workflows/perf-api.yml']
+
+env:
+  SCALINGO_REGION: osc-secnum-fr1
+  APPS: pass-emploi-connect-perf pass-emploi-api-perf mock-externes-perf pass-emploi-logstash-perf
+  GATLING_APP: gatling-perf
+  MOCK_APP: mock-externes-perf
+  API_APP: pass-emploi-api-perf
+
+jobs:
+  # Sur PR : pas de tir (destructeur, et il monopolise l'environnement), mais
+  # on vérifie que la simulation compile — pour ne pas le découvrir le jour où
+  # on en a besoin.
+  compile:
+    name: Compilation de la simulation
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Compiler
+        working-directory: perf
+        run: make compile
+
+  tir:
+    name: Tir de performance
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: Performance
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Vérifier les secrets requis
+        env:
+          SCALINGO_API_TOKEN: ${{ secrets.SCALINGO_API_TOKEN }}
+        run: |
+          [ -n "$SCALINGO_API_TOKEN" ] || { echo "::error::Secret SCALINGO_API_TOKEN manquant (environnement Performance)"; exit 1; }
+
+      - name: Installer le CLI Scalingo
+        run: curl -O https://cli-dl.scalingo.com/install.sh && bash install.sh
+
+      - name: Se connecter à Scalingo
+        run: scalingo login --api-token "${{ secrets.SCALINGO_API_TOKEN }}"
+
+      - uses: actions/setup-java@v4
+        if: inputs.injecteur == 'runner'
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Réveiller les apps
+        run: |
+          for app in $APPS; do
+            echo "::group::$app"
+            scalingo --region "$SCALINGO_REGION" --app "$app" scale web:1
+            echo "::endgroup::"
+          done
+
+      - name: Attendre que les apps répondent
+        run: |
+          # mock-externes n'a pas de route de santé dédiée : son JWKS fait
+          # office de sonde, et c'est justement ce que connect appelle.
+          sondes="pass-emploi-connect-perf|/health pass-emploi-api-perf|/health mock-externes-perf|/idp/protocol/openid-connect/certs"
+          for sonde in $sondes; do
+            app="${sonde%%|*}"; chemin="${sonde##*|}"
+            url="https://$app.$SCALINGO_REGION.scalingo.io$chemin"
+            echo "Sonde $url"
+            for essai in $(seq 1 30); do
+              code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$url" || true)"
+              if [ "$code" = "200" ]; then echo "  $app OK après $essai essai(s)"; break; fi
+              if [ "$essai" = "30" ]; then echo "::error::$app ne répond pas (dernier code HTTP : $code)"; exit 1; fi
+              sleep 10
+            done
+          done
+
+      - name: Marquer le début de la fenêtre de tir
+        run: echo "DEBUT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
+      - name: Installer psql
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+
+      # POOL_SIZE et POOL_PREFIX sont lus sur le mock plutôt que redéclarés
+      # ici : le sub que le mock tire doit correspondre à un id_authentification
+      # semé, sinon le login échoue en UTILISATEUR_INEXISTANT. Une seule source
+      # de vérité rend le désappariement impossible.
+      - name: Lire les paramètres du pool sur mock-externes
+        run: |
+          taille="$(scalingo --region "$SCALINGO_REGION" --app "$MOCK_APP" env-get POOL_SIZE)"
+          prefixe="$(scalingo --region "$SCALINGO_REGION" --app "$MOCK_APP" env-get POOL_PREFIX)"
+          [ -n "$taille" ] || { echo "::error::POOL_SIZE absent de $MOCK_APP"; exit 1; }
+          [ -n "$prefixe" ] || { echo "::error::POOL_PREFIX absent de $MOCK_APP"; exit 1; }
+          echo "POOL_SIZE=$taille" >> "$GITHUB_ENV"
+          echo "POOL_PREFIX=$prefixe" >> "$GITHUB_ENV"
+          echo "Pool : $taille identités préfixées $prefixe"
+
+      # Lot 0 : sous 5 identités par utilisateur virtuel, les mêmes lignes
+      # restent chaudes en cache PostgreSQL et le tir mesure le cache.
+      - name: Vérifier pool_size >= 5 x max_users
+        run: |
+          minimum=$(( 5 * ${{ inputs.max_users }} ))
+          [ "$POOL_SIZE" -ge "$minimum" ] || {
+            echo "::error::POOL_SIZE=$POOL_SIZE < $minimum (5 x max_users=${{ inputs.max_users }}) : agrandir le pool sur $MOCK_APP ou baisser max_users"
+            exit 1
+          }
+
+      # pool_prefix se passe sans guillemets : seed.sql interpole avec
+      # :'pool_prefix', qui quote lui-même. Des guillemets ici sèmeraient le
+      # pool sous 'perf-ft-'0 et verifier.sql annoncerait 0 jeune en base.
+      - name: Semer le pool
+        run: |
+          url="$(scalingo --region "$SCALINGO_REGION" --app "$API_APP" env-get DATABASE_URL)"
+          echo "::add-mask::$url"
+          psql "$url" -v ON_ERROR_STOP=1 \
+               -v pool_size="$POOL_SIZE" -v pool_prefix="$POOL_PREFIX" \
+               -f perf/seed/seed.sql
+          psql "$url" -v ON_ERROR_STOP=1 \
+               -v pool_size="$POOL_SIZE" -f perf/seed/verifier.sql
+
+      - name: Tirer sur Scalingo
+        if: inputs.injecteur == 'scalingo'
+        working-directory: perf
+        run: |
+          set -o pipefail
+          make tir \
+            MAX_USERS='${{ inputs.max_users }}' \
+            RAMP_DURATION_IN_SECONDS='${{ inputs.ramp_duration_in_seconds }}' \
+            HOLD_DURATION_IN_SECONDS='${{ inputs.hold_duration_in_seconds }}' \
+            P95_THRESHOLD_MS='${{ inputs.p95_threshold_ms }}' \
+            FAILED_PERCENT_THRESHOLD='${{ inputs.failed_percent_threshold }}' \
+            TIR_SIMULATION='${{ inputs.simulation }}' \
+            2>&1 | tee "$GITHUB_WORKSPACE/sortie-tir.txt"
+
+      # Les identifiants OIDC sont lus sur gatling-perf plutôt que dupliqués en
+      # secrets GitHub : une seule source de vérité, qui suit le client OIDC
+      # quand il change. `make run` n'est pas utilisable ici — la cible dépend
+      # d'un .env absent en CI.
+      - name: Tirer sur le runner
+        if: inputs.injecteur == 'runner'
+        working-directory: perf
+        run: |
+          set -o pipefail
+          for v in CLIENT_ID CLIENT_SECRET REDIRECT_URI CONNECT_URL API_URL; do
+            valeur="$(scalingo --region "$SCALINGO_REGION" --app "$GATLING_APP" env-get "$v")"
+            [ -n "$valeur" ] || { echo "::error::$v absent de $GATLING_APP"; exit 1; }
+            echo "::add-mask::$valeur"
+            export "$v=$valeur"
+          done
+          export MAX_USERS='${{ inputs.max_users }}'
+          export RAMP_DURATION_IN_SECONDS='${{ inputs.ramp_duration_in_seconds }}'
+          export HOLD_DURATION_IN_SECONDS='${{ inputs.hold_duration_in_seconds }}'
+          export P95_THRESHOLD_MS='${{ inputs.p95_threshold_ms }}'
+          export FAILED_PERCENT_THRESHOLD='${{ inputs.failed_percent_threshold }}'
+          ./gradlew --no-daemon --console=plain -q gatlingRun \
+            --simulation '${{ inputs.simulation }}' \
+            2>&1 | tee "$GITHUB_WORKSPACE/sortie-tir.txt"
+
+      # Filet de sécurité : le verdict tient normalement au code de sortie de
+      # Gatling, non nul dès qu'une assertion tombe. Reste à confirmer que
+      # `scalingo run` propage bien le code de sortie du conteneur one-off ;
+      # tant que ce n'est pas vérifié, on relit aussi la console.
+      - name: Verdict
+        run: |
+          if grep -qiE 'assertion.*failed|failed [0-9]+ .*expected' sortie-tir.txt; then
+            echo "::error::Assertion Gatling en échec — SLO non tenu"
+            exit 1
+          fi
+          echo "Assertions tenues"
+
+      # Métadonnées du tir (§7.3 du design). Le SHA déployé et le plan Scalingo
+      # sont capturés bruts : les parser les rendrait fragiles pour un contenu
+      # qu'on relit à l'œil.
+      - name: Rassembler les métadonnées
+        if: always()
+        run: |
+          fin="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for app in $APPS $GATLING_APP; do
+            echo "### $app" >> etat-scalingo.txt
+            scalingo --region "$SCALINGO_REGION" --app "$app" ps >> etat-scalingo.txt 2>&1 || true
+            scalingo --region "$SCALINGO_REGION" --app "$app" deployments 2>&1 | head -3 >> etat-scalingo.txt || true
+          done
+          jq -n \
+            --arg debut "$DEBUT" --arg fin "$fin" \
+            --arg injecteur '${{ inputs.injecteur }}' \
+            --arg simulation '${{ inputs.simulation }}' \
+            --arg max_users '${{ inputs.max_users }}' \
+            --arg ramp '${{ inputs.ramp_duration_in_seconds }}' \
+            --arg hold '${{ inputs.hold_duration_in_seconds }}' \
+            --arg p95 '${{ inputs.p95_threshold_ms }}' \
+            --arg echecs '${{ inputs.failed_percent_threshold }}' \
+            --arg pool_size "$POOL_SIZE" --arg pool_prefix "$POOL_PREFIX" \
+            --arg seed_sha "$(git log -1 --format=%h -- perf/seed)" \
+            --arg image_de_base "aucune (hors périmètre v1)" \
+            --arg run "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --arg verdict '${{ job.status }}' \
+            '{fenetre: {debut: $debut, fin: $fin}, injecteur: $injecteur,
+              simulation: $simulation,
+              charge: {max_users: $max_users, ramp_s: $ramp, hold_s: $hold},
+              seuils: {p95_ms: $p95, echecs_pct: $echecs},
+              donnees: {pool_size: $pool_size, pool_prefix: $pool_prefix,
+                        seed_sha: $seed_sha, image_de_base: $image_de_base},
+              run: $run, verdict: $verdict}' > metadonnees.json
+          cat metadonnees.json
+
+      # perf/build/reports/gatling/** n'existe qu'en régime runner : le système
+      # de fichiers d'un one-off Scalingo est éphémère et le rapport HTML meurt
+      # avec le conteneur. En régime scalingo, l'artefact se réduit à la console
+      # et aux métadonnées — d'où if-no-files-found: warn.
+      - name: Archiver
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tir-${{ github.run_id }}
+          path: |
+            sortie-tir.txt
+            etat-scalingo.txt
+            metadonnees.json
+            perf/build/reports/gatling/**
+          if-no-files-found: warn
+          retention-days: 90
+
+      # Par défaut on laisse tourner : perf-env-shutdown.yml éteint à 20h de
+      # toute façon, et un tir de milieu de journée est presque toujours suivi
+      # d'un autre. L'input sert au tir de fin de soirée.
+      - name: Éteindre les apps
+        if: always() && inputs.arret_apres_tir
+        run: |
+          for app in $APPS; do
+            scalingo --region "$SCALINGO_REGION" --app "$app" scale web:0
+          done
