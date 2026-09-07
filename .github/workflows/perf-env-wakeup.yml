@@ -1,0 +1,43 @@
+# Rallume les apps Scalingo du chantier perf le matin, en miroir de
+# perf-env-shutdown.yml.
+#
+# Ne touche pas aux add-ons PostgreSQL : ils ne sont jamais éteints (cf.
+# perf-env-shutdown.yml), donc la config posée à la main dessus (TLS, accès
+# internet, plugins comme `geometry`) n'a pas besoin d'être refaite.
+#
+# Prérequis (secret GitHub à configurer) :
+#   SCALINGO_API_TOKEN   token API Scalingo (compte de service dédié si possible),
+#                        porté par l'environnement GitHub « Performance »
+#
+# Cible : apps perf (perf/README.md + Logstash perf), région osc-secnum-fr1.
+
+name: Perf - Réveil matinal des apps Scalingo
+
+on:
+  schedule:
+    # 8h00 Europe/Paris = 6h00 UTC (7h00 en heure d'hiver — écart accepté)
+    - cron: "0 6 * * 1-5"
+  workflow_dispatch:
+
+env:
+  SCALINGO_REGION: osc-secnum-fr1
+  APPS: pass-emploi-connect-perf pass-emploi-api-perf mock-externes-perf pass-emploi-logstash-perf
+
+jobs:
+  scale-up:
+    runs-on: ubuntu-latest
+    environment: Performance
+    steps:
+      - name: Installer le CLI Scalingo
+        run: curl -O https://cli-dl.scalingo.com/install.sh && bash install.sh
+
+      - name: Se connecter à Scalingo
+        run: scalingo login --api-token "${{ secrets.SCALINGO_API_TOKEN }}"
+
+      - name: Scaler chaque app à 1
+        run: |
+          for app in $APPS; do
+            echo "::group::$app"
+            scalingo --region "$SCALINGO_REGION" --app "$app" scale web:1
+            echo "::endgroup::"
+          done
