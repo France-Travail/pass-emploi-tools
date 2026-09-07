@@ -143,7 +143,7 @@ sème le pool, tire et archive.
 
 | Input | Défaut | Ce qu'il change |
 |---|---|---|
-| `injecteur` | `scalingo` | `runner` archive le rapport HTML complet, mais son p95 porte le jitter d'un runner mutualisé |
+| `injecteur` | `scalingo` | `runner` joue le tir depuis GitHub au lieu de `gatling-perf` — dépannage si Scalingo est indisponible. Son p95 porte le jitter d'un runner mutualisé : ne pas s'en servir pour juger un SLO |
 | `max_users` | `20` | Refusé si `POOL_SIZE < 5 × max_users` |
 | `p95_threshold_ms` / `failed_percent_threshold` | `5000` / `1.0` | Les seuils SLO I3 et I1 assertés |
 | `arret_apres_tir` | `false` | Rescale les apps à 0 en fin de tir |
@@ -155,14 +155,22 @@ Scalingo, métadonnées), l'artefact `tir-<run_id>` (conservé 90 jours) contien
 trois fichiers texte bruts, à ouvrir avec n'importe quel éditeur — ce ne sont
 pas des rapports formatés, juste la sortie des commandes.
 
-**Rapport HTML Gatling** (graphiques interactifs, détail par requête) :
-absent en régime `scalingo` par défaut — le tir tourne dans un conteneur
-one-off dont le système de fichiers meurt avec lui. Pour l'obtenir, relancer
-avec `injecteur: runner` : Gatling tourne alors sur le runner GitHub, et
-`perf/build/reports/gatling/` est inclus dans l'artefact
-(`tir-<run_id>/perf/build/reports/gatling/<horodatage>/index.html`, à ouvrir
-en local après extraction du zip). Contrepartie : le p95 mesuré porte le
-jitter d'un runner mutualisé — ne pas s'en servir pour juger un SLO.
+**Rapport HTML Gatling** (graphiques interactifs, détail par requête) : présent
+dans l'artefact **dans les deux régimes**. Décompresser le zip, puis ouvrir
+`perf/build/reports/gatling/<horodatage>/index.html` — c'est un rapport avec
+ses dossiers `style/` et `js/` à côté, pas un fichier autonome.
+
+En régime `scalingo`, il traverse **stdout du conteneur one-off** en base64
+(`tir-et-rapport.sh` + `scalingo run --silent`), parce qu'un one-off n'est ni
+routé en HTTP ni persistant : sa sortie standard est le seul canal. Le
+workflow le rétablit en arborescence après le tir. Un tir manuel n'émet rien
+par défaut (`RAPPORT_STDOUT=0`), pour garder un terminal lisible :
+
+```sh
+make tir RAPPORT_STDOUT=1 > tir.b64        # rapatrier le rapport à la main
+sed -n '/---RAPPORT-GATLING-DEBUT---/,/---RAPPORT-GATLING-FIN---/p' tir.b64 \
+  | sed '1d;$d' | base64 -d | tar xz -C build/reports
+```
 
 > Le workflow **ne restaure aucune image de base** : la base ne contient que le
 > pool semé. Les chiffres valident la chaîne, pas un p95 de production.

@@ -49,23 +49,25 @@ FAILED_PERCENT_THRESHOLD ?= 1.0
 # attend un JWT fourni à la main, inutilisable en tir sans intervention — tandis
 # que LoginEtAccueilFranceTravailSimulation se logue elle-même via connect-perf.
 TIR_SIMULATION ?= passemploi.test.LoginEtAccueilFranceTravailSimulation
+# Émission du rapport HTML en base64 sur stdout (voir tir-et-rapport.sh).
+# Opt-in : à 1, la CI le rapatrie ; à 0, un tir manuel garde un terminal lisible.
+RAPPORT_STDOUT ?= 0
 
 # --size XL : un injecteur sous-dimensionné devient le facteur limitant du
 # tir, et on mesurerait l'injecteur plutôt que l'application (même logique
 # que le choix Scalingo plutôt qu'un runner GitHub partagé).
-# --no-daemon : le daemon Gradle n'a aucun intérêt dans un conteneur
-# one-off jetable — il accélère les builds *suivants*, qu'il n'y aura pas.
-# --console=plain -q : la barre de progression ANSI de Gradle est illisible
-# une fois relayée par `scalingo run` ; -q coupe le bruit de cycle de vie
-# de Gradle sans toucher à la sortie du process forké (résumé Gatling).
+# --silent : la seule sortie devient celle du conteneur, sans le bruit du CLI
+# — indispensable pour que le rapport en base64 traverse stdout intact.
+# Le détail des options Gradle est dans tir-et-rapport.sh.
 tir:
-	scalingo --region $(SCALINGO_REGION) --app $(GATLING_APP) run --size XL \
+	scalingo --region $(SCALINGO_REGION) --app $(GATLING_APP) run --size XL --silent \
 	  --env MAX_USERS=$(MAX_USERS) \
 	  --env RAMP_DURATION_IN_SECONDS=$(RAMP_DURATION_IN_SECONDS) \
 	  --env HOLD_DURATION_IN_SECONDS=$(HOLD_DURATION_IN_SECONDS) \
 	  --env P95_THRESHOLD_MS=$(P95_THRESHOLD_MS) \
 	  --env FAILED_PERCENT_THRESHOLD=$(FAILED_PERCENT_THRESHOLD) \
-	  "./gradlew --no-daemon --console=plain -q gatlingRun --simulation $(TIR_SIMULATION)"
+	  --env RAPPORT_STDOUT=$(RAPPORT_STDOUT) \
+	  "./tir-et-rapport.sh $(TIR_SIMULATION)"
 
 .env:
 	cp .env.template .env

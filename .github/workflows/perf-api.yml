@@ -219,7 +219,35 @@ jobs:
             P95_THRESHOLD_MS="$P95_THRESHOLD_MS" \
             FAILED_PERCENT_THRESHOLD="$FAILED_PERCENT_THRESHOLD" \
             TIR_SIMULATION="$TIR_SIMULATION" \
+            RAPPORT_STDOUT=1 \
             2>&1 | tee "$GITHUB_WORKSPACE/sortie-tir.txt"
+
+      # Le rapport a traversé stdout du one-off en base64 (tir-et-rapport.sh) :
+      # c'est le seul canal de sortie d'un conteneur éphémère non routé. On le
+      # rétablit ici en arborescence, à l'endroit où l'archivage l'attend.
+      # `if: always()` : un tir rouge est justement celui qu'on veut regarder.
+      - name: Extraire le rapport du flux du one-off
+        if: always() && env.INJECTEUR == 'scalingo'
+        run: |
+          if ! grep -q -- '---RAPPORT-GATLING-DEBUT---' sortie-tir.txt; then
+            echo "::warning::Pas de rapport dans la sortie du tir"
+            exit 0
+          fi
+          # tr : le TTY alloué par `scalingo run` peut glisser des séquences
+          # d'échappement entre les lignes de base64.
+          sed -n '/---RAPPORT-GATLING-DEBUT---/,/---RAPPORT-GATLING-FIN---/p' sortie-tir.txt \
+            | sed '1d;$d' \
+            | tr -cd 'A-Za-z0-9+/=\n' \
+            | base64 -d > rapport.tar.gz
+          mkdir -p perf/build/reports
+          tar xzf rapport.tar.gz -C perf/build/reports
+          rm -f rapport.tar.gz
+          echo "Rapport extrait :"
+          find perf/build/reports/gatling -name index.html
+
+          # Le base64 pollue la console archivée ; le rapport est désormais à
+          # part, on le retire de la trace lisible.
+          sed -i '/---RAPPORT-GATLING-DEBUT---/,/---RAPPORT-GATLING-FIN---/d' sortie-tir.txt
 
       # Les identifiants OIDC sont lus sur gatling-perf plutôt que dupliqués en
       # secrets GitHub : une seule source de vérité, qui suit le client OIDC
@@ -311,17 +339,17 @@ jobs:
             grep -E '^[0-9]{2} .*: .*(true|false)|^Global:' sortie-tir.txt || echo "(aucune assertion — le tir a échoué avant la fin)"
             echo '```'
             echo
-            if [ "$INJECTEUR" = "runner" ]; then
-              echo "Rapport HTML complet dans l'artefact \`tir-${{ github.run_id }}\` (\`perf/build/reports/gatling/\`)."
+            if [ -d perf/build/reports/gatling ]; then
+              echo "Rapport HTML complet dans l'artefact \`tir-${{ github.run_id }}\` : décompresser, puis ouvrir \`perf/build/reports/gatling/<horodatage>/index.html\`."
             else
-              echo "Pas de rapport HTML : régime \`scalingo\`, système de fichiers éphémère. Relancer avec \`injecteur: runner\` pour l'obtenir."
+              echo "⚠️ Pas de rapport HTML dans cet artefact — voir l'étape d'extraction."
             fi
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # perf/build/reports/gatling/** n'existe qu'en régime runner : le système
-      # de fichiers d'un one-off Scalingo est éphémère et le rapport HTML meurt
-      # avec le conteneur. En régime scalingo, l'artefact se réduit à la console
-      # et aux métadonnées — d'où if-no-files-found: warn.
+      # Le rapport est là dans les deux régimes : produit sur place en régime
+      # runner, rapatrié par stdout du one-off en régime scalingo. Le
+      # if-no-files-found reste en warn : un tir qui échoue avant Gatling n'en
+      # produit aucun, et ce n'est pas une raison de perdre la console.
       - name: Archiver
         if: always()
         uses: actions/upload-artifact@v4
