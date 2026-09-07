@@ -113,11 +113,21 @@ jobs:
           java-version: '21'
           cache: gradle
 
+      # Le CLI Scalingo répond 400 "no change in containers formation" quand
+      # l'app est déjà au scale demandé (ex. déjà réveillée par le cron de 8h,
+      # ou par un tir précédent) — une erreur de son point de vue, un no-op du
+      # nôtre. On tolère ce seul message ; toute autre sortie fait échouer le
+      # step normalement.
       - name: Réveiller les apps
         run: |
           for app in $APPS; do
             echo "::group::$app"
-            scalingo --region "$SCALINGO_REGION" --app "$app" scale web:1
+            sortie="$(scalingo --region "$SCALINGO_REGION" --app "$app" scale web:1 2>&1)" && {
+              echo "$sortie"
+            } || {
+              echo "$sortie"
+              echo "$sortie" | grep -qi 'no change in containers formation' || { echo "::endgroup::"; exit 1; }
+            }
             echo "::endgroup::"
           done
 
