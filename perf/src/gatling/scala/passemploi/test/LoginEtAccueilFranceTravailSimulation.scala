@@ -30,9 +30,10 @@ import java.util.Base64
 //   CLIENT_ID / CLIENT_SECRET Client OIDC déclaré dans connect (obligatoires)
 //   REDIRECT_URI              Callback du client (obligatoire)
 //   KC_IDP_HINT               Porte d'entrée (défaut : pe-jeune → structure POLE_EMPLOI)
-//   MAX_USERS, RAMP_DURATION_IN_SECONDS, HOLD_DURATION_IN_SECONDS
-//   P95_THRESHOLD_MS          Seuil p95 (défaut : 5000 — SLO I3)
-//   FAILED_PERCENT_THRESHOLD  Taux d'échec max en % (défaut : 1.0 — SLO I1)
+//   USERS_PER_SEC             Parcours démarrés par seconde au palier
+//   RAMP_DURATION_IN_SECONDS, HOLD_DURATION_IN_SECONDS
+//   P99_THRESHOLD_MS          Seuil p99 par requête (défaut : 500)
+//   SUCCESS_PERCENT_THRESHOLD Taux de réussite minimum en % (défaut : 99.5)
 
 class LoginEtAccueilFranceTravailSimulation extends Simulation {
   val connectUrl: String   = Helpers.getProperty("CONNECT_URL", "http://localhost:8081")
@@ -55,11 +56,11 @@ class LoginEtAccueilFranceTravailSimulation extends Simulation {
     "REDIRECT_URI manquant : doit figurer dans les callbacks du client"
   )
 
-  val maxUsers: Int                  = Helpers.getProperty("MAX_USERS", "10").toInt
-  val rampDurationInSeconds: Int     = Helpers.getProperty("RAMP_DURATION_IN_SECONDS", "30").toInt
-  val holdDurationInSeconds: Int     = Helpers.getProperty("HOLD_DURATION_IN_SECONDS", "60").toInt
-  val p95ThresholdMs: Int            = Helpers.getProperty("P95_THRESHOLD_MS", "5000").toInt
-  val failedPercentThreshold: Double = Helpers.getProperty("FAILED_PERCENT_THRESHOLD", "1.0").toDouble
+  val usersPerSec: Double             = Helpers.getProperty("USERS_PER_SEC", "10").toDouble
+  val rampDurationInSeconds: Int      = Helpers.getProperty("RAMP_DURATION_IN_SECONDS", "30").toInt
+  val holdDurationInSeconds: Int      = Helpers.getProperty("HOLD_DURATION_IN_SECONDS", "60").toInt
+  val p99ThresholdMs: Int             = Helpers.getProperty("P99_THRESHOLD_MS", "500").toInt
+  val successPercentThreshold: Double = Helpers.getProperty("SUCCESS_PERCENT_THRESHOLD", "99.5").toDouble
 
   private val authentificationClient =
     "Basic " + Base64.getEncoder.encodeToString(
@@ -183,12 +184,19 @@ class LoginEtAccueilFranceTravailSimulation extends Simulation {
 
   setUp(
     scn.inject(
-      rampConcurrentUsers(1).to(maxUsers).during(rampDurationInSeconds),
-      constantConcurrentUsers(maxUsers).during(holdDurationInSeconds)
+      rampUsersPerSec(1).to(usersPerSec).during(rampDurationInSeconds),
+      constantUsersPerSec(usersPerSec).during(holdDurationInSeconds)
     )
   ).protocols(httpProtocol)
+    // Modèle ouvert : sous saturation, Gatling continue de créer des
+    // utilisateurs que le système n'absorbe plus. Sans borne, un tir qui part
+    // en vrille monopolise l'environnement et noie l'injecteur.
+    .maxDuration(rampDurationInSeconds + holdDurationInSeconds + 60)
+    // `forAll` plutôt que `details("07 …")` : le SLO de latence est le même
+    // pour toutes les requêtes, donc chaque saut du login est jugé comme la
+    // page mesurée — et la ligne d'assertion en échec nomme le coupable.
     .assertions(
-      details("07 accueil FT (api)").responseTime.percentile(95).lt(p95ThresholdMs),
-      global.failedRequests.percent.lt(failedPercentThreshold)
+      forAll.responseTime.percentile(99).lt(p99ThresholdMs),
+      global.successfulRequests.percent.gt(successPercentThreshold)
     )
 }

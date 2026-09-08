@@ -40,11 +40,11 @@ loginFT: .env
 
 GATLING_APP ?= gatling-perf
 SCALINGO_REGION ?= osc-secnum-fr1
-MAX_USERS ?= 20
+USERS_PER_SEC ?= 10
 RAMP_DURATION_IN_SECONDS ?= 60
 HOLD_DURATION_IN_SECONDS ?= 120
-P95_THRESHOLD_MS ?= 5000
-FAILED_PERCENT_THRESHOLD ?= 1.0
+P99_THRESHOLD_MS ?= 500
+SUCCESS_PERCENT_THRESHOLD ?= 99.5
 # Simulation par défaut différente de celle de `run` : AccueilFranceTravailSimulation
 # attend un JWT fourni à la main, inutilisable en tir sans intervention — tandis
 # que LoginEtAccueilFranceTravailSimulation se logue elle-même via connect-perf.
@@ -70,11 +70,11 @@ deployer:
 # Le détail des options Gradle est dans tir-et-rapport.sh.
 tir:
 	scalingo --region $(SCALINGO_REGION) --app $(GATLING_APP) run --size XL --silent \
-	  --env MAX_USERS=$(MAX_USERS) \
+	  --env USERS_PER_SEC=$(USERS_PER_SEC) \
 	  --env RAMP_DURATION_IN_SECONDS=$(RAMP_DURATION_IN_SECONDS) \
 	  --env HOLD_DURATION_IN_SECONDS=$(HOLD_DURATION_IN_SECONDS) \
-	  --env P95_THRESHOLD_MS=$(P95_THRESHOLD_MS) \
-	  --env FAILED_PERCENT_THRESHOLD=$(FAILED_PERCENT_THRESHOLD) \
+	  --env P99_THRESHOLD_MS=$(P99_THRESHOLD_MS) \
+	  --env SUCCESS_PERCENT_THRESHOLD=$(SUCCESS_PERCENT_THRESHOLD) \
 	  --env RAPPORT_STDOUT=$(RAPPORT_STDOUT) \
 	  "./tir-et-rapport.sh $(TIR_SIMULATION)"
 

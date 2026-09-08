@@ -115,7 +115,7 @@ jobs:
             # --simulation borne ce run à LogstashIngestSimulation : si
             # -Dgatling.reportsOnly n'était pas propagé à la JVM forkée par le
             # plugin Gradle, gatlingRun relancerait sinon TOUTES les simulations
-            # (dont ConnectionSimulation/PremierScenario qui ciblent l'auth et l'API).
+            # (dont les simulations d'accueil FT, qui ciblent connect et l'API).
             ./gradlew gatlingRun --simulation passemploi.test.LogstashIngestSimulation \
               --no-daemon -Dgatling.reportsOnly="$SIMULATION_NAME"
           fi

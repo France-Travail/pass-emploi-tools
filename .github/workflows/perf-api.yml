@@ -17,21 +17,21 @@ name: Perf - Tir API
 on:
   workflow_dispatch:
     inputs:
-      max_users:
-        description: "Utilisateurs virtuels au palier (pool_size >= 5 x max_users)"
-        default: "20"
+      users_per_sec:
+        description: "Parcours démarrés par seconde au palier (pool_size >= 5 x users_per_sec)"
+        default: "10"
       ramp_duration_in_seconds:
         description: "Durée de la montée en charge"
         default: "60"
       hold_duration_in_seconds:
         description: "Durée du palier"
         default: "120"
-      p95_threshold_ms:
-        description: "Seuil SLO I3 : p95 en millisecondes"
-        default: "5000"
-      failed_percent_threshold:
-        description: "Seuil SLO I1 : pourcentage de requêtes en échec toléré"
-        default: "1.0"
+      p99_threshold_ms:
+        description: "SLO de latence : p99 par requête, en millisecondes"
+        default: "500"
+      success_percent_threshold:
+        description: "SLO de fiabilité : pourcentage de requêtes réussies exigé"
+        default: "99.5"
       simulation:
         description: "Simulation Gatling à jouer"
         default: passemploi.test.LoginEtAccueilFranceTravailSimulation
@@ -96,11 +96,11 @@ jobs:
       # comportent pareil.
       - name: Normaliser les paramètres du tir
         run: |
-          echo "MAX_USERS=${{ inputs.max_users || '20' }}" >> "$GITHUB_ENV"
+          echo "USERS_PER_SEC=${{ inputs.users_per_sec || '10' }}" >> "$GITHUB_ENV"
           echo "RAMP_DURATION_IN_SECONDS=${{ inputs.ramp_duration_in_seconds || '60' }}" >> "$GITHUB_ENV"
           echo "HOLD_DURATION_IN_SECONDS=${{ inputs.hold_duration_in_seconds || '120' }}" >> "$GITHUB_ENV"
-          echo "P95_THRESHOLD_MS=${{ inputs.p95_threshold_ms || '5000' }}" >> "$GITHUB_ENV"
-          echo "FAILED_PERCENT_THRESHOLD=${{ inputs.failed_percent_threshold || '1.0' }}" >> "$GITHUB_ENV"
+          echo "P99_THRESHOLD_MS=${{ inputs.p99_threshold_ms || '500' }}" >> "$GITHUB_ENV"
+          echo "SUCCESS_PERCENT_THRESHOLD=${{ inputs.success_percent_threshold || '99.5' }}" >> "$GITHUB_ENV"
           echo "TIR_SIMULATION=${{ inputs.simulation || 'passemploi.test.LoginEtAccueilFranceTravailSimulation' }}" >> "$GITHUB_ENV"
           echo "ARRET_APRES_TIR=${{ inputs.arret_apres_tir == true }}" >> "$GITHUB_ENV"
 
@@ -183,11 +183,18 @@ jobs:
 
       # Lot 0 : sous 5 identités par utilisateur virtuel, les mêmes lignes
       # restent chaudes en cache PostgreSQL et le tir mesure le cache.
-      - name: Vérifier pool_size >= 5 x max_users
+      #
+      # En modèle ouvert, le nombre d'utilisateurs simultanés n'est plus un
+      # paramètre mais une conséquence (loi de Little : concurrents ≈ débit x
+      # durée du parcours). On le majore par `users_per_sec`, ce qui revient à
+      # supposer un parcours d'au plus une seconde — vrai aujourd'hui (~0,5 s),
+      # et conservateur : si le parcours s'allonge, ce garde-fou devra être
+      # recalculé sur la concurrence réellement observée au tir précédent.
+      - name: Vérifier pool_size >= 5 x users_per_sec
         run: |
-          minimum=$(( 5 * MAX_USERS ))
+          minimum=$(( 5 * USERS_PER_SEC ))
           [ "$POOL_SIZE" -ge "$minimum" ] || {
-            echo "::error::POOL_SIZE=$POOL_SIZE < $minimum (5 x max_users=$MAX_USERS) : agrandir le pool sur $MOCK_APP ou baisser max_users"
+            echo "::error::POOL_SIZE=$POOL_SIZE < $minimum (5 x users_per_sec=$USERS_PER_SEC) : agrandir le pool sur $MOCK_APP ou baisser users_per_sec"
             exit 1
           }
 
@@ -209,11 +216,11 @@ jobs:
         run: |
           set -o pipefail
           make tir \
-            MAX_USERS="$MAX_USERS" \
+            USERS_PER_SEC="$USERS_PER_SEC" \
             RAMP_DURATION_IN_SECONDS="$RAMP_DURATION_IN_SECONDS" \
             HOLD_DURATION_IN_SECONDS="$HOLD_DURATION_IN_SECONDS" \
-            P95_THRESHOLD_MS="$P95_THRESHOLD_MS" \
-            FAILED_PERCENT_THRESHOLD="$FAILED_PERCENT_THRESHOLD" \
+            P99_THRESHOLD_MS="$P99_THRESHOLD_MS" \
+            SUCCESS_PERCENT_THRESHOLD="$SUCCESS_PERCENT_THRESHOLD" \
             TIR_SIMULATION="$TIR_SIMULATION" \
             RAPPORT_STDOUT=1 \
             2>&1 | tee "$GITHUB_WORKSPACE/sortie-tir.txt"
@@ -272,11 +279,11 @@ jobs:
           jq -n \
             --arg debut "$DEBUT" --arg fin "$fin" \
             --arg simulation "$TIR_SIMULATION" \
-            --arg max_users "$MAX_USERS" \
+            --arg users_per_sec "$USERS_PER_SEC" \
             --arg ramp "$RAMP_DURATION_IN_SECONDS" \
             --arg hold "$HOLD_DURATION_IN_SECONDS" \
-            --arg p95 "$P95_THRESHOLD_MS" \
-            --arg echecs "$FAILED_PERCENT_THRESHOLD" \
+            --arg p99 "$P99_THRESHOLD_MS" \
+            --arg reussite "$SUCCESS_PERCENT_THRESHOLD" \
             --arg pool_size "$POOL_SIZE" --arg pool_prefix "$POOL_PREFIX" \
             --arg seed_sha "$(git log -1 --format=%h -- perf/seed)" \
             --arg image_de_base "aucune (hors périmètre v1)" \
@@ -284,42 +291,24 @@ jobs:
             --arg verdict '${{ job.status }}' \
             '{fenetre: {debut: $debut, fin: $fin},
               simulation: $simulation,
-              charge: {max_users: $max_users, ramp_s: $ramp, hold_s: $hold},
-              seuils: {p95_ms: $p95, echecs_pct: $echecs},
+              charge: {users_per_sec: $users_per_sec, ramp_s: $ramp, hold_s: $hold},
+              seuils: {p99_ms: $p99, reussite_pct: $reussite},
               donnees: {pool_size: $pool_size, pool_prefix: $pool_prefix,
                         seed_sha: $seed_sha, image_de_base: $image_de_base},
               run: $run, verdict: $verdict}' > metadonnees.json
           cat metadonnees.json
 
       # Rendu dans l'onglet Actions, en haut de la page du run : évite de
-      # télécharger le zip pour lire un verdict. Le détail (console complète,
-      # rapport HTML) reste dans l'artefact.
+      # télécharger le zip pour lire un verdict. Le détail par requête vient du
+      # rapport HTML, seul endroit où Gatling l'expose (la console n'a que les
+      # agrégats globaux). Le rendu vit dans perf/resume-tir.py, pour être
+      # rejouable sur un artefact téléchargé plutôt que débogable en CI seule.
       - name: Résumer le tir
         if: always()
         run: |
-          {
-            echo "## Tir de performance — \`$TIR_SIMULATION\`"
-            echo
-            echo "| | |"
-            echo "|---|---|"
-            echo "| Verdict du job | ${{ job.status }} |"
-            echo "| Fenêtre | \`$DEBUT\` → \`$(jq -r .fenetre.fin metadonnees.json)\` |"
-            echo "| Charge | max_users=$MAX_USERS, ramp=${RAMP_DURATION_IN_SECONDS}s, hold=${HOLD_DURATION_IN_SECONDS}s |"
-            echo "| Pool | $POOL_SIZE identités, préfixe \`$POOL_PREFIX\` |"
-            echo "| Seuils SLO | p95 < ${P95_THRESHOLD_MS} ms (I3), échecs < ${FAILED_PERCENT_THRESHOLD} % (I1) |"
-            echo
-            echo "### Assertions Gatling"
-            echo
-            echo '```'
-            grep -E '^[0-9]{2} .*: .*(true|false)|^Global:' sortie-tir.txt || echo "(aucune assertion — le tir a échoué avant la fin)"
-            echo '```'
-            echo
-            if [ -d perf/build/reports/gatling ]; then
-              echo "Rapport HTML complet dans l'artefact \`tir-${{ github.run_id }}\` : décompresser, puis ouvrir \`perf/build/reports/gatling/<horodatage>/index.html\`."
-            else
-              echo "⚠️ Pas de rapport HTML dans cet artefact — voir l'étape d'extraction."
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
+          python3 perf/resume-tir.py \
+            metadonnees.json sortie-tir.txt etat-scalingo.txt \
+            perf/build/reports/gatling >> "$GITHUB_STEP_SUMMARY"
 
       # if-no-files-found en warn : un tir qui échoue avant Gatling ne produit
       # aucun rapport, et ce n'est pas une raison de perdre la console.

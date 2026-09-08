@@ -10,9 +10,9 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 // Tir de charge sur GET /jeunes/:idJeune/pole-emploi/accueil (page d'accueil
-// jeune France Travail). Modèle fermé : montée vers un plafond d'utilisateurs
-// concurrents, puis palier. Le flow traversé par chaque requête est décrit
-// dans perf/README.md.
+// jeune France Travail). Modèle ouvert : montée vers un débit d'arrivées, puis
+// palier — les arrivants n'attendent pas que les précédents aient fini. Le flow
+// traversé par chaque requête est décrit dans perf/README.md.
 //
 // Prérequis : le jeune FT existe en base sur l'environnement cible, l'API
 // pointe sur perf/mock-externes (cf. son README), et USER_TOKEN est un JWT
@@ -22,12 +22,11 @@ import java.time.temporal.ChronoUnit
 //   API_URL                   Cible (défaut : http://localhost:5000)
 //   USER_ID                   Id pass-emploi du jeune FT (défaut : Alban336)
 //   USER_TOKEN                JWT du jeune FT (obligatoire)
-//   MAX_USERS                 Plafond d'utilisateurs concurrents (défaut : 10)
+//   USERS_PER_SEC             Parcours démarrés par seconde au palier (défaut : 10)
 //   RAMP_DURATION_IN_SECONDS  Durée de la montée (défaut : 30)
 //   HOLD_DURATION_IN_SECONDS  Durée du palier (défaut : 60)
-//   P95_THRESHOLD_MS          Seuil p95 (défaut : 5000 — SLO I3 pages critiques,
-//                             cf. docs/perf/observabilite.md)
-//   FAILED_PERCENT_THRESHOLD  Taux d'échec max en % (défaut : 1.0 — SLO I1 ≥ 99 %)
+//   P99_THRESHOLD_MS          Seuil p99 par requête (défaut : 500)
+//   SUCCESS_PERCENT_THRESHOLD Taux de réussite minimum en % (défaut : 99.5)
 
 class AccueilFranceTravailSimulation extends Simulation {
   val apiUrl: String    = Helpers.getProperty("API_URL", "http://localhost:5000")
@@ -39,11 +38,11 @@ class AccueilFranceTravailSimulation extends Simulation {
     "USER_TOKEN manquant : JWT du jeune FT émis par connect. Transitoire — le lot 3 remplace cette variable par un login via connect"
   )
 
-  val maxUsers: Int                  = Helpers.getProperty("MAX_USERS", "10").toInt
+  val usersPerSec: Double            = Helpers.getProperty("USERS_PER_SEC", "10").toDouble
   val rampDurationInSeconds: Int     = Helpers.getProperty("RAMP_DURATION_IN_SECONDS", "30").toInt
   val holdDurationInSeconds: Int     = Helpers.getProperty("HOLD_DURATION_IN_SECONDS", "60").toInt
-  val p95ThresholdMs: Int            = Helpers.getProperty("P95_THRESHOLD_MS", "5000").toInt
-  val failedPercentThreshold: Double = Helpers.getProperty("FAILED_PERCENT_THRESHOLD", "1.0").toDouble
+  val p99ThresholdMs: Int             = Helpers.getProperty("P99_THRESHOLD_MS", "500").toInt
+  val successPercentThreshold: Double = Helpers.getProperty("SUCCESS_PERCENT_THRESHOLD", "99.5").toDouble
 
   // ISO 8601 strict exigé par l'API ; Instant = UTC avec suffixe "Z", donc pas
   // de '+' de fuseau à encoder dans l'URL
@@ -65,12 +64,16 @@ class AccueilFranceTravailSimulation extends Simulation {
 
   setUp(
     scn.inject(
-      rampConcurrentUsers(1).to(maxUsers).during(rampDurationInSeconds),
-      constantConcurrentUsers(maxUsers).during(holdDurationInSeconds)
+      rampUsersPerSec(1).to(usersPerSec).during(rampDurationInSeconds),
+      constantUsersPerSec(usersPerSec).during(holdDurationInSeconds)
     )
   ).protocols(httpProtocol)
+    // Modèle ouvert : sous saturation, Gatling continue de créer des
+    // utilisateurs que le système n'absorbe plus. Sans borne, un tir qui part
+    // en vrille monopolise l'environnement et noie l'injecteur.
+    .maxDuration(rampDurationInSeconds + holdDurationInSeconds + 60)
     .assertions(
-      global.responseTime.percentile(95).lt(p95ThresholdMs),
-      global.failedRequests.percent.lt(failedPercentThreshold)
+      forAll.responseTime.percentile(99).lt(p99ThresholdMs),
+      global.successfulRequests.percent.gt(successPercentThreshold)
     )
 }

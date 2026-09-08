@@ -9,8 +9,6 @@ Harnais Gatling du chantier perf (démarche et SLO : [`docs/perf/`](../docs/perf
 | `LoginEtAccueilFranceTravailSimulation`  | connect + pass-emploi-api | **Bout en bout** : login FT réel puis page d'accueil jeune      |
 | `AccueilFranceTravailSimulation`         | pass-emploi-api         | Page d'accueil jeune seule, avec un JWT fourni à la main          |
 | `LogstashIngestSimulation`               | Logstash                | Non-régression du pipeline d'ingestion (CI : `logstash-perf.yml`) |
-| `ConnectionSimulation`                   | Keycloak                | Parcours de login (legacy)                                        |
-| `PremierScenario`                        | pass-emploi-api         | Scénario conseiller historique (2022)                             |
 
 ## Le workflow accueil FT, étape par étape
 
@@ -111,7 +109,7 @@ depuis `.env.template` ; le renseigner puis relancer.
 Autres cibles :
 
 ```sh
-make run SIMULATION=passemploi.test.ConnectionSimulation   # une autre simulation
+make run SIMULATION=passemploi.test.AccueilFranceTravailSimulation   # une autre simulation
 make compile                                               # compilation seule
 ```
 
@@ -123,9 +121,9 @@ type `web` déclaré ne sert qu'à satisfaire le boot initial de Scalingo.
 
 ```sh
 make deployer                               # ⚠️ après toute modification de perf/
-make tir                                    # login FT réel puis accueil, MAX_USERS=20
-make tir MAX_USERS=50 RAMP_DURATION_IN_SECONDS=120
-make tir TIR_SIMULATION=passemploi.test.ConnectionSimulation
+make tir                                    # login FT réel puis accueil, USERS_PER_SEC=10
+make tir USERS_PER_SEC=20 RAMP_DURATION_IN_SECONDS=120
+make tir TIR_SIMULATION=passemploi.test.AccueilFranceTravailSimulation
 ```
 
 > ⚠️ **L'injecteur tourne sur son slug déployé, pas sur tes fichiers locaux**,
@@ -134,10 +132,15 @@ make tir TIR_SIMULATION=passemploi.test.ConnectionSimulation
 > aucune erreur. Le workflow CI, lui, déploie la branche courante avant chaque
 > tir.
 
-> ⚠️ **`pool_size ≥ 5 × MAX_USERS`** côté seed (`perf/seed/README.md`) : à pool
-> trop petit devant `MAX_USERS`, les mêmes bénéficiaires restent chauds en
+> ⚠️ **`pool_size ≥ 5 × USERS_PER_SEC`** côté seed (`perf/seed/README.md`) : à
+> pool trop petit devant la charge, les mêmes bénéficiaires restent chauds en
 > cache PostgreSQL et le tir mesure le cache plutôt que l'application. Avec le
-> pool par défaut (`pool_size=200`), rester sous `MAX_USERS=40`.
+> pool par défaut (`pool_size=200`), rester sous `USERS_PER_SEC=40`.
+>
+> Le facteur 5 se comptait en utilisateurs *concurrents*, qui ne sont plus un
+> paramètre en modèle ouvert : on les majore par le débit, ce qui suppose un
+> parcours d'au plus une seconde. Si le parcours s'allonge, recalculer sur la
+> concurrence observée au tir précédent.
 
 Le système de fichiers d'un one-off est éphémère : ce qui compte pour un tir
 manuel est le résumé écrit sur la console pendant l'exécution (requêtes, p95,
@@ -151,13 +154,22 @@ déploie l'injecteur depuis la branche courante, sème le pool, tire et archive.
 
 | Input | Défaut | Ce qu'il change |
 |---|---|---|
-| `max_users` | `20` | Refusé si `POOL_SIZE < 5 × max_users` |
-| `p95_threshold_ms` / `failed_percent_threshold` | `5000` / `1.0` | Les seuils SLO I3 et I1 assertés |
+| `users_per_sec` | `10` | Refusé si `POOL_SIZE < 5 × users_per_sec` |
+| `p99_threshold_ms` / `success_percent_threshold` | `500` / `99.5` | Les deux SLO assertés |
 | `arret_apres_tir` | `false` | Rescale les apps à 0 en fin de tir |
 
-**Le verdict et les seuils sont résumés dans l'onglet Actions**, en haut de la
-page du run (`$GITHUB_STEP_SUMMARY`) — pas besoin de télécharger quoi que ce
-soit pour lire un verdict. Pour le détail (console complète, état des apps
+**Le tir est résumé dans l'onglet Actions**, en haut de la page du run
+(`$GITHUB_STEP_SUMMARY`) : paramètres, verdict, p95 de la requête assertée,
+étape la plus lente, étapes en KO, détail par étape et taille des conteneurs —
+pas besoin de télécharger quoi que ce soit pour lire un résultat. Le rendu est
+fait par [`resume-tir.py`](./resume-tir.py), rejouable sur un artefact
+téléchargé :
+
+```sh
+python3 resume-tir.py metadonnees.json sortie-tir.txt etat-scalingo.txt \
+  perf/build/reports/gatling
+```
+ Pour le détail (console complète, état des apps
 Scalingo, métadonnées), l'artefact `tir-<run_id>` (conservé 90 jours) contient
 trois fichiers texte bruts, à ouvrir avec n'importe quel éditeur — ce ne sont
 pas des rapports formatés, juste la sortie des commandes.
@@ -188,12 +200,6 @@ sed -n '/---RAPPORT-GATLING-DEBUT---/,/---RAPPORT-GATLING-FIN---/p' tir.b64 \
 
 ```sh
 docker build -t gatling .
-```
-
-### Run all simulations
-
-```sh
-docker run gatling
 ```
 
 ### Run a simulation
