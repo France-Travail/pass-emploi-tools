@@ -35,6 +35,9 @@ on:
       simulation:
         description: "Simulation Gatling à jouer"
         default: passemploi.test.LoginEtAccueilFranceTravailSimulation
+      taille_apps:
+        description: "Taille des conteneurs connect/api/mock-externes (S, M, L, XL…) — sans effet sur logstash-perf, dimensionné à part pour son propre test de charge"
+        default: "M"
       arret_apres_tir:
         description: "Rescaler les apps à 0 en fin de tir"
         type: boolean
@@ -55,8 +58,14 @@ on:
 
 env:
   SCALINGO_REGION: osc-secnum-fr1
+  # Apps mesurées ou dans le chemin critique du parcours : leur taille est
+  # pilotée par ce workflow (taille_apps). pass-emploi-logstash-perf en est
+  # exclu : son dimensionnement répond à logstash-perf.yml (son propre test de
+  # charge), pas au SLO applicatif tiré ici.
+  APPS_MESUREES: pass-emploi-connect-perf pass-emploi-api-perf mock-externes-perf
   APPS: pass-emploi-connect-perf pass-emploi-api-perf mock-externes-perf pass-emploi-logstash-perf
   GATLING_APP: gatling-perf
+  TAILLE_INJECTEUR: XL
   MOCK_APP: mock-externes-perf
   API_APP: pass-emploi-api-perf
 
@@ -102,6 +111,7 @@ jobs:
           echo "P99_THRESHOLD_MS=${{ inputs.p99_threshold_ms || '500' }}" >> "$GITHUB_ENV"
           echo "SUCCESS_PERCENT_THRESHOLD=${{ inputs.success_percent_threshold || '99.5' }}" >> "$GITHUB_ENV"
           echo "TIR_SIMULATION=${{ inputs.simulation || 'passemploi.test.LoginEtAccueilFranceTravailSimulation' }}" >> "$GITHUB_ENV"
+          echo "TAILLE_APPS=${{ inputs.taille_apps || 'M' }}" >> "$GITHUB_ENV"
           echo "ARRET_APRES_TIR=${{ inputs.arret_apres_tir == true }}" >> "$GITHUB_ENV"
 
       - name: Vérifier les secrets requis
@@ -121,11 +131,16 @@ jobs:
       # ou par un tir précédent) — une erreur de son point de vue, un no-op du
       # nôtre. On tolère ce seul message ; toute autre sortie fait échouer le
       # step normalement.
+      #
+      # La taille se pose ici plutôt que d'être subie : sans elle, l'app garde
+      # le réglage laissé par la dernière personne à l'avoir touchée, invisible
+      # dans les paramètres du tir. logstash-perf n'est volontairement pas
+      # concerné (cf. APPS_MESUREES ci-dessus).
       - name: Réveiller les apps
         run: |
-          for app in $APPS; do
-            echo "::group::$app"
-            sortie="$(scalingo --region "$SCALINGO_REGION" --app "$app" scale web:1 2>&1)" && {
+          for app in $APPS_MESUREES; do
+            echo "::group::$app (taille $TAILLE_APPS)"
+            sortie="$(scalingo --region "$SCALINGO_REGION" --app "$app" scale "web:1:$TAILLE_APPS" 2>&1)" && {
               echo "$sortie"
             } || {
               echo "$sortie"
@@ -133,6 +148,14 @@ jobs:
             }
             echo "::endgroup::"
           done
+          echo "::group::pass-emploi-logstash-perf (taille inchangée)"
+          sortie="$(scalingo --region "$SCALINGO_REGION" --app pass-emploi-logstash-perf scale web:1 2>&1)" && {
+            echo "$sortie"
+          } || {
+            echo "$sortie"
+            echo "$sortie" | grep -qi 'no change in containers formation' || { echo "::endgroup::"; exit 1; }
+          }
+          echo "::endgroup::"
 
       - name: Attendre que les apps répondent
         run: |
@@ -216,6 +239,7 @@ jobs:
         run: |
           set -o pipefail
           make tir \
+            TAILLE_INJECTEUR="$TAILLE_INJECTEUR" \
             USERS_PER_SEC="$USERS_PER_SEC" \
             RAMP_DURATION_IN_SECONDS="$RAMP_DURATION_IN_SECONDS" \
             HOLD_DURATION_IN_SECONDS="$HOLD_DURATION_IN_SECONDS" \
@@ -264,9 +288,11 @@ jobs:
           fi
           echo "Assertions tenues"
 
-      # Métadonnées du tir (§7.3 du design). Le SHA déployé et le plan Scalingo
-      # sont capturés bruts : les parser les rendrait fragiles pour un contenu
-      # qu'on relit à l'œil.
+      # Métadonnées du tir (§7.3 du design). La sortie brute du CLI est
+      # archivée telle quelle pour relecture à l'œil, et infra_tir.py en tire
+      # la version structurée : un p99 ne se compare d'un tir à l'autre que si
+      # l'on sait sur quoi il a été mesuré (taille des conteneurs, SHA
+      # déployés, plans des addons).
       - name: Rassembler les métadonnées
         if: always()
         run: |
@@ -274,7 +300,11 @@ jobs:
           for app in $APPS $GATLING_APP; do
             echo "### $app" >> etat-scalingo.txt
             scalingo --region "$SCALINGO_REGION" --app "$app" ps >> etat-scalingo.txt 2>&1 || true
-            scalingo --region "$SCALINGO_REGION" --app "$app" deployments 2>&1 | head -3 >> etat-scalingo.txt || true
+            # head -4 : les trois premières lignes sont le cadre et l'en-tête
+            # de la table ; la quatrième est le dernier déploiement.
+            scalingo --region "$SCALINGO_REGION" --app "$app" deployments 2>&1 | head -4 >> etat-scalingo.txt || true
+            echo "### addons $app" >> etat-scalingo.txt
+            scalingo --region "$SCALINGO_REGION" --app "$app" addons >> etat-scalingo.txt 2>&1 || true
           done
           jq -n \
             --arg debut "$DEBUT" --arg fin "$fin" \
@@ -287,15 +317,24 @@ jobs:
             --arg pool_size "$POOL_SIZE" --arg pool_prefix "$POOL_PREFIX" \
             --arg seed_sha "$(git log -1 --format=%h -- perf/seed)" \
             --arg image_de_base "aucune (hors périmètre v1)" \
+            --arg taille_injecteur "$TAILLE_INJECTEUR" \
+            --arg taille_apps "$TAILLE_APPS" \
             --arg run "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
             --arg verdict '${{ job.status }}' \
             '{fenetre: {debut: $debut, fin: $fin},
               simulation: $simulation,
-              charge: {users_per_sec: $users_per_sec, ramp_s: $ramp, hold_s: $hold},
+              charge: {users_per_sec: $users_per_sec, ramp_s: $ramp, hold_s: $hold,
+                       taille_injecteur: $taille_injecteur, taille_apps_demandee: $taille_apps},
               seuils: {p99_ms: $p99, reussite_pct: $reussite},
               donnees: {pool_size: $pool_size, pool_prefix: $pool_prefix,
                         seed_sha: $seed_sha, image_de_base: $image_de_base},
               run: $run, verdict: $verdict}' > metadonnees.json
+
+          # Les tailles de conteneurs et les SHA déployés ne sont pas des
+          # paramètres du workflow : ce sont des états des apps, modifiables
+          # hors de lui. Sans eux dans le fichier structuré, un résultat
+          # archivé n'est pas rejouable.
+          python3 perf/infra_tir.py etat-scalingo.txt metadonnees.json
           cat metadonnees.json
 
       # Rendu dans l'onglet Actions, en haut de la page du run : évite de
@@ -307,8 +346,8 @@ jobs:
         if: always()
         run: |
           python3 perf/resume-tir.py \
-            metadonnees.json sortie-tir.txt etat-scalingo.txt \
-            perf/build/reports/gatling >> "$GITHUB_STEP_SUMMARY"
+            metadonnees.json sortie-tir.txt perf/build/reports/gatling \
+            >> "$GITHUB_STEP_SUMMARY"
 
       # if-no-files-found en warn : un tir qui échoue avant Gatling ne produit
       # aucun rapport, et ce n'est pas une raison de perdre la console.

@@ -155,8 +155,19 @@ déploie l'injecteur depuis la branche courante, sème le pool, tire et archive.
 | Input | Défaut | Ce qu'il change |
 |---|---|---|
 | `users_per_sec` | `10` | Refusé si `POOL_SIZE < 5 × users_per_sec` |
+| `taille_apps` | `M` | Taille de `connect`/`api`/`mock-externes` pendant le tir (sans effet sur `logstash-perf`) |
 | `p99_threshold_ms` / `success_percent_threshold` | `500` / `99.5` | Les deux SLO assertés |
 | `arret_apres_tir` | `false` | Rescale les apps à 0 en fin de tir |
+
+**Pourquoi dimensionner l'injecteur** (`TAILLE_INJECTEUR`, `XL` par défaut,
+distinct de `taille_apps`) : Gatling consomme lui-même du CPU/RAM en générant
+la charge — connexions HTTP ouvertes, parsing des réponses, calcul des stats.
+Un injecteur sous-dimensionné devient le facteur limitant du tir : on croit
+mesurer l'API, on mesure en fait la JVM de l'injecteur qui sature avant elle.
+En modèle ouvert, ce risque est plus concret qu'en fermé : sous saturation de
+la cible, Gatling continue de créer des utilisateurs en attente au lieu de
+ralentir de lui-même, ce qui grossit sa propre mémoire (d'où le `maxDuration`
+posé dans les simulations).
 
 **Le tir est résumé dans l'onglet Actions**, en haut de la page du run
 (`$GITHUB_STEP_SUMMARY`) : paramètres, verdict, p95 de la requête assertée,
@@ -166,9 +177,24 @@ fait par [`resume-tir.py`](./resume-tir.py), rejouable sur un artefact
 téléchargé :
 
 ```sh
-python3 resume-tir.py metadonnees.json sortie-tir.txt etat-scalingo.txt \
-  perf/build/reports/gatling
+python3 resume-tir.py metadonnees.json sortie-tir.txt perf/build/reports/gatling
 ```
+
+`metadonnees.json` est le **fichier structuré du tir**, et le seul candidat à un
+journal versionné : outre les paramètres, il porte le contexte d'infra que le
+workflow ne pilote pas — taille et statut des conteneurs, SHA déployé de chaque
+app, plans des addons, taille de l'injecteur — extraits de la sortie brute du
+CLI Scalingo par [`infra_tir.py`](./infra_tir.py). Sans eux, un résultat archivé
+n'est pas comparable à un autre.
+
+> **La taille des apps est pilotée par le tir** (input `taille_apps`, défaut
+> `M`) : le workflow réveille `connect`/`api`/`mock-externes` avec
+> `scale web:1:<taille>`, donc chaque tir fixe explicitement sur quoi il mesure
+> — plus de dépendance au dernier réglage laissé par quelqu'un. `logstash-perf`
+> est volontairement exclu : sa taille répond à son propre test de charge
+> (`logstash-perf.yml`), pas au SLO applicatif mesuré ici. Le `--size` du
+> `make tir`, lui, ne concerne que le conteneur one-off de l'**injecteur** —
+> voir « Pourquoi dimensionner l'injecteur » ci-dessous.
  Pour le détail (console complète, état des apps
 Scalingo, métadonnées), l'artefact `tir-<run_id>` (conservé 90 jours) contient
 trois fichiers texte bruts, à ouvrir avec n'importe quel éditeur — ce ne sont

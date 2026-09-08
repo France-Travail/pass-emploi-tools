@@ -44,6 +44,23 @@ pas un objectif.
 | **La simulation** | [`perf/src/gatling/`](../../perf/README.md) | Suit la chaîne de redirections **à la main**, étape nommée par étape — ce qui donne un temps de réponse par saut, et rend tout écart immédiatement lisible. |
 | **Le run local** | [`perf/local-run/`](../../perf/local-run/README.md) | Fait tourner `connect` et `api` en natif contre le mock, pour valider le parcours sans environnement dédié. |
 
+## Modèle d'injection : ouvert
+
+Les simulations injectent un **débit d'arrivées** (`USERS_PER_SEC`), pas un
+nombre d'utilisateurs simultanés.
+
+Ce n'est pas un détail de paramétrage. En modèle **fermé** (un utilisateur
+n'entre que quand un autre sort), la charge s'auto-régule : si le système
+ralentit, on lui envoie moins de trafic, la latence bouge à peine et c'est le
+débit qui s'effondre — un tir peut rester vert en pleine dégradation. En modèle
+**ouvert**, les arrivants n'attendent personne : la file grossit et la latence
+explose, ce qui est le comportement à reproduire ici, puisque les jeunes
+arrivent de l'extérieur (MES, communication, notification push massive).
+
+Corollaire : sous saturation, Gatling crée des utilisateurs que le système
+n'absorbe plus. Les simulations posent donc un `maxDuration`, sans quoi un tir
+qui part en vrille monopolise l'environnement et noie l'injecteur.
+
 ## Invariants
 
 À connaître **avant** de toucher au harnais.
@@ -60,9 +77,13 @@ pas un objectif.
   la main**, une fois, sur la base de tir. Ce geste reste manuel et hors du
   workflow de tir : c'est ce qui garantit qu'aucune automatisation ne peut le
   satisfaire par accident.
-- **Le pool doit être large devant la charge** — au moins **5 × `MAX_USERS`**.
+- **Le pool doit être large devant la charge** — au moins **5 × `USERS_PER_SEC`**.
   Trop petit, les mêmes lignes restent chaudes en cache PostgreSQL et le tir
-  mesure le cache, pas la base.
+  mesure le cache, pas la base. Le facteur 5 se comptait à l'origine en
+  utilisateurs *concurrents* ; en modèle ouvert ceux-ci ne sont plus un
+  paramètre mais une conséquence (concurrents ≈ débit × durée du parcours), et
+  on les majore par le débit — ce qui suppose un parcours d'au plus une
+  seconde. Si le parcours s'allonge, recalculer sur la concurrence observée.
 - **Toute variable portant une URL publique doit être surchargée.** `connect`
   construit ses redirections à partir de sa configuration ; si une seule garde
   sa valeur d'origine, le tir **sort vers le vrai domaine** au milieu de la
@@ -84,10 +105,14 @@ pas un objectif.
 - **Un run local ne produit aucun verdict SLO.** Machine de dev, mock en local,
   pas d'APM : les temps mesurés valident le *parcours*, jamais la tenue en
   charge. Le verdict suppose les environnements dédiés.
-- **Aucune cible chiffrée n'est encore posée.** Le harnais sait tirer ; il ne
-  sait pas encore contre quoi juger. Voir le sous-chantier « Estimation de
-  trafic » dans [`README.md`](./README.md) — sans lui, même un tir sur
-  environnement dédié produit des chiffres sans conclusion.
+- **Le seuil existe, le volume cible non.** Depuis le 2026-09-08 le harnais
+  juge contre un seuil commun (p99 < 500 ms, réussite > 99,5 % — cf.
+  [`observabilite.md`](./observabilite.md)), assertés sur **toutes** les
+  requêtes. Ce qui manque encore est le **débit** à tenir : le sous-chantier
+  « Estimation de trafic » dans [`README.md`](./README.md) n'a pas démarré, si
+  bien qu'un tir dit « à ce débit, on tient » sans dire si ce débit est celui
+  du jour J. En attendant, on tâtonne : on monte `USERS_PER_SEC` de tir en tir
+  pour établir un état des lieux.
 - **Le périmètre est le parcours accueil FT.** Web conseiller, jobs et crons,
   messagerie, notification push massive et parcours MILO sont hors périmètre v1
   — tous de vrais scénarios de charge, que l'architecture accueille sans
@@ -111,6 +136,38 @@ Les apps de perf sont éteintes la nuit et le week-end par
 `perf-env-shutdown.yml` et rallumées à 8h par `perf-env-wakeup.yml`. Le
 workflow de tir ne s'appuie pas sur ce cron : il réveille lui-même et attend
 que les sondes de santé répondent.
+
+## Ce qu'un résultat doit porter pour être comparable
+
+Les artefacts GitHub expirent (90 jours) : un jour ou l'autre, les résultats
+utiles seront versionnés — un journal des tirs, une ligne par tir (piste ouverte
+dans [`README.md`](./README.md)). Ce qu'on versionnera devra porter **tous les
+paramètres du tir**, pas seulement ses chiffres, sans quoi deux résultats ne se
+comparent pas.
+
+`metadonnees.json` est fait pour ça, et contient déjà :
+
+| | |
+|---|---|
+| **Charge** | `USERS_PER_SEC`, ramp, hold, taille du conteneur de l'injecteur |
+| **Seuils** | p99, taux de réussite |
+| **Données** | taille et préfixe du pool, SHA du seed, image de base (ou son absence) |
+| **Infra** *(non piloté par le workflow)* | taille et statut du conteneur de chaque app, SHA déployé, plans des addons |
+
+La taille des apps mesurées (`connect`, `api`, `mock-externes`) est désormais
+**pilotée par le tir** (`taille_apps`, défaut `M`) plutôt que subie : chaque
+tir fixe explicitement sur quoi il mesure, au lieu de dépendre du dernier
+réglage laissé par quelqu'un. `logstash-perf` reste hors de ce pilotage — sa
+taille répond à son propre test de charge, pas à ce SLO. `metadonnees.json`
+distingue la taille **demandée** (`charge.taille_apps_demandee`) de la taille
+**observée** par app (`infrastructure.<app>.conteneur`) : les deux devraient
+coïncider, mais seule la seconde vient de Scalingo — c'est elle qui fait foi
+en cas d'écart.
+
+Le `--size` du `make tir` (`TAILLE_INJECTEUR`) est un réglage séparé : il ne
+concerne que le conteneur one-off de l'**injecteur**, jamais les apps mesurées.
+Un injecteur sous-dimensionné peut devenir lui-même le facteur limitant du tir
+— voir `perf/README.md`, § Tirer depuis Scalingo.
 
 ## Références
 

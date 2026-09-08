@@ -7,7 +7,7 @@ l'archive. On lit donc index.html, dont la table de stats a une structure
 stable (une ligne `<tr id="req_…" data-parent="ROOT">` par requête, colonnes
 `col-2` à `col-14`) — à revérifier lors d'une montée de version de Gatling.
 
-Usage : resume-tir.py <metadonnees.json> <sortie-tir.txt> <etat-scalingo.txt> <racine des rapports>
+Usage : resume-tir.py <metadonnees.json> <sortie-tir.txt> <racine des rapports>
 """
 
 import html
@@ -46,20 +46,6 @@ def assertions(sortie_tir):
     return motif.findall(sortie_tir.read_text(encoding="utf-8", errors="replace"))
 
 
-def conteneurs(etat_scalingo):
-    """{app: (taille, statut)} — depuis les tables `scalingo ps` déjà collectées."""
-    etat, app = {}, None
-    for ligne in etat_scalingo.read_text(encoding="utf-8", errors="replace").splitlines():
-        if ligne.startswith("### "):
-            app = ligne[4:].strip()
-            etat.setdefault(app, ("—", "éteint"))
-        elif app and "│" in ligne:
-            champs = [c.strip() for c in ligne.split("│")[1:-1]]
-            if len(champs) >= 4 and champs[0].startswith("web-"):
-                etat[app] = (champs[3], champs[1])
-    return etat
-
-
 def tableau(entetes, lignes):
     rendu = ["| " + " | ".join(entetes) + " |", "|" + "---|" * len(entetes)]
     rendu += ["| " + " | ".join(str(c) for c in ligne) + " |" for ligne in lignes]
@@ -67,7 +53,7 @@ def tableau(entetes, lignes):
 
 
 def main():
-    meta_path, sortie_path, etat_path, racine = (pathlib.Path(a) for a in sys.argv[1:5])
+    meta_path, sortie_path, racine = (pathlib.Path(a) for a in sys.argv[1:4])
     meta = json.loads(meta_path.read_text())
     sortie = ["## Tir de performance — `%s`" % meta["simulation"], ""]
 
@@ -75,8 +61,9 @@ def main():
     sortie += tableau(["Paramètre", "Valeur"], [
         ["Verdict du job", meta["verdict"]],
         ["Fenêtre", "`%s` → `%s`" % (meta["fenetre"]["debut"], meta["fenetre"]["fin"])],
-        ["Charge", "%s parcours/s, ramp=%ss, hold=%ss"
-                   % (charge["users_per_sec"], charge["ramp_s"], charge["hold_s"])],
+        ["Charge", "%s parcours/s, ramp=%ss, hold=%ss (injecteur %s, apps %s)"
+                   % (charge["users_per_sec"], charge["ramp_s"], charge["hold_s"],
+                      charge.get("taille_injecteur", "?"), charge.get("taille_apps_demandee", "?"))],
         ["Pool", "%s identités, préfixe `%s`" % (donnees["pool_size"], donnees["pool_prefix"])],
         ["SLO", "p99 < %s ms par requête, réussite > %s %%"
                 % (seuils["p99_ms"], seuils["reussite_pct"])],
@@ -117,15 +104,21 @@ def main():
     sortie += lignes_assertion or ["(aucune assertion — le tir a échoué avant la fin)"]
     sortie += ["```", ""]
 
-    if etat_path.exists():
+    infra = meta.get("infrastructure", {})
+    if infra:
         sortie += ["### Contexte", ""] + tableau(
-            ["App", "Conteneur", "Statut"],
-            [[app, taille, statut] for app, (taille, statut) in conteneurs(etat_path).items()],
+            ["App", "Conteneur", "Statut", "Déployé", "Addons"],
+            [[app,
+              etat.get("conteneur", "—"),
+              etat.get("statut", "—"),
+              "`%s`" % etat["deploiement"]["git_ref"][:8] if etat.get("deploiement") else "—",
+              ", ".join("%s (%s)" % (a["addon"], a["plan"]) for a in etat.get("addons", [])) or "—"]
+             for app, etat in infra.items()],
         ) + [""]
 
     sortie += [
         "**Limite** : image de base PostgreSQL — %s. Sans fond de charge, ces "
-        "chiffres valident la chaîne, pas un p95 de production." % donnees["image_de_base"],
+        "chiffres valident la chaîne, pas un p99 de production." % donnees["image_de_base"],
         "",
         "Rapport HTML complet dans l'artefact du run : décompresser, puis ouvrir "
         "`perf/build/reports/gatling/<horodatage>/index.html`.",

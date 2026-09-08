@@ -40,6 +40,9 @@ loginFT: .env
 
 GATLING_APP ?= gatling-perf
 SCALINGO_REGION ?= osc-secnum-fr1
+# Taille du conteneur one-off de l'injecteur — sans rapport avec la taille des
+# apps mesurées, qui est un réglage persistant de chaque app.
+TAILLE_INJECTEUR ?= XL
 USERS_PER_SEC ?= 10
 RAMP_DURATION_IN_SECONDS ?= 60
 HOLD_DURATION_IN_SECONDS ?= 120
@@ -62,14 +65,14 @@ deployer:
 	scalingo --region $(SCALINGO_REGION) --app $(GATLING_APP) \
 	  integration-link-manual-deploy --follow $(BRANCHE)
 
-# --size XL : un injecteur sous-dimensionné devient le facteur limitant du
+# --size : un injecteur sous-dimensionné devient le facteur limitant du
 # tir, et on mesurerait l'injecteur plutôt que l'application (même logique
 # que le choix Scalingo plutôt qu'un runner GitHub partagé).
 # --silent : la seule sortie devient celle du conteneur, sans le bruit du CLI
 # — indispensable pour que le rapport en base64 traverse stdout intact.
 # Le détail des options Gradle est dans tir-et-rapport.sh.
 tir:
-	scalingo --region $(SCALINGO_REGION) --app $(GATLING_APP) run --size XL --silent \
+	scalingo --region $(SCALINGO_REGION) --app $(GATLING_APP) run --size $(TAILLE_INJECTEUR) --silent \
 	  --env USERS_PER_SEC=$(USERS_PER_SEC) \
 	  --env RAMP_DURATION_IN_SECONDS=$(RAMP_DURATION_IN_SECONDS) \
 	  --env HOLD_DURATION_IN_SECONDS=$(HOLD_DURATION_IN_SECONDS) \

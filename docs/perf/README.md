@@ -30,8 +30,9 @@ Phase 5 — Après la MES                  → monitoring continu, capacity plan
 Principes structurants :
 
 - **Les SLO d'abord.** Un tir sans objectif chiffré ni baseline produit des
-  chiffres sans verdict. Les cibles (p95 par parcours, taux d'erreur, capacité
-  de login) se définissent avec le métier en phase 0.
+  chiffres sans verdict. Le seuil commun (p99 < 500 ms, réussite > 99,5 %) est
+  posé depuis le 2026-09-08 ; le **volume** à tenir reste à définir avec le
+  métier (sous-chantier « Estimation de trafic »).
 - **L'observabilité est un prérequis.** Le dashboard de tir (latences par
   endpoint, saturation DB/Redis, erreurs) se construit **avant** le premier tir,
   en capitalisant sur l'infra logs ECS + Elastic APM existants.
@@ -61,7 +62,7 @@ Principes structurants :
 
 | Sous-chantier | Doc | Statut |
 |---|---|---|
-| Observabilité & SLO | [`observabilite.md`](./observabilite.md) | WIP — SLI/SLO I1-I5 actés en atelier (2026-07-10), spec d'instrumentation app jeune posée |
+| Observabilité & SLO | [`observabilite.md`](./observabilite.md) | WIP — SLI I1-I5 actés en atelier (2026-07-10), **seuils simplifiés en un seuil commun le 2026-09-08**, spec d'instrumentation app jeune posée |
 | Estimation de trafic | `TODO` | Non démarré (les SLO qualitatifs sont posés dans `observabilite.md` ; reste le volume attendu) |
 | État des lieux partenaires et dépendances | `TODO` | Non démarré — inclut FT Connect, MILO, et le **service IA** de génération du plan d'action (découvert le 2026-07-10, dans le chemin critique du parcours d'entrée) |
 | Harnais de tir (env, jeu de données, outillage) | [`harnais.md`](./harnais.md), [`volumetrie-prod.md`](./volumetrie-prod.md) | WIP — tir déclenchable depuis la CI (réveil, seed, tir, verdict, archivage). Reste : image de base PostgreSQL (fond de charge), sans laquelle un tir ne juge pas un p95. |
@@ -74,6 +75,9 @@ disponibilité), à instruire avec Scalingo.
 
 ## Historique
 
+- **2026-09-08** — seuils SLO simplifiés en un **seuil commun** (p99 < 500 ms,
+  réussite > 99,5 %), harnais passé en **modèle ouvert** et assertions étendues
+  à toutes les requêtes. Le volume cible reste à instruire.
 - **2026-09-07** — lot 4 livré : le tir se déclenche depuis GitHub Actions, sur
   environnement dédié réveillé à la demande. Limite assumée : pas de fond de
   charge en base tant que l'image de base n'existe pas.
