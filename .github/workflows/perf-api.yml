@@ -258,6 +258,13 @@ jobs:
           psql "$url" -v ON_ERROR_STOP=1 \
                -v pool_size="$POOL_SIZE" -f perf/seed/verifier.sql
 
+      # Le rapport HTML traverse stdout en base64 (seul canal d'un one-off,
+      # cf. tir-et-rapport.sh) : ~300 Ko de charabia au milieu de la console.
+      # `tee` garde la sortie complète dans le fichier — le step suivant en a
+      # besoin pour reconstituer le rapport — et l'affichage passe par un awk
+      # qui masque le bloc, pour que les logs du step restent lisibles.
+      # fflush : sans lui, la sortie du tir n'apparaîtrait qu'en fin de step
+      # au lieu de défiler pendant les trois minutes du tir.
       - name: Tirer
         working-directory: perf
         run: |
@@ -271,7 +278,8 @@ jobs:
             SUCCESS_PERCENT_THRESHOLD="$SUCCESS_PERCENT_THRESHOLD" \
             TIR_SIMULATION="$TIR_SIMULATION" \
             RAPPORT_STDOUT=1 \
-            2>&1 | tee "$GITHUB_WORKSPACE/sortie-tir.txt"
+            2>&1 | tee "$GITHUB_WORKSPACE/sortie-tir.txt" \
+            | awk '/---RAPPORT-GATLING-DEBUT---/ {masque=1; print "[rapport HTML en base64 masque ici -- reconstitue a l etape suivante, present dans l artefact]"; fflush(); next} /---RAPPORT-GATLING-FIN---/ {masque=0; next} !masque {print; fflush()}' 
 
       # Le rapport a traversé stdout du one-off en base64 (tir-et-rapport.sh) :
       # c'est le seul canal de sortie d'un conteneur éphémère non routé. On le
