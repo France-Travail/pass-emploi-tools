@@ -35,8 +35,14 @@ on:
       simulation:
         description: "Simulation Gatling à jouer"
         default: passemploi.test.LoginEtAccueilFranceTravailSimulation
-      taille_apps:
-        description: "Taille des conteneurs connect/api/mock-externes (S, M, L, XL…) — sans effet sur logstash-perf, dimensionné à part pour son propre test de charge"
+      taille_connect:
+        description: "Taille du conteneur pass-emploi-connect-perf (S, M, L, XL…) — viser la taille de prod pour un tir représentatif"
+        default: "M"
+      taille_api:
+        description: "Taille du conteneur pass-emploi-api-perf (S, M, L, XL…) — viser la taille de prod pour un tir représentatif"
+        default: "M"
+      taille_mock:
+        description: "Taille du conteneur mock-externes-perf — pas d'équivalent prod (remplace l'IdP/API FT), dimensionner pour qu'il n'étrangle pas le tir"
         default: "M"
       arret_apres_tir:
         description: "Rescaler les apps à 0 en fin de tir"
@@ -58,11 +64,11 @@ on:
 
 env:
   SCALINGO_REGION: osc-secnum-fr1
-  # Apps mesurées ou dans le chemin critique du parcours : leur taille est
-  # pilotée par ce workflow (taille_apps). pass-emploi-logstash-perf en est
-  # exclu : son dimensionnement répond à logstash-perf.yml (son propre test de
-  # charge), pas au SLO applicatif tiré ici.
-  APPS_MESUREES: pass-emploi-connect-perf pass-emploi-api-perf mock-externes-perf
+  # connect/api/mock-externes : taille pilotée par ce workflow (une variable
+  # par app, cf. inputs taille_connect/taille_api/taille_mock — connect et api
+  # n'ont aucune raison de partager la même taille en prod). logstash-perf est
+  # exclu de ce pilotage : son dimensionnement répond à logstash-perf.yml (son
+  # propre test de charge), pas au SLO applicatif tiré ici.
   APPS: pass-emploi-connect-perf pass-emploi-api-perf mock-externes-perf pass-emploi-logstash-perf
   GATLING_APP: gatling-perf
   TAILLE_INJECTEUR: XL
@@ -111,7 +117,9 @@ jobs:
           echo "P99_THRESHOLD_MS=${{ inputs.p99_threshold_ms || '500' }}" >> "$GITHUB_ENV"
           echo "SUCCESS_PERCENT_THRESHOLD=${{ inputs.success_percent_threshold || '99.5' }}" >> "$GITHUB_ENV"
           echo "TIR_SIMULATION=${{ inputs.simulation || 'passemploi.test.LoginEtAccueilFranceTravailSimulation' }}" >> "$GITHUB_ENV"
-          echo "TAILLE_APPS=${{ inputs.taille_apps || 'M' }}" >> "$GITHUB_ENV"
+          echo "TAILLE_CONNECT=${{ inputs.taille_connect || 'M' }}" >> "$GITHUB_ENV"
+          echo "TAILLE_API=${{ inputs.taille_api || 'M' }}" >> "$GITHUB_ENV"
+          echo "TAILLE_MOCK=${{ inputs.taille_mock || 'M' }}" >> "$GITHUB_ENV"
           echo "ARRET_APRES_TIR=${{ inputs.arret_apres_tir == true }}" >> "$GITHUB_ENV"
 
       - name: Vérifier les secrets requis
@@ -140,9 +148,13 @@ jobs:
       #
       # La taille se pose ici plutôt que d'être subie : sans elle, l'app garde
       # le réglage laissé par la dernière personne à l'avoir touchée, invisible
-      # dans les paramètres du tir. logstash-perf n'est volontairement pas
-      # concerné par `taille_apps` (cf. APPS_MESUREES ci-dessus), mais reste
-      # réveillé ici comme les autres.
+      # dans les paramètres du tir. Une taille par app (pas un `taille_apps`
+      # commun) : connect et api n'ont aucune raison de partager la même
+      # taille en prod, viser l'iso-prod suppose de pouvoir les régler
+      # séparément. mock-externes n'a pas d'équivalent prod (il remplace
+      # l'IdP/API FT) ; logstash-perf n'est pas concerné, dimensionné à part
+      # pour son propre test de charge, mais reste réveillé ici comme les
+      # autres.
       - name: Réveiller les apps
         run: |
           scaler() {
@@ -159,9 +171,10 @@ jobs:
               return 1
             done
           }
-          for app in $APPS_MESUREES; do
-            echo "::group::$app (taille $TAILLE_APPS)"
-            scaler "$app" "web:1:$TAILLE_APPS" || { echo "::endgroup::"; exit 1; }
+          for app_taille in "pass-emploi-connect-perf:$TAILLE_CONNECT" "pass-emploi-api-perf:$TAILLE_API" "mock-externes-perf:$TAILLE_MOCK"; do
+            app="${app_taille%%:*}"; taille="${app_taille##*:}"
+            echo "::group::$app (taille $taille)"
+            scaler "$app" "web:1:$taille" || { echo "::endgroup::"; exit 1; }
             echo "::endgroup::"
           done
           echo "::group::pass-emploi-logstash-perf (taille inchangée)"
@@ -329,13 +342,16 @@ jobs:
             --arg seed_sha "$(git log -1 --format=%h -- perf/seed)" \
             --arg image_de_base "aucune (hors périmètre v1)" \
             --arg taille_injecteur "$TAILLE_INJECTEUR" \
-            --arg taille_apps "$TAILLE_APPS" \
+            --arg taille_connect "$TAILLE_CONNECT" \
+            --arg taille_api "$TAILLE_API" \
+            --arg taille_mock "$TAILLE_MOCK" \
             --arg run "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
             --arg verdict '${{ job.status }}' \
             '{fenetre: {debut: $debut, fin: $fin},
               simulation: $simulation,
               charge: {users_per_sec: $users_per_sec, ramp_s: $ramp, hold_s: $hold,
-                       taille_injecteur: $taille_injecteur, taille_apps_demandee: $taille_apps},
+                       taille_injecteur: $taille_injecteur,
+                       taille_demandee: {connect: $taille_connect, api: $taille_api, mock: $taille_mock}},
               seuils: {p99_ms: $p99, reussite_pct: $reussite},
               donnees: {pool_size: $pool_size, pool_prefix: $pool_prefix,
                         seed_sha: $seed_sha, image_de_base: $image_de_base},

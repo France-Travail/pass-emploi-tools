@@ -155,7 +155,7 @@ déploie l'injecteur depuis la branche courante, sème le pool, tire et archive.
 | Input | Défaut | Ce qu'il change |
 |---|---|---|
 | `users_per_sec` | `10` | Refusé si `POOL_SIZE < 5 × users_per_sec` |
-| `taille_apps` | `M` | Taille de `connect`/`api`/`mock-externes` pendant le tir (sans effet sur `logstash-perf`) |
+| `taille_connect` / `taille_api` / `taille_mock` | `M` chacune | Taille de chaque app pendant le tir (sans effet sur `logstash-perf`) — viser la taille de prod pour un tir représentatif |
 | `p99_threshold_ms` / `success_percent_threshold` | `500` / `99.5` | Les deux SLO assertés |
 | `arret_apres_tir` | `false` | Rescale les apps à 0 en fin de tir |
 
@@ -187,11 +187,15 @@ app, plans des addons, taille de l'injecteur — extraits de la sortie brute du
 CLI Scalingo par [`infra_tir.py`](./infra_tir.py). Sans eux, un résultat archivé
 n'est pas comparable à un autre.
 
-> **La taille des apps est pilotée par le tir** (input `taille_apps`, défaut
-> `M`) : le workflow réveille `connect`/`api`/`mock-externes` avec
-> `scale web:1:<taille>`, donc chaque tir fixe explicitement sur quoi il mesure
-> — plus de dépendance au dernier réglage laissé par quelqu'un. `logstash-perf`
-> est volontairement exclu : sa taille répond à son propre test de charge
+> **La taille des apps est pilotée par le tir**, app par app (`taille_connect`,
+> `taille_api`, `taille_mock`, défaut `M` chacune) : le workflow réveille
+> chaque app avec `scale web:1:<taille>`, donc chaque tir fixe explicitement
+> sur quoi il mesure — plus de dépendance au dernier réglage laissé par
+> quelqu'un. Une variable par app plutôt qu'une taille commune : rien
+> n'oblige `connect` et `api` à partager la même taille en prod, et viser
+> l'iso-prod suppose de pouvoir les régler séparément. `mock-externes` n'a pas
+> d'équivalent en prod (il remplace l'IdP/API France Travail) ; `logstash-perf`
+> est exclu de ce pilotage, sa taille répond à son propre test de charge
 > (`logstash-perf.yml`), pas au SLO applicatif mesuré ici. Le `--size` du
 > `make tir`, lui, ne concerne que le conteneur one-off de l'**injecteur** —
 > voir « Pourquoi dimensionner l'injecteur » ci-dessous.

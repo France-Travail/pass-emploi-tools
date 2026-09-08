@@ -61,13 +61,20 @@ def main():
     sortie += tableau(["Paramètre", "Valeur"], [
         ["Verdict du job", meta["verdict"]],
         ["Fenêtre", "`%s` → `%s`" % (meta["fenetre"]["debut"], meta["fenetre"]["fin"])],
-        ["Charge", "%s parcours/s, ramp=%ss, hold=%ss (injecteur %s, apps %s)"
+        ["Charge", "%s parcours/s, ramp=%ss, hold=%ss (injecteur %s)"
                    % (charge["users_per_sec"], charge["ramp_s"], charge["hold_s"],
-                      charge.get("taille_injecteur", "?"), charge.get("taille_apps_demandee", "?"))],
+                      charge.get("taille_injecteur", "?"))],
         ["Pool", "%s identités, préfixe `%s`" % (donnees["pool_size"], donnees["pool_prefix"])],
         ["SLO", "p99 < %s ms par requête, réussite > %s %%"
                 % (seuils["p99_ms"], seuils["reussite_pct"])],
-    ]) + [""]
+    ])
+    demandee = charge.get("taille_demandee") or {}
+    if demandee:
+        sortie += [""] + tableau(
+            ["Taille demandée", "connect", "api", "mock"],
+            [["", demandee.get("connect", "?"), demandee.get("api", "?"), demandee.get("mock", "?")]],
+        )
+    sortie += [""]
 
     lignes_assertion = assertions(sortie_path) if sortie_path.exists() else []
     rapports = sorted(racine.glob("*/index.html")) if racine.is_dir() else []

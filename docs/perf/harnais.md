@@ -154,15 +154,16 @@ comparent pas.
 | **Données** | taille et préfixe du pool, SHA du seed, image de base (ou son absence) |
 | **Infra** *(non piloté par le workflow)* | taille et statut du conteneur de chaque app, SHA déployé, plans des addons |
 
-La taille des apps mesurées (`connect`, `api`, `mock-externes`) est désormais
-**pilotée par le tir** (`taille_apps`, défaut `M`) plutôt que subie : chaque
-tir fixe explicitement sur quoi il mesure, au lieu de dépendre du dernier
-réglage laissé par quelqu'un. `logstash-perf` reste hors de ce pilotage — sa
-taille répond à son propre test de charge, pas à ce SLO. `metadonnees.json`
-distingue la taille **demandée** (`charge.taille_apps_demandee`) de la taille
-**observée** par app (`infrastructure.<app>.conteneur`) : les deux devraient
-coïncider, mais seule la seconde vient de Scalingo — c'est elle qui fait foi
-en cas d'écart.
+La taille de chaque app mesurée (`connect`, `api`, `mock-externes`) est
+désormais **pilotée par le tir**, une variable par app (`taille_connect`,
+`taille_api`, `taille_mock`, défaut `M`) plutôt qu'une taille commune : rien
+n'oblige connect et api à partager la même taille en prod, et viser l'iso-prod
+suppose de les régler séparément. `logstash-perf` reste hors de ce pilotage —
+sa taille répond à son propre test de charge, pas à ce SLO. `metadonnees.json`
+distingue la taille **demandée** par app (`charge.taille_demandee.{connect,
+api, mock}`) de la taille **observée** (`infrastructure.<app>.conteneur`) :
+les deux devraient coïncider, mais seule la seconde vient de Scalingo — c'est
+elle qui fait foi en cas d'écart.
 
 Le `--size` du `make tir` (`TAILLE_INJECTEUR`) est un réglage séparé : il ne
 concerne que le conteneur one-off de l'**injecteur**, jamais les apps mesurées.
