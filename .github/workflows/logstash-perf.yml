@@ -35,6 +35,15 @@ on:
         description: "Durée de la montée en charge en secondes"
         required: false
 
+# Un `push` sur la même branche annule le run précédent au lieu de les
+# empiler : sans ça, chaque commit d'une PR relance un tir de charge complet
+# contre pass-emploi-logstash-perf, et deux tirs concurrents sur la même
+# instance faussent les deux (vu en pratique : un scale piloté par un autre
+# workflow a heurté "app → is scaling" pendant qu'un tir logstash tournait ici).
+concurrency:
+  group: logstash-perf-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   load-test:
     name: Test de charge Logstash
