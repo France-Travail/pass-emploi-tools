@@ -129,32 +129,43 @@ jobs:
       # Le CLI Scalingo répond 400 "no change in containers formation" quand
       # l'app est déjà au scale demandé (ex. déjà réveillée par le cron de 8h,
       # ou par un tir précédent) — une erreur de son point de vue, un no-op du
-      # nôtre. On tolère ce seul message ; toute autre sortie fait échouer le
-      # step normalement.
+      # nôtre, tolérée sans retry.
+      #
+      # "app → is scaling" est différent : l'API refuse une requête pendant
+      # qu'elle traite encore la précédente sur cette même app (observé sur
+      # logstash-perf juste après deux scales rapprochés sur d'autres apps —
+      # la plateforme Scalingo semble sérialiser les scales, pas seulement par
+      # app). Contrairement au cas ci-dessus ce n'est pas un no-op : sans
+      # retry, l'app peut rester à une taille non voulue sans qu'on le sache.
       #
       # La taille se pose ici plutôt que d'être subie : sans elle, l'app garde
       # le réglage laissé par la dernière personne à l'avoir touchée, invisible
       # dans les paramètres du tir. logstash-perf n'est volontairement pas
-      # concerné (cf. APPS_MESUREES ci-dessus).
+      # concerné par `taille_apps` (cf. APPS_MESUREES ci-dessus), mais reste
+      # réveillé ici comme les autres.
       - name: Réveiller les apps
         run: |
+          scaler() {
+            local app="$1" cible="$2" essai
+            for essai in 1 2 3 4 5; do
+              sortie="$(scalingo --region "$SCALINGO_REGION" --app "$app" scale "$cible" 2>&1)" && { echo "$sortie"; return 0; }
+              echo "$sortie"
+              echo "$sortie" | grep -qi 'no change in containers formation' && return 0
+              if [ "$essai" -lt 5 ] && echo "$sortie" | grep -qi 'is scaling'; then
+                echo "app → is scaling : nouvelle tentative dans 10s ($essai/5)"
+                sleep 10
+                continue
+              fi
+              return 1
+            done
+          }
           for app in $APPS_MESUREES; do
             echo "::group::$app (taille $TAILLE_APPS)"
-            sortie="$(scalingo --region "$SCALINGO_REGION" --app "$app" scale "web:1:$TAILLE_APPS" 2>&1)" && {
-              echo "$sortie"
-            } || {
-              echo "$sortie"
-              echo "$sortie" | grep -qi 'no change in containers formation' || { echo "::endgroup::"; exit 1; }
-            }
+            scaler "$app" "web:1:$TAILLE_APPS" || { echo "::endgroup::"; exit 1; }
             echo "::endgroup::"
           done
           echo "::group::pass-emploi-logstash-perf (taille inchangée)"
-          sortie="$(scalingo --region "$SCALINGO_REGION" --app pass-emploi-logstash-perf scale web:1 2>&1)" && {
-            echo "$sortie"
-          } || {
-            echo "$sortie"
-            echo "$sortie" | grep -qi 'no change in containers formation' || { echo "::endgroup::"; exit 1; }
-          }
+          scaler pass-emploi-logstash-perf web:1 || { echo "::endgroup::"; exit 1; }
           echo "::endgroup::"
 
       - name: Attendre que les apps répondent
