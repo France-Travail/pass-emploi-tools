@@ -5,8 +5,9 @@
 > SLO le 2026-07-10 (Tech Lead + métier). Les dashboards et alertes se
 > construisent **à partir de ce fichier**, pas l'inverse.
 >
-> **Statut : WIP.** SLI/SLO posés ; seuils à confronter à la baseline mesurée
-> (phase 1 du chantier perf) et à l'estimation de trafic (sous-chantier SLO/trafic).
+> **Statut : WIP.** SLI posés ; **seuils simplifiés en un seuil commun le
+> 2026-09-08** (voir ci-dessous), à confronter à la baseline mesurée (phase 1 du
+> chantier perf) et à l'estimation de trafic (sous-chantier SLO/trafic).
 
 ## Principe : trois usages, une pyramide
 
@@ -23,17 +24,49 @@ désormais trois usages, du haut vers le bas :
 doit nommer sa question, son consommateur et la décision qu'il déclenche. Sinon
 il descend en couche diagnostic — ou il n'existe pas.
 
+## Le seuil commun
+
+**Un seul couple de seuils s'applique à tous les parcours mesurés (I1, I2, I3) :**
+
+| | |
+|---|---|
+| **Latence** | **p99 < 500 ms** par requête |
+| **Fiabilité** | **taux de réussite > 99,5 %** |
+
+Décidé le 2026-09-08, en remplacement des seuils différenciés de l'atelier du
+2026-07-10 (p95 ≤ 5 s selon les parcours, ≥ 99 % de logins aboutis).
+
+**Pourquoi un seuil unique.** Les seuils différenciés supposaient une maturité
+qu'on n'avait pas : ni baseline mesurée, ni estimation de trafic pour les
+calibrer. Un seuil commun est plus simple à asserter, à lire dans un verdict de
+tir, et surtout **honnête sur ce qu'il vaut** — c'est un point de départ à
+réviser quand la baseline existera, pas une promesse négociée par parcours.
+
+**Ce que ça change côté tir.** Le harnais assertait la seule requête d'accueil,
+au motif que les seuils variaient. Avec un seuil commun, **toutes les requêtes
+sont assertées** (`forAll` en Gatling), y compris chaque saut du login : la
+ligne de verdict en échec nomme elle-même l'étape coupable. Voir
+[`harnais.md`](./harnais.md) et `perf/README.md`.
+
+**L'exception, et la seule.** La génération du plan d'action de fin
+d'onboarding reste à **≤ 10 s** : elle traverse un service IA externe, au stade
+POC et hors SLA (cf. [chantier app-jeune](../app-jeune/plan-action.md)). Un
+seuil à 500 ms y serait un vœu, pas un objectif. L'écran de loading est assumé.
+
 ## Les indicateurs (actés en atelier)
 
 Priorités métier jour J : adoption > login > parcours connecté > web conseiller.
 L'adoption relève du produit ([pass-emploi-analytics]) ; le reste est ici.
 
+Les colonnes « SLO » ci-dessous renvoient au seuil commun ; seules les
+**dimensions** et la **mesurabilité** restent propres à chaque indicateur.
+
 ### I1 — Authentification (parcours critique n°1)
 
 | | |
 |---|---|
-| **SLI** | Part des tentatives de login abouties **en < 5 s** (lenteur = échec, décision métier) |
-| **SLO** | **≥ 99 %** (« ~1 échec sur 100 » : la première impression est décisive, un jeune qui échoue ne revient pas) |
+| **SLI** | Part des tentatives de login abouties dans le budget de latence (lenteur = échec, décision métier) |
+| **SLO** | Seuil commun : **p99 < 500 ms** par requête, **réussite > 99,5 %**. La première impression est décisive — un jeune qui échoue ne revient pas. |
 | **Dimensions** | par **mode d'authentification** (OIDC MILO / FT Connect / mode invité) × par **cause** (nous vs partenaire — une panne MILO se constate, une panne chez nous se corrige) |
 | **Mesurable aujourd'hui ?** | **Oui, partiellement** : `pass-emploi-connect` émet `login_initiated` → `login_redirected` → `login_completed` / `login_failed` avec `labels.idp` (le mode) et `login.step` (l'étape d'échec, qui discrimine partenaire — `Callback`, `UserInfo` — de chez nous — `ApiPassEmploi`, `Grant`…). **Manque** : la durée de bout en bout du flow (à corréler via APM ou à instrumenter). |
 
@@ -42,8 +75,8 @@ L'adoption relève du produit ([pass-emploi-analytics]) ; le reste est ici.
 | | |
 |---|---|
 | **SLI** | Funnel par étape : questionnaire (chaque étape) → génération → affichage du plan d'action. Deux mesures **séparées** : taux d'erreur technique par étape (notre responsabilité) et taux de complétion (produit — l'abandon volontaire ne doit pas polluer le SLO technique) |
-| **Seuils** | Écrans ≤ **5 s** ; **génération du plan d'action ≤ 10 s** (service **IA externe** dans le chemin critique, écran de loading assumé) |
-| **SLO** | À fixer quand le funnel sera instrumenté (baseline requise) |
+| **Seuils** | Seuil commun sur les écrans du questionnaire. **Exception : génération du plan d'action ≤ 10 s** (service **IA externe** dans le chemin critique, écran de loading assumé) |
+| **SLO** | Seuil commun. Le taux de **complétion**, lui, reste à fixer quand le funnel sera instrumenté (baseline requise) — c'est un indicateur produit, pas technique. |
 | **Mesurable aujourd'hui ?** | **Non** — l'app jeune n'existe pas. Voir la spec d'instrumentation ci-dessous. |
 
 ### I3 — Parcours connecté (pages de l'app)
@@ -51,7 +84,7 @@ L'adoption relève du produit ([pass-emploi-analytics]) ; le reste est ici.
 | | |
 |---|---|
 | **SLI** | Disponibilité + latence p95 par page critique |
-| **Pages critiques** | Accueil/plan d'action, offres, chat, agenda — p95 ≤ **5 s** |
+| **Pages critiques** | Accueil/plan d'action, offres, chat, agenda — seuil commun |
 | **Pages dégradables** (décision métier : sacrifiables en pic) | **Événements**, **compteur d'heures** (lent toléré par conception) — seuils relâchés + candidates au kill switch du mode dégradé |
 | **Mesurable aujourd'hui ?** | Partiellement pour les features reprises de l'app actuelle (endpoints api existants, APM) ; à compléter à la construction de l'app. |
 
@@ -137,6 +170,13 @@ Exclusions explicites, pour tenir la pyramide :
 
 ## Historique
 
+- **2026-09-08** — **seuils simplifiés en un seuil commun** (p99 < 500 ms,
+  réussite > 99,5 %) pour I1, I2 et I3, en remplacement des seuils différenciés
+  du 2026-07-10 : sans baseline ni estimation de trafic, un seuil par parcours
+  donnait une fausse précision. Seule exception conservée : la génération du
+  plan d'action (≤ 10 s, service IA externe). Le harnais de tir assertait la
+  seule requête d'accueil parce que les seuils variaient ; il asserte désormais
+  toutes les requêtes.
 - **2026-07-10** — atelier SLO (Tech Lead + métier) : priorités jour J, seuils
   I1-I5, pages dégradables, découverte du service IA externe dans le chemin
   critique de la génération du plan d'action.

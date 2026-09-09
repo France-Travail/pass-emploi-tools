@@ -1,0 +1,208 @@
+SIMULATION ?= passemploi.test.AccueilFranceTravailSimulation
+
+# Run local des dépendances du parcours accueil FT — connect et api clonés en
+# frères de ce repo (convention du projet), surchargeable :
+#   make start CONNECT_DIR=… API_DIR=…
+CONNECT_DIR ?= ../../pass-emploi-connect
+API_DIR ?= ../../pass-emploi-api
+RUN_DIR := local-run/.run
+HERE := $(CURDIR)
+
+.PHONY: accueilFT loginFT run compile report \
+        start stop status logs mock apidb seed fond-de-charge connect api marquer-environnement \
+        firebase-fake tir deployer
+
+accueilFT: .env
+	. ./.env && ./gradlew gatlingRun --simulation passemploi.test.AccueilFranceTravailSimulation
+
+run: .env
+	. ./.env && ./gradlew gatlingRun --simulation $(SIMULATION)
+
+compile:
+	./gradlew compileGatlingScala
+
+# Servi en HTTP plutôt qu'ouvert en file:// : un navigateur en bac à sable
+# (Flatpak, snap) reçoit le fichier via le portail de documents, qui n'expose
+# que l'index.html demandé — sans ses répertoires style/ et js/, d'où un
+# rapport sans CSS ni graphiques.
+REPORT_PORT ?= 8123
+
+report:
+	@dir="$$(ls -td build/reports/gatling/*/ | head -1)"; \
+	  echo "Rapport servi sur http://localhost:$(REPORT_PORT)/ (Ctrl-C pour arrêter)"; \
+	  xdg-open "http://localhost:$(REPORT_PORT)/" >/dev/null 2>&1 & \
+	  python3 -m http.server $(REPORT_PORT) --directory "$$dir" --bind 127.0.0.1
+
+loginFT: .env
+	. ./.env && ./gradlew gatlingRun --simulation passemploi.test.LoginEtAccueilFranceTravailSimulation
+
+# --- Tir sur Scalingo (gatling-perf) — voir README.md, § Tirer depuis Scalingo ---
+
+GATLING_APP ?= gatling-perf
+SCALINGO_REGION ?= osc-secnum-fr1
+# Taille du conteneur one-off de l'injecteur — sans rapport avec la taille des
+# apps mesurées, qui est un réglage persistant de chaque app.
+TAILLE_INJECTEUR ?= XL
+USERS_PER_SEC ?= 10
+RAMP_DURATION_IN_SECONDS ?= 60
+HOLD_DURATION_IN_SECONDS ?= 120
+P99_THRESHOLD_MS ?= 500
+SUCCESS_PERCENT_THRESHOLD ?= 99.5
+# Simulation par défaut différente de celle de `run` : AccueilFranceTravailSimulation
+# attend un JWT fourni à la main, inutilisable en tir sans intervention — tandis
+# que LoginEtAccueilFranceTravailSimulation se logue elle-même via connect-perf.
+TIR_SIMULATION ?= passemploi.test.LoginEtAccueilFranceTravailSimulation
+# palier (défaut) : tir de référence, verdict SLO. escalier : cherche le point
+# de rupture par paliers de débit croissants, sans assertion (cf. l'en-tête de
+# la simulation).
+PROFIL ?= palier
+PALIER_DEBUT ?= 10
+PALIER_PAS ?= 10
+NB_PALIERS ?= 6
+DUREE_PALIER_EN_SECONDES ?= 120
+# Émission du rapport HTML en base64 sur stdout (voir tir-et-rapport.sh).
+# Opt-in : à 1, la CI le rapatrie ; à 0, un tir manuel garde un terminal lisible.
+RAPPORT_STDOUT ?= 0
+# INFO pour un tir de mesure ; DEBUG pour un tir de diagnostic (journalise les
+# requêtes et réponses en échec, corps compris — cf. logback.xml).
+JOURNAL_HTTP ?= INFO
+BRANCHE ?= $(shell git rev-parse --abbrev-ref HEAD)
+
+# L'injecteur tourne sur son slug déployé, pas sur les fichiers locaux, et le
+# déploiement automatique est désactivé sur l'app. Toute modification de perf/
+# (simulation, script de tir) exige donc un `make deployer` avant `make tir`,
+# sous peine de mesurer le commit précédent sans s'en apercevoir.
+deployer:
+	scalingo --region $(SCALINGO_REGION) --app $(GATLING_APP) \
+	  integration-link-manual-deploy --follow $(BRANCHE)
+
+# --size : un injecteur sous-dimensionné devient le facteur limitant du
+# tir, et on mesurerait l'injecteur plutôt que l'application (même logique
+# que le choix Scalingo plutôt qu'un runner GitHub partagé).
+# --silent : la seule sortie devient celle du conteneur, sans le bruit du CLI
+# — indispensable pour que le rapport en base64 traverse stdout intact.
+# Le détail des options Gradle est dans tir-et-rapport.sh.
+tir:
+	scalingo --region $(SCALINGO_REGION) --app $(GATLING_APP) run --size $(TAILLE_INJECTEUR) --silent \
+	  --env PROFIL=$(PROFIL) \
+	  --env USERS_PER_SEC=$(USERS_PER_SEC) \
+	  --env RAMP_DURATION_IN_SECONDS=$(RAMP_DURATION_IN_SECONDS) \
+	  --env HOLD_DURATION_IN_SECONDS=$(HOLD_DURATION_IN_SECONDS) \
+	  --env PALIER_DEBUT=$(PALIER_DEBUT) \
+	  --env PALIER_PAS=$(PALIER_PAS) \
+	  --env NB_PALIERS=$(NB_PALIERS) \
+	  --env DUREE_PALIER_EN_SECONDES=$(DUREE_PALIER_EN_SECONDES) \
+	  --env P99_THRESHOLD_MS=$(P99_THRESHOLD_MS) \
+	  --env SUCCESS_PERCENT_THRESHOLD=$(SUCCESS_PERCENT_THRESHOLD) \
+	  --env RAPPORT_STDOUT=$(RAPPORT_STDOUT) \
+	  --env JOURNAL_HTTP=$(JOURNAL_HTTP) \
+	  "./tir-et-rapport.sh $(TIR_SIMULATION)"
+
+.env:
+	cp .env.template .env
+	@echo ".env créé depuis .env.template : le renseigner puis relancer" && exit 1
+
+# --- Run local (mock-externes + connect + api) — voir local-run/README.md ---
+
+start: mock apidb marquer-environnement seed connect api
+	@echo "Lancé — 'make status' pour vérifier, 'make logs' pour suivre, 'make stop' pour arrêter."
+
+# seed/README.md documente ce geste comme "volontairement manuel et absent du
+# workflow" — vrai pour le seed réel, qui vise $DATABASE_URL et peut donc
+# viser n'importe quel environnement. Ici l'adresse est codée en dur sur
+# l'apidb Docker locale (jamais un DATABASE_URL externe) : l'automatiser dans
+# `start` n'affaiblit pas le garde-fou anti-prod. Idempotent (INSERT ... WHERE
+# NOT EXISTS), donc sans risque à rejouer à chaque `start`.
+marquer-environnement:
+	psql "postgresql://passemploi:passemploi@localhost:55432/passemploidb" \
+	     -f seed/marquer-environnement.sql
+
+mock:
+	@mkdir -p $(RUN_DIR)
+	@fuser -k 8080/tcp >/dev/null 2>&1 || true
+	@cd mock-externes && $(MAKE) install
+	@cd mock-externes && \
+	  ( . pass-emploi-perf-venv/bin/activate && \
+	    setsid uvicorn app:app --port 8080 --workers 10 \
+	      > $(HERE)/$(RUN_DIR)/mock.log 2>&1 & \
+	    echo $$! > $(HERE)/$(RUN_DIR)/mock.pid )
+	@echo "mock-externes : démarrage (log $(RUN_DIR)/mock.log)"
+	@sleep 2
+
+apidb:
+	@cd $(API_DIR) && yarn start:pg:db
+
+seed:
+	psql "postgresql://passemploi:passemploi@localhost:55432/passemploidb" \
+	     -v ON_ERROR_STOP=1 -f seed/seed.sql
+	psql "postgresql://passemploi:passemploi@localhost:55432/passemploidb" \
+	     -v ON_ERROR_STOP=1 -f seed/verifier.sql
+
+# Hors de `start` : inutile pour valider le parcours en local, seulement pour
+# tester le harnais contre un volume proche de la prod (cf. seed/fond-de-charge.sql).
+FOND_SIZE ?= 48000
+
+fond-de-charge:
+	psql "postgresql://passemploi:passemploi@localhost:55432/passemploidb" \
+	     -v ON_ERROR_STOP=1 -v fond_size=$(FOND_SIZE) -v fond_prefix=perf-fond- \
+	     -f seed/fond-de-charge.sql
+
+connect:
+	@mkdir -p $(RUN_DIR)
+	@fuser -k 5050/tcp >/dev/null 2>&1 || true
+	@cd $(CONNECT_DIR) && \
+	  ( set -a && . $(HERE)/local-run/connect.sh && set +a && \
+	    setsid yarn start > $(HERE)/$(RUN_DIR)/connect.log 2>&1 & \
+	    echo $$! > $(HERE)/$(RUN_DIR)/connect.pid )
+	@echo "connect : démarrage (log $(RUN_DIR)/connect.log)"
+
+# Credentials Firebase factices : l'API se connecte sinon au vrai projet
+# pass-emploi-staging avec les clés du .environment. Générés plutôt que
+# committés — une clé privée en dur dans git, même bidon, fait sonner les
+# scanners de secrets.
+firebase-fake:
+	@mkdir -p $(RUN_DIR)
+	@test -f $(RUN_DIR)/firebase-fake.json || { \
+	  openssl genrsa 2048 2>/dev/null > $(RUN_DIR)/firebase-fake.key && \
+	  python3 -c "import json,sys; k=open('$(RUN_DIR)/firebase-fake.key').read(); \
+	    json.dump({'type':'service_account','project_id':'pass-emploi-local-fake', \
+	    'private_key_id':'fake','private_key':k, \
+	    'client_email':'fake@pass-emploi-local-fake.iam.gserviceaccount.com', \
+	    'client_id':'000000000000000000000','auth_uri':'https://accounts.google.com/o/oauth2/auth', \
+	    'token_uri':'https://oauth2.googleapis.com/token'}, open('$(RUN_DIR)/firebase-fake.json','w'))" && \
+	  rm -f $(RUN_DIR)/firebase-fake.key && \
+	  echo "credentials Firebase factices générés"; }
+
+api: firebase-fake
+	@mkdir -p $(RUN_DIR)
+	@fuser -k 5000/tcp >/dev/null 2>&1 || true
+	@cd $(API_DIR) && \
+	  ( set -a && LOCAL_RUN_DIR=$(HERE)/local-run . $(HERE)/local-run/api.sh && set +a && \
+	    setsid yarn start > $(HERE)/$(RUN_DIR)/api.log 2>&1 & \
+	    echo $$! > $(HERE)/$(RUN_DIR)/api.pid )
+	@echo "api : démarrage (log $(RUN_DIR)/api.log)"
+
+status:
+	@for p in mock connect api; do \
+	  if [ -f $(RUN_DIR)/$$p.pid ] && kill -0 $$(cat $(RUN_DIR)/$$p.pid) 2>/dev/null; then \
+	    echo "$$p : up (pid $$(cat $(RUN_DIR)/$$p.pid))"; \
+	  else \
+	    echo "$$p : down"; \
+	  fi; \
+	done
+
+logs:
+	tail -n 30 -f $(RUN_DIR)/*.log
+
+stop:
+	@for p in mock connect api; do \
+	  if [ -f $(RUN_DIR)/$$p.pid ]; then \
+	    kill -- -$$(cat $(RUN_DIR)/$$p.pid) 2>/dev/null || true; \
+	    rm -f $(RUN_DIR)/$$p.pid; \
+	    echo "$$p : arrêté"; \
+	  fi; \
+	done
+	@# uvicorn --workers forke des enfants qui sortent du groupe du process de
+	@# tête (multiprocessing) : le kill de groupe ci-dessus ne les touche pas.
+	@# fuser cible juste le port 8080, pas pkill -f qui scanne tous les process.
+	@fuser -k 8080/tcp >/dev/null 2>&1 || true

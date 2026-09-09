@@ -242,9 +242,14 @@ Des `_ignored` indiquent un dépassement de `total_fields.limit` → prévoir un
 
 **Si erreurs de traitement (`_mutate_error`, `_jsonparsefailure`)** :
 1. Identifier le log fautif via le champ `message` dans `logs-logstash-errors-*`.
-2. Reproduire localement avec le pipeline `process` pour identifier le filtre
-   défaillant.
-3. Corriger `logs/pipeline-process.conf` et déployer.
+2. **`_jsonparsefailure` avec `message` d'exactement ~16384 octets et se
+   terminant en plein milieu d'une valeur** → ligne applicative tronquée par le
+   drain Scalingo, pas un bug de pipeline. Rien à corriger côté Logstash : la
+   ligne source dépasse 16 Ko et doit être réduite côté app (cf.
+   [logs-ecs/conventions](./conventions.md) § « Ne jamais logger une exception
+   brute »). Le `context` en tête du `message` tronqué désigne le handler fautif.
+3. Sinon, reproduire localement avec le pipeline `process` pour identifier le
+   filtre défaillant, corriger `logs/pipeline-process.conf` et déployer.
 
 ### Références
 

@@ -1,0 +1,130 @@
+# mock-externes
+
+Se fait passer pour les dépendances **hors de notre contrôle** pendant un tir de
+perf, et pour rien d'autre : `pass-emploi-connect` et `pass-emploi-api` restent
+réels et sont ce qu'on mesure.
+
+```
+Gatling ──► connect-perf ──► mock-externes   (IdP France Travail)
+         └► api-perf ──────► mock-externes   (APIs partenaires FT)
+                          └► connect-perf    (émetteur du JWT — le vrai)
+```
+
+## Ce qu'il sert
+
+| Route | Client | Rôle |
+|---|---|---|
+| `GET /idp/protocol/openid-connect/auth` | `connect` | Redirige vers `redirect_uri` avec `code` et `state`, sans page de login |
+| `POST /idp/protocol/openid-connect/token` | `connect` | `access_token`, `id_token` signé, `refresh_token` |
+| `GET /idp/protocol/openid-connect/certs` | `connect` | Clé publique validant l'`id_token` |
+| `GET /idp/protocol/openid-connect/userinfo` | `connect` | `sub`, `preferred_username` |
+| `GET /poleemploi/peconnect-coordonnees/v1/coordonnees` | `connect` | Nom, prénom, email — **c'est ici** que `connect` les prend pour un bénéficiaire FT, pas dans le `userinfo` |
+| `GET /poleemploi/peconnect-statut/v1/statut` | `connect` | Filet : appelé seulement si l'API répond `UTILISATEUR_INEXISTANT` |
+| `GET /poleemploi/peconnect-demarches/v1/demarches` | `api` | Démarches de l'accueil |
+| `GET /poleemploi/peconnect-gerer-prestations/v1/rendez-vous` | `api` | Prestations (vide) |
+| `GET /poleemploi/peconnect-rendezvousagenda/v2/listerendezvous` | `api` | Rendez-vous agenda (vide) |
+
+## Deux principes de conception
+
+**Aucune clé d'un environnement réel.** Le mock génère sa paire RSA au premier
+démarrage et publie la publique sur son `certs`. C'est lui qui signe les
+`id_token`. Il n'y a donc plus de JWT à renouveler à la main avant chaque tir —
+Gatling se logue.
+
+La clé est **la même pour tous les workers uvicorn**, et c'est un invariant : le
+`certs` servi par un worker doit valider un `id_token` signé par n'importe quel
+autre. Elle transite par un fichier (`IDP_CLE_PRIVEE_PEM`, `/tmp` par défaut),
+écrit par le premier worker qui démarre. Une clé par worker ferait échouer la
+fraction `1 - 1/workers` des logins, en `RPError: no valid key found in
+issuer's jwks_uri` côté `connect`.
+
+**Aucun état de session.** L'identité est tirée au hasard dans le pool à
+l'autorisation, puis **encodée dans le `code`** rendu à `connect`, que le
+`/token` décode. Rien à synchroniser entre les workers pendant un tir — ce qui
+serait un point de contention, et un mensonge sous charge.
+
+## Le pool d'identités
+
+`connect` ne transmet aucun paramètre client à l'IdP (ni `login_hint`, ni
+passe-plat) : **c'est donc le mock qui choisit l'identité**, pas Gatling.
+
+Le `sub` rendu suit `{POOL_PREFIX}{i}`, avec `i` tiré dans `[0, POOL_SIZE)`.
+
+> ⚠️ Ce `sub` doit correspondre à l'`id_authentification` d'un jeune **présent en
+> base**. L'API ne crée aucun bénéficiaire FT inconnu : elle répond
+> `UTILISATEUR_INEXISTANT` et le login échoue. `POOL_PREFIX` et `POOL_SIZE`
+> doivent donc valoir exactement ce qu'a semé le seed.
+
+## Lancer
+
+```sh
+make start   # venv + deps + uvicorn sur :8080
+make test    # 11 tests
+```
+
+## Déploiement Scalingo (`mock-externes-perf`)
+
+L'app Scalingo est linkée au repo `pass-emploi-tools`, déploiement auto
+désactivé : on déclenche à la main depuis le dashboard.
+
+Ce repo étant un monorepo, c'est la variable d'environnement **`PROJECT_DIR`**
+qui dit au buildpack quel sous-dossier builder — sans elle il chercherait un
+projet à la racine et échouerait :
+
+```
+PROJECT_DIR=perf/mock-externes
+```
+
+Même mécanisme que `pass-emploi-logstash-*` (`PROJECT_DIR=logs`).
+
+## Variables
+
+### Du mock
+
+| Variable | Défaut | Rôle |
+|---|---|---|
+| `IDP_ISSUER` | `http://127.0.0.1:8080/idp` | `iss` des `id_token`. **Doit valoir exactement `IDP_FT_JEUNE_ISSUER`** côté `connect`, sinon `openid-client` rejette le token |
+| `POOL_SIZE` | `50` | Taille du pool d'identités |
+| `POOL_PREFIX` | `perf-ft-` | Préfixe des `sub` |
+| `IDP_CLE_PRIVEE_PEM` | `$TMPDIR/mock-externes-idp.pem` | Où la clé de signature est écrite puis relue par tous les workers |
+
+### De `pass-emploi-connect`
+
+En notant `{MOCK}` l'URL à laquelle `connect` joint le mock :
+
+| Variable | Valeur |
+|---|---|
+| `IDP_FT_JEUNE_ISSUER` | `{MOCK}/idp` |
+| `IDP_FT_JEUNE_AUTHORIZATION_URL` | `{MOCK}/idp/protocol/openid-connect/auth` |
+| `IDP_FT_JEUNE_TOKEN_URL` | `{MOCK}/idp/protocol/openid-connect/token` |
+| `IDP_FT_JEUNE_JWKS` | `{MOCK}/idp/protocol/openid-connect/certs` |
+| `IDP_FT_JEUNE_USERINFO` | `{MOCK}/idp/protocol/openid-connect/userinfo` |
+| `FT_JEUNE_API_URL` | `{MOCK}/poleemploi` |
+
+`IDP_FT_JEUNE_CLIENT_ID` et `IDP_FT_JEUNE_CLIENT_SECRET` peuvent valoir n'importe
+quoi : le mock ne les vérifie pas, il se contente de reprendre le `client_id`
+comme `aud`. **`IDP_FT_JEUNE_REALM` vide** fait que `connect` n'ajoute pas de
+paramètre `realm`, que le mock n'attend pas — une valeur non vide passe quand
+même : les routes FastAPI ignorent les query params qu'elles ne déclarent pas.
+En local (`.environment`), laisser la variable vide fonctionne. **Sur
+Scalingo, une env var ne peut pas être vide** (rejeté en CLI comme en
+dashboard) : y mettre une valeur factice non vide (ex. `unused`) à la place —
+`connect` reste satisfait par sa validation Joi (`required`) et le mock
+ignore la valeur de toute façon.
+
+### De `pass-emploi-api`
+
+| Variable | Valeur |
+|---|---|
+| `OIDC_ISSUER_URL` | **le vrai `connect-perf`** — c'est lui l'émetteur du JWT |
+| `POLE_EMPLOI_API_BASE_URL` | `{MOCK}/poleemploi` |
+
+## Diagnostic
+
+| Symptôme | Cause probable |
+|---|---|
+| `connect` rejette l'`id_token` | `IDP_ISSUER` ≠ `IDP_FT_JEUNE_ISSUER` |
+| `RPError: no valid key found in issuer's jwks_uri`, sur ~`1 - 1/workers` des logins | Les workers ne partagent pas la clé : `IDP_CLE_PRIVEE_PEM` pointe sur un chemin non partagé (ou non inscriptible) |
+| Login en échec `UTILISATEUR_INEXISTANT` | Le pool ne correspond pas à ce qu'a semé le seed |
+| 401 côté API après un login réussi | `OIDC_ISSUER_URL` pointe encore sur le mock au lieu de `connect-perf` |
+| Toutes les requêtes frappent le même jeune | `POOL_SIZE` trop petit devant `MAX_USERS` |

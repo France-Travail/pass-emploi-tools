@@ -1,0 +1,487 @@
+# Tir de performance sur l'environnement dédié : réveil, seed, tir, verdict,
+# archivage. Le mode d'emploi manuel équivalent est dans perf/README.md.
+#
+# Hors périmètre v1 : le restore de l'image de base PostgreSQL (fond de
+# charge). Un tir de ce workflow porte donc sur une base ne contenant que le
+# pool semé — cf. docs/perf/harnais.md.
+#
+# Prérequis (environnement GitHub « Performance ») :
+#   SCALINGO_API_TOKEN   token API Scalingo
+#
+# Le marqueur d'environnement de perf (perf/seed/marquer-environnement.sql)
+# est posé à la main, une fois par base. Ce workflow ne le pose jamais : c'est
+# le garde-fou anti-prod du seed.
+
+name: Perf - Tir API
+
+on:
+  workflow_dispatch:
+    inputs:
+      profil:
+        description: "palier (verdict SLO, débit fixe) ou escalier (recherche du point de rupture, débit croissant, sans SLO)"
+        default: "palier"
+      users_per_sec:
+        description: "Débit du profil palier (pool_size >= 5 x users_per_sec)"
+        default: "10"
+      palier_debut:
+        description: "Profil escalier : débit du premier palier"
+        default: "10"
+      palier_pas:
+        description: "Profil escalier : augmentation de débit à chaque palier"
+        default: "10"
+      nb_paliers:
+        description: "Profil escalier : nombre de paliers"
+        default: "6"
+      duree_palier_en_secondes:
+        description: "Profil escalier : durée de chaque palier"
+        default: "120"
+      ramp_duration_in_seconds:
+        description: "Durée de la montée en charge"
+        default: "60"
+      hold_duration_in_seconds:
+        description: "Durée du palier"
+        default: "120"
+      p99_threshold_ms:
+        description: "SLO de latence : p99 par requête, en millisecondes"
+        default: "500"
+      success_percent_threshold:
+        description: "SLO de fiabilité : pourcentage de requêtes réussies exigé"
+        default: "99.5"
+      simulation:
+        description: "Simulation Gatling à jouer"
+        default: passemploi.test.LoginEtAccueilFranceTravailSimulation
+      journal_http:
+        description: "INFO (tir de mesure) ou DEBUG (diagnostic : journalise les réponses en échec, corps compris)"
+        default: "INFO"
+      fond_size:
+        description: "Bénéficiaires hors pool, en plus de lui (0 = aucun). Le pool porte déjà la volumétrie de prod : à ne monter que pour tester au-delà, cf. docs/perf/harnais.md"
+        default: "0"
+      taille_connect:
+        description: "Taille du conteneur pass-emploi-connect-perf (S, M, L, XL…) — viser la taille de prod pour un tir représentatif"
+        default: "M"
+      taille_api:
+        description: "Taille du conteneur pass-emploi-api-perf (S, M, L, XL…) — viser la taille de prod pour un tir représentatif"
+        default: "M"
+      taille_mock:
+        description: "Taille du conteneur mock-externes-perf — pas d'équivalent prod (remplace l'IdP/API FT), dimensionner pour qu'il n'étrangle pas le tir"
+        default: "M"
+      arret_apres_tir:
+        description: "Rescaler les apps à 0 en fin de tir"
+        type: boolean
+        default: false
+
+  pull_request:
+    paths:
+      - 'perf/**'
+      - '.github/workflows/perf-api.yml'
+
+# Le tir est destructeur (scale des apps + seed) sur un environnement unique :
+# deux runs en parallèle se piétinent. Pas d'annulation — un tir interrompu
+# laisse les apps scalées et la base à moitié semée.
+concurrency:
+  group: perf-environnement-dedie
+  cancel-in-progress: false
+
+env:
+  SCALINGO_REGION: osc-secnum-fr1
+  # connect/api/mock-externes : taille pilotée par ce workflow (une variable
+  # par app, cf. inputs taille_connect/taille_api/taille_mock — connect et api
+  # n'ont aucune raison de partager la même taille en prod). logstash-perf est
+  # exclu de ce pilotage : son dimensionnement répond à logstash-perf.yml (son
+  # propre test de charge), pas au SLO applicatif tiré ici.
+  APPS: pass-emploi-connect-perf pass-emploi-api-perf mock-externes-perf pass-emploi-logstash-perf
+  GATLING_APP: gatling-perf
+  TAILLE_INJECTEUR: XL
+  MOCK_APP: mock-externes-perf
+  API_APP: pass-emploi-api-perf
+
+jobs:
+  # Sur PR : pas de tir (destructeur, et il monopolise l'environnement), mais
+  # on vérifie que la simulation compile — pour ne pas le découvrir le jour où
+  # on en a besoin.
+  compile:
+    name: Compilation de la simulation
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Compiler
+        working-directory: perf
+        run: make compile
+
+  tir:
+    name: Tir de performance
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: Performance
+    steps:
+      - uses: actions/checkout@v4
+
+      # Centralise les valeurs par défaut du tir : les steps suivants lisent ces
+      # variables d'environnement, jamais le contexte `inputs`. Le `|| 'défaut'`
+      # couvre un input laissé vide au lancement manuel.
+      - name: Normaliser les paramètres du tir
+        run: |
+          echo "PROFIL=${{ inputs.profil || 'palier' }}" >> "$GITHUB_ENV"
+          echo "USERS_PER_SEC=${{ inputs.users_per_sec || '10' }}" >> "$GITHUB_ENV"
+          echo "PALIER_DEBUT=${{ inputs.palier_debut || '10' }}" >> "$GITHUB_ENV"
+          echo "PALIER_PAS=${{ inputs.palier_pas || '10' }}" >> "$GITHUB_ENV"
+          echo "NB_PALIERS=${{ inputs.nb_paliers || '6' }}" >> "$GITHUB_ENV"
+          echo "DUREE_PALIER_EN_SECONDES=${{ inputs.duree_palier_en_secondes || '120' }}" >> "$GITHUB_ENV"
+          echo "RAMP_DURATION_IN_SECONDS=${{ inputs.ramp_duration_in_seconds || '60' }}" >> "$GITHUB_ENV"
+          echo "HOLD_DURATION_IN_SECONDS=${{ inputs.hold_duration_in_seconds || '120' }}" >> "$GITHUB_ENV"
+          echo "P99_THRESHOLD_MS=${{ inputs.p99_threshold_ms || '500' }}" >> "$GITHUB_ENV"
+          echo "SUCCESS_PERCENT_THRESHOLD=${{ inputs.success_percent_threshold || '99.5' }}" >> "$GITHUB_ENV"
+          echo "TIR_SIMULATION=${{ inputs.simulation || 'passemploi.test.LoginEtAccueilFranceTravailSimulation' }}" >> "$GITHUB_ENV"
+          echo "FOND_SIZE=${{ inputs.fond_size || '0' }}" >> "$GITHUB_ENV"
+          echo "JOURNAL_HTTP=${{ inputs.journal_http || 'INFO' }}" >> "$GITHUB_ENV"
+          echo "TAILLE_CONNECT=${{ inputs.taille_connect || 'M' }}" >> "$GITHUB_ENV"
+          echo "TAILLE_API=${{ inputs.taille_api || 'M' }}" >> "$GITHUB_ENV"
+          echo "TAILLE_MOCK=${{ inputs.taille_mock || 'M' }}" >> "$GITHUB_ENV"
+          echo "ARRET_APRES_TIR=${{ inputs.arret_apres_tir == true }}" >> "$GITHUB_ENV"
+
+      - name: Vérifier les secrets requis
+        env:
+          SCALINGO_API_TOKEN: ${{ secrets.SCALINGO_API_TOKEN }}
+        run: |
+          [ -n "$SCALINGO_API_TOKEN" ] || { echo "::error::Secret SCALINGO_API_TOKEN manquant (environnement Performance)"; exit 1; }
+
+      # install.sh va chercher l'archive du CLI sur un autre hôte que
+      # cli-dl.scalingo.com : deux téléchargements, dont un seul était visible
+      # ici. Le 2026-09-09, le script s'est téléchargé (200, 5,5 Ko) mais
+      # l'archive derrière a échoué — tout le tir tombait sur un aléa réseau
+      # d'une étape qui n'était pas réessayée.
+      - name: Installer le CLI Scalingo
+        run: |
+          for essai in 1 2 3; do
+            curl -fsSL -O https://cli-dl.scalingo.com/install.sh && bash install.sh && exit 0
+            echo "Installation du CLI en échec, nouvelle tentative dans 15s ($essai/3)"
+            sleep 15
+          done
+          echo "::error::Impossible d'installer le CLI Scalingo après 3 tentatives"
+          exit 1
+
+      - name: Se connecter à Scalingo
+        run: scalingo login --api-token "${{ secrets.SCALINGO_API_TOKEN }}"
+
+      # Le CLI Scalingo répond 400 "no change in containers formation" quand
+      # l'app est déjà au scale demandé (ex. déjà réveillée par le cron de 8h,
+      # ou par un tir précédent) — une erreur de son point de vue, un no-op du
+      # nôtre, tolérée sans retry.
+      #
+      # "app → is scaling" est différent : l'API refuse une requête pendant
+      # qu'elle traite encore la précédente sur cette même app (observé sur
+      # logstash-perf juste après deux scales rapprochés sur d'autres apps —
+      # la plateforme Scalingo semble sérialiser les scales, pas seulement par
+      # app). Contrairement au cas ci-dessus ce n'est pas un no-op : sans
+      # retry, l'app peut rester à une taille non voulue sans qu'on le sache.
+      #
+      # La taille se pose ici plutôt que d'être subie : sans elle, l'app garde
+      # le réglage laissé par la dernière personne à l'avoir touchée, invisible
+      # dans les paramètres du tir. Une taille par app (pas un `taille_apps`
+      # commun) : connect et api n'ont aucune raison de partager la même
+      # taille en prod, viser l'iso-prod suppose de pouvoir les régler
+      # séparément. mock-externes n'a pas d'équivalent prod (il remplace
+      # l'IdP/API FT) ; logstash-perf n'est pas concerné, dimensionné à part
+      # pour son propre test de charge, mais reste réveillé ici comme les
+      # autres.
+      - name: Réveiller les apps
+        run: |
+          # Deux familles d'échecs transitoires, toutes deux réessayables :
+          #   - "is scaling" : l'API refuse pendant qu'elle traite le scale
+          #     précédent (observé le 2026-09-08).
+          #   - timeouts / 5xx de l'API Scalingo elle-même : observé le
+          #     2026-09-09 sur `scale`, avec un CLI fraîchement installé — donc
+          #     une lenteur côté plateforme, pas un client périmé.
+          # Tout le reste (taille inconnue, app inexistante) échoue immédiatement :
+          # réessayer une erreur de configuration ne ferait que retarder le verdict.
+          scaler() {
+            local app="$1" cible="$2" essai
+            for essai in 1 2 3 4 5; do
+              sortie="$(scalingo --region "$SCALINGO_REGION" --app "$app" scale "$cible" 2>&1)" && { echo "$sortie"; return 0; }
+              echo "$sortie"
+              echo "$sortie" | grep -qi 'no change in containers formation' && return 0
+              if [ "$essai" -lt 5 ] && echo "$sortie" | grep -qiE 'is scaling|context deadline exceeded|Client.Timeout|timeout|EOF|connection reset|502|503|504'; then
+                echo "Échec transitoire de l'API Scalingo : nouvelle tentative dans 15s ($essai/5)"
+                sleep 15
+                continue
+              fi
+              return 1
+            done
+            echo "::error::5 tentatives de scale échouées sur $app"
+            return 1
+          }
+          for app_taille in "pass-emploi-connect-perf:$TAILLE_CONNECT" "pass-emploi-api-perf:$TAILLE_API" "mock-externes-perf:$TAILLE_MOCK"; do
+            app="${app_taille%%:*}"; taille="${app_taille##*:}"
+            echo "::group::$app (taille $taille)"
+            scaler "$app" "web:1:$taille" || { echo "::endgroup::"; exit 1; }
+            echo "::endgroup::"
+          done
+          echo "::group::pass-emploi-logstash-perf (taille inchangée)"
+          scaler pass-emploi-logstash-perf web:1 || { echo "::endgroup::"; exit 1; }
+          echo "::endgroup::"
+
+      - name: Attendre que les apps répondent
+        run: |
+          # mock-externes n'a pas de route de santé dédiée : son JWKS fait
+          # office de sonde, et c'est justement ce que connect appelle.
+          sondes="pass-emploi-connect-perf|/health pass-emploi-api-perf|/health mock-externes-perf|/idp/protocol/openid-connect/certs"
+          for sonde in $sondes; do
+            app="${sonde%%|*}"; chemin="${sonde##*|}"
+            url="https://$app.$SCALINGO_REGION.scalingo.io$chemin"
+            echo "Sonde $url"
+            for essai in $(seq 1 30); do
+              code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$url" || true)"
+              if [ "$code" = "200" ]; then echo "  $app OK après $essai essai(s)"; break; fi
+              if [ "$essai" = "30" ]; then echo "::error::$app ne répond pas (dernier code HTTP : $code)"; exit 1; fi
+              sleep 10
+            done
+          done
+
+      # L'injecteur tourne sur son slug déployé, pas sur le checkout du runner :
+      # sans ce déploiement, un tir mesure la simulation d'un commit antérieur,
+      # silencieusement. Le déploiement auto est désactivé sur l'app (pour ne
+      # pas déployer à chaque push sur master), donc on le déclenche ici.
+      # ~1 min, le prix de savoir ce qu'on mesure.
+      - name: Déployer l'injecteur depuis la branche courante
+        run: |
+          scalingo --region "$SCALINGO_REGION" --app "$GATLING_APP" \
+            integration-link-manual-deploy --follow "${GITHUB_REF_NAME}"
+
+      - name: Marquer le début de la fenêtre de tir
+        run: echo "DEBUT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
+      - name: Installer psql
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+
+      # POOL_SIZE et POOL_PREFIX sont lus sur le mock plutôt que redéclarés
+      # ici : le sub que le mock tire doit correspondre à un id_authentification
+      # semé, sinon le login échoue en UTILISATEUR_INEXISTANT. Une seule source
+      # de vérité rend le désappariement impossible.
+      - name: Lire les paramètres du pool sur mock-externes
+        run: |
+          taille="$(scalingo --region "$SCALINGO_REGION" --app "$MOCK_APP" env-get POOL_SIZE)"
+          prefixe="$(scalingo --region "$SCALINGO_REGION" --app "$MOCK_APP" env-get POOL_PREFIX)"
+          [ -n "$taille" ] || { echo "::error::POOL_SIZE absent de $MOCK_APP"; exit 1; }
+          [ -n "$prefixe" ] || { echo "::error::POOL_PREFIX absent de $MOCK_APP"; exit 1; }
+          echo "POOL_SIZE=$taille" >> "$GITHUB_ENV"
+          echo "POOL_PREFIX=$prefixe" >> "$GITHUB_ENV"
+          echo "Pool : $taille identités préfixées $prefixe"
+
+      # Un pool plus petit que le nombre d'arrivées fait relire les mêmes lignes
+      # pendant toute la fenêtre : le tir mesure alors shared_buffers.
+      # Formules décalquées de l'injection (LoginEtAccueilFranceTravailSimulation) :
+      # palier = rampUsersPerSec(1 -> ups) puis constant ; escalier = nb_paliers
+      # niveaux au débit palier_debut + k x palier_pas.
+      - name: Vérifier que le pool couvre les arrivées du tir
+        run: |
+          if [ "$PROFIL" = "escalier" ]; then
+            arrivees=$(( DUREE_PALIER_EN_SECONDES * (NB_PALIERS * PALIER_DEBUT + PALIER_PAS * NB_PALIERS * (NB_PALIERS - 1) / 2) ))
+          else
+            arrivees=$(( RAMP_DURATION_IN_SECONDS * (1 + USERS_PER_SEC) / 2 + USERS_PER_SEC * HOLD_DURATION_IN_SECONDS ))
+          fi
+          echo "Arrivées attendues : $arrivees — pool disponible : $POOL_SIZE"
+          if [ "$POOL_SIZE" -lt "$arrivees" ]; then
+            relectures=$(( (arrivees + POOL_SIZE - 1) / POOL_SIZE ))
+            echo "::error::POOL_SIZE=$POOL_SIZE < $arrivees arrivées : chaque identité serait rejouée ~${relectures}x et le tir mesurerait le cache PostgreSQL. Agrandir le pool (scalingo --region $SCALINGO_REGION --app $MOCK_APP env-set POOL_SIZE=$arrivees) ou réduire la charge."
+            exit 1
+          fi
+
+      # pool_prefix se passe sans guillemets : seed.sql interpole avec
+      # :'pool_prefix', qui quote lui-même. Des guillemets ici sèmeraient le
+      # pool sous 'perf-ft-'0 et verifier.sql annoncerait 0 jeune en base.
+      - name: Semer le pool
+        run: |
+          url="$(scalingo --region "$SCALINGO_REGION" --app "$API_APP" env-get DATABASE_URL)"
+          echo "::add-mask::$url"
+          psql "$url" -v ON_ERROR_STOP=1 \
+               -v pool_size="$POOL_SIZE" -v pool_prefix="$POOL_PREFIX" \
+               -f perf/seed/seed.sql
+          psql "$url" -v ON_ERROR_STOP=1 \
+               -v pool_size="$POOL_SIZE" -f perf/seed/verifier.sql
+
+      # fond_prefix est fixe : contrairement à pool_prefix, il n'a pas de
+      # contrat avec mock-externes (ces jeunes ne sont jamais tirés).
+      - name: Semer le fond de charge
+        if: env.FOND_SIZE != '0'
+        run: |
+          url="$(scalingo --region "$SCALINGO_REGION" --app "$API_APP" env-get DATABASE_URL)"
+          echo "::add-mask::$url"
+          psql "$url" -v ON_ERROR_STOP=1 \
+               -v fond_size="$FOND_SIZE" -v fond_prefix=perf-fond- \
+               -f perf/seed/fond-de-charge.sql
+
+      # Le rapport HTML traverse stdout en base64 (seul canal d'un one-off,
+      # cf. tir-et-rapport.sh) : ~300 Ko de charabia au milieu de la console.
+      # `tee` garde la sortie complète dans le fichier — le step suivant en a
+      # besoin pour reconstituer le rapport — et l'affichage passe par un awk
+      # qui masque le bloc, pour que les logs du step restent lisibles.
+      # fflush : sans lui, la sortie du tir n'apparaîtrait qu'en fin de step
+      # au lieu de défiler pendant les trois minutes du tir.
+      - name: Tirer
+        working-directory: perf
+        run: |
+          set -o pipefail
+          make tir \
+            TAILLE_INJECTEUR="$TAILLE_INJECTEUR" \
+            PROFIL="$PROFIL" \
+            USERS_PER_SEC="$USERS_PER_SEC" \
+            RAMP_DURATION_IN_SECONDS="$RAMP_DURATION_IN_SECONDS" \
+            HOLD_DURATION_IN_SECONDS="$HOLD_DURATION_IN_SECONDS" \
+            PALIER_DEBUT="$PALIER_DEBUT" \
+            PALIER_PAS="$PALIER_PAS" \
+            NB_PALIERS="$NB_PALIERS" \
+            DUREE_PALIER_EN_SECONDES="$DUREE_PALIER_EN_SECONDES" \
+            P99_THRESHOLD_MS="$P99_THRESHOLD_MS" \
+            SUCCESS_PERCENT_THRESHOLD="$SUCCESS_PERCENT_THRESHOLD" \
+            TIR_SIMULATION="$TIR_SIMULATION" \
+            RAPPORT_STDOUT=1 \
+            JOURNAL_HTTP="$JOURNAL_HTTP" \
+            2>&1 | tee "$GITHUB_WORKSPACE/sortie-tir.txt" \
+            | awk '/---RAPPORT-GATLING-DEBUT---/ {masque=1; print "[rapport HTML en base64 masque ici -- reconstitue a l etape suivante, present dans l artefact]"; fflush(); next} /---RAPPORT-GATLING-FIN---/ {masque=0; next} !masque {print; fflush()}' 
+
+      # Le rapport a traversé stdout du one-off en base64 (tir-et-rapport.sh) :
+      # c'est le seul canal de sortie d'un conteneur éphémère non routé. On le
+      # rétablit ici en arborescence, à l'endroit où l'archivage l'attend.
+      # `if: always()` : un tir rouge est justement celui qu'on veut regarder.
+      - name: Extraire le rapport du flux du one-off
+        if: always()
+        run: |
+          if ! grep -q -- '---RAPPORT-GATLING-DEBUT---' sortie-tir.txt; then
+            echo "::warning::Pas de rapport dans la sortie du tir"
+            exit 0
+          fi
+          # tr : le TTY alloué par `scalingo run` peut glisser des séquences
+          # d'échappement entre les lignes de base64.
+          sed -n '/---RAPPORT-GATLING-DEBUT---/,/---RAPPORT-GATLING-FIN---/p' sortie-tir.txt \
+            | sed '1d;$d' \
+            | tr -cd 'A-Za-z0-9+/=\n' \
+            | base64 -d > rapport.tar.gz
+          mkdir -p perf/build/reports
+          tar xzf rapport.tar.gz -C perf/build/reports
+          rm -f rapport.tar.gz
+          echo "Rapport extrait :"
+          find perf/build/reports/gatling -name index.html
+
+          # Le base64 pollue la console archivée ; le rapport est désormais à
+          # part, on le retire de la trace lisible.
+          sed -i '/---RAPPORT-GATLING-DEBUT---/,/---RAPPORT-GATLING-FIN---/d' sortie-tir.txt
+
+      # Filet de sécurité : le verdict tient normalement au code de sortie de
+      # Gatling, non nul dès qu'une assertion tombe. Reste à confirmer que
+      # `scalingo run` propage bien le code de sortie du conteneur one-off ;
+      # tant que ce n'est pas vérifié, on relit aussi la console.
+      - name: Verdict
+        run: |
+          if [ "$PROFIL" = "escalier" ]; then
+            echo "Profil escalier : pas d'assertion SLO, la lecture se fait sur le rapport HTML"
+            exit 0
+          fi
+          if grep -qiE 'assertion.*failed|failed [0-9]+ .*expected' sortie-tir.txt; then
+            echo "::error::Assertion Gatling en échec — SLO non tenu"
+            exit 1
+          fi
+          echo "Assertions tenues"
+
+      # Métadonnées du tir (§7.3 du design). La sortie brute du CLI est
+      # archivée telle quelle pour relecture à l'œil, et infra_tir.py en tire
+      # la version structurée : un p99 ne se compare d'un tir à l'autre que si
+      # l'on sait sur quoi il a été mesuré (taille des conteneurs, SHA
+      # déployés, plans des addons).
+      - name: Rassembler les métadonnées
+        if: always()
+        run: |
+          fin="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          for app in $APPS $GATLING_APP; do
+            echo "### $app" >> etat-scalingo.txt
+            scalingo --region "$SCALINGO_REGION" --app "$app" ps >> etat-scalingo.txt 2>&1 || true
+            # head -4 : les trois premières lignes sont le cadre et l'en-tête
+            # de la table ; la quatrième est le dernier déploiement.
+            scalingo --region "$SCALINGO_REGION" --app "$app" deployments 2>&1 | head -4 >> etat-scalingo.txt || true
+            echo "### addons $app" >> etat-scalingo.txt
+            scalingo --region "$SCALINGO_REGION" --app "$app" addons >> etat-scalingo.txt 2>&1 || true
+          done
+          jq -n \
+            --arg debut "$DEBUT" --arg fin "$fin" \
+            --arg simulation "$TIR_SIMULATION" \
+            --arg profil "$PROFIL" \
+            --arg users_per_sec "$USERS_PER_SEC" \
+            --arg palier_debut "$PALIER_DEBUT" --arg palier_pas "$PALIER_PAS" \
+            --arg nb_paliers "$NB_PALIERS" --arg duree_palier_s "$DUREE_PALIER_EN_SECONDES" \
+            --arg ramp "$RAMP_DURATION_IN_SECONDS" \
+            --arg hold "$HOLD_DURATION_IN_SECONDS" \
+            --arg p99 "$P99_THRESHOLD_MS" \
+            --arg reussite "$SUCCESS_PERCENT_THRESHOLD" \
+            --arg pool_size "$POOL_SIZE" --arg pool_prefix "$POOL_PREFIX" \
+            --arg fond_size "$FOND_SIZE" \
+            --arg seed_sha "$(git log -1 --format=%h -- perf/seed)" \
+            --arg image_de_base "aucune (hors périmètre v1)" \
+            --arg taille_injecteur "$TAILLE_INJECTEUR" \
+            --arg taille_connect "$TAILLE_CONNECT" \
+            --arg taille_api "$TAILLE_API" \
+            --arg taille_mock "$TAILLE_MOCK" \
+            --arg run "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --arg verdict '${{ job.status }}' \
+            '{fenetre: {debut: $debut, fin: $fin},
+              simulation: $simulation,
+              charge: {profil: $profil, users_per_sec: $users_per_sec, ramp_s: $ramp, hold_s: $hold,
+                       escalier: {palier_debut: $palier_debut, palier_pas: $palier_pas,
+                                  nb_paliers: $nb_paliers, duree_palier_s: $duree_palier_s},
+                       taille_injecteur: $taille_injecteur,
+                       taille_demandee: {connect: $taille_connect, api: $taille_api, mock: $taille_mock}},
+              seuils: {p99_ms: $p99, reussite_pct: $reussite},
+              donnees: {pool_size: $pool_size, pool_prefix: $pool_prefix,
+                        seed_sha: $seed_sha, fond_size: $fond_size,
+                        image_de_base: $image_de_base},
+              run: $run, verdict: $verdict}' > metadonnees.json
+
+          # Les tailles de conteneurs et les SHA déployés ne sont pas des
+          # paramètres du workflow : ce sont des états des apps, modifiables
+          # hors de lui. Sans eux dans le fichier structuré, un résultat
+          # archivé n'est pas rejouable.
+          python3 perf/infra_tir.py etat-scalingo.txt metadonnees.json
+          cat metadonnees.json
+
+      # Rendu dans l'onglet Actions, en haut de la page du run : évite de
+      # télécharger le zip pour lire un verdict. Le détail par requête vient du
+      # rapport HTML, seul endroit où Gatling l'expose (la console n'a que les
+      # agrégats globaux). Le rendu vit dans perf/resume-tir.py, pour être
+      # rejouable sur un artefact téléchargé plutôt que débogable en CI seule.
+      - name: Résumer le tir
+        if: always()
+        run: |
+          python3 perf/resume-tir.py \
+            metadonnees.json sortie-tir.txt perf/build/reports/gatling \
+            >> "$GITHUB_STEP_SUMMARY"
+
+      # if-no-files-found en warn : un tir qui échoue avant Gatling ne produit
+      # aucun rapport, et ce n'est pas une raison de perdre la console.
+      - name: Archiver
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tir-${{ github.run_id }}
+          path: |
+            sortie-tir.txt
+            etat-scalingo.txt
+            metadonnees.json
+            perf/build/reports/gatling/**
+          if-no-files-found: warn
+          retention-days: 90
+
+      # Par défaut on laisse tourner : perf-env-shutdown.yml éteint à 20h de
+      # toute façon, et un tir de milieu de journée est presque toujours suivi
+      # d'un autre. L'input sert au tir de fin de soirée.
+      - name: Éteindre les apps
+        if: always() && env.ARRET_APRES_TIR == 'true'
+        run: |
+          for app in $APPS; do
+            scalingo --region "$SCALINGO_REGION" --app "$app" scale web:0
+          done

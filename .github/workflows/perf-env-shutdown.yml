@@ -1,0 +1,56 @@
+# Éteint les apps Scalingo dédiées au chantier perf en dehors des heures
+# d'usage, pour ne pas payer des conteneurs qui tournent pour rien la nuit
+# et le week-end.
+#
+# Ne touche PAS aux add-ons de base de données : l'API Scalingo n'a pas
+# d'opération de pause sur un add-on, seulement provision/suppression. Les
+# supprimer économiserait plus, mais casserait l'idempotence du harnais
+# (reset → seed → tir) à chaque réveil sans same-day. Cf. docs/perf/harnais.md.
+#
+# Prérequis (secret GitHub à configurer) :
+#   SCALINGO_API_TOKEN   token API Scalingo (compte de service dédié si possible),
+#                        porté par l'environnement GitHub « Performance »
+#
+# Cible : apps perf (perf/README.md + Logstash perf), région osc-secnum-fr1.
+# gatling-perf n'est PAS listée : c'est un one-off (`scalingo run`), jamais
+# de conteneur permanent à éteindre — voir perf/Makefile.
+
+name: Perf - Extinction nocturne des apps Scalingo
+
+on:
+  schedule:
+    # 20h00 Europe/Paris = 18h00 UTC (19h00 en heure d'hiver — écart accepté)
+    - cron: "0 18 * * 1-5"
+  workflow_dispatch:
+
+env:
+  SCALINGO_REGION: osc-secnum-fr1
+  APPS: pass-emploi-connect-perf pass-emploi-api-perf mock-externes-perf pass-emploi-logstash-perf
+
+jobs:
+  scale-down:
+    runs-on: ubuntu-latest
+    environment: Performance
+    steps:
+      - name: Installer le CLI Scalingo
+        run: curl -O https://cli-dl.scalingo.com/install.sh && bash install.sh
+
+      - name: Se connecter à Scalingo
+        run: scalingo login --api-token "${{ secrets.SCALINGO_API_TOKEN }}"
+
+      # Le CLI Scalingo répond 400 "no change in containers formation" quand
+      # l'app est déjà au scale demandé (ex. déjà éteinte par une extinction
+      # précédente) — une erreur de son point de vue, un no-op du nôtre. On
+      # tolère ce seul message ; toute autre sortie fait échouer le step.
+      - name: Scaler chaque app à 0
+        run: |
+          for app in $APPS; do
+            echo "::group::$app"
+            sortie="$(scalingo --region "$SCALINGO_REGION" --app "$app" scale web:0 2>&1)" && {
+              echo "$sortie"
+            } || {
+              echo "$sortie"
+              echo "$sortie" | grep -qi 'no change in containers formation' || { echo "::endgroup::"; exit 1; }
+            }
+            echo "::endgroup::"
+          done

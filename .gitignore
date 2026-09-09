@@ -5,5 +5,11 @@
 perf/.env
 perf/build
 perf/.gradle
+perf/local-run/.run/
 *.secret
 commandes-secretes.md
+
+__pycache__
+*.py[oc]
+.venv
+

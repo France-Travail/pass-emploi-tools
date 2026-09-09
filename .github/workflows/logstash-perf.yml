@@ -4,9 +4,15 @@
 # (p95) à 200 logs/s, sans aucun timeout HTTP (taux d'erreur < 0,1%).
 # Un échec signale un risque de quarantaine du drain en production.
 #
-# Déclenchement :
-#   - Manuel (workflow_dispatch) : pour valider avant un déploiement Logstash
-#   - Sur PR modifiant logs/** : pour détecter les régressions de config
+# Déclenchement : manuel uniquement (workflow_dispatch), pour valider avant un
+# déploiement Logstash. Le déclenchement automatique sur PR (paths: logs/**)
+# est désactivé depuis le 2026-09-08 : sur une PR longue comme le chantier
+# perf, il se redéclenchait à chaque push dès qu'un seul commit historique de
+# la branche touchait logs/**, sans rapport avec le commit courant — et
+# concurrençait perf-api.yml sur la même instance pass-emploi-logstash-perf
+# (cause probable du "app → is scaling" du 2026-09-08). Le test reste utile,
+# mais comme geste explicite avant un déploiement Logstash, pas comme
+# vérification automatique de PR.
 #
 # Prérequis (secrets GitHub à configurer) :
 #   LOGSTASH_PERF_URL         URL HTTPS de l'instance Logstash perf Scalingo
@@ -23,9 +29,6 @@
 name: Logstash - Test de non régression des performances
 
 on:
-  pull_request:
-    paths:
-      - "logs/**"
   workflow_dispatch:
     inputs:
       users_per_sec:
@@ -34,6 +37,13 @@ on:
       duration_seconds:
         description: "Durée de la montée en charge en secondes"
         required: false
+
+# Sans déclenchement automatique sur PR, deux runs ne devraient plus se
+# chevaucher — gardé par précaution contre deux déclenchements manuels
+# rapprochés sur la même instance pass-emploi-logstash-perf.
+concurrency:
+  group: logstash-perf-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   load-test:
@@ -115,7 +125,7 @@ jobs:
             # --simulation borne ce run à LogstashIngestSimulation : si
             # -Dgatling.reportsOnly n'était pas propagé à la JVM forkée par le
             # plugin Gradle, gatlingRun relancerait sinon TOUTES les simulations
-            # (dont ConnectionSimulation/PremierScenario qui ciblent l'auth et l'API).
+            # (dont les simulations d'accueil FT, qui ciblent connect et l'API).
             ./gradlew gatlingRun --simulation passemploi.test.LogstashIngestSimulation \
               --no-daemon -Dgatling.reportsOnly="$SIMULATION_NAME"
           fi
