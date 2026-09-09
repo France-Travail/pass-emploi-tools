@@ -156,8 +156,20 @@ jobs:
         run: |
           [ -n "$SCALINGO_API_TOKEN" ] || { echo "::error::Secret SCALINGO_API_TOKEN manquant (environnement Performance)"; exit 1; }
 
+      # install.sh va chercher l'archive du CLI sur un autre hôte que
+      # cli-dl.scalingo.com : deux téléchargements, dont un seul était visible
+      # ici. Le 2026-09-09, le script s'est téléchargé (200, 5,5 Ko) mais
+      # l'archive derrière a échoué — tout le tir tombait sur un aléa réseau
+      # d'une étape qui n'était pas réessayée.
       - name: Installer le CLI Scalingo
-        run: curl -O https://cli-dl.scalingo.com/install.sh && bash install.sh
+        run: |
+          for essai in 1 2 3; do
+            curl -fsSL -O https://cli-dl.scalingo.com/install.sh && bash install.sh && exit 0
+            echo "Installation du CLI en échec, nouvelle tentative dans 15s ($essai/3)"
+            sleep 15
+          done
+          echo "::error::Impossible d'installer le CLI Scalingo après 3 tentatives"
+          exit 1
 
       - name: Se connecter à Scalingo
         run: scalingo login --api-token "${{ secrets.SCALINGO_API_TOKEN }}"
