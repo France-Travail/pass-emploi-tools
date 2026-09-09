@@ -1,7 +1,7 @@
 -- Sème le pool de bénéficiaires que mock-externes tire au sort.
 --
 --   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
---        -v pool_size=200 -v pool_prefix=perf-ft- -f seed.sql
+--        -v pool_size=50000 -v pool_prefix=perf-ft- -f seed.sql
 --
 -- pool_prefix se passe sans guillemets : l'interpolation :'pool_prefix' quote
 -- déjà la valeur, des guillemets dans le -v finiraient dans la chaîne.
@@ -16,6 +16,9 @@
 --
 -- Ni action ni rendez_vous ne sont semées : vides en production côté France
 -- Travail, et hors du chemin de lecture de l'accueil (cf. volumetrie-prod.md).
+--
+-- Portefeuilles de 47 jeunes (p90 mesurée, comme fond-de-charge.sql) : un
+-- conseiller unique fausserait toute requête filtrant par id_conseiller.
 
 \if :{?pool_size}
 \else
@@ -28,24 +31,28 @@
 
 \ir garde-fou.sql
 
+\set portefeuille 47
+
 BEGIN;
 
--- Idempotence : les FK cascadent depuis conseiller, donc supprimer le
--- conseiller de perf efface ses jeunes, leurs favoris et leurs alertes.
-DELETE FROM conseiller WHERE id = :'pool_prefix' || 'conseiller';
+-- Idempotence : les FK cascadent depuis conseiller. `conseiller%` et non
+-- `conseiller-%` : rattrape aussi le conseiller unique sans suffixe des seeds
+-- antérieurs, qui resterait orphelin en base.
+DELETE FROM conseiller WHERE id LIKE :'pool_prefix' || 'conseiller%';
 
 INSERT INTO conseiller (
   id, nom, prenom, email, username, structure, id_authentification, date_creation
-) VALUES (
-  :'pool_prefix' || 'conseiller',
+)
+SELECT
+  :'pool_prefix' || 'conseiller-' || c,
   'Perf',
   'Conseiller',
-  :'pool_prefix' || 'conseiller@perf.local',
-  :'pool_prefix' || 'conseiller',
+  :'pool_prefix' || 'conseiller-' || c || '@perf.local',
+  :'pool_prefix' || 'conseiller-' || c,
   'POLE_EMPLOI',
-  :'pool_prefix' || 'conseiller',
+  :'pool_prefix' || 'conseiller-' || c,
   now()
-);
+FROM generate_series(0, ((:pool_size - 1) / :portefeuille)) AS c;
 
 INSERT INTO jeune (
   id, nom, prenom, id_conseiller, id_conseiller_initial, date_creation,
@@ -56,8 +63,8 @@ SELECT
   :'pool_prefix' || i,
   'Perf',
   :'pool_prefix' || i,
-  :'pool_prefix' || 'conseiller',
-  :'pool_prefix' || 'conseiller',
+  :'pool_prefix' || 'conseiller-' || (i / :portefeuille),
+  :'pool_prefix' || 'conseiller-' || (i / :portefeuille),
   now(),
   :'pool_prefix' || i || '@perf.local',
   'POLE_EMPLOI',

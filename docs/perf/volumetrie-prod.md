@@ -120,12 +120,16 @@ réellement sollicité — ce qui compte pour la taille des index, pas pour le t
 
 ### Taille du pool `N`
 
-**`N ≥ 5 × MAX_USERS`, avec un plancher à 50.**
+**`N ≥ nombre d'arrivées du tir`** — pas `5 × MAX_USERS`, qui dimensionnait
+contre les utilisateurs *concurrents* et sous-évaluait le pool d'un ordre de
+grandeur.
 
-C'est une règle, pas un nombre, parce que `MAX_USERS` change d'un tir à l'autre.
-Le seul impératif est que le pool dépasse largement le nombre d'utilisateurs
-concurrents : à `N` proche de `MAX_USERS`, les mêmes lignes restent chaudes en
-cache PostgreSQL et le tir mesure le cache, pas la base.
+C'est une règle, pas un nombre, parce que le profil d'injection change d'un tir
+à l'autre. Ce qui rend une ligne chaude en cache PostgreSQL n'est pas d'être lue
+simultanément mais d'être **relue** pendant la fenêtre de tir : en production
+chaque arrivée est une personne distincte. En pratique le pool atteint donc la
+volumétrie mesurée ci-dessus (≈48 500 `POLE_EMPLOI`), et le fond de charge
+devient optionnel. Formules et garde-fou : `docs/perf/harnais.md`.
 
 Aucune contrainte de réalisme ne limite `N` par le haut : la production compte
 48 521 bénéficiaires `POLE_EMPLOI`, tout `N` envisageable pour un tir reste

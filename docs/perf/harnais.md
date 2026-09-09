@@ -40,7 +40,7 @@ pas un objectif.
 | Pièce | Où | Rôle |
 |---|---|---|
 | **`mock-externes`** | [`perf/mock-externes/`](../../perf/mock-externes/README.md) | Se fait passer pour l'IdP FT et ses APIs partenaires. Signe ses propres `id_token` avec une paire RSA générée au premier démarrage — aucune clé d'un environnement réel. Sans état de session : l'identité tirée au sort est encodée dans le `code`, jamais partagée entre workers. |
-| **Le seed** | [`perf/seed/`](../../perf/seed/README.md) | Crée en base le pool de bénéficiaires que le mock tire au sort, aux volumétries mesurées en production. Idempotent, protégé par un marqueur anti-prod. Un second script (`fond-de-charge.sql`, opt-in) sème un volume de bénéficiaires supplémentaires hors du pool, pour approcher la taille des tables de prod — sans être un restore de snapshot réel. |
+| **Le seed** | [`perf/seed/`](../../perf/seed/README.md) | Crée en base le pool de bénéficiaires que le mock tire au sort, aux volumétries mesurées en production. Idempotent, protégé par un marqueur anti-prod. Un second script (`fond-de-charge.sql`, opt-in, 0 par défaut) sème des bénéficiaires hors du pool, pour pousser les tables au-delà de la taille de prod. |
 | **La simulation** | [`perf/src/gatling/`](../../perf/README.md) | Suit la chaîne de redirections **à la main**, étape nommée par étape — ce qui donne un temps de réponse par saut, et rend tout écart immédiatement lisible. |
 | **Le run local** | [`perf/local-run/`](../../perf/local-run/README.md) | Fait tourner `connect` et `api` en natif contre le mock, pour valider le parcours sans environnement dédié. |
 
@@ -83,13 +83,17 @@ de rupture. La lecture d'un escalier se fait sur le rapport HTML, par seconde.
   la main**, une fois, sur la base de tir. Ce geste reste manuel et hors du
   workflow de tir : c'est ce qui garantit qu'aucune automatisation ne peut le
   satisfaire par accident.
-- **Le pool doit être large devant la charge** — au moins **5 × `USERS_PER_SEC`**.
-  Trop petit, les mêmes lignes restent chaudes en cache PostgreSQL et le tir
-  mesure le cache, pas la base. Le facteur 5 se comptait à l'origine en
-  utilisateurs *concurrents* ; en modèle ouvert ceux-ci ne sont plus un
-  paramètre mais une conséquence (concurrents ≈ débit × durée du parcours), et
-  on les majore par le débit — ce qui suppose un parcours d'au plus une
-  seconde. Si le parcours s'allonge, recalculer sur la concurrence observée.
+- **Le pool doit couvrir les arrivées du tir**, pas la concurrence — au moins
+  **`pool_size ≥ nombre d'arrivées`**, soit `(1 + débit) × ramp / 2 + débit ×
+  hold` en profil palier, et `durée_palier × (nb × début + pas × nb × (nb−1)/2)`
+  en escalier. La règle antérieure (5 × `USERS_PER_SEC`) dimensionnait contre
+  les utilisateurs *concurrents* : un ordre de grandeur trop bas. Ce qui rend
+  une ligne chaude en cache PostgreSQL n'est pas d'être lue simultanément mais
+  d'être **relue** pendant la fenêtre de tir ; en production chaque arrivée est
+  une personne distincte, donc un pool plus petit que le nombre d'arrivées fait
+  mesurer `shared_buffers` plutôt que la base. Corollaire assumé : un tir
+  sérieux demande un pool de l'ordre de la volumétrie de prod, et le partage
+  pool / fond de charge devient un curseur, pas une frontière de nature.
 - **Toute variable portant une URL publique doit être surchargée.** `connect`
   construit ses redirections à partir de sa configuration ; si une seule garde
   sa valeur d'origine, le tir **sort vers le vrai domaine** au milieu de la
@@ -119,12 +123,11 @@ de rupture. La lecture d'un escalier se fait sur le rapport HTML, par seconde.
   bien qu'un tir dit « à ce débit, on tient » sans dire si ce débit est celui
   du jour J. En attendant, le profil `escalier` (ci-dessus) tâtonne
   méthodiquement le point de rupture pour établir un état des lieux.
-- **Le fond de charge est une approximation, pas un vrai volume de prod.**
-  `fond-de-charge.sql` sème des bénéficiaires synthétiques aux distributions
-  mesurées, pas les vraies lignes de prod — pas de jointures réelles, pas la
-  distribution croisée entre tables qu'un restore de snapshot donnerait. Il
-  rapproche la taille des tables et la pression sur les index, il ne les
-  reproduit pas exactement.
+- **Le jeu de données est synthétique, pas un volume de prod.** Pool comme fond
+  sèment des bénéficiaires aux distributions mesurées, pas les vraies lignes de
+  prod — pas de jointures réelles, pas la distribution croisée entre tables
+  qu'un restore de snapshot donnerait. La taille des tables et la pression sur
+  les index s'en approchent, elles ne les reproduisent pas.
 - **Le périmètre est le parcours accueil FT.** Web conseiller, jobs et crons,
   messagerie, notification push massive et parcours MILO sont hors périmètre v1
   — tous de vrais scénarios de charge, que l'architecture accueille sans

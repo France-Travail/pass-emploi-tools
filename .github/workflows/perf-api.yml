@@ -54,8 +54,8 @@ on:
         description: "INFO (tir de mesure) ou DEBUG (diagnostic : journalise les réponses en échec, corps compris)"
         default: "INFO"
       fond_size:
-        description: "Bénéficiaires de fond hors pool (0 = aucun) — vraisemblance du volume/index/cache, cf. docs/perf/harnais.md"
-        default: "48000"
+        description: "Bénéficiaires hors pool, en plus de lui (0 = aucun). Le pool porte déjà la volumétrie de prod : à ne monter que pour tester au-delà, cf. docs/perf/harnais.md"
+        default: "0"
       taille_connect:
         description: "Taille du conteneur pass-emploi-connect-perf (S, M, L, XL…) — viser la taille de prod pour un tir représentatif"
         default: "M"
@@ -75,11 +75,9 @@ on:
       - 'perf/**'
       - '.github/workflows/perf-api.yml'
 
-# L'environnement de perf dédié est une ressource unique et le tir est
-# destructeur (scale des apps + seed de la base) : deux runs en parallèle se
-# piétinent (KO massifs sur les steps stateful de connect, apps rescalées en
-# plein tir). On sérialise. `cancel-in-progress: false` : un tir déjà lancé va
-# au bout — l'annuler laisserait les apps scale et la base à moitié semée.
+# Le tir est destructeur (scale des apps + seed) sur un environnement unique :
+# deux runs en parallèle se piétinent. Pas d'annulation — un tir interrompu
+# laisse les apps scalées et la base à moitié semée.
 concurrency:
   group: perf-environnement-dedie
   cancel-in-progress: false
@@ -142,7 +140,7 @@ jobs:
           echo "P99_THRESHOLD_MS=${{ inputs.p99_threshold_ms || '500' }}" >> "$GITHUB_ENV"
           echo "SUCCESS_PERCENT_THRESHOLD=${{ inputs.success_percent_threshold || '99.5' }}" >> "$GITHUB_ENV"
           echo "TIR_SIMULATION=${{ inputs.simulation || 'passemploi.test.LoginEtAccueilFranceTravailSimulation' }}" >> "$GITHUB_ENV"
-          echo "FOND_SIZE=${{ inputs.fond_size || '48000' }}" >> "$GITHUB_ENV"
+          echo "FOND_SIZE=${{ inputs.fond_size || '0' }}" >> "$GITHUB_ENV"
           echo "JOURNAL_HTTP=${{ inputs.journal_http || 'INFO' }}" >> "$GITHUB_ENV"
           echo "TAILLE_CONNECT=${{ inputs.taille_connect || 'M' }}" >> "$GITHUB_ENV"
           echo "TAILLE_API=${{ inputs.taille_api || 'M' }}" >> "$GITHUB_ENV"
@@ -277,29 +275,24 @@ jobs:
           echo "POOL_PREFIX=$prefixe" >> "$GITHUB_ENV"
           echo "Pool : $taille identités préfixées $prefixe"
 
-      # Lot 0 : sous 5 identités par utilisateur virtuel, les mêmes lignes
-      # restent chaudes en cache PostgreSQL et le tir mesure le cache.
-      #
-      # En modèle ouvert, le nombre d'utilisateurs simultanés n'est plus un
-      # paramètre mais une conséquence (loi de Little : concurrents ≈ débit x
-      # durée du parcours). On le majore par le débit maximal atteint, ce qui
-      # revient à supposer un parcours d'au plus une seconde — vrai aujourd'hui
-      # (~0,5 s), et conservateur : si le parcours s'allonge, ce garde-fou
-      # devra être recalculé sur la concurrence réellement observée au tir
-      # précédent. En profil escalier, le débit maximal est celui du dernier
-      # palier (palier_debut + palier_pas x (nb_paliers - 1)), pas users_per_sec.
-      - name: Vérifier pool_size >= 5 x débit maximal
+      # Un pool plus petit que le nombre d'arrivées fait relire les mêmes lignes
+      # pendant toute la fenêtre : le tir mesure alors shared_buffers.
+      # Formules décalquées de l'injection (LoginEtAccueilFranceTravailSimulation) :
+      # palier = rampUsersPerSec(1 -> ups) puis constant ; escalier = nb_paliers
+      # niveaux au débit palier_debut + k x palier_pas.
+      - name: Vérifier que le pool couvre les arrivées du tir
         run: |
           if [ "$PROFIL" = "escalier" ]; then
-            debit_max=$(( PALIER_DEBUT + PALIER_PAS * (NB_PALIERS - 1) ))
+            arrivees=$(( DUREE_PALIER_EN_SECONDES * (NB_PALIERS * PALIER_DEBUT + PALIER_PAS * NB_PALIERS * (NB_PALIERS - 1) / 2) ))
           else
-            debit_max=$USERS_PER_SEC
+            arrivees=$(( RAMP_DURATION_IN_SECONDS * (1 + USERS_PER_SEC) / 2 + USERS_PER_SEC * HOLD_DURATION_IN_SECONDS ))
           fi
-          minimum=$(( 5 * debit_max ))
-          [ "$POOL_SIZE" -ge "$minimum" ] || {
-            echo "::error::POOL_SIZE=$POOL_SIZE < $minimum (5 x débit maximal=$debit_max) : agrandir le pool sur $MOCK_APP ou réduire la charge"
+          echo "Arrivées attendues : $arrivees — pool disponible : $POOL_SIZE"
+          if [ "$POOL_SIZE" -lt "$arrivees" ]; then
+            relectures=$(( (arrivees + POOL_SIZE - 1) / POOL_SIZE ))
+            echo "::error::POOL_SIZE=$POOL_SIZE < $arrivees arrivées : chaque identité serait rejouée ~${relectures}x et le tir mesurerait le cache PostgreSQL. Agrandir le pool (scalingo --region $SCALINGO_REGION --app $MOCK_APP env-set POOL_SIZE=$arrivees) ou réduire la charge."
             exit 1
-          }
+          fi
 
       # pool_prefix se passe sans guillemets : seed.sql interpole avec
       # :'pool_prefix', qui quote lui-même. Des guillemets ici sèmeraient le
@@ -314,13 +307,8 @@ jobs:
           psql "$url" -v ON_ERROR_STOP=1 \
                -v pool_size="$POOL_SIZE" -f perf/seed/verifier.sql
 
-      # fond_prefix est fixe (perf-fond-) : contrairement à pool_prefix, il
-      # n'a pas de contrat avec mock-externes (ces jeunes ne sont jamais
-      # tirés), donc rien n'oblige à le lire depuis une autre app. Sans fond
-      # de charge, la table jeune fait la taille du pool (quelques centaines
-      # de lignes) au lieu de la taille de prod (cf. docs/perf/harnais.md) —
-      # index, plan de requête et pression sur le cache n'ont alors aucune
-      # raison de ressembler à la prod.
+      # fond_prefix est fixe : contrairement à pool_prefix, il n'a pas de
+      # contrat avec mock-externes (ces jeunes ne sont jamais tirés).
       - name: Semer le fond de charge
         if: env.FOND_SIZE != '0'
         run: |

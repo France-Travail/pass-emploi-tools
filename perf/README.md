@@ -132,15 +132,12 @@ make tir TIR_SIMULATION=passemploi.test.AccueilFranceTravailSimulation
 > aucune erreur. Le workflow CI, lui, déploie la branche courante avant chaque
 > tir.
 
-> ⚠️ **`pool_size ≥ 5 × USERS_PER_SEC`** côté seed (`perf/seed/README.md`) : à
-> pool trop petit devant la charge, les mêmes bénéficiaires restent chauds en
-> cache PostgreSQL et le tir mesure le cache plutôt que l'application. Avec le
-> pool par défaut (`pool_size=200`), rester sous `USERS_PER_SEC=40`.
->
-> Le facteur 5 se comptait en utilisateurs *concurrents*, qui ne sont plus un
-> paramètre en modèle ouvert : on les majore par le débit, ce qui suppose un
-> parcours d'au plus une seconde. Si le parcours s'allonge, recalculer sur la
-> concurrence observée au tir précédent.
+> ⚠️ **`pool_size ≥ nombre d'arrivées du tir`** côté seed
+> (`perf/seed/README.md`) : à pool plus petit, les mêmes bénéficiaires sont
+> relus pendant toute la fenêtre, restent chauds en cache PostgreSQL, et le tir
+> mesure le cache plutôt que l'application. En palier, les arrivées valent
+> `(1 + USERS_PER_SEC) × ramp / 2 + USERS_PER_SEC × hold`. Le workflow calcule
+> le seuil et refuse de tirer en dessous, en affichant la valeur à poser.
 
 Le système de fichiers d'un one-off est éphémère : ce qui compte pour un tir
 manuel est le résumé écrit sur la console pendant l'exécution (requêtes, p95,
@@ -155,8 +152,8 @@ déploie l'injecteur depuis la branche courante, sème le pool, tire et archive.
 | Input | Défaut | Ce qu'il change |
 |---|---|---|
 | `simulation` | `LoginEtAccueilFranceTravailSimulation` | Simulation Gatling jouée |
-| `users_per_sec` | `10` | Débit du profil `palier` — refusé si `POOL_SIZE < 5 × users_per_sec` |
-| `fond_size` | `48000` | Bénéficiaires de fond hors pool (`0` = aucun) — cf. « Fond de charge » ci-dessous |
+| `users_per_sec` | `10` | Débit du profil `palier` — refusé si le pool ne couvre pas les arrivées |
+| `fond_size` | `0` | Bénéficiaires hors pool, en plus de lui — cf. « Fond de charge » ci-dessous |
 | `taille_connect` / `taille_api` / `taille_mock` | `M` chacune | Taille de chaque app pendant le tir (sans effet sur `logstash-perf`) — viser la taille de prod pour un tir représentatif |
 | `p99_threshold_ms` / `success_percent_threshold` | `500` / `99.5` | Les deux SLO assertés (profil `palier` uniquement) |
 | `arret_apres_tir` | `false` | Rescale les apps à 0 en fin de tir |

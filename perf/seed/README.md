@@ -23,7 +23,7 @@ psql "$DATABASE_URL" -f marquer-environnement.sql
 
 ```sh
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
-     -v pool_size=200 -v pool_prefix=perf-ft- -f seed.sql
+     -v pool_size=50000 -v pool_prefix=perf-ft- -f seed.sql
 ```
 
 > ⚠️ **`pool_prefix` sans guillemets.** Les scripts interpolent avec `:'pool_prefix'`,
@@ -33,24 +33,22 @@ psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
 > en `UTILISATEUR_INEXISTANT`.
 
 Idempotent : rejouable autant de fois que voulu, la base finit dans le même
-état. Les FK cascadent depuis le conseiller de perf, donc le nettoyage tient en
-une ligne — supprimer le conseiller efface ses jeunes, leurs favoris et leurs
-alertes.
+état. Les FK cascadent depuis les conseillers de perf, donc le nettoyage tient
+en une ligne — les supprimer efface leurs jeunes, favoris et alertes.
 
 Vérifier le résultat :
 
 ```sh
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -v pool_size=200 -f verifier.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -v pool_size=50000 -f verifier.sql
 ```
 
 ## Optionnel : le fond de charge
 
-Sans lui, la table `jeune` fait la taille du pool (quelques centaines de
-lignes) au lieu de la taille de prod (≈48 500 bénéficiaires `POLE_EMPLOI`) :
-index scan, cache buffer et plan de requête n'ont alors aucune raison de
-ressembler à la prod. `fond-de-charge.sql` sème des bénéficiaires
-supplémentaires, **hors du pool** (préfixe distinct, jamais tirés par
-`mock-externes`), aux mêmes distributions de profil que le pool :
+Le pool étant désormais dimensionné sur les arrivées du tir, il porte à lui
+seul la volumétrie de prod (≈48 500 bénéficiaires `POLE_EMPLOI`) et le fond est
+à **0 par défaut**. Il reste utile pour pousser la table `jeune` *au-delà* de la
+prod : `fond-de-charge.sql` sème des bénéficiaires **hors du pool** (préfixe
+distinct, jamais tirés par `mock-externes`), aux mêmes distributions que lui :
 
 ```sh
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
@@ -75,13 +73,18 @@ anti-prod partagé avec `seed.sql`.
 | Préfixe | `-v pool_prefix` | `POOL_PREFIX` | `perf-ft-` |
 | Taille | `-v pool_size` | `POOL_SIZE` | `50` |
 
-Le lot 0 recommande **`pool_size ≥ 5 × MAX_USERS`** : à pool trop petit, les
-mêmes lignes restent chaudes en cache PostgreSQL et le tir mesure le cache.
+**`pool_size` doit couvrir les arrivées du tir** (et non la concurrence, comme
+le voulait la règle initiale `5 × MAX_USERS` — un ordre de grandeur trop bas).
+Le workflow calcule les arrivées depuis le profil d'injection et refuse de tirer
+si le pool ne suit pas. À pool trop petit, les mêmes lignes sont relues pendant
+toute la fenêtre, restent chaudes en cache PostgreSQL, et le tir mesure le cache.
+Voir l'invariant dans [`docs/perf/harnais.md`](../../docs/perf/harnais.md).
 
 ## Ce qui est semé
 
-Un conseiller `{prefix}conseiller`, puis `pool_size` bénéficiaires de structure
-`POLE_EMPLOI`, répartis en trois profils par `i % 20` :
+Des conseillers `{prefix}conseiller-{c}` portant **47 jeunes chacun** (la p90
+mesurée, comme `fond-de-charge.sql`), puis `pool_size` bénéficiaires de
+structure `POLE_EMPLOI` répartis en trois profils par `i % 20` :
 
 | Profil | Part | Favoris | Alertes |
 |---|---|---|---|
@@ -115,4 +118,4 @@ donnée de prod).
 | `GARDE-FOU : la base "…" ne porte pas le marqueur` | Marqueur non posé — vérifier **qu'on vise bien la base de perf** avant de le poser |
 | Login en échec `UTILISATEUR_INEXISTANT` | `pool_prefix` / `pool_size` désalignés avec le mock |
 | `Pool : 0 jeunes en base` au vérificateur | `pool_prefix` passé avec des guillemets, ou seed joué sur une autre base que celle vérifiée |
-| Le tir frappe toujours les mêmes jeunes | `pool_size` trop petit devant le débit du tir (`USERS_PER_SEC` ou le dernier palier en profil escalier) |
+| Le tir frappe toujours les mêmes jeunes | `pool_size` plus petit que le nombre d'arrivées du tir — le workflow le refuse et affiche le minimum à poser |
