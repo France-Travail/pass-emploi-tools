@@ -50,6 +50,13 @@ if [ "${FLEET_ENROLL}" = "1" ]; then
     elastic-agent container &
 fi
 
+# Décode le CA cert Redis depuis la variable d'env (base64) vers un fichier temporaire.
+# Le cert n'est jamais stocké dans le repo — uniquement dans les variables Scalingo.
+if [ -n "$REDIS_CA_CERT_BASE64" ]; then
+  mkdir -p /app/certs
+  echo "$REDIS_CA_CERT_BASE64" | base64 -d > /app/certs/redis-ca.pem
+fi
+
 exec logstash \
   --config.reload.automatic \
   --path.settings /app/config

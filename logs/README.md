@@ -73,6 +73,7 @@ Sur un conteneur plus petit, le boot est tué par l'OOM killer
 | `REDIS_HOST`                  | Hôte Redis (ex: `my-redis.scalingo.com`)                                                                                           |
 | `REDIS_PORT`                  | Port Redis (optionnel, défaut : `6379`)                                                                                            |
 | `REDIS_PASSWORD`              | Mot de passe Redis                                                                                                                 |
+| `REDIS_CA_CERT_BASE64`        | CA cert Redis encodé en base64 (onglet SSL/TLS de la page Redis Scalingo). Décodé au démarrage vers `/app/certs/redis-ca.pem`.     |
 | `LS_JAVA_OPTS`                | Options JVM, heap compris (ex: `-Xms1g -Xmx1g` dans un conteneur XL)                                                               |
 | `LOGSTASH_INGEST_THREADS`     | Threads Netty du pipeline ingest (optionnel, défaut : `4`)                                                                         |
 | `LOGSTASH_INGEST_WORKERS`     | Workers du pipeline `ingest` (optionnel, défaut : `1`) — augmenter si l'écriture Redis est le goulot                               |
