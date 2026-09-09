@@ -81,6 +81,20 @@ Sur un conteneur plus petit, le boot est tué par l'OOM killer
 | `LOGSTASH_PROCESS_BATCH_SIZE` | Taille des batches du pipeline `process` (optionnel, défaut : `250`) — réduire temporairement (ex: `50`) en cas de backpressure ES |
 | `LOGSTASH_DLQ_WORKERS`        | Workers du pipeline `dead_letter_queue` (optionnel, défaut : `1`)                                                                  |
 
+> **Générer `REDIS_CA_CERT_BASE64`** : télécharger le CA cert depuis la page
+> Redis Scalingo (onglet "SSL/TLS" → "Download CA cert"), puis encoder :
+> ```
+> base64 -w 0 ca.pem
+> ```
+> Copier la sortie (une seule ligne) comme valeur de la variable Scalingo.
+>
+> **Configurer le CA cert dans l'intégration Kibana** (Collect Redis metrics →
+> Settings → Advanced options → SSL Configuration) :
+> ```
+> echo "ssl.certificate_authorities: |" && sed 's/^/  /' ca.pem
+> ```
+> Copier la sortie YAML (header + contenu indenté) dans le champ SSL de l'intégration.
+
 > **Le heap se règle via `LS_JAVA_OPTS`, pas `JAVA_OPTS`.** Le lanceur Logstash
 > ignore explicitement le second (`warning: ignoring JAVA_OPTS=…; pass JVM
 > parameters via LS_JAVA_OPTS`). Garder `-Xmx` ≤ ~1 Go dans un conteneur 2 Go
