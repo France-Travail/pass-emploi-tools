@@ -4,6 +4,30 @@
 > (recommended) or superpowers:executing-plans to implement this plan task-by-task.
 > Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Statut : lot 4 livré (2026-09-07), plan historique.** Le workflow réel a
+> depuis divergé sur plusieurs points ; ne pas s'y fier pour l'état courant du
+> workflow, se référer à `.github/workflows/perf-api.yml` et `perf/README.md`.
+> Écarts connus, du plus au moins structurant :
+> - **Le régime `runner` (Task 7) a été abandonné**, pas seulement laissé en
+>   l'état — `scalingo` est le seul régime d'injecteur (commit `4c7ef59`,
+>   « retire le régime runner »). Les tâches non cochées de Task 7 ne sont pas
+>   du travail restant, elles sont obsolètes.
+> - **Seuils SLO** : `max_users`/`p95_threshold_ms`/`failed_percent_threshold`
+>   de ce plan sont devenus `users_per_sec`/`p99_threshold_ms`/
+>   `success_percent_threshold` (seuil commun décidé le 2026-09-08, cf. spec
+>   §12 « Écarts avec l'implémentation »).
+> - **Modèle d'injection** : passé de fermé (`rampConcurrentUsers`) à ouvert
+>   (`constantUsersPerSec`/`incrementUsersPerSec`), avec un profil `escalier`
+>   ajouté pour chercher le point de rupture — hors périmètre de ce plan.
+> - **`taille_apps`** (une valeur commune) devenu `taille_connect`/
+>   `taille_api`/`taille_mock` (une par app, 2026-09-08).
+> - **Fond de charge** ajouté (`perf/seed/fond-de-charge.sql`, 2026-09-09),
+>   absent de ce plan.
+> - Le déclencheur `push` temporaire (workflow_dispatch invisible hors branche
+>   par défaut) est toujours présent dans le workflow au moment où ce plan est
+>   marqué historique — **à retirer au merge sur `master`**, cf. son propre
+>   commentaire dans `perf-api.yml`.
+
 **Goal:** Déclencher un tir de perf complet — réveil de l'environnement, seed,
 tir, verdict SLO, archivage — depuis GitHub Actions, sans geste manuel.
 

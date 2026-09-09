@@ -40,7 +40,7 @@ pas un objectif.
 | Pièce | Où | Rôle |
 |---|---|---|
 | **`mock-externes`** | [`perf/mock-externes/`](../../perf/mock-externes/README.md) | Se fait passer pour l'IdP FT et ses APIs partenaires. Signe ses propres `id_token` avec une paire RSA générée au premier démarrage — aucune clé d'un environnement réel. Sans état de session : l'identité tirée au sort est encodée dans le `code`, jamais partagée entre workers. |
-| **Le seed** | [`perf/seed/`](../../perf/seed/README.md) | Crée en base le pool de bénéficiaires que le mock tire au sort, aux volumétries mesurées en production. Idempotent, protégé par un marqueur anti-prod. |
+| **Le seed** | [`perf/seed/`](../../perf/seed/README.md) | Crée en base le pool de bénéficiaires que le mock tire au sort, aux volumétries mesurées en production. Idempotent, protégé par un marqueur anti-prod. Un second script (`fond-de-charge.sql`, opt-in) sème un volume de bénéficiaires supplémentaires hors du pool, pour approcher la taille des tables de prod — sans être un restore de snapshot réel. |
 | **La simulation** | [`perf/src/gatling/`](../../perf/README.md) | Suit la chaîne de redirections **à la main**, étape nommée par étape — ce qui donne un temps de réponse par saut, et rend tout écart immédiatement lisible. |
 | **Le run local** | [`perf/local-run/`](../../perf/local-run/README.md) | Fait tourner `connect` et `api` en natif contre le mock, pour valider le parcours sans environnement dédié. |
 
@@ -60,6 +60,12 @@ arrivent de l'extérieur (MES, communication, notification push massive).
 Corollaire : sous saturation, Gatling crée des utilisateurs que le système
 n'absorbe plus. Les simulations posent donc un `maxDuration`, sans quoi un tir
 qui part en vrille monopolise l'environnement et noie l'injecteur.
+
+Deux profils partagent ce modèle ouvert (`PROFIL`, input `profil` du
+workflow) : `palier` (débit fixe, verdict SLO — le tir de référence) et
+`escalier` (débit croissant par paliers, **sans assertion** — un p99 agrégeant
+des paliers à des débits différents ne jugerait rien) pour chercher le point
+de rupture. La lecture d'un escalier se fait sur le rapport HTML, par seconde.
 
 ## Invariants
 
@@ -111,8 +117,14 @@ qui part en vrille monopolise l'environnement et noie l'injecteur.
   requêtes. Ce qui manque encore est le **débit** à tenir : le sous-chantier
   « Estimation de trafic » dans [`README.md`](./README.md) n'a pas démarré, si
   bien qu'un tir dit « à ce débit, on tient » sans dire si ce débit est celui
-  du jour J. En attendant, on tâtonne : on monte `USERS_PER_SEC` de tir en tir
-  pour établir un état des lieux.
+  du jour J. En attendant, le profil `escalier` (ci-dessus) tâtonne
+  méthodiquement le point de rupture pour établir un état des lieux.
+- **Le fond de charge est une approximation, pas un vrai volume de prod.**
+  `fond-de-charge.sql` sème des bénéficiaires synthétiques aux distributions
+  mesurées, pas les vraies lignes de prod — pas de jointures réelles, pas la
+  distribution croisée entre tables qu'un restore de snapshot donnerait. Il
+  rapproche la taille des tables et la pression sur les index, il ne les
+  reproduit pas exactement.
 - **Le périmètre est le parcours accueil FT.** Web conseiller, jobs et crons,
   messagerie, notification push massive et parcours MILO sont hors périmètre v1
   — tous de vrais scénarios de charge, que l'architecture accueille sans
@@ -124,13 +136,17 @@ Un tir se déclenche depuis GitHub Actions (`Perf - Tir API`), qui enchaîne
 réveil de l'environnement, seed, tir, verdict et archivage. Les commandes
 équivalentes en manuel sont dans [`perf/README.md`](../../perf/README.md).
 
-Trois gestes restent **délibérément** hors du workflow :
+Deux gestes restent **délibérément** hors du workflow :
 
 | Geste | Pourquoi |
 |---|---|
 | Poser le marqueur d'environnement de perf | C'est le garde-fou anti-prod du seed. Un workflow qui sait le poser sait le poser sur la production. |
-| Restaurer l'image de base PostgreSQL | Mécanique non décidée, et le fond de charge n'existe pas encore. **Tant qu'elle manque, un tir porte sur une base ne contenant que le pool semé.** |
-| Choisir les seuils SLO | Ils viennent de l'atelier SLO, pas d'un défaut de workflow. |
+| Restaurer un vrai snapshot PostgreSQL de prod | Mécanique non décidée (durée d'un `pg_restore`, anonymisation). Le fond de charge **synthétique** (`fond_size`, opt-in, input du workflow) comble une partie du besoin — vraisemblance du volume, pas de vraies données — mais reste une approximation. |
+
+Les seuils SLO (`p99_threshold_ms`, `success_percent_threshold`) et le débit
+(`users_per_sec` ou les paramètres d'escalier) sont, eux, des inputs du
+workflow depuis le 2026-09-08 — ils viennent de l'atelier SLO comme valeurs
+par défaut, mais un tir peut les faire varier sans toucher au code.
 
 Les apps de perf sont éteintes la nuit et le week-end par
 `perf-env-shutdown.yml` et rallumées à 8h par `perf-env-wakeup.yml`. Le

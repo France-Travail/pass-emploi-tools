@@ -43,6 +43,25 @@ Vérifier le résultat :
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -v pool_size=200 -f verifier.sql
 ```
 
+## Optionnel : le fond de charge
+
+Sans lui, la table `jeune` fait la taille du pool (quelques centaines de
+lignes) au lieu de la taille de prod (≈48 500 bénéficiaires `POLE_EMPLOI`) :
+index scan, cache buffer et plan de requête n'ont alors aucune raison de
+ressembler à la prod. `fond-de-charge.sql` sème des bénéficiaires
+supplémentaires, **hors du pool** (préfixe distinct, jamais tirés par
+`mock-externes`), aux mêmes distributions de profil que le pool :
+
+```sh
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
+     -v fond_size=48000 -v fond_prefix=perf-fond- -f fond-de-charge.sql
+```
+
+Ce n'est **pas** un restore de snapshot de prod (mécanique non tranchée,
+cf. `docs/perf/harnais.md`) : une approximation de volume, opt-in, séparée de
+`seed.sql` pour ne jamais changer son comportement. Idempotent, garde-fou
+anti-prod partagé avec `seed.sql`.
+
 ## Appariement avec `mock-externes`
 
 > ⚠️ **`pool_prefix` et `pool_size` doivent valoir exactement `POOL_PREFIX` et
@@ -83,8 +102,11 @@ agenda viennent des APIs partenaires, mockées. Elles sont aussi hors du chemin
 de lecture de l'accueil, dont les seules lectures en base sont alertes, favoris
 et campagne.
 
-**L'image de base** n'est pas du ressort de ce script : il sème les acteurs du
-tir, pas le fond de charge.
+**Le fond de charge** n'est pas du ressort de ce script : il sème les acteurs
+du tir (le pool), pas le volume qui l'entoure. Voir
+[`fond-de-charge.sql`](./fond-de-charge.sql) — un script séparé, opt-in,
+sémantiquement distinct (approximation synthétique, pas un restore de vraie
+donnée de prod).
 
 ## Diagnostic
 
@@ -93,4 +115,4 @@ tir, pas le fond de charge.
 | `GARDE-FOU : la base "…" ne porte pas le marqueur` | Marqueur non posé — vérifier **qu'on vise bien la base de perf** avant de le poser |
 | Login en échec `UTILISATEUR_INEXISTANT` | `pool_prefix` / `pool_size` désalignés avec le mock |
 | `Pool : 0 jeunes en base` au vérificateur | `pool_prefix` passé avec des guillemets, ou seed joué sur une autre base que celle vérifiée |
-| Le tir frappe toujours les mêmes jeunes | `pool_size` trop petit devant `MAX_USERS` |
+| Le tir frappe toujours les mêmes jeunes | `pool_size` trop petit devant le débit du tir (`USERS_PER_SEC` ou le dernier palier en profil escalier) |

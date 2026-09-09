@@ -1,11 +1,15 @@
 # Harnais de tir de performance — design
 
-> **Statut : design validé, non implémenté.** Rédigé le 2026-09-01.
-> Sous-chantier « Harnais de tir (env, jeu de données, outillage) » du chantier
-> [Performances](../../perf/README.md).
+> **Statut : historique, largement implémenté.** Rédigé le 2026-09-01 ; les
+> lots 1 à 5 sont livrés (voir `perf/README.md`, § Historique). Le document à
+> jour est [`docs/perf/harnais.md`](../../docs/perf/harnais.md) — ce fichier-ci
+> reste comme trace des décisions et de leurs raisons, mais **plusieurs
+> décisions ci-dessous ont été révisées en implémentation** : voir « Écarts
+> avec l'implémentation » en fin de fichier avant de s'y fier pour l'état
+> courant.
 >
-> Artefact de travail : il guide l'implémentation et n'a pas vocation à durer.
-> Le livrable d'équipe est `docs/perf/harnais.md` (lot 5).
+> Artefact de travail : il a guidé l'implémentation, il n'a pas vocation à
+> rester à jour au-delà.
 
 ## 1. Problème
 
@@ -282,18 +286,39 @@ oblige à déboguer le workflow et le scénario en même temps.
 
 ## 10. Points à lever à l'implémentation
 
-1. `getStatut` est-il déclenché dans le parcours accompagné ? Si oui, le mock doit
-   le servir (§4.3).
-2. Motif exact des `sub` du pool et colonne cible côté seed.
-3. Mécanique de restore retenue sur Scalingo, et durée mesurée d'un `pg_restore`
-   de l'image de base — elle fixe le rythme des campagnes.
-4. Marqueur d'environnement retenu pour le garde-fou anti-prod.
+1. ~~`getStatut` est-il déclenché dans le parcours accompagné ?~~ Résolu :
+   hors périmètre du scénario v1 implémenté (login + accueil FT uniquement).
+2. ~~Motif exact des `sub` du pool et colonne cible côté seed.~~ Résolu :
+   `{POOL_PREFIX}{i}` → `id_authentification` (`perf/seed/seed.sql`).
+3. **Toujours ouvert.** Mécanique de restore d'un vrai snapshot prod sur
+   Scalingo, durée d'un `pg_restore` — non tranché. Contourné, pas résolu :
+   `perf/seed/fond-de-charge.sql` (2026-09-09) sème un volume synthétique
+   (bénéficiaires supplémentaires aux distributions de prod, hors pool) qui
+   approche la pression sur les index/cache sans être un restore. Un vrai
+   snapshot reste un chantier séparé si la fidélité doit aller plus loin
+   (jointures réelles, distribution croisée entre tables).
+4. ~~Marqueur d'environnement retenu pour le garde-fou anti-prod.~~ Résolu :
+   `perf/seed/marquer-environnement.sql`, posé à la main (`perf/seed/README.md`).
 
 ## 11. Hors périmètre v1
 
 Web conseiller, jobs et crons, notification push massive, IdP MILO et Conseil
 Départemental, parcours FT non accompagné, mode invité. Tous sont de vrais
 scénarios de charge ; l'architecture les accueille sans redécoupage.
+
+## 12. Écarts avec l'implémentation
+
+Décisions de ce design révisées après le premier jalon de valeur (fin lot 3,
+2026-09-03) et la mise en service CI (lot 4, 2026-09-07) :
+
+| Décision d'origine | Révisé en | Devenu |
+|---|---|---|
+| D3 : image de base figée + seed | 2026-09-09 | Pas de restore de snapshot (point 3 ci-dessus toujours ouvert) ; fond de charge **synthétique** en attendant — approximation de volume, pas une vraie donnée de prod |
+| D7 : seuils SLO différenciés par indicateur (I1 ≥ 99 %, I3 p95 ≤ 5 s…) | 2026-09-08 | **Seuil commun** à tous les parcours mesurés : p99 < 500 ms, réussite > 99,5 % (cf. [`docs/perf/observabilite.md`](../../docs/perf/observabilite.md)) — décidé faute de baseline et d'estimation de trafic pour calibrer des seuils différenciés |
+| Injection : non spécifiée en détail (§5, modèle implicitement fermé) | 2026-09-08 | **Modèle ouvert** (`constantUsersPerSec`/`incrementUsersPerSec`) : un modèle fermé s'auto-régule sous saturation et peut rester vert en pleine dégradation, alors que les arrivants réels (MES, notification push) n'attendent personne |
+| D6 : injecteur au choix runner hébergé ou one-off Scalingo | tranché | One-off Scalingo, taille pilotée séparément des apps mesurées (`TAILLE_INJECTEUR`, XL) — un injecteur sous-dimensionné peut devenir lui-même le facteur limitant |
+| (non prévu au design) | 2026-09-09 | **Profil escalier** ajouté à la simulation (débit croissant par paliers, sans assertion) pour chercher le point de rupture — le design v1 ne couvrait qu'un tir à débit fixe |
+| (non prévu au design) | 2026-09-08 | Taille des apps mesurées (`connect`/`api`/`mock-externes`) **pilotée par app** depuis le workflow, pas subie — connect et api n'ont aucune raison de partager la même taille en prod |
 
 ## 12. Références
 
