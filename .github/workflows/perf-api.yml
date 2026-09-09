@@ -75,13 +75,14 @@ on:
       - 'perf/**'
       - '.github/workflows/perf-api.yml'
 
-  # TEMPORAIRE — à retirer une fois la branche mergée : workflow_dispatch exige
-  # que le fichier soit sur la branche par défaut, ce qui interdit de tester
-  # avant d'avoir mergé. Un push sur la branche de dev tient lieu de
-  # déclencheur, avec les valeurs par défaut des inputs.
-  push:
-    branches: [new-tests-perf]
-    paths: ['.github/workflows/perf-api.yml']
+# L'environnement de perf dédié est une ressource unique et le tir est
+# destructeur (scale des apps + seed de la base) : deux runs en parallèle se
+# piétinent (KO massifs sur les steps stateful de connect, apps rescalées en
+# plein tir). On sérialise. `cancel-in-progress: false` : un tir déjà lancé va
+# au bout — l'annuler laisserait les apps scale et la base à moitié semée.
+concurrency:
+  group: perf-environnement-dedie
+  cancel-in-progress: false
 
 env:
   SCALINGO_REGION: osc-secnum-fr1
@@ -125,11 +126,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # `inputs.*` n'existe que sur workflow_dispatch : sur le déclencheur
-      # `push` temporaire (§ ci-dessus), le contexte est vide et chaque
-      # `inputs.x` s'évalue en chaîne vide. On normalise une fois ici, avec les
-      # mêmes défauts que les inputs, pour que les deux déclencheurs se
-      # comportent pareil.
+      # Centralise les valeurs par défaut du tir : les steps suivants lisent ces
+      # variables d'environnement, jamais le contexte `inputs`. Le `|| 'défaut'`
+      # couvre un input laissé vide au lancement manuel.
       - name: Normaliser les paramètres du tir
         run: |
           echo "PROFIL=${{ inputs.profil || 'palier' }}" >> "$GITHUB_ENV"
