@@ -185,19 +185,29 @@ jobs:
       # autres.
       - name: Réveiller les apps
         run: |
+          # Deux familles d'échecs transitoires, toutes deux réessayables :
+          #   - "is scaling" : l'API refuse pendant qu'elle traite le scale
+          #     précédent (observé le 2026-09-08).
+          #   - timeouts / 5xx de l'API Scalingo elle-même : observé le
+          #     2026-09-09 sur `scale`, avec un CLI fraîchement installé — donc
+          #     une lenteur côté plateforme, pas un client périmé.
+          # Tout le reste (taille inconnue, app inexistante) échoue immédiatement :
+          # réessayer une erreur de configuration ne ferait que retarder le verdict.
           scaler() {
             local app="$1" cible="$2" essai
             for essai in 1 2 3 4 5; do
               sortie="$(scalingo --region "$SCALINGO_REGION" --app "$app" scale "$cible" 2>&1)" && { echo "$sortie"; return 0; }
               echo "$sortie"
               echo "$sortie" | grep -qi 'no change in containers formation' && return 0
-              if [ "$essai" -lt 5 ] && echo "$sortie" | grep -qi 'is scaling'; then
-                echo "app → is scaling : nouvelle tentative dans 10s ($essai/5)"
-                sleep 10
+              if [ "$essai" -lt 5 ] && echo "$sortie" | grep -qiE 'is scaling|context deadline exceeded|Client.Timeout|timeout|EOF|connection reset|502|503|504'; then
+                echo "Échec transitoire de l'API Scalingo : nouvelle tentative dans 15s ($essai/5)"
+                sleep 15
                 continue
               fi
               return 1
             done
+            echo "::error::5 tentatives de scale échouées sur $app"
+            return 1
           }
           for app_taille in "pass-emploi-connect-perf:$TAILLE_CONNECT" "pass-emploi-api-perf:$TAILLE_API" "mock-externes-perf:$TAILLE_MOCK"; do
             app="${app_taille%%:*}"; taille="${app_taille##*:}"
