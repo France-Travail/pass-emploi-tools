@@ -9,7 +9,7 @@ RUN_DIR := local-run/.run
 HERE := $(CURDIR)
 
 .PHONY: accueilFT loginFT run compile report \
-        start stop status logs mock apidb seed connect api marquer-environnement \
+        start stop status logs mock apidb seed fond-de-charge connect api marquer-environnement \
         firebase-fake tir deployer
 
 accueilFT: .env
@@ -52,6 +52,14 @@ SUCCESS_PERCENT_THRESHOLD ?= 99.5
 # attend un JWT fourni à la main, inutilisable en tir sans intervention — tandis
 # que LoginEtAccueilFranceTravailSimulation se logue elle-même via connect-perf.
 TIR_SIMULATION ?= passemploi.test.LoginEtAccueilFranceTravailSimulation
+# palier (défaut) : tir de référence, verdict SLO. escalier : cherche le point
+# de rupture par paliers de débit croissants, sans assertion (cf. l'en-tête de
+# la simulation).
+PROFIL ?= palier
+PALIER_DEBUT ?= 10
+PALIER_PAS ?= 10
+NB_PALIERS ?= 6
+DUREE_PALIER_EN_SECONDES ?= 120
 # Émission du rapport HTML en base64 sur stdout (voir tir-et-rapport.sh).
 # Opt-in : à 1, la CI le rapatrie ; à 0, un tir manuel garde un terminal lisible.
 RAPPORT_STDOUT ?= 0
@@ -73,9 +81,14 @@ deployer:
 # Le détail des options Gradle est dans tir-et-rapport.sh.
 tir:
 	scalingo --region $(SCALINGO_REGION) --app $(GATLING_APP) run --size $(TAILLE_INJECTEUR) --silent \
+	  --env PROFIL=$(PROFIL) \
 	  --env USERS_PER_SEC=$(USERS_PER_SEC) \
 	  --env RAMP_DURATION_IN_SECONDS=$(RAMP_DURATION_IN_SECONDS) \
 	  --env HOLD_DURATION_IN_SECONDS=$(HOLD_DURATION_IN_SECONDS) \
+	  --env PALIER_DEBUT=$(PALIER_DEBUT) \
+	  --env PALIER_PAS=$(PALIER_PAS) \
+	  --env NB_PALIERS=$(NB_PALIERS) \
+	  --env DUREE_PALIER_EN_SECONDES=$(DUREE_PALIER_EN_SECONDES) \
 	  --env P99_THRESHOLD_MS=$(P99_THRESHOLD_MS) \
 	  --env SUCCESS_PERCENT_THRESHOLD=$(SUCCESS_PERCENT_THRESHOLD) \
 	  --env RAPPORT_STDOUT=$(RAPPORT_STDOUT) \
@@ -120,6 +133,15 @@ seed:
 	     -v ON_ERROR_STOP=1 -f seed/seed.sql
 	psql "postgresql://passemploi:passemploi@localhost:55432/passemploidb" \
 	     -v ON_ERROR_STOP=1 -f seed/verifier.sql
+
+# Hors de `start` : inutile pour valider le parcours en local, seulement pour
+# tester le harnais contre un volume proche de la prod (cf. seed/fond-de-charge.sql).
+FOND_SIZE ?= 48000
+
+fond-de-charge:
+	psql "postgresql://passemploi:passemploi@localhost:55432/passemploidb" \
+	     -v ON_ERROR_STOP=1 -v fond_size=$(FOND_SIZE) -v fond_prefix=perf-fond- \
+	     -f seed/fond-de-charge.sql
 
 connect:
 	@mkdir -p $(RUN_DIR)

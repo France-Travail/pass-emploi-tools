@@ -9,6 +9,7 @@ import passemploi.helpers.{Helpers, Jwt, Redirections}
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.Base64
+import scala.concurrent.duration._
 
 // Tir de bout en bout : login réel via pass-emploi-connect, puis accueil jeune
 // France Travail. Seul l'IDP France Travail est mocké (perf/mock-externes) ;
@@ -30,10 +31,18 @@ import java.util.Base64
 //   CLIENT_ID / CLIENT_SECRET Client OIDC déclaré dans connect (obligatoires)
 //   REDIRECT_URI              Callback du client (obligatoire)
 //   KC_IDP_HINT               Porte d'entrée (défaut : pe-jeune → structure POLE_EMPLOI)
-//   USERS_PER_SEC             Parcours démarrés par seconde au palier
-//   RAMP_DURATION_IN_SECONDS, HOLD_DURATION_IN_SECONDS
-//   P99_THRESHOLD_MS          Seuil p99 par requête (défaut : 500)
-//   SUCCESS_PERCENT_THRESHOLD Taux de réussite minimum en % (défaut : 99.5)
+//   PROFIL                    palier (défaut) ou escalier — cf. plus bas
+//   USERS_PER_SEC             Parcours démarrés par seconde au palier (profil palier)
+//   RAMP_DURATION_IN_SECONDS, HOLD_DURATION_IN_SECONDS (profil palier)
+//   P99_THRESHOLD_MS          Seuil p99 par requête (défaut : 500, profil palier)
+//   SUCCESS_PERCENT_THRESHOLD Taux de réussite minimum en % (défaut : 99.5, profil palier)
+//   PALIER_DEBUT, PALIER_PAS, NB_PALIERS, DUREE_PALIER_EN_SECONDES (profil escalier)
+//
+// PROFIL=escalier cherche le point de rupture : débit croissant par paliers
+// (incrementUsersPerSec), sans assertion — un p99 agrégeant des paliers à des
+// débits différents ne jugerait rien. La lecture se fait sur le rapport HTML,
+// par seconde, pas sur le verdict global. PROFIL=palier reste le tir de
+// référence, celui qui rend un verdict SLO comparable d'un tir à l'autre.
 
 class LoginEtAccueilFranceTravailSimulation extends Simulation {
   val connectUrl: String   = Helpers.getProperty("CONNECT_URL", "http://localhost:8081")
@@ -56,11 +65,17 @@ class LoginEtAccueilFranceTravailSimulation extends Simulation {
     "REDIRECT_URI manquant : doit figurer dans les callbacks du client"
   )
 
+  val profil: String                  = Helpers.getProperty("PROFIL", "palier")
   val usersPerSec: Double             = Helpers.getProperty("USERS_PER_SEC", "10").toDouble
   val rampDurationInSeconds: Int      = Helpers.getProperty("RAMP_DURATION_IN_SECONDS", "30").toInt
   val holdDurationInSeconds: Int      = Helpers.getProperty("HOLD_DURATION_IN_SECONDS", "60").toInt
   val p99ThresholdMs: Int             = Helpers.getProperty("P99_THRESHOLD_MS", "500").toInt
   val successPercentThreshold: Double = Helpers.getProperty("SUCCESS_PERCENT_THRESHOLD", "99.5").toDouble
+
+  val palierDebut: Double             = Helpers.getProperty("PALIER_DEBUT", "10").toDouble
+  val palierPas: Double               = Helpers.getProperty("PALIER_PAS", "10").toDouble
+  val nbPaliers: Int                  = Helpers.getProperty("NB_PALIERS", "6").toInt
+  val dureePalierEnSecondes: Int      = Helpers.getProperty("DUREE_PALIER_EN_SECONDES", "120").toInt
 
   private val authentificationClient =
     "Basic " + Base64.getEncoder.encodeToString(
@@ -182,20 +197,37 @@ class LoginEtAccueilFranceTravailSimulation extends Simulation {
   val scn: ScenarioBuilder =
     scenario("Login FT puis accueil").exec(alea).exec(login).exec(accueil)
 
-  setUp(
-    scn.inject(
-      rampUsersPerSec(1).to(usersPerSec).during(rampDurationInSeconds),
-      constantUsersPerSec(usersPerSec).during(holdDurationInSeconds)
-    )
+  // Modèle ouvert dans les deux profils : sous saturation, Gatling continue
+  // de créer des utilisateurs que le système n'absorbe plus. Sans borne, un
+  // tir qui part en vrille monopolise l'environnement et noie l'injecteur.
+  private val dureeMaxEnSecondes =
+    if (profil == "escalier") nbPaliers * dureePalierEnSecondes + 60
+    else rampDurationInSeconds + holdDurationInSeconds + 60
+
+  private val base = setUp(
+    if (profil == "escalier")
+      scn.inject(
+        incrementUsersPerSec(palierPas)
+          .times(nbPaliers)
+          .eachLevelLasting(dureePalierEnSecondes.seconds)
+          .startingFrom(palierDebut)
+      )
+    else
+      scn.inject(
+        rampUsersPerSec(1).to(usersPerSec).during(rampDurationInSeconds),
+        constantUsersPerSec(usersPerSec).during(holdDurationInSeconds)
+      )
   ).protocols(httpProtocol)
-    // Modèle ouvert : sous saturation, Gatling continue de créer des
-    // utilisateurs que le système n'absorbe plus. Sans borne, un tir qui part
-    // en vrille monopolise l'environnement et noie l'injecteur.
-    .maxDuration(rampDurationInSeconds + holdDurationInSeconds + 60)
-    // `forAll` plutôt que `details("07 …")` : le SLO de latence est le même
-    // pour toutes les requêtes, donc chaque saut du login est jugé comme la
-    // page mesurée — et la ligne d'assertion en échec nomme le coupable.
-    .assertions(
+    .maxDuration(dureeMaxEnSecondes)
+
+  // Pas d'assertion en escalier : le p99 y agrégerait des paliers à des
+  // débits différents, ce qui ne juge rien — la lecture se fait sur le
+  // rapport HTML, par seconde. `forAll` plutôt que `details("07 …")` en
+  // palier : le SLO de latence est le même pour toutes les requêtes, donc
+  // chaque saut du login est jugé comme la page mesurée — et la ligne
+  // d'assertion en échec nomme le coupable.
+  if (profil != "escalier")
+    base.assertions(
       forAll.responseTime.percentile(99).lt(p99ThresholdMs),
       global.successfulRequests.percent.gt(successPercentThreshold)
     )

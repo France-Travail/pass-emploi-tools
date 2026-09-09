@@ -17,9 +17,24 @@ name: Perf - Tir API
 on:
   workflow_dispatch:
     inputs:
+      profil:
+        description: "palier (verdict SLO, débit fixe) ou escalier (recherche du point de rupture, débit croissant, sans SLO)"
+        default: "palier"
       users_per_sec:
-        description: "Parcours démarrés par seconde au palier (pool_size >= 5 x users_per_sec)"
+        description: "Débit du profil palier (pool_size >= 5 x users_per_sec)"
         default: "10"
+      palier_debut:
+        description: "Profil escalier : débit du premier palier"
+        default: "10"
+      palier_pas:
+        description: "Profil escalier : augmentation de débit à chaque palier"
+        default: "10"
+      nb_paliers:
+        description: "Profil escalier : nombre de paliers"
+        default: "6"
+      duree_palier_en_secondes:
+        description: "Profil escalier : durée de chaque palier"
+        default: "120"
       ramp_duration_in_seconds:
         description: "Durée de la montée en charge"
         default: "60"
@@ -35,6 +50,9 @@ on:
       simulation:
         description: "Simulation Gatling à jouer"
         default: passemploi.test.LoginEtAccueilFranceTravailSimulation
+      fond_size:
+        description: "Bénéficiaires de fond hors pool (0 = aucun) — vraisemblance du volume/index/cache, cf. docs/perf/harnais.md"
+        default: "48000"
       taille_connect:
         description: "Taille du conteneur pass-emploi-connect-perf (S, M, L, XL…) — viser la taille de prod pour un tir représentatif"
         default: "M"
@@ -111,12 +129,18 @@ jobs:
       # comportent pareil.
       - name: Normaliser les paramètres du tir
         run: |
+          echo "PROFIL=${{ inputs.profil || 'palier' }}" >> "$GITHUB_ENV"
           echo "USERS_PER_SEC=${{ inputs.users_per_sec || '10' }}" >> "$GITHUB_ENV"
+          echo "PALIER_DEBUT=${{ inputs.palier_debut || '10' }}" >> "$GITHUB_ENV"
+          echo "PALIER_PAS=${{ inputs.palier_pas || '10' }}" >> "$GITHUB_ENV"
+          echo "NB_PALIERS=${{ inputs.nb_paliers || '6' }}" >> "$GITHUB_ENV"
+          echo "DUREE_PALIER_EN_SECONDES=${{ inputs.duree_palier_en_secondes || '120' }}" >> "$GITHUB_ENV"
           echo "RAMP_DURATION_IN_SECONDS=${{ inputs.ramp_duration_in_seconds || '60' }}" >> "$GITHUB_ENV"
           echo "HOLD_DURATION_IN_SECONDS=${{ inputs.hold_duration_in_seconds || '120' }}" >> "$GITHUB_ENV"
           echo "P99_THRESHOLD_MS=${{ inputs.p99_threshold_ms || '500' }}" >> "$GITHUB_ENV"
           echo "SUCCESS_PERCENT_THRESHOLD=${{ inputs.success_percent_threshold || '99.5' }}" >> "$GITHUB_ENV"
           echo "TIR_SIMULATION=${{ inputs.simulation || 'passemploi.test.LoginEtAccueilFranceTravailSimulation' }}" >> "$GITHUB_ENV"
+          echo "FOND_SIZE=${{ inputs.fond_size || '48000' }}" >> "$GITHUB_ENV"
           echo "TAILLE_CONNECT=${{ inputs.taille_connect || 'M' }}" >> "$GITHUB_ENV"
           echo "TAILLE_API=${{ inputs.taille_api || 'M' }}" >> "$GITHUB_ENV"
           echo "TAILLE_MOCK=${{ inputs.taille_mock || 'M' }}" >> "$GITHUB_ENV"
@@ -233,15 +257,22 @@ jobs:
       #
       # En modèle ouvert, le nombre d'utilisateurs simultanés n'est plus un
       # paramètre mais une conséquence (loi de Little : concurrents ≈ débit x
-      # durée du parcours). On le majore par `users_per_sec`, ce qui revient à
-      # supposer un parcours d'au plus une seconde — vrai aujourd'hui (~0,5 s),
-      # et conservateur : si le parcours s'allonge, ce garde-fou devra être
-      # recalculé sur la concurrence réellement observée au tir précédent.
-      - name: Vérifier pool_size >= 5 x users_per_sec
+      # durée du parcours). On le majore par le débit maximal atteint, ce qui
+      # revient à supposer un parcours d'au plus une seconde — vrai aujourd'hui
+      # (~0,5 s), et conservateur : si le parcours s'allonge, ce garde-fou
+      # devra être recalculé sur la concurrence réellement observée au tir
+      # précédent. En profil escalier, le débit maximal est celui du dernier
+      # palier (palier_debut + palier_pas x (nb_paliers - 1)), pas users_per_sec.
+      - name: Vérifier pool_size >= 5 x débit maximal
         run: |
-          minimum=$(( 5 * USERS_PER_SEC ))
+          if [ "$PROFIL" = "escalier" ]; then
+            debit_max=$(( PALIER_DEBUT + PALIER_PAS * (NB_PALIERS - 1) ))
+          else
+            debit_max=$USERS_PER_SEC
+          fi
+          minimum=$(( 5 * debit_max ))
           [ "$POOL_SIZE" -ge "$minimum" ] || {
-            echo "::error::POOL_SIZE=$POOL_SIZE < $minimum (5 x users_per_sec=$USERS_PER_SEC) : agrandir le pool sur $MOCK_APP ou baisser users_per_sec"
+            echo "::error::POOL_SIZE=$POOL_SIZE < $minimum (5 x débit maximal=$debit_max) : agrandir le pool sur $MOCK_APP ou réduire la charge"
             exit 1
           }
 
@@ -258,6 +289,22 @@ jobs:
           psql "$url" -v ON_ERROR_STOP=1 \
                -v pool_size="$POOL_SIZE" -f perf/seed/verifier.sql
 
+      # fond_prefix est fixe (perf-fond-) : contrairement à pool_prefix, il
+      # n'a pas de contrat avec mock-externes (ces jeunes ne sont jamais
+      # tirés), donc rien n'oblige à le lire depuis une autre app. Sans fond
+      # de charge, la table jeune fait la taille du pool (quelques centaines
+      # de lignes) au lieu de la taille de prod (cf. docs/perf/harnais.md) —
+      # index, plan de requête et pression sur le cache n'ont alors aucune
+      # raison de ressembler à la prod.
+      - name: Semer le fond de charge
+        if: env.FOND_SIZE != '0'
+        run: |
+          url="$(scalingo --region "$SCALINGO_REGION" --app "$API_APP" env-get DATABASE_URL)"
+          echo "::add-mask::$url"
+          psql "$url" -v ON_ERROR_STOP=1 \
+               -v fond_size="$FOND_SIZE" -v fond_prefix=perf-fond- \
+               -f perf/seed/fond-de-charge.sql
+
       # Le rapport HTML traverse stdout en base64 (seul canal d'un one-off,
       # cf. tir-et-rapport.sh) : ~300 Ko de charabia au milieu de la console.
       # `tee` garde la sortie complète dans le fichier — le step suivant en a
@@ -271,9 +318,14 @@ jobs:
           set -o pipefail
           make tir \
             TAILLE_INJECTEUR="$TAILLE_INJECTEUR" \
+            PROFIL="$PROFIL" \
             USERS_PER_SEC="$USERS_PER_SEC" \
             RAMP_DURATION_IN_SECONDS="$RAMP_DURATION_IN_SECONDS" \
             HOLD_DURATION_IN_SECONDS="$HOLD_DURATION_IN_SECONDS" \
+            PALIER_DEBUT="$PALIER_DEBUT" \
+            PALIER_PAS="$PALIER_PAS" \
+            NB_PALIERS="$NB_PALIERS" \
+            DUREE_PALIER_EN_SECONDES="$DUREE_PALIER_EN_SECONDES" \
             P99_THRESHOLD_MS="$P99_THRESHOLD_MS" \
             SUCCESS_PERCENT_THRESHOLD="$SUCCESS_PERCENT_THRESHOLD" \
             TIR_SIMULATION="$TIR_SIMULATION" \
@@ -314,6 +366,10 @@ jobs:
       # tant que ce n'est pas vérifié, on relit aussi la console.
       - name: Verdict
         run: |
+          if [ "$PROFIL" = "escalier" ]; then
+            echo "Profil escalier : pas d'assertion SLO, la lecture se fait sur le rapport HTML"
+            exit 0
+          fi
           if grep -qiE 'assertion.*failed|failed [0-9]+ .*expected' sortie-tir.txt; then
             echo "::error::Assertion Gatling en échec — SLO non tenu"
             exit 1
@@ -341,12 +397,16 @@ jobs:
           jq -n \
             --arg debut "$DEBUT" --arg fin "$fin" \
             --arg simulation "$TIR_SIMULATION" \
+            --arg profil "$PROFIL" \
             --arg users_per_sec "$USERS_PER_SEC" \
+            --arg palier_debut "$PALIER_DEBUT" --arg palier_pas "$PALIER_PAS" \
+            --arg nb_paliers "$NB_PALIERS" --arg duree_palier_s "$DUREE_PALIER_EN_SECONDES" \
             --arg ramp "$RAMP_DURATION_IN_SECONDS" \
             --arg hold "$HOLD_DURATION_IN_SECONDS" \
             --arg p99 "$P99_THRESHOLD_MS" \
             --arg reussite "$SUCCESS_PERCENT_THRESHOLD" \
             --arg pool_size "$POOL_SIZE" --arg pool_prefix "$POOL_PREFIX" \
+            --arg fond_size "$FOND_SIZE" \
             --arg seed_sha "$(git log -1 --format=%h -- perf/seed)" \
             --arg image_de_base "aucune (hors périmètre v1)" \
             --arg taille_injecteur "$TAILLE_INJECTEUR" \
@@ -357,12 +417,15 @@ jobs:
             --arg verdict '${{ job.status }}' \
             '{fenetre: {debut: $debut, fin: $fin},
               simulation: $simulation,
-              charge: {users_per_sec: $users_per_sec, ramp_s: $ramp, hold_s: $hold,
+              charge: {profil: $profil, users_per_sec: $users_per_sec, ramp_s: $ramp, hold_s: $hold,
+                       escalier: {palier_debut: $palier_debut, palier_pas: $palier_pas,
+                                  nb_paliers: $nb_paliers, duree_palier_s: $duree_palier_s},
                        taille_injecteur: $taille_injecteur,
                        taille_demandee: {connect: $taille_connect, api: $taille_api, mock: $taille_mock}},
               seuils: {p99_ms: $p99, reussite_pct: $reussite},
               donnees: {pool_size: $pool_size, pool_prefix: $pool_prefix,
-                        seed_sha: $seed_sha, image_de_base: $image_de_base},
+                        seed_sha: $seed_sha, fond_size: $fond_size,
+                        image_de_base: $image_de_base},
               run: $run, verdict: $verdict}' > metadonnees.json
 
           # Les tailles de conteneurs et les SHA déployés ne sont pas des

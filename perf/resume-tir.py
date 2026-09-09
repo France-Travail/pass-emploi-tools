@@ -65,6 +65,8 @@ def main():
                    % (charge["users_per_sec"], charge["ramp_s"], charge["hold_s"],
                       charge.get("taille_injecteur", "?"))],
         ["Pool", "%s identités, préfixe `%s`" % (donnees["pool_size"], donnees["pool_prefix"])],
+        ["Fond de charge", "%s bénéficiaires hors pool" % donnees.get("fond_size", "0")
+                            if donnees.get("fond_size", "0") != "0" else "aucun"],
         ["SLO", "p99 < %s ms par requête, réussite > %s %%"
                 % (seuils["p99_ms"], seuils["reussite_pct"])],
     ])
@@ -123,9 +125,15 @@ def main():
              for app, etat in infra.items()],
         ) + [""]
 
+    limite_fond = (
+        "aucun fond de charge — ces chiffres valident la chaîne, pas un p99 de production"
+        if donnees.get("fond_size", "0") == "0"
+        else "fond de charge synthétique (%s bénéficiaires, distributions de prod) — vraisemblable en volume, pas une vraie donnée de prod"
+        % donnees["fond_size"]
+    )
     sortie += [
-        "**Limite** : image de base PostgreSQL — %s. Sans fond de charge, ces "
-        "chiffres valident la chaîne, pas un p99 de production." % donnees["image_de_base"],
+        "**Limite** : image de base PostgreSQL — %s. %s."
+        % (donnees["image_de_base"], limite_fond),
         "",
         "Rapport HTML complet dans l'artefact du run : décompresser, puis ouvrir "
         "`perf/build/reports/gatling/<horodatage>/index.html`.",

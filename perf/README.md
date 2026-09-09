@@ -154,10 +154,33 @@ déploie l'injecteur depuis la branche courante, sème le pool, tire et archive.
 
 | Input | Défaut | Ce qu'il change |
 |---|---|---|
-| `users_per_sec` | `10` | Refusé si `POOL_SIZE < 5 × users_per_sec` |
+| `simulation` | `LoginEtAccueilFranceTravailSimulation` | Simulation Gatling jouée |
+| `users_per_sec` | `10` | Débit du profil `palier` — refusé si `POOL_SIZE < 5 × users_per_sec` |
+| `fond_size` | `48000` | Bénéficiaires de fond hors pool (`0` = aucun) — cf. « Fond de charge » ci-dessous |
 | `taille_connect` / `taille_api` / `taille_mock` | `M` chacune | Taille de chaque app pendant le tir (sans effet sur `logstash-perf`) — viser la taille de prod pour un tir représentatif |
-| `p99_threshold_ms` / `success_percent_threshold` | `500` / `99.5` | Les deux SLO assertés |
+| `p99_threshold_ms` / `success_percent_threshold` | `500` / `99.5` | Les deux SLO assertés (profil `palier` uniquement) |
 | `arret_apres_tir` | `false` | Rescale les apps à 0 en fin de tir |
+
+**Chercher le point de rupture** : `profil: escalier` (input du workflow ou
+`PROFIL=escalier` en local) fait monter le débit par paliers
+(`palier_debut`, `palier_pas`, `nb_paliers`, `duree_palier_en_secondes`) au
+lieu d'un débit fixe, **sans assertion** — un p99 agrégeant des paliers à des
+débits différents ne jugerait rien. Le step *Verdict* le sait et ne cherche pas
+d'assertion à lire pour ce profil. La lecture se fait sur le rapport HTML, par
+seconde : c'est là qu'on voit à quel palier la latence décroche. Voir l'en-tête
+de [`LoginEtAccueilFranceTravailSimulation.scala`](./src/gatling/scala/passemploi/test/LoginEtAccueilFranceTravailSimulation.scala).
+
+**Fond de charge** : sans lui, la table `jeune` fait la taille du pool
+(quelques centaines de lignes) au lieu de la taille de prod (≈48 500
+bénéficiaires `POLE_EMPLOI` — [`docs/perf/volumetrie-prod.md`](../docs/perf/volumetrie-prod.md)),
+et l'index scan, la pression sur le cache buffer et le plan de requête n'ont
+alors aucune raison de ressembler à la prod. `fond_size` sème des bénéficiaires
+supplémentaires — hors du pool, jamais tirés par `mock-externes` — aux mêmes
+distributions par profil (favoris/alertes) que le pool. Ce n'est **pas** un
+restore d'un vrai snapshot de prod (mécanique non tranchée, cf.
+[`docs/perf/harnais.md`](../docs/perf/harnais.md)) : c'est une approximation de
+volume et de pression sur les index, qui coûte quelques secondes à semer.
+Détail dans [`perf/seed/fond-de-charge.sql`](./seed/fond-de-charge.sql).
 
 **Pourquoi dimensionner l'injecteur** (`TAILLE_INJECTEUR`, `XL` par défaut,
 distinct de `taille_apps`) : Gatling consomme lui-même du CPU/RAM en générant
