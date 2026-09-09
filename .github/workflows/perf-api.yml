@@ -17,56 +17,59 @@ name: Perf - Tir API
 on:
   workflow_dispatch:
     inputs:
+      # Chaque description est préfixée du nom de la variable : l'UI n'affiche
+      # que la description, et c'est ce nom qu'attendent `gh workflow run -f`
+      # et la doc.
       profil:
-        description: "palier (verdict SLO, débit fixe) ou escalier (recherche du point de rupture, débit croissant, sans SLO)"
+        description: "profil · palier (verdict SLO, débit fixe) ou escalier (point de rupture, débit croissant, sans SLO)"
         default: "palier"
       users_per_sec:
-        description: "Débit du profil palier (pool_size >= 5 x users_per_sec)"
+        description: "users_per_sec · PALIER : débit d'arrivées par seconde. Refusé si POOL_SIZE ne couvre pas les arrivées : (1 + débit) x ramp / 2 + débit x hold"
         default: "10"
-      palier_debut:
-        description: "Profil escalier : débit du premier palier"
-        default: "10"
-      palier_pas:
-        description: "Profil escalier : augmentation de débit à chaque palier"
-        default: "10"
-      nb_paliers:
-        description: "Profil escalier : nombre de paliers"
-        default: "6"
-      duree_palier_en_secondes:
-        description: "Profil escalier : durée de chaque palier"
-        default: "120"
       ramp_duration_in_seconds:
-        description: "Durée de la montée en charge"
+        description: "ramp_duration_in_seconds · PALIER : durée de la montée en charge, de 1/s jusqu'au débit visé"
         default: "60"
       hold_duration_in_seconds:
-        description: "Durée du palier"
+        description: "hold_duration_in_seconds · PALIER : durée du plateau à débit constant (rien à voir avec les marches de l'escalier)"
+        default: "120"
+      palier_debut:
+        description: "palier_debut · ESCALIER : débit de la première marche"
+        default: "10"
+      palier_pas:
+        description: "palier_pas · ESCALIER : augmentation de débit à chaque marche"
+        default: "10"
+      nb_paliers:
+        description: "nb_paliers · ESCALIER : nombre de marches"
+        default: "6"
+      duree_palier_en_secondes:
+        description: "duree_palier_en_secondes · ESCALIER : durée de chaque marche"
         default: "120"
       p99_threshold_ms:
-        description: "SLO de latence : p99 par requête, en millisecondes"
+        description: "p99_threshold_ms · SLO de latence : p99 par requête, en millisecondes"
         default: "500"
       success_percent_threshold:
-        description: "SLO de fiabilité : pourcentage de requêtes réussies exigé"
+        description: "success_percent_threshold · SLO de fiabilité : pourcentage de requêtes réussies exigé"
         default: "99.5"
       simulation:
-        description: "Simulation Gatling à jouer"
+        description: "simulation · simulation Gatling à jouer"
         default: passemploi.test.LoginEtAccueilFranceTravailSimulation
       journal_http:
-        description: "INFO (tir de mesure) ou DEBUG (diagnostic : journalise les réponses en échec, corps compris)"
+        description: "journal_http · INFO (tir de mesure) ou DEBUG (diagnostic : journalise les réponses en échec, corps compris ; fausse la latence)"
         default: "INFO"
       fond_size:
-        description: "Bénéficiaires hors pool, en plus de lui (0 = aucun). Le pool porte déjà la volumétrie de prod : à ne monter que pour tester au-delà, cf. docs/perf/harnais.md"
+        description: "fond_size · bénéficiaires hors pool, en plus de lui (0 = aucun). Le pool porte déjà la volumétrie de prod : à ne monter que pour tester au-delà, cf. docs/perf/harnais.md"
         default: "0"
       taille_connect:
-        description: "Taille du conteneur pass-emploi-connect-perf (S, M, L, XL…) — viser la taille de prod pour un tir représentatif"
+        description: "taille_connect · taille du conteneur pass-emploi-connect-perf (S, M, L, XL…), viser la taille de prod pour un tir représentatif"
         default: "M"
       taille_api:
-        description: "Taille du conteneur pass-emploi-api-perf (S, M, L, XL…) — viser la taille de prod pour un tir représentatif"
+        description: "taille_api · taille du conteneur pass-emploi-api-perf (S, M, L, XL…), viser la taille de prod pour un tir représentatif"
         default: "M"
       taille_mock:
-        description: "Taille du conteneur mock-externes-perf — pas d'équivalent prod (remplace l'IdP/API FT), dimensionner pour qu'il n'étrangle pas le tir"
+        description: "taille_mock · taille du conteneur mock-externes-perf, sans équivalent prod (remplace l'IdP/API FT) : dimensionner pour qu'il n'étrangle pas le tir"
         default: "M"
       arret_apres_tir:
-        description: "Rescaler les apps à 0 en fin de tir"
+        description: "arret_apres_tir · rescaler les apps à 0 en fin de tir (inutile en journée, l'extinction de 20h s'en charge)"
         type: boolean
         default: false
 
@@ -74,13 +77,6 @@ on:
     paths:
       - 'perf/**'
       - '.github/workflows/perf-api.yml'
-
-# Le tir est destructeur (scale des apps + seed) sur un environnement unique :
-# deux runs en parallèle se piétinent. Pas d'annulation — un tir interrompu
-# laisse les apps scalées et la base à moitié semée.
-concurrency:
-  group: perf-environnement-dedie
-  cancel-in-progress: false
 
 env:
   SCALINGO_REGION: osc-secnum-fr1
@@ -121,6 +117,13 @@ jobs:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     environment: Performance
+    # Destructeur (scale des apps + seed) sur un environnement unique, partagé
+    # avec l'extinction et le réveil. Pas d'annulation : un tir interrompu
+    # laisse les apps scalées et la base à moitié semée. Au niveau du job et
+    # non du workflow, pour ne pas mettre le `compile` d'une PR dans la file.
+    concurrency:
+      group: perf-environnement-dedie
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
 

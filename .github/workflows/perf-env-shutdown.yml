@@ -23,6 +23,12 @@ on:
     - cron: "0 18 * * 1-5"
   workflow_dispatch:
 
+# Même groupe que le tir : sans lui, l'extinction de 20h scale à 0 les apps
+# d'un tir encore en vol. Elle attend donc sa fin plutôt que de l'interrompre.
+concurrency:
+  group: perf-environnement-dedie
+  cancel-in-progress: false
+
 env:
   SCALINGO_REGION: osc-secnum-fr1
   APPS: pass-emploi-connect-perf pass-emploi-api-perf mock-externes-perf pass-emploi-logstash-perf

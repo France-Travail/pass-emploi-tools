@@ -1,5 +1,12 @@
-# Rallume les apps Scalingo du chantier perf le matin, en miroir de
-# perf-env-shutdown.yml.
+# Rallume à la demande les apps Scalingo du chantier perf, pour se servir de
+# l'environnement sans tirer (run local pointé dessus, trafic pour Kibana,
+# vérification d'un déploiement). Le workflow de tir n'en dépend pas : il
+# réveille lui-même et attend ses sondes de santé.
+#
+# Pas de cron : rallumer tous les matins paie 4 conteneurs 5 jours sur 7 pour
+# un environnement sollicité bien moins souvent. Et `scale web:1` restaure la
+# dernière taille posée — un mock laissé en XL après un tir agressif se
+# rallumerait en XL.
 #
 # Ne touche pas aux add-ons PostgreSQL : ils ne sont jamais éteints (cf.
 # perf-env-shutdown.yml), donc la config posée à la main dessus (TLS, accès
@@ -11,13 +18,14 @@
 #
 # Cible : apps perf (perf/README.md + Logstash perf), région osc-secnum-fr1.
 
-name: Perf - Réveil matinal des apps Scalingo
+name: Perf - Réveil des apps Scalingo
 
 on:
-  schedule:
-    # 8h00 Europe/Paris = 6h00 UTC (7h00 en heure d'hiver — écart accepté)
-    - cron: "0 6 * * 1-5"
   workflow_dispatch:
+
+concurrency:
+  group: perf-environnement-dedie
+  cancel-in-progress: false
 
 env:
   SCALINGO_REGION: osc-secnum-fr1

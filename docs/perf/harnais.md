@@ -158,9 +158,19 @@ pour un tir de mesure — le coût de log fausse la latence, et un tir qui écho
 massivement produit des mégaoctets de corps de réponse.
 
 Les apps de perf sont éteintes la nuit et le week-end par
-`perf-env-shutdown.yml` et rallumées à 8h par `perf-env-wakeup.yml`. Le
-workflow de tir ne s'appuie pas sur ce cron : il réveille lui-même et attend
-que les sondes de santé répondent.
+`perf-env-shutdown.yml` (cron 20h). Le workflow de tir n'a pas de contrepartie
+au réveil : il scale lui-même et attend ses sondes de santé.
+`perf-env-wakeup.yml` ne sert qu'à se servir de l'environnement **sans** tirer,
+et se déclenche à la main.
+
+Les trois workflows partagent le groupe `concurrency`
+`perf-environnement-dedie` : l'extinction de 20h attend la fin d'un tir en vol
+au lieu de lui couper ses apps.
+
+⚠️ Le réveil fait `scale web:1` **sans taille** : il restaure la dernière taille
+posée. Redescendre `mock-externes-perf` et `pass-emploi-logstash-perf` après un
+tir agressif — rien ne le fait pour toi, logstash étant hors du pilotage de
+taille du tir.
 
 ## Ce qu'un résultat doit porter pour être comparable
 
