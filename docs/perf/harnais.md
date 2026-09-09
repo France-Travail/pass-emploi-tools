@@ -187,18 +187,23 @@ comparent pas.
 | **Charge** | `USERS_PER_SEC`, ramp, hold, taille du conteneur de l'injecteur |
 | **Seuils** | p99, taux de réussite |
 | **Données** | taille et préfixe du pool, SHA du seed, image de base (ou son absence) |
-| **Infra** *(non piloté par le workflow)* | taille et statut du conteneur de chaque app, SHA déployé, plans des addons |
+| **Infra** *(non piloté par le workflow)* | taille, nombre et statut des conteneurs de chaque app, SHA déployé, plans des addons |
 
-La taille de chaque app mesurée (`connect`, `api`, `mock-externes`) est
-désormais **pilotée par le tir**, une variable par app (`taille_connect`,
-`taille_api`, `taille_mock`, défaut `M`) plutôt qu'une taille commune : rien
-n'oblige connect et api à partager la même taille en prod, et viser l'iso-prod
-suppose de les régler séparément. `logstash-perf` reste hors de ce pilotage —
-sa taille répond à son propre test de charge, pas à ce SLO. `metadonnees.json`
-distingue la taille **demandée** par app (`charge.taille_demandee.{connect,
-api, mock}`) de la taille **observée** (`infrastructure.<app>.conteneur`) :
-les deux devraient coïncider, mais seule la seconde vient de Scalingo — c'est
-elle qui fait foi en cas d'écart.
+**Taille et nombre** de conteneurs sont **pilotés par le tir**, un réglage par
+app mesurée (`taille_connect`/`nb_connect`, `taille_api`/`nb_api`,
+`taille_mock`/`nb_mock` ; défaut `M` et `1`) : rien n'oblige connect et api à
+partager la même config en prod, et viser l'iso-prod suppose de les régler
+séparément. `logstash-perf` reste hors de ce pilotage. `metadonnees.json`
+distingue le **demandé** (`charge.taille_demandee` / `charge.nb_demande`) de
+l'**observé** (`infrastructure.<app>.conteneur` / `.nb_conteneurs`) : seul le
+second vient de Scalingo, il fait foi en cas d'écart.
+
+`nb_*` sert à reproduire un **scale horizontal de prod à capacité fixe**. La
+prod tourne en **autoscale sur les rpm** : la capacité y varie *pendant* la
+charge, ce qu'un profil escalier — capacité fixe, charge croissante pour situer
+un point de rupture — ne peut pas représenter. Tester l'autoscale lui-même
+(temps de réaction à un échelon de trafic) est un autre profil d'injection, non
+couvert à ce jour.
 
 Le `--size` du `make tir` (`TAILLE_INJECTEUR`) est un réglage séparé : il ne
 concerne que le conteneur one-off de l'**injecteur**, jamais les apps mesurées.

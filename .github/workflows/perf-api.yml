@@ -62,12 +62,21 @@ on:
       taille_connect:
         description: "taille_connect · taille du conteneur pass-emploi-connect-perf (S, M, L, XL…), viser la taille de prod pour un tir représentatif"
         default: "M"
+      nb_connect:
+        description: "nb_connect · nombre de conteneurs pass-emploi-connect-perf, pour reproduire un scale horizontal de prod à capacité fixe (prod = autoscale)"
+        default: "1"
       taille_api:
         description: "taille_api · taille du conteneur pass-emploi-api-perf (S, M, L, XL…), viser la taille de prod pour un tir représentatif"
         default: "M"
+      nb_api:
+        description: "nb_api · nombre de conteneurs pass-emploi-api-perf"
+        default: "1"
       taille_mock:
         description: "taille_mock · taille du conteneur mock-externes-perf, sans équivalent prod (remplace l'IdP/API FT) : dimensionner pour qu'il n'étrangle pas le tir"
         default: "M"
+      nb_mock:
+        description: "nb_mock · nombre de conteneurs mock-externes-perf"
+        default: "1"
       arret_apres_tir:
         description: "arret_apres_tir · rescaler les apps à 0 en fin de tir (inutile en journée, l'extinction de 20h s'en charge)"
         type: boolean
@@ -148,6 +157,9 @@ jobs:
           echo "TAILLE_CONNECT=${{ inputs.taille_connect || 'M' }}" >> "$GITHUB_ENV"
           echo "TAILLE_API=${{ inputs.taille_api || 'M' }}" >> "$GITHUB_ENV"
           echo "TAILLE_MOCK=${{ inputs.taille_mock || 'M' }}" >> "$GITHUB_ENV"
+          echo "NB_CONNECT=${{ inputs.nb_connect || '1' }}" >> "$GITHUB_ENV"
+          echo "NB_API=${{ inputs.nb_api || '1' }}" >> "$GITHUB_ENV"
+          echo "NB_MOCK=${{ inputs.nb_mock || '1' }}" >> "$GITHUB_ENV"
           echo "ARRET_APRES_TIR=${{ inputs.arret_apres_tir == true }}" >> "$GITHUB_ENV"
 
       - name: Vérifier les secrets requis
@@ -186,15 +198,15 @@ jobs:
       # app). Contrairement au cas ci-dessus ce n'est pas un no-op : sans
       # retry, l'app peut rester à une taille non voulue sans qu'on le sache.
       #
-      # La taille se pose ici plutôt que d'être subie : sans elle, l'app garde
-      # le réglage laissé par la dernière personne à l'avoir touchée, invisible
-      # dans les paramètres du tir. Une taille par app (pas un `taille_apps`
-      # commun) : connect et api n'ont aucune raison de partager la même
-      # taille en prod, viser l'iso-prod suppose de pouvoir les régler
-      # séparément. mock-externes n'a pas d'équivalent prod (il remplace
-      # l'IdP/API FT) ; logstash-perf n'est pas concerné, dimensionné à part
-      # pour son propre test de charge, mais reste réveillé ici comme les
-      # autres.
+      # Taille ET nombre de conteneurs se posent ici plutôt que d'être subis :
+      # sans ça, l'app garde le réglage laissé par la dernière personne à l'avoir
+      # touchée, invisible dans les paramètres du tir. Un réglage par app (pas un
+      # commun) : connect et api n'ont aucune raison de partager la même config
+      # en prod. Le nombre de conteneurs sert à reproduire un scale horizontal
+      # de prod à capacité fixe — la prod est en autoscale, non reproductible
+      # tel quel dans un profil escalier (cf. docs/perf/harnais.md). mock-externes
+      # n'a pas d'équivalent prod ; logstash-perf est dimensionné à part pour son
+      # propre test de charge, mais reste réveillé ici comme les autres.
       - name: Réveiller les apps
         run: |
           # Deux familles d'échecs transitoires, toutes deux réessayables :
@@ -221,10 +233,10 @@ jobs:
             echo "::error::5 tentatives de scale échouées sur $app"
             return 1
           }
-          for app_taille in "pass-emploi-connect-perf:$TAILLE_CONNECT" "pass-emploi-api-perf:$TAILLE_API" "mock-externes-perf:$TAILLE_MOCK"; do
-            app="${app_taille%%:*}"; taille="${app_taille##*:}"
-            echo "::group::$app (taille $taille)"
-            scaler "$app" "web:1:$taille" || { echo "::endgroup::"; exit 1; }
+          for spec in "pass-emploi-connect-perf:$NB_CONNECT:$TAILLE_CONNECT" "pass-emploi-api-perf:$NB_API:$TAILLE_API" "mock-externes-perf:$NB_MOCK:$TAILLE_MOCK"; do
+            app="${spec%%:*}"; reste="${spec#*:}"; nb="${reste%%:*}"; taille="${reste##*:}"
+            echo "::group::$app ($nb x $taille)"
+            scaler "$app" "web:$nb:$taille" || { echo "::endgroup::"; exit 1; }
             echo "::endgroup::"
           done
           echo "::group::pass-emploi-logstash-perf (taille inchangée)"
@@ -430,6 +442,9 @@ jobs:
             --arg taille_connect "$TAILLE_CONNECT" \
             --arg taille_api "$TAILLE_API" \
             --arg taille_mock "$TAILLE_MOCK" \
+            --arg nb_connect "$NB_CONNECT" \
+            --arg nb_api "$NB_API" \
+            --arg nb_mock "$NB_MOCK" \
             --arg run "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
             --arg verdict '${{ job.status }}' \
             '{fenetre: {debut: $debut, fin: $fin},
@@ -438,7 +453,8 @@ jobs:
                        escalier: {palier_debut: $palier_debut, palier_pas: $palier_pas,
                                   nb_paliers: $nb_paliers, duree_palier_s: $duree_palier_s},
                        taille_injecteur: $taille_injecteur,
-                       taille_demandee: {connect: $taille_connect, api: $taille_api, mock: $taille_mock}},
+                       taille_demandee: {connect: $taille_connect, api: $taille_api, mock: $taille_mock},
+                       nb_demande: {connect: $nb_connect, api: $nb_api, mock: $nb_mock}},
               seuils: {p99_ms: $p99, reussite_pct: $reussite},
               donnees: {pool_size: $pool_size, pool_prefix: $pool_prefix,
                         seed_sha: $seed_sha, fond_size: $fond_size,

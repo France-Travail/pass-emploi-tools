@@ -71,10 +71,14 @@ def main():
                 % (seuils["p99_ms"], seuils["reussite_pct"])],
     ])
     demandee = charge.get("taille_demandee") or {}
+    nb_demande = charge.get("nb_demande") or {}
     if demandee:
+        def config(app):
+            n, t = nb_demande.get(app, "1"), demandee.get(app, "?")
+            return "%s x %s" % (n, t) if n not in ("1", None) else t
         sortie += [""] + tableau(
-            ["Taille demandée", "connect", "api", "mock"],
-            [["", demandee.get("connect", "?"), demandee.get("api", "?"), demandee.get("mock", "?")]],
+            ["Config demandée", "connect", "api", "mock"],
+            [["", config("connect"), config("api"), config("mock")]],
         )
     sortie += [""]
 
@@ -118,7 +122,8 @@ def main():
         sortie += ["### Contexte", ""] + tableau(
             ["App", "Conteneur", "Statut", "Déployé", "Addons"],
             [[app,
-              etat.get("conteneur", "—"),
+              "%s x %s" % (etat["nb_conteneurs"], etat.get("conteneur", "?"))
+              if etat.get("nb_conteneurs", 1) > 1 else etat.get("conteneur", "—"),
               etat.get("statut", "—"),
               "`%s`" % etat["deploiement"]["git_ref"][:8] if etat.get("deploiement") else "—",
               ", ".join("%s (%s)" % (a["addon"], a["plan"]) for a in etat.get("addons", [])) or "—"]
