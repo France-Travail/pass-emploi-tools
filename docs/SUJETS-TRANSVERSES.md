@@ -28,10 +28,15 @@
 - **Invariant** : tout log passe par le `rootLogger` au format ECS (`event.action`
   au passé + `event.outcome`). Logs opérationnels en `level` info|error (pas de
   `warn`) ; `debug` en plus, opt-in via `LOG_LEVEL`. Jamais de `console.log`.
-  Charger le détail **avant** d'ajouter ou modifier un log.
+  **Jamais d'exception brute passée à un logger** : `toEcsError(e)` d'abord
+  (sinon `err.config`/`err.response` axios → fuite d'identifiants + ligne > 16 Ko
+  tronquée par le drain → log perdu). Charger le détail **avant** d'ajouter ou
+  modifier un log.
 - **Référence stable** : [`pass-emploi-tools/docs/logs-ecs/`](./logs-ecs/README.md)
-  — `conventions.md` (format et nommage), `infra-elasticsearch.md` (templates, ILM),
+  — `conventions.md` (format, nommage, redaction, « ne jamais logger une exception
+  brute »), `infra-elasticsearch.md` (data streams, templates, ILM),
   `kibana.md` (use cases), `couverture-api.md` (ce qui est tracé côté api),
+  `runbook-astreinte-logstash.md` (4 scénarios de panne),
   `postmortem-logstash-5xx-2026-06.md`.
 
 ## Ingestion des logs · résilience & scaling (blackouts, drain) · 2026-07

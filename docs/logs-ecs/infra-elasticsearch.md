@@ -1,17 +1,24 @@
 # Infra Elasticsearch — logs
 
 Staging et prod partagent **le même cluster ES** ; ils ne diffèrent que par le
-nom des data streams. Le Logstash (`pass-emploi-tools/logs/logstash.conf`) reçoit
-les drains de toutes les apps Scalingo (api, connect, web) et route par
-`appname` vers `logs-<env>-default` (app) et `logs-router-<env>-default` (router).
+nom des data streams. Le Logstash mutualisé (`pass-emploi-tools/logs/`, archi
+**2 pipelines** depuis 2026-07 : `pipeline-ingest.conf` → `pipeline-process.conf`,
+cf. [blackout-logs/conventions](../blackout-logs/conventions.md)) reçoit les drains
+de toutes les apps Scalingo (api, connect, web) et route par `appname` vers
+`logs-<env>-default` (app) et `logs-router-<env>-default` (router).
 
 ## Data streams
 
-| Data stream | Index template | ILM |
+| Data stream | Index template | Contenu |
 |---|---|---|
-| `logs-prod-default` | `logs-prod@template-custom` | `logs-prod-retention` |
-| `logs-staging-default` | `logs-staging@template-custom` | `logs-staging-retention` |
-| `logs-router-{prod,staging}-default` | `logs-router` | `logs-prod-retention` |
+| `logs-{prod,staging,perf}-default` | `logs-<env>@template-custom` | logs applicatifs |
+| `logs-router-*-default` | `logs-router` | logs du router Scalingo (`request_routed`) |
+| `logs-logstash-errors-*-default` | `logs-logstash-errors@template-custom` | events en erreur de **traitement** Logstash (`_jsonparsefailure`, `_mutate_error`, `_rubyexception`…) |
+| `logs-logstash-dlq-*-default` | `logs-logstash-dlq@template-custom` | events **rejetés par ES** (conflit de mapping), relus depuis la Dead Letter Queue |
+
+Les deux derniers sont les index de diagnostic de la chaîne elle-même : leur
+exploitation (alertes, KQL, actions correctives) est dans le
+[runbook d'astreinte](./runbook-astreinte-logstash.md).
 
 ## Templates versionnés — `pass-emploi-tools/logs/elastic/`
 
@@ -29,10 +36,12 @@ router.
 
 ## Logstash — post-traitement mutualisé
 
-`logstash.conf` fait le post-traitement commun aux trois repos : parsing des
-logs router (logfmt → ECS `request_routed`), renames/flatten ECS, détection
+`pipeline-process.conf` fait le post-traitement commun aux trois repos : parsing
+des logs router (logfmt → ECS `request_routed`), renames/flatten ECS, détection
 d'env, **drops** de bruit (healthchecks Scalingo, bootstrap NestJS
 `RouterExplorer` & co, lignes non-JSON du conteneur `postdeploy`).
+`pipeline-ingest.conf` ne fait, lui, **aucun filtre** — c'est un invariant, il
+n'existe que pour acquitter le drain au plus vite.
 
 Ce qui doit rester **in-app** (pino) et ne peut pas descendre dans Logstash :
 émission ECS structurée, **redaction des secrets** (un secret ne doit jamais

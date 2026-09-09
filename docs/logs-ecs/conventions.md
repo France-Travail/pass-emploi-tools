@@ -163,10 +163,29 @@ dans `labels.<clé>`, **jamais** dans un champ générique inventé (`data`,
 
 Champs standards : `event.*`, `error.*`, `http.*`, `url.*`, `user.*`,
 `service.*` → flatten automatique côté Logstash. Tout nouveau sous-namespace
-demande un ajout dans `logstash.conf`.
+demande un ajout dans `logs/pipeline-process.conf`.
 
 `error` au format ECS via **`toEcsError(error)`** : helper unique gérant Error
 JS, erreur métier (code/message), valeur inconnue → `{type, message, stack_trace}`.
+
+### Ne jamais logger une exception brute
+
+`logger.error(e)` sur une erreur axios sérialise **tout** l'objet : `err.config`
+(URL, en-têtes, corps de la requête) et `err.response`. Deux conséquences :
+
+1. **Fuite.** Le corps d'une requête d'authentification partenaire contient des
+   identifiants. Le `redact` pino ne couvre que des chemins fixes et ne s'applique
+   pas si le log ne passe pas par le `rootLogger` — ce n'est pas un filet fiable.
+2. **Troncature.** La ligne dépasse vite **16 Ko**, plafond au-delà duquel le
+   drain Scalingo coupe (voir
+   [blackout-logs/conventions](../blackout-logs/conventions.md)). Le JSON arrive
+   incomplet, le filtre `json` de Logstash échoue, et l'event part dans
+   `logs-logstash-errors-*` au lieu de l'index applicatif : **le log est perdu
+   pour l'exploitation**.
+
+Règle : une exception passe par **`toEcsError`** avant d'atteindre un logger, et
+le log est émis via le **`rootLogger`** (contexte explicite + message libre), pas
+via un logger de framework injecté.
 
 ## Pattern d'archi : `rootLogger` + mixin
 
@@ -221,7 +240,7 @@ taxonomie du repo dans un `couverture-<repo>.md` dédié.
 | `ExternalApiClient` (base axios) | pass-emploi-api | `src/infrastructure/clients/external-api-client.ts` |
 | `logExternalCall` (SDK non-axios) | pass-emploi-connect | `src/utils/monitoring/external-call.logger.ts` |
 | Logger + `RequestContext` connect | pass-emploi-connect | `src/utils/monitoring/{logger.module,request-context}.ts` |
-| Logstash + templates ES | pass-emploi-tools | `logs/logstash.conf`, `logs/elastic/*.console` |
+| Logstash + templates ES | pass-emploi-tools | `logs/pipeline-{ingest,process,dlq-logstash}.conf`, `logs/elastic/*.console` |
 
 ## Décisions durables (transverses)
 

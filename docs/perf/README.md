@@ -79,8 +79,11 @@ disponibilité), à instruire avec Scalingo.
   pool, distributions de `volumetrie-prod.md` — pas un restore de snapshot
   prod, mécanique toujours non tranchée) et **profil escalier** (débit
   croissant par paliers, sans assertion) ajoutés au harnais, taille des apps
-  pilotée par app plutôt qu'en commun, `POOL_SIZE` porté à 500. Préparent la
-  campagne de montée en charge à mener après merge sur `master`.
+  pilotée par app plutôt qu'en commun, `POOL_SIZE` porté à 500. Input
+  `journal_http=DEBUG` pour diagnostiquer un tir en échec (corps des réponses).
+  Réveil des apps durci (retries sur les aléas réseau du CLI et de l'API
+  Scalingo). Préparent la campagne de montée en charge à mener après merge sur
+  `master`.
 - **2026-09-08** — seuils SLO simplifiés en un **seuil commun** (p99 < 500 ms,
   réussite > 99,5 %), harnais passé en **modèle ouvert** et assertions étendues
   à toutes les requêtes. Le volume cible reste à instruire.

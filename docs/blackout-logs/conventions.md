@@ -59,6 +59,14 @@ apps (api / web / connect)  ──drain HTTP Scalingo──►  Logstash mutuali
    pas à un restart ; le fsync peut rallonger l'ACK → à surveiller vs les 499.
 5. **`scalingo run` = one-off isolé** : ne voit **pas** le `localhost:9600` de l'app
    web (réseau séparé), voit une autre RAM. Non représentatif pour mesurer heap/API.
+6. **Le drain tronque toute ligne à 16384 octets** (2^14), quelle que soit l'app.
+   Une ligne plus longue arrive **coupée en plein milieu** : si c'est du JSON, le
+   filtre `json` échoue (`_jsonparsefailure`) et l'event part dans
+   `logs-logstash-errors-<env>-default` au lieu de son index applicatif. Ce n'est
+   pas réparable côté Logstash — un JSON tronqué n'est pas récupérable. **La
+   correction est toujours côté app** : ne pas émettre de ligne > 16 Ko (cf.
+   [logs-ecs/conventions](../logs-ecs/conventions.md) § « Ne jamais logger une
+   exception brute »). Signature : `Unexpected end-of-input … column: 16385`.
 
 ## Playbook de diagnostic {#playbook-de-diagnostic}
 

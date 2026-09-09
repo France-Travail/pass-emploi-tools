@@ -148,6 +148,12 @@ Les seuils SLO (`p99_threshold_ms`, `success_percent_threshold`) et le débit
 workflow depuis le 2026-09-08 — ils viennent de l'atelier SLO comme valeurs
 par défaut, mais un tir peut les faire varier sans toucher au code.
 
+`journal_http` (`INFO` par défaut) est un input de **diagnostic** : à `DEBUG`,
+Gatling journalise les réponses en échec, corps compris, pour comprendre
+*pourquoi* un tir échoue sans avoir à modifier `logback.xml`. À laisser à `INFO`
+pour un tir de mesure — le coût de log fausse la latence, et un tir qui échoue
+massivement produit des mégaoctets de corps de réponse.
+
 Les apps de perf sont éteintes la nuit et le week-end par
 `perf-env-shutdown.yml` et rallumées à 8h par `perf-env-wakeup.yml`. Le
 workflow de tir ne s'appuie pas sur ce cron : il réveille lui-même et attend

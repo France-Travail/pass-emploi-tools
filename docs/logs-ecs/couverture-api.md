@@ -81,3 +81,14 @@ Slack #ops ; échecs `CreateRendezVousCommandHandler` → Slack #dev.
   (doublon) → fuite PII potentielle (contourne la redaction pino) + bloat. Fix :
   ne logger que `{property, constraints}` ; le `BadRequestException` renvoyé au
   client garde le détail complet (voulu).
+- **`logger.error(<exception>)` sur exception brute** : sur une AxiosError, pino
+  sérialise `err.config` (URL, en-têtes, **corps** — donc le `client_secret` sur
+  un appel token partenaire) + `err.response`. La ligne dépasse 16 Ko, le drain
+  Scalingo la tronque, le filtre `json` de Logstash échoue → l'event part dans
+  `logs-logstash-errors-*` (log perdu pour l'exploitation). Corrigé aux 3 points
+  centraux (base classes `Command`/`Query` `.monitor().catch`, job
+  `NOTIFIER_RENDEZVOUS_PE`) via `rootLogger` + `toEcsError`. **Reste** : ~une
+  dizaine de job handlers (`this.logger.error(e)` / `.warn(e)` dans leur
+  `try/catch`) et `oidc.auth-guard.ts` (`err: error` brut dans l'objet loggé).
+  Piste : règle ESLint interdisant de passer une valeur `catch` à un logger sans
+  `toEcsError`.
