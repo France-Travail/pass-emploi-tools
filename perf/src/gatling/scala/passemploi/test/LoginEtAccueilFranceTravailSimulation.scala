@@ -135,7 +135,8 @@ class LoginEtAccueilFranceTravailSimulation extends Simulation {
       .queryParam("kc_idp_hint", idpHint)
       .check(status.in(302, 303))
       .check(header("location").saveAs("location"))
-  ).exec { session =>
+  ).exitHereIfFailed
+    .exec { session =>
       session.set(
         "urlInteraction",
         Redirections.resoudre(connectUrl, session("location").as[String])
