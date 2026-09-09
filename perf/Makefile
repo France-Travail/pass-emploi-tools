@@ -63,6 +63,9 @@ DUREE_PALIER_EN_SECONDES ?= 120
 # Émission du rapport HTML en base64 sur stdout (voir tir-et-rapport.sh).
 # Opt-in : à 1, la CI le rapatrie ; à 0, un tir manuel garde un terminal lisible.
 RAPPORT_STDOUT ?= 0
+# INFO pour un tir de mesure ; DEBUG pour un tir de diagnostic (journalise les
+# requêtes et réponses en échec, corps compris — cf. logback.xml).
+JOURNAL_HTTP ?= INFO
 BRANCHE ?= $(shell git rev-parse --abbrev-ref HEAD)
 
 # L'injecteur tourne sur son slug déployé, pas sur les fichiers locaux, et le
@@ -92,6 +95,7 @@ tir:
 	  --env P99_THRESHOLD_MS=$(P99_THRESHOLD_MS) \
 	  --env SUCCESS_PERCENT_THRESHOLD=$(SUCCESS_PERCENT_THRESHOLD) \
 	  --env RAPPORT_STDOUT=$(RAPPORT_STDOUT) \
+	  --env JOURNAL_HTTP=$(JOURNAL_HTTP) \
 	  "./tir-et-rapport.sh $(TIR_SIMULATION)"
 
 .env:

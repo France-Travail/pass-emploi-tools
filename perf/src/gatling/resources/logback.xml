@@ -12,10 +12,12 @@
     </encoder>
   </appender>
 
-  <!-- Pour déboguer un scénario, passer à DEBUG (requêtes et réponses en échec)
-       ou TRACE (toutes les requêtes et réponses). Jamais pendant un vrai tir :
-       le coût de log fausse la mesure. -->
-  <logger name="io.gatling.http.engine.response" level="INFO"/>
+  <!-- DEBUG journalise les requêtes et réponses **en échec** (corps compris),
+       TRACE toutes les requêtes. Piloté par JOURNAL_HTTP pour qu'un tir de
+       diagnostic n'exige pas de modifier ce fichier — mais à laisser à INFO
+       pour un tir de mesure : le coût de log fausse la mesure, et un tir qui
+       échoue massivement produit des mégaoctets de corps de réponse. -->
+  <logger name="io.gatling.http.engine.response" level="${JOURNAL_HTTP:-INFO}"/>
 
   <root level="WARN">
     <appender-ref ref="CONSOLE"/>

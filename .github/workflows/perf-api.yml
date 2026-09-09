@@ -50,6 +50,9 @@ on:
       simulation:
         description: "Simulation Gatling à jouer"
         default: passemploi.test.LoginEtAccueilFranceTravailSimulation
+      journal_http:
+        description: "INFO (tir de mesure) ou DEBUG (diagnostic : journalise les réponses en échec, corps compris)"
+        default: "INFO"
       fond_size:
         description: "Bénéficiaires de fond hors pool (0 = aucun) — vraisemblance du volume/index/cache, cf. docs/perf/harnais.md"
         default: "48000"
@@ -141,6 +144,7 @@ jobs:
           echo "SUCCESS_PERCENT_THRESHOLD=${{ inputs.success_percent_threshold || '99.5' }}" >> "$GITHUB_ENV"
           echo "TIR_SIMULATION=${{ inputs.simulation || 'passemploi.test.LoginEtAccueilFranceTravailSimulation' }}" >> "$GITHUB_ENV"
           echo "FOND_SIZE=${{ inputs.fond_size || '48000' }}" >> "$GITHUB_ENV"
+          echo "JOURNAL_HTTP=${{ inputs.journal_http || 'INFO' }}" >> "$GITHUB_ENV"
           echo "TAILLE_CONNECT=${{ inputs.taille_connect || 'M' }}" >> "$GITHUB_ENV"
           echo "TAILLE_API=${{ inputs.taille_api || 'M' }}" >> "$GITHUB_ENV"
           echo "TAILLE_MOCK=${{ inputs.taille_mock || 'M' }}" >> "$GITHUB_ENV"
@@ -330,6 +334,7 @@ jobs:
             SUCCESS_PERCENT_THRESHOLD="$SUCCESS_PERCENT_THRESHOLD" \
             TIR_SIMULATION="$TIR_SIMULATION" \
             RAPPORT_STDOUT=1 \
+            JOURNAL_HTTP="$JOURNAL_HTTP" \
             2>&1 | tee "$GITHUB_WORKSPACE/sortie-tir.txt" \
             | awk '/---RAPPORT-GATLING-DEBUT---/ {masque=1; print "[rapport HTML en base64 masque ici -- reconstitue a l etape suivante, present dans l artefact]"; fflush(); next} /---RAPPORT-GATLING-FIN---/ {masque=0; next} !masque {print; fflush()}' 
 
