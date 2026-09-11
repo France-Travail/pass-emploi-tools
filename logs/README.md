@@ -13,6 +13,20 @@ https://github.com/France-Travail/elastic-agent-buildpack
 https://github.com/France-Travail/logstash-buildpack
 ```
 
+## Architecture
+
+```
+[Service Logstash INGEST]          [Redis]          [Service Logstash PROCESS]
+  INGEST_ENABLED=true                               PROCESS_ENABLED=true
+
+  pipeline-ingest.conf             list             pipeline-process.conf
+  HTTP input (drain Scalingo)  →  logstash:ingest  →  filtres lourds → ES
+  ACK ~1ms                                            + DLQ → pipeline dlq
+```
+
+Redis remplace la Persistent Queue disque comme buffer inter-services.
+Par défaut (aucune variable définie), les deux pipelines tournent dans le même service (comportement identique à l'ancienne architecture mono-service).
+
 ## Déploiement
 
 L'app Scalingo est linkée au repo `pass-emploi-tools`. Ce repo étant un
@@ -39,7 +53,14 @@ Sur un conteneur plus petit, le boot est tué par l'OOM killer
 
 ## Variables d'environnement
 
-### Logstash
+### Logstash — activation des pipelines
+
+| Variable          | Description                                                                                                                                               |
+|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `INGEST_ENABLED`  | Mettre à `true` pour n'activer que le pipeline `ingest` (HTTP → Redis). Par défaut (non définie) : tous les pipelines sont actifs.                        |
+| `PROCESS_ENABLED` | Mettre à `true` pour n'activer que les pipelines `process` + `dead_letter_queue` (Redis → ES). Par défaut (non définie) : tous les pipelines sont actifs. |
+
+### Logstash — configuration
 
 | Variable                      | Description                                                                                                                        |
 |-------------------------------|------------------------------------------------------------------------------------------------------------------------------------|
@@ -49,12 +70,30 @@ Sur un conteneur plus petit, le boot est tué par l'OOM killer
 | `ELASTICSEARCH_URL`           | URL du cluster Elasticsearch, credentials inclus (ex: `https://user:password@host:port`)                                           |
 | `USER`                        | Utilisateur HTTP pour l'authentification du drain Scalingo                                                                         |
 | `PASSWORD`                    | Mot de passe HTTP pour l'authentification du drain Scalingo                                                                        |
+| `REDIS_HOST`                  | Hôte Redis (ex: `my-redis.scalingo.com`)                                                                                           |
+| `REDIS_PORT`                  | Port Redis (optionnel, défaut : `6379`)                                                                                            |
+| `REDIS_PASSWORD`              | Mot de passe Redis                                                                                                                 |
+| `REDIS_CA_CERT_BASE64`        | CA cert Redis encodé en base64 (onglet SSL/TLS de la page Redis Scalingo). Décodé au démarrage vers `/app/certs/redis-ca.pem`.     |
 | `LS_JAVA_OPTS`                | Options JVM, heap compris (ex: `-Xms1g -Xmx1g` dans un conteneur XL)                                                               |
 | `LOGSTASH_INGEST_THREADS`     | Threads Netty du pipeline ingest (optionnel, défaut : `4`)                                                                         |
-| `LOGSTASH_INGEST_WORKERS`     | Workers du pipeline `ingest` (optionnel, défaut : `1`) — augmenter si l'écriture PQ est le goulot                                  |
+| `LOGSTASH_INGEST_WORKERS`     | Workers du pipeline `ingest` (optionnel, défaut : `1`) — augmenter si l'écriture Redis est le goulot                               |
 | `LOGSTASH_PROCESS_WORKERS`    | Workers du pipeline `process` (optionnel, défaut : `1`) — augmenter si le traitement ES est le goulot                              |
 | `LOGSTASH_PROCESS_BATCH_SIZE` | Taille des batches du pipeline `process` (optionnel, défaut : `250`) — réduire temporairement (ex: `50`) en cas de backpressure ES |
 | `LOGSTASH_DLQ_WORKERS`        | Workers du pipeline `dead_letter_queue` (optionnel, défaut : `1`)                                                                  |
+
+> **Générer `REDIS_CA_CERT_BASE64`** : télécharger le CA cert depuis la page
+> Redis Scalingo (onglet "SSL/TLS" → "Download CA cert"), puis encoder :
+> ```
+> base64 -w 0 ca.pem
+> ```
+> Copier la sortie (une seule ligne) comme valeur de la variable Scalingo.
+>
+> **Configurer le CA cert dans l'intégration Kibana** (Collect Redis metrics →
+> Settings → Advanced options → SSL Configuration) :
+> ```
+> echo "ssl.certificate_authorities: |" && sed 's/^/  /' ca.pem
+> ```
+> Copier la sortie YAML (header + contenu indenté) dans le champ SSL de l'intégration.
 
 > **Le heap se règle via `LS_JAVA_OPTS`, pas `JAVA_OPTS`.** Le lanceur Logstash
 > ignore explicitement le second (`warning: ignoring JAVA_OPTS=…; pass JVM
