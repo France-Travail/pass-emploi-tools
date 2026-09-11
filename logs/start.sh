@@ -55,7 +55,7 @@ if [ "${FLEET_ENROLL}" = "1" ]; then
   # Cela évite que l'agent consomme de la mémoire/CPU pendant la phase critique
   # d'initialisation de la JVM Logstash, qui doit répondre dans le délai Scalingo (~60s).
   (
-    until curl -sf -u "${USER}:${PASSWORD}" "http://localhost:${PORT}" > /dev/null 2>&1; do
+    until curl -sf "http://127.0.0.1:9600/" >/dev/null 2>&1; do
       sleep 2
     done
     STATE_PATH="/app/data/elastic-agent-state" \
