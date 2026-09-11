@@ -45,22 +45,22 @@ export ELASTIC_AGENT_ID=$(python3 -c "import uuid; print(uuid.uuid5(uuid.NAMESPA
 # Sur les containers avec peu de RAM (ex: S/512 Mo), ne pas définir FLEET_ENROLL
 # permet de réserver toute la mémoire à Logstash.
 if [ "${FLEET_ENROLL}" = "1" ]; then
-  # FORCE_REENROLL=1 : supprime l'état persisté pour forcer un ré-enrôlement propre.
-  # À utiliser ponctuellement quand l'API key de l'agent est révoquée côté Elasticsearch.
-  # Après un déploiement réussi (agent Healthy dans Fleet), désactiver cette variable.
-  if [ "${FORCE_REENROLL}" = "1" ]; then
-    rm -rf /app/data/elastic-agent-state/*
-  fi
-  # Démarrer l'Elastic Agent seulement après que Logstash répond sur $PORT.
+  # Démarrer l'Elastic Agent seulement après que Logstash répond.
   # Cela évite que l'agent consomme de la mémoire/CPU pendant la phase critique
   # d'initialisation de la JVM Logstash, qui doit répondre dans le délai Scalingo (~60s).
   (
     until curl -sf "http://127.0.0.1:9600/" >/dev/null 2>&1; do
       sleep 2
     done
+
+    echo "Starting Elastic Agent: id=${ELASTIC_AGENT_ID}"
+
     STATE_PATH="/app/data/elastic-agent-state" \
       env ${ELASTIC_AGENT_GO_OPTS:-GOMEMLIMIT=256MiB} \
       elastic-agent container
+
+    rc=$?
+    echo "Elastic Agent exited with code ${rc}" >&2
   ) &
 fi
 
