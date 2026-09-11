@@ -31,7 +31,7 @@ concurrency:
 
 env:
   SCALINGO_REGION: osc-secnum-fr1
-  APPS: pass-emploi-connect-perf pass-emploi-api-perf mock-externes-perf pass-emploi-logstash-perf
+  APPS: pass-emploi-connect-perf pass-emploi-api-perf mock-externes-perf
 
 jobs:
   scale-down:
