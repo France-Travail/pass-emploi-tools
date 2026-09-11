@@ -51,9 +51,17 @@ if [ "${FLEET_ENROLL}" = "1" ]; then
   if [ "${FORCE_REENROLL}" = "1" ]; then
     rm -rf /app/data/elastic-agent-state/*
   fi
-  STATE_PATH="/app/data/elastic-agent-state" \
-    env ${ELASTIC_AGENT_GO_OPTS:-GOMEMLIMIT=256MiB} \
-    elastic-agent container &
+  # Démarrer l'Elastic Agent seulement après que Logstash répond sur $PORT.
+  # Cela évite que l'agent consomme de la mémoire/CPU pendant la phase critique
+  # d'initialisation de la JVM Logstash, qui doit répondre dans le délai Scalingo (~60s).
+  (
+    until curl -sf -u "${USER}:${PASSWORD}" "http://localhost:${PORT}" > /dev/null 2>&1; do
+      sleep 2
+    done
+    STATE_PATH="/app/data/elastic-agent-state" \
+      env ${ELASTIC_AGENT_GO_OPTS:-GOMEMLIMIT=256MiB} \
+      elastic-agent container
+  ) &
 fi
 
 # Décode le CA cert Redis depuis la variable d'env (base64) vers un fichier temporaire.
