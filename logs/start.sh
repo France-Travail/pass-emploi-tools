@@ -28,10 +28,15 @@ if [ "$ACTIVATION_NON_PARAMETREE" = "true" ] || [ "${PROCESS_ENABLED}" = "true" 
   cat /app/config/pipelines-process.yml >> "$PIPELINES_GENERATED_CONF_FILE"
 fi
 
-# Génère un ELASTIC_AGENT_ID unique et stable par instance à partir du HOSTNAME Scalingo
+# Génère un ELASTIC_AGENT_ID unique et stable par instance à partir du HOSTNAME Scalingo.
 # (ex: pass-emploi-logstash-perf-web-1 → UUID déterministe).
-# Cela évite l'erreur ErrAgentIdentity quand plusieurs instances tournent en parallèle.
-export ELASTIC_AGENT_ID=$(python3 -c "import uuid; print(uuid.uuid5(uuid.NAMESPACE_DNS, '${HOSTNAME}'))")
+# ELASTIC_AGENT_ID_SUFFIX permet de forcer ponctuellement une nouvelle identité Fleet
+# sans impacter les autres applications.
+AGENT_ID_SOURCE="${HOSTNAME}${ELASTIC_AGENT_ID_SUFFIX:+:${ELASTIC_AGENT_ID_SUFFIX}}"
+
+export ELASTIC_AGENT_ID=$(
+  python3 -c "import uuid; print(uuid.uuid5(uuid.NAMESPACE_DNS, '${AGENT_ID_SOURCE}'))"
+)
 
 # ELASTIC_AGENT_GO_OPTS : options Go runtime injectées dans l'environnement d'Elastic Agent.
 # Analogue à LS_JAVA_OPTS pour Logstash.
@@ -74,3 +79,5 @@ fi
 exec logstash \
   --config.reload.automatic \
   --path.settings /app/config
+
+printf '%s' 'ZThJRU9LQUJnczk2RmhRemxYQWo6VUNkRGhBVEZGWm5KNmxRallCb0RsQQ==' | sha256sum
