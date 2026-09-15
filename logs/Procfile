@@ -1,1 +1,11 @@
-web: bash start.sh
+# Deux types de process pour permettre le déploiement de deux services Logstash distincts :
+#   - web    : service INGEST  (INGEST_ENABLED=true)  — reçoit les drains HTTP, écrit dans Redis
+#   - worker : service PROCESS (PROCESS_ENABLED=true) — lit Redis, filtre et indexe dans ES
+#
+# Par défaut (aucune variable définie), les deux types lancent le même start.sh qui active
+# tous les pipelines dans un seul service — comportement identique à l'ancienne architecture.
+#
+# Le type "web" est obligatoire pour que Scalingo accepte le déploiement (il attend un process
+# web qui répond sur $PORT). Le type "worker" est optionnel et ne répond pas sur $PORT.
+web:    bash start.sh
+worker: bash start.sh
