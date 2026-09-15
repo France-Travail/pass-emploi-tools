@@ -1,0 +1,23 @@
+# Fragment de configuration du pipeline "ingest".
+#
+# Ce fichier est inclus dans /app/config/pipelines.yml généré au démarrage
+# par start.sh selon la variable d'environnement INGEST_ENABLED.
+#
+# Par défaut (INGEST_ENABLED et PROCESS_ENABLED non définies) : ce fragment
+# est inclus automatiquement (comportement identique à l'ancien pipelines.yml).
+#
+# Rôle : recevoir les drains Scalingo via HTTP et les pousser dans Redis.
+# ACK en ~1ms (écriture réseau Redis). Le drain ne timeout plus jamais.
+# Redis remplace la Persistent Queue disque comme buffer inter-services.
+
+- pipeline.id: ingest
+  path.config: "/app/pipeline-ingest.conf"
+  # Mémoire suffisante : Redis est le vrai buffer entre ingest et process.
+  queue.type: memory
+  # Workers : configurable via variable d'env Scalingo (défaut : 1).
+  # 1 suffit — le pipeline ne fait qu'écrire dans Redis (I/O pur).
+  # Augmenter LOGSTASH_INGEST_WORKERS si l'écriture Redis devient le goulot (rare).
+  pipeline.workers: "${LOGSTASH_INGEST_WORKERS:1}"
+  # L'ordre des événements n'a aucune importance.
+  # false évite l'overhead de synchronisation du mode ordonné.
+  pipeline.ordered: false

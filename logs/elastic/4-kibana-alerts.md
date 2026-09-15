@@ -12,21 +12,23 @@ Définitions des alertes de supervision de la chaîne d'ingestion Logstash.
 
 ## Récapitulatif des alertes
 
-| #  | Signal                                        | Index / source                              | Condition                      | Fréquence | Throttle | Sévérité    |
-| -- |-----------------------------------------------|---------------------------------------------| ------------------------------ | --------- | -------- | ----------- |
-| 1a | DLQ non vide — prod                           | `logs-logstash-dlq-prod-default`            | `Is above 0` / 5 min           | 1 min     | 6h       | 🚨 Critical |
-| 1b | DLQ non vide — staging/perf                   | `logs-logstash-dlq-staging/perf-default`    | `Is above 0` / 5 min           | 5 min     | 6h       | ⚠️ Warning   |
-| 2a | Erreurs traitement — prod                     | `logs-logstash-errors-prod-default`         | `Is above 0` / 5 min           | 1 min     | 6h       | 🚨 Critical |
-| 2b | Erreurs traitement — staging/perf             | `logs-logstash-errors-staging/perf-default` | `Is above 0` / 5 min           | 5 min     | 6h       | ⚠️ Warning   |
-| 3a | Silence logs applicatifs — prod               | `logs-prod-default`                         | `Is below or equals 0` / 5 min | 2 min     | 6h       | 🚨 Critical |
-| 3b | Silence logs router — prod                    | `logs-router-prod-default`                  | `Is below or equals 0` / 5 min | 2 min     | 6h       | 🚨 Critical |
-| 3c | Silence logs applicatifs — staging/perf       | `logs-staging/perf-default`                 | `Is below or equals 0` / 5 min | 5 min     | 6h       | ⚠️ Warning   |
-| 3d | Silence logs router — staging/perf            | `logs-router-staging/perf-default`          | `Is below or equals 0` / 5 min | 5 min     | 6h       | ⚠️ Warning   |
-| 4a | Backpressure — workers bloqués — prod         | `metrics-logstash.pipeline-default`         | `Is above 0.5` / 5 min         | 2 min     | 6h       | 🚨 Critical |
-| 4b | Backpressure — workers bloqués — staging/perf | `metrics-logstash.pipeline-default`         | `Is above 0.5` / 5 min         | 5 min     | 6h       | ⚠️ Warning   |
-| 5a | Heap JVM élevé — prod                         | `metrics-logstash.node-default`             | `Is above 85` / 5 min          | 2 min     | 6h       | 🚨 Critical |
-| 5b | Heap JVM élevé — staging/perf                 | `metrics-logstash.node-default`             | `Is above 85` / 5 min          | 5 min     | 6h       | ⚠️ Warning   |
-| 6  | Restart conteneur                             | Scalingo webhook                            | `app_crashed/app_restarted`    | —         | —        | 🚨 Critical |
+| #  | Signal                                        | Index / source                              | Condition                        | Fréquence | Throttle | Sévérité    |
+| -- |-----------------------------------------------|---------------------------------------------|----------------------------------|-----------|----------|-------------|
+| 1a | DLQ non vide — prod                           | `logs-logstash-dlq-prod-default`            | `Is above 0` / 5 min             | 1 min     | 6h       | 🚨 Critical |
+| 1b | DLQ non vide — staging/perf                   | `logs-logstash-dlq-staging/perf-default`    | `Is above 0` / 5 min             | 5 min     | 6h       | ⚠️ Warning   |
+| 2a | Erreurs traitement — prod                     | `logs-logstash-errors-prod-default`         | `Is above 0` / 5 min             | 1 min     | 6h       | 🚨 Critical |
+| 2b | Erreurs traitement — staging/perf             | `logs-logstash-errors-staging/perf-default` | `Is above 0` / 5 min             | 5 min     | 6h       | ⚠️ Warning   |
+| 3a | Silence logs applicatifs — prod               | `logs-prod-default`                         | `Is below or equals 0` / 5 min   | 2 min     | 6h       | 🚨 Critical |
+| 3b | Silence logs router — prod                    | `logs-router-prod-default`                  | `Is below or equals 0` / 5 min   | 2 min     | 6h       | 🚨 Critical |
+| 3c | Silence logs applicatifs — staging/perf       | `logs-staging/perf-default`                 | `Is below or equals 0` / 5 min   | 5 min     | 6h       | ⚠️ Warning   |
+| 3d | Silence logs router — staging/perf            | `logs-router-staging/perf-default`          | `Is below or equals 0` / 5 min   | 5 min     | 6h       | ⚠️ Warning   |
+| 4a | Backpressure — workers bloqués — prod         | `metrics-logstash.pipeline-default`         | `Is above 0.5` / 5 min           | 2 min     | 6h       | 🚨 Critical |
+| 4b | Backpressure — workers bloqués — staging/perf | `metrics-logstash.pipeline-default`         | `Is above 0.5` / 5 min           | 5 min     | 6h       | ⚠️ Warning   |
+| 5a | Heap JVM élevé — prod                         | `metrics-logstash.node-default`             | `Is above 85` / 5 min            | 2 min     | 6h       | 🚨 Critical |
+| 5b | Heap JVM élevé — staging/perf                 | `metrics-logstash.node-default`             | `Is above 85` / 5 min            | 5 min     | 6h       | ⚠️ Warning   |
+| 6  | Restart conteneur                             | Scalingo webhook                            | `app_crashed/app_restarted`      | —         | —        | 🚨 Critical |
+| 7a | Backlog Redis `logstash:ingest` — prod        | `metrics-redis.key-default`                 | `Is above 1 000` / 5 min         | 2 min     | 6h       | 🚨 Critical |
+| 7b | Backlog Redis `logstash:ingest` — staging/perf| `metrics-redis.key-default`                 | `Is above 1 000` / 5 min         | 5 min     | 6h       | ⚠️ Warning   |
 
 ---
 
@@ -314,7 +316,7 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 | **Rule name**             | `Logstash - Prod - Détection backpressure ES (workers bloqués)`                                                                                                                                          |
 | **Type**                  | Elasticsearch query rule                                                                                                                                                                                 |
 | **Index**                 | `metrics-logstash.pipeline-default`                                                                                                                                                                      |
-| **KQL filter**            | `logstash.pipeline.host.name: pass-emploi-logstash-prod-*`                                                                                                                                               |
+| **KQL filter**            | `logstash.pipeline.host.name: (pass-emploi-logstash-prod-* OR pass-emploi-logstash-process-prod-*)`                                                                                                      |
 | **Aggregation**           | `Max` de `logstash.pipeline.total.flow.queue_backpressure.current`                                                                                                                                       |
 | **Condition**             | `Is above` `0.5`                                                                                                                                                                                         |
 | **Fenêtre**               | 5 min                                                                                                                                                                                                    |
@@ -375,7 +377,7 @@ pouvant provoquer des pauses stop-the-world (scénario 2 du runbook) ou un OOM-k
 | **Rule name**           | `Logstash - Prod - Détection heap JVM élevé`                                                                                                                             |
 | **Type**                | Elasticsearch query rule                                                                                                                                                 |
 | **Index**               | `metrics-logstash.node-default`                                                                                                                                          |
-| **KQL filter**          | `host.name: pass-emploi-logstash-prod-*`                                                                                                                                 |
+| **KQL filter**          | `host.name: (pass-emploi-logstash-prod-* OR pass-emploi-logstash-process-prod-*)`                                                                                        |
 | **Aggregation**         | `Max` de `logstash.node.stats.jvm.mem.heap_used_percent`                                                                                                                 |
 | **Condition**           | `Is above` `85`                                                                                                                                                          |
 | **Fenêtre**             | 5 min                                                                                                                                                                    |
@@ -459,6 +461,90 @@ Pour chaque app :
 
 ---
 
+## Alerte 7 — Backlog Redis `logstash:ingest` (pipeline PROCESS découplé)
+
+**Objectif** : détecter une accumulation anormale d'événements dans la liste Redis
+`logstash:ingest`, buffer inter-services entre le pipeline `ingest` et le pipeline
+`process`. En régime normal, le pipeline `process` consomme la liste en temps réel
+et sa longueur reste proche de 0 (0–250 éléments en régime normal). Un backlog
+signale que le pipeline `process` ne consomme plus Redis : redémarrage ou blocage
+de `pass-emploi-logstash-process-prod`, coupure réseau Redis, ou backpressure ES
+sévère côté `process`.
+
+> **Incident de référence — 14/09/2026** : `pass-emploi-logstash-process-prod` a
+> subi plusieurs redémarrages inexpliqués dans la soirée, provoquant l'accumulation
+> de ~180 000 événements jusqu'à saturer les 256 Mo de Redis → crash du cluster Redis
+> à 20:37 (HAProxy DOWN). **Cause racine inconnue** — logs archivés Scalingo
+> inaccessibles à date. Le lendemain matin, l'app s'est rétablie et a vidé le
+> backlog — aucun log perdu, mais indexation tardive (~13h de retard).
+>
+> **Source** : data stream `metrics-redis.key-default` (intégration Redis Elastic
+> Agent, collectée par `pass-emploi-elastic-agent-prod`). Champ : `redis.key.length`.
+>
+> **Seuil de 1 000** : en régime normal rétabli, la liste oscille entre 25 et 250
+> éléments par fenêtre de 30 secondes (mesuré le 15/09/2026 après l'incident Redis).
+> 1 000 représente ~4× le pic max observé → pas de faux positif sur les micro-pics.
+> En cas de coupure réelle, la liste atteint 1 000 en quelques dizaines de secondes
+> au débit prod → alerte déclenchée en moins de 2 minutes (fréquence de l'alerte 7a).
+
+### 7a — Backlog Redis prod (Critical)
+
+| Paramètre                 | Valeur                                                                                                                                                                                     |
+|---------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Rule name**             | `Redis - Prod - Backlog logstash:ingest anormal`                                                                                                                                           |
+| **Type**                  | Elasticsearch query rule                                                                                                                                                                   |
+| **Index**                 | `metrics-redis.key-default`                                                                                                                                                                |
+| **KQL filter**            | `redis.key.name: "logstash:ingest"`                                                                                                                                                        |
+| **Aggregation**           | `Max` de `redis.key.length`                                                                                                                                                                |
+| **Condition**             | `Is above` `1000`                                                                                                                                                                         |
+| **Fenêtre**               | 5 min                                                                                                                                                                                      |
+| **Fréquence**             | 2 min                                                                                                                                                                                      |
+| **Sévérité**              | Critical                                                                                                                                                                                   |
+| **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-monitoring-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — voir body ci-dessous |
+| **Action 2 (résolution)** | Connecteur Kibana **Mattermost-monitoring-production** — `On status changes` / `Run when: Recovered` (onglet Actions → Settings) — voir body ci-dessous                                    |
+| **Related dashboards**    | Intégration Redis Kibana → dashboard **[Metrics Redis] Keys** → graphe **Lists length** → clé `db0 › logstash:ingest`                                                                      |
+| **Investigation guide**   | Voir [runbook scénario — Backlog Redis logstash:ingest](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-5--backlog-redis-logstashingest) |
+
+**Body du webhook — Action 1 (alerte)** :
+```json
+{"text": "🚨 **Backlog Redis prod** — la liste `logstash:ingest` dépasse 1 000 événements. Le pipeline `process` ne consomme plus Redis (redémarrage ou blocage de `pass-emploi-logstash-process-prod`, ou backpressure ES sévère).\n- Règle : `{{rule.name}}`\n- Déclenchée à : `{{date}}`\n- Vérifier les logs de `pass-emploi-logstash-process-prod` sur Scalingo\n- Vérifier le statut Redis dans le dashboard Scalingo\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-5--backlog-redis-logstashingest)"}
+```
+
+**Body du webhook — Action 2 (résolution)** :
+```json
+{"text": "✅ **Backlog Redis prod résorbé** — la liste `logstash:ingest` est retombée sous 1 000 événements. Le pipeline `process` a reconnecté et vide le backlog.\n- Règle : `{{rule.name}}`\n- Résolue à : `{{date}}`\n- ⚠️ Les logs accumulés pendant la coupure vont apparaître dans Kibana avec un timestamp d'origine — vérifier l'absence de trou dans les index `logs-prod-default` et `logs-router-prod-default`"}
+```
+
+### 7b — Backlog Redis staging / perf (Warning)
+
+| Paramètre               | Valeur                                                                                                          |
+|-------------------------|-----------------------------------------------------------------------------------------------------------------|
+| **Rule name**           | `Redis - Hors-Prod - Backlog logstash:ingest anormal`                                                           |
+| **Type**                | Elasticsearch query rule                                                                                        |
+| **Index**               | `metrics-redis.key-default`                                                                                     |
+| **KQL filter**          | `redis.key.name: "logstash:ingest"`                                                                             |
+| **Aggregation**         | `Max` de `redis.key.length`                                                                                     |
+| **Condition**           | `Is above` `1000`                                                                                              |
+| **Fenêtre**             | 5 min                                                                                                           |
+| **Fréquence**           | 5 min                                                                                                           |
+| **Sévérité**            | Warning                                                                                                         |
+| **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)      |
+| **Action**              | Connecteur Kibana **Mattermost-monitoring-staging** — voir body ci-dessous                                                                                                                                                    |
+| **Related dashboards**  | Intégration Redis Kibana → dashboard **[Metrics Redis] Keys** → graphe **Lists length** → clé `db0 › logstash:ingest`                                                                                                        |
+| **Investigation guide** | Voir [runbook scénario — Backlog Redis logstash:ingest](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-5--backlog-redis-logstashingest) |
+
+**Body du webhook** :
+```json
+{"text": "⚠️ **Backlog Redis staging/perf** — la liste `logstash:ingest` dépasse 1 000 événements. Le pipeline `process` ne consomme plus Redis.\n- Règle : `{{rule.name}}`\n- Déclenchée à : `{{date}}`\n- Vérifier les logs de `pass-emploi-logstash-process-staging` / `pass-emploi-logstash-process-perf` sur Scalingo\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/logs-ecs/runbook-astreinte-logstash.md#scénario-5--backlog-redis-logstashingest)"}
+```
+
+> **Note** : si staging et perf partagent le même Redis (addon lié à
+> `pass-emploi-logstash-process-perf`), une seule alerte 7b suffit. Si chaque
+> environnement a son propre Redis, dupliquer l'alerte avec un KQL filter sur
+> `service.environment: "staging"` ou `"perf"`.
+
+---
+
 ## Philosophie des alertes
 
 > **Principe directeur : anticiper, pas réagir.**
@@ -468,14 +554,27 @@ Pour chaque app :
 > ou les 429 déjà renvoyés est une alerte de réaction — elle est trop tardive pour
 > éviter l'impact.
 >
-> **Chaîne causale type (backpressure) :**
+> **Chaîne causale type (backpressure ES) :**
 > ```
 > ES ralentit / heap monte          → Alertes 4a / 5a  ← intervenir ici
->   → queue se remplit              → Logstash rejette les drains
->     → 429 sur les apps            → (signal de réaction — pas alerté)
->       → drain en quarantaine      → Alertes 3a/3b (filet de sécurité)
->         → silence total           → trop tard, perte avérée
+>   → queue process se remplit      → Logstash process rejette les events
+>     → backlog Redis croît         → Alerte 7a          ← filet inter-services
+>       → ingest ne peut plus écrire→ Logstash ingest rejette les drains
+>         → 429 sur les apps        → (signal de réaction — pas alerté)
+>           → drain en quarantaine  → Alertes 3a/3b (filet de sécurité final)
+>             → silence total       → trop tard, perte avérée
 > ```
+>
+> **Chaîne causale type (redémarrage/blocage de `process` ou coupure réseau Redis) :**
+> ```
+> process tombe ou perd Redis       → pipeline process ne consomme plus
+>   → backlog Redis croît           → Alerte 7a          ← intervenir ici
+>     → pipeline ingest continue    → (pas de 429, drain OK — invisible sans alerte 7)
+>       → saturation Redis possible → crash Redis si le backlog dépasse 256 Mo
+> ```
+> L'incident du 14/09/2026 illustre ce scénario : ~180 000 événements accumulés
+> pendant ~13h, saturation Redis → crash à 20:37. Cause racine inconnue (logs
+> archivés). Sans l'alerte 7, l'incident serait passé inaperçu jusqu'au lendemain.
 >
 > **Règles pour toute nouvelle alerte :**
 >
