@@ -1,7 +1,7 @@
 # Logs ECS — pass-emploi-api
 
 > Spécifique au repo **pass-emploi-api**. Conventions transverses :
-> [conventions](./conventions.md). Refonte mergée (PR #228), en prod (v9.37.x).
+> [conventions](conventions.md). Refonte mergée (PR #228), en prod (v9.37.x).
 
 ## Taxonomie `event.action` (api)
 
@@ -28,7 +28,7 @@ Spécificités api :
   `ExternalApiLoggerService`.
 - **Bodies** : `http.request.body.content` (entrant via pino-http, sortant via
   `external_api_call`) sur échec, et sur succès si `LOG_LEVEL=debug` ;
-  `http.response.body.content` côté partenaire. Voir [conventions](./conventions.md) (redaction).
+  `http.response.body.content` côté partenaire. Voir [conventions](conventions.md) (redaction).
 - **Headers de diagnostic sur échec sortant** : un 401 partenaire ne dit rien
   dans le body, la cause OAuth est dans `WWW-Authenticate` (RFC 6750). Allowlist
   `DIAGNOSTIC_RESPONSE_HEADERS = ['www-authenticate','retry-after']` capturée

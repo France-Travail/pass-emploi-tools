@@ -32,12 +32,10 @@
   (sinon `err.config`/`err.response` axios → fuite d'identifiants + ligne > 16 Ko
   tronquée par le drain → log perdu). Charger le détail **avant** d'ajouter ou
   modifier un log.
-- **Référence stable** : [`pass-emploi-tools/docs/logs-ecs/`](./logs-ecs/README.md)
+- **Référence stable** : [`pass-emploi-tools/docs/observabilite/logs-ecs/`](./observabilite/logs-ecs/README.md)
   — `conventions.md` (format, nommage, redaction, « ne jamais logger une exception
   brute »), `infra-elasticsearch.md` (data streams, templates, ILM),
-  `kibana.md` (use cases), `couverture-api.md` (ce qui est tracé côté api),
-  `runbook-astreinte-logstash.md` (4 scénarios de panne),
-  `postmortem-logstash-5xx-2026-06.md`.
+  `kibana.md` (use cases), `couverture-api.md` (ce qui est tracé côté api).
 
 ## Ingestion des logs · résilience & scaling (blackouts, drain) · 2026-07
 
@@ -48,9 +46,15 @@
   la plus grosse app (`pass-emploi-api`). Conteneur XL Scalingo = **2 Go** → `-Xmx`
   ≤ ~1 Go, piloté via `JAVA_OPTS` (jamais `LS_JAVA_OPTS`, écrasé par le buildpack).
   Charger la référence **avant** de scaler ou retoucher la chaîne d'ingestion.
-- **Référence stable** : [`pass-emploi-tools/docs/blackout-logs/`](./blackout-logs/README.md)
-  — `conventions.md` (garde-fous JVM/Scalingo, playbook de diagnostic),
-  `postmortem-2026-07.md` (les 2 modes de panne observés).
+- **Référence stable** : [`pass-emploi-tools/docs/observabilite/ingestion-logs/`](./observabilite/ingestion-logs/README.md)
+  — `runbook-astreinte-logstash.md` (5 scénarios de panne : backpressure ES, gel GC,
+  DLQ, crash conteneur, backlog Redis),
+  `conventions.md` (garde-fous JVM/Scalingo, playbook de diagnostic).
+  Post-mortems associés dans `../post-mortems/` :
+  `postmortem-2026-06-logstash-5xx.md` (fonctionnement JVM/Netty/GC, correctif XL),
+  `postmortem-2026-07-blackout-logs.md` (les 2 modes de panne observés),
+  `postmortem-2026-09-unenrolled-elastic-agent.md` (Elastic Agent bloqué UNENROLLED
+  après recréation d'app Scalingo — correctif : `ELASTIC_AGENT_ID_SUFFIX`).
 
 ## App Jeune · WIP, ouvert le 2026-07-02
 

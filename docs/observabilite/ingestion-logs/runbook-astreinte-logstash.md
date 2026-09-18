@@ -3,12 +3,12 @@
 > **Type** : tutoriel (Diataxis). Procédures pas-à-pas pour diagnostiquer et
 > résoudre les 4 scénarios de panne de la chaîne d'ingestion Logstash.
 >
-> Contexte et invariants durables : [../blackout-logs/conventions.md](../blackout-logs/conventions.md).
-> Définitions des alertes Kibana : [`logs/elastic/4-kibana-alerts.md`](../../logs/elastic/4-kibana-alerts.md).
+> Contexte et invariants durables : [conventions.md](conventions.md).
+> Définitions des alertes Kibana : [`logs/elastic/4-kibana-alerts.md`](../../../logs/elastic/4-kibana-alerts.md).
 > Dashboards Fleet Logstash :
 > https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/integrations/detail/logstash-2.11.3/assets
 
-## Vue d'ensemble — les 4 scénarios
+## Vue d'ensemble — les 5 scénarios
 
 | #                                                     | Scénario                   | Signal d'entrée                                  | Urgence     |
 | ----------------------------------------------------- | -------------------------- | ------------------------------------------------ |-------------|
@@ -16,6 +16,7 @@
 | [2](#scénario-2--gel-gc-jvm)                          | Gel GC JVM                 | Pic soudain GC + `events.out` tombe à 0          | ⚠️ Warning   |
 | [3](#scénario-3--rejet-de-mapping--dead-letter-queue) | Rejet de mapping / DLQ     | DLQ non vide + events dans `logs-logstash-dlq-*` | ⚠️ Warning   |
 | [4](#scénario-4--crash-du-conteneur-logstash)         | Crash du conteneur         | Alerte restart Scalingo + silence logs           | 🚨 Critical |
+| [5](#scénario-5--backlog-redis-logstashingest)        | Backlog Redis              | `redis.key.length > 1 000` sur `logstash:ingest` | 🚨 Critical |
 
 **Règle d'or du diagnostic** : toujours travailler sur la **donnée du moment T du
 trou**, pas sur une fenêtre saine. C'est la source n°1 de temps perdu.
@@ -120,8 +121,8 @@ HTTP ralentit → les drains reçoivent des 429 → quarantaine.
 
 ### Références
 
-- [conventions.md — Mode A](../blackout-logs/conventions.md#les-2-modes-de-panne--signatures)
-- [postmortem-2026-07.md — §2](../blackout-logs/postmortem-2026-07.md)
+- [conventions.md — Mode A](conventions.md#les-2-modes-de-panne--signatures)
+- [postmortem-2026-07.md — §2](../post-mortems/postmortem-2026-07-blackout-logs.md)
 
 ---
 
@@ -172,8 +173,8 @@ dans les logs Scalingo de l'app `pass-emploi-logstash-prod`, chercher les lignes
 
 ### Références
 
-- [conventions.md — Garde-fous JVM](../blackout-logs/conventions.md#garde-fous-durables-ne-pas-se-faire-avoir)
-- [postmortem-logstash-5xx-2026-06.md](./postmortem-logstash-5xx-2026-06.md)
+- [conventions.md — Garde-fous JVM](conventions.md#garde-fous-durables-ne-pas-se-faire-avoir)
+- [postmortem-logstash-5xx-2026-06.md](../post-mortems/postmortem-2026-06-logstash-5xx.md)
 
 ---
 
@@ -246,16 +247,16 @@ Des `_ignored` indiquent un dépassement de `total_fields.limit` → prévoir un
    terminant en plein milieu d'une valeur** → ligne applicative tronquée par le
    drain Scalingo, pas un bug de pipeline. Rien à corriger côté Logstash : la
    ligne source dépasse 16 Ko et doit être réduite côté app (cf.
-   [logs-ecs/conventions](./conventions.md) § « Ne jamais logger une exception
+   [logs-ecs/conventions](../logs-ecs/conventions.md) § « Ne jamais logger une exception
    brute »). Le `context` en tête du `message` tronqué désigne le handler fautif.
 3. Sinon, reproduire localement avec le pipeline `process` pour identifier le
    filtre défaillant, corriger `logs/pipeline-process.conf` et déployer.
 
 ### Références
 
-- [infra-elasticsearch.md — Historique incidents](./infra-elasticsearch.md#historique-incidents)
-- [`logs/pipeline-dlq-logstash.conf`](../../logs/pipeline-dlq-logstash.conf)
-- [`logs/pipeline-process.conf`](../../logs/pipeline-process.conf)
+- [infra-elasticsearch.md — Historique incidents](../logs-ecs/infra-elasticsearch.md#historique-incidents)
+- [`logs/pipeline-dlq-logstash.conf`](../../../logs/pipeline-dlq-logstash.conf)
+- [`logs/pipeline-process.conf`](../../../logs/pipeline-process.conf)
 
 ---
 
@@ -328,9 +329,87 @@ http.response.status_code: (429 OR 499) AND service.environment: "prod"
 
 ### Références
 
-- [conventions.md — Quarantaine drain](../blackout-logs/conventions.md#garde-fous-durables-ne-pas-se-faire-avoir)
-- [postmortem-2026-07.md — §3 Mode B](../blackout-logs/postmortem-2026-07.md)
-- [4-kibana-alerts.md — Alerte 6 (webhook Scalingo)](../../logs/elastic/4-kibana-alerts.md#alerte-6--restart-du-conteneur-logstash-scalingo-webhook)
+- [conventions.md — Quarantaine drain](conventions.md#garde-fous-durables-ne-pas-se-faire-avoir)
+- [postmortem-2026-07.md — §3 Mode B](../post-mortems/postmortem-2026-07-blackout-logs.md)
+- [4-kibana-alerts.md — Alerte 6 (webhook Scalingo)](../../../logs/elastic/4-kibana-alerts.md#alerte-6--restart-du-conteneur-logstash-scalingo-webhook)
+
+---
+
+## Scénario 5 — Backlog Redis `logstash:ingest`
+
+**Contexte** : la chaîne d'ingestion est découpée en deux pipelines sur deux apps
+Scalingo distinctes. Le pipeline `ingest` (app `pass-emploi-logstash-*`) reçoit les
+logs des drains et les pousse dans la liste Redis `logstash:ingest`. Le pipeline
+`process` (app `pass-emploi-logstash-process-*`) consomme cette liste et indexe dans
+Elasticsearch. En régime normal, la liste est quasi vide (0–250 éléments) — Redis
+est un **buffer de lissage**, pas un stockage durable. Le pipeline `process` consomme
+en temps réel et supprime les éléments au fur et à mesure.
+
+Un backlog signale que le pipeline `process` ne consomme plus Redis. Causes possibles :
+- **Redémarrage ou blocage de `pass-emploi-logstash-process-prod`** : l'app tombe ou
+  se bloque pour une raison inconnue (crash JVM, OOM, blocage réseau…). Le pipeline
+  `ingest` continue à écrire dans Redis sans erreur — aucun 429 côté apps.
+- **Coupure réseau Redis** : le pipeline `process` perd la connexion Redis
+  (`Redis::ConnectionError` / `ECONNRESET`). La reconnexion est automatique.
+- **Backpressure ES sévère côté process** : le pipeline `process` est bloqué sur ES
+  et ne peut plus consommer Redis assez vite.
+
+> **Incident de référence — 14/09/2026** : `pass-emploi-logstash-process-prod` a
+> subi plusieurs redémarrages inexpliqués dans la soirée (parfois sans saturation
+> mémoire visible). La liste `logstash:ingest` a grossi jusqu'à saturer les 256 Mo
+> de Redis, provoquant le crash du cluster Redis à **20:37** (HAProxy : `No route to
+> host`, backend `cluster` DOWN). **Cause racine inconnue** — les logs de l'app
+> `pass-emploi-logstash-process-prod` sont archivés chez Scalingo et inaccessibles
+> avant rotation. Le lendemain matin, l'app s'est rétablie et a vidé le backlog —
+> aucun log perdu, mais indexation tardive (~13h de retard).
+
+### Indicateurs
+
+| Métrique            | Data stream                 | Dashboard                                                                        | Signal d'alarme                |
+|---------------------|-----------------------------|----------------------------------------------------------------------------------|--------------------------------|
+| `redis.key.length`  | `metrics-redis.key-default` | **[Metrics Redis] Keys** → graphe **Lists length** → clé `db0 › logstash:ingest` | > 1 000 → **Alerte Kibana 7a** |
+
+### Diagnostic
+
+1. **Ouvrir le dashboard `[Metrics Redis] Keys`** → graphe **Lists length** →
+   confirmer la croissance de la clé `db0 › logstash:ingest`. Si la liste croît
+   continûment sans jamais redescendre, le pipeline `process` ne consomme plus.
+
+2. **Vérifier les logs de `pass-emploi-logstash-process-prod`** (ou `-perf` / `-staging`)
+   sur Scalingo → onglet **Logs** → chercher :
+   - `Redis::ConnectionError` ou `ECONNRESET` → **coupure réseau Redis** (voir ci-dessous)
+   - Pas d'erreur Redis → **backpressure ES** (voir ci-dessous)
+
+3. **Vérifier le statut Redis** dans le dashboard Scalingo de l'app
+   `pass-emploi-logstash-process-prod` → onglet **Resources** → add-on Redis →
+   statut `running` ou `degraded`.
+
+### Deux signatures et actions correctives
+
+**Signature A — Coupure réseau Redis** (`Redis::ConnectionError` / `ECONNRESET` dans les logs) :
+
+1. Le pipeline `process` se reconnecte automatiquement à Redis dès que la
+   connectivité est rétablie. **Aucune action manuelle n'est nécessaire** si la
+   reconnexion est en cours.
+2. Surveiller la décroissance du backlog dans `[Metrics Redis] Keys` → Lists length.
+   La liste doit décroître régulièrement une fois la reconnexion établie.
+3. **Après rétablissement complet** (liste revenue à ~0) : vérifier l'absence de
+   trou dans les index. Les logs accumulés pendant la coupure réapparaissent dans
+   Kibana avec leur **timestamp d'origine** (pas de perte, mais retard d'indexation).
+   Dans Discover, data view `logs-prod-default`, zoomer sur la fenêtre de la coupure
+   et vérifier la continuité des logs.
+4. Si la reconnexion ne se fait pas après plusieurs minutes : redémarrer le conteneur
+   `pass-emploi-logstash-process-prod` depuis le dashboard Scalingo.
+
+**Signature B — Backpressure ES** (pas d'erreur Redis, `queue_backpressure > 0.5`) :
+
+1. Ouvrir le dashboard `[Metrics Logstash] Pipeline Health Report` → confirmer
+   `queue_backpressure.current > 0.5` sur le pipeline `process`.
+2. Traiter la cause racine ES → voir **scénario 1**.
+
+### Références
+
+- [4-kibana-alerts.md — Alerte 7](../../../logs/elastic/4-kibana-alerts.md#alerte-7--backlog-redis-logstashingest-pipeline-process-découplé)
 
 ---
 
@@ -382,13 +461,16 @@ GET logs-prod-default/_search
 | [Metrics Logstash] Logstash Overview                | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522 |
 | [Metrics Logstash] Single Node Advanced View        | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-a42d7060-45e6-11ee-957b-3720c0b0fbc5 |
 | [Metrics Logstash] Node Health Report               | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9a72208d-e446-48b9-8a63-c4256b9aa4e3 |
+| [Metrics Redis] Keys                                | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5    |
 
 ### Liens directs Scalingo
 
-| App                                     | URL                                                                                     |
-|-----------------------------------------| --------------------------------------------------------------------------------------- |
-| `pass-emploi-logstash-prod` — métriques | https://dashboard.scalingo.com/apps/osc-secnum-fr1/pass-emploi-logstash-prod/metrics |
-| `pass-emploi-logstash-perf` — métriques | https://dashboard.scalingo.com/apps/osc-secnum-fr1/pass-emploi-logstash-perf/metrics |
+| App                                        | URL                                                                                       |
+|--------------------------------------------|-------------------------------------------------------------------------------------------|
+| `pass-emploi-logstash-prod` — métriques    | https://dashboard.scalingo.com/apps/osc-secnum-fr1/pass-emploi-logstash-prod/metrics      |
+| `pass-emploi-logstash-perf` — métriques    | https://dashboard.scalingo.com/apps/osc-secnum-fr1/pass-emploi-logstash-perf/metrics      |
+| `pass-emploi-logstash-process-prod` — logs | https://dashboard.scalingo.com/apps/osc-secnum-fr1/pass-emploi-logstash-process-prod/logs |
+| `pass-emploi-logstash-process-perf` — logs | https://dashboard.scalingo.com/apps/osc-secnum-fr1/pass-emploi-logstash-process-perf/logs |
 
 ### Data views Kibana — Discover
 

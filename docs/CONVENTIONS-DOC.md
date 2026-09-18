@@ -37,7 +37,7 @@ la doc. Une doc qu'on n'ose plus croire ne vaut pas mieux que pas de doc.
 - **Index des sujets transverses durables** :
   [`docs/SUJETS-TRANSVERSES.md`](./SUJETS-TRANSVERSES.md) — routeur invariant +
   référence stable par sujet.
-- **Doc détaillée d'un sujet** : un sous-dossier `docs/<sujet>/` (ex. `docs/logs-ecs/`).
+- **Doc détaillée d'un sujet** : un sous-dossier `docs/<sujet>/` (ex. `docs/observabilite/`).
 - Un sujet est **possédé** par le repo le plus naturel ; l'infra/outillage transverse
   et les docs transverses vivent dans `pass-emploi-tools`.
 

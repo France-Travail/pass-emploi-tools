@@ -3,11 +3,11 @@
 > Socle **partagé api / connect / web**. Chaque repo l'implémente avec sa propre
 > instance pino et sa propre liste de `event.action` ; les règles ci-dessous
 > sont communes. Taxonomie spécifique d'un repo : voir son fichier dédié
-> (api : [couverture-api](./couverture-api.md)).
+> (api : [couverture-api](couverture-api.md)).
 
 ## Finalités
 
-Trois usages cibles structurent toute la démarche (détail : [kibana](./kibana.md)) :
+Trois usages cibles structurent toute la démarche (détail : [kibana](kibana.md)) :
 
 - **Investigation incident** — reconstituer ce qui s'est passé pour un utilisateur / une requête.
 - **Reporting métier** — compter les actions métier par structure / dispositif.
@@ -105,7 +105,7 @@ axios dont le status **n'est pas un refus HTTP volontaire** (`undefined || < 400
 body tronqué après des headers `200` (`aborted`, décompression Brotli interrompue),
 ECONNRESET. Ces cas ont un `status_code` < 500 mais sont de vraies pannes → **error**.
 Cf. `external-api-logger.helpers.ts` : `isCrash = status>=500 || (err && status<400/undefined)`.
-Détail dans [couverture-api](./couverture-api.md).
+Détail dans [couverture-api](couverture-api.md).
 
 ### `debug` — niveau diagnostic opt-in (activable par `LOG_LEVEL`)
 
@@ -124,7 +124,7 @@ lignes ; tout autre niveau les coupe à la source.
 - **Contrainte de typage ES.** Un `debug` indexé doit respecter les mappings des
   index `logs-*`. En particulier, un champ libre qui dumpe un payload
   hétérogène (objet **ou** string selon les cas) provoque un
-  `document_parsing_exception` (rejet 400). Cf. règle ci-dessous + [infra-elasticsearch](./infra-elasticsearch.md).
+  `document_parsing_exception` (rejet 400). Cf. règle ci-dessous + [infra-elasticsearch](infra-elasticsearch.md).
 
 ## Diagnostic libre → `labels.*`
 
@@ -178,7 +178,7 @@ JS, erreur métier (code/message), valeur inconnue → `{type, message, stack_tr
    pas si le log ne passe pas par le `rootLogger` — ce n'est pas un filet fiable.
 2. **Troncature.** La ligne dépasse vite **16 Ko**, plafond au-delà duquel le
    drain Scalingo coupe (voir
-   [blackout-logs/conventions](../blackout-logs/conventions.md)). Le JSON arrive
+   [blackout-logs/conventions](../ingestion-logs/conventions.md)). Le JSON arrive
    incomplet, le filtre `json` de Logstash échoue, et l'event part dans
    `logs-logstash-errors-*` au lieu de l'index applicatif : **le log est perdu
    pour l'exploitation**.
@@ -213,7 +213,7 @@ Pas de wrapper, pas de DI.
   - **SDK non-axios** (openid-client, firebase-admin…) → helper explicite
     `logExternalCall(...)` autour de l'appel, **mêmes champs / même format** ECS.
   - Règle : aucun appel partenaire ne sort sans `external_api_call`. Côté api,
-    `FirebaseClient` reste une piste (cf [couverture-api](./couverture-api.md)).
+    `FirebaseClient` reste une piste (cf [couverture-api](couverture-api.md)).
 - **Corrélation cross-requête par clé métier** : quand un parcours s'étale sur
   plusieurs requêtes HTTP (login OIDC, workflow async) `trace.id` APM ne suffit
   pas (per-requête). Identifier une clé métier stable (connect : `interaction.uid`),
@@ -248,7 +248,7 @@ taxonomie du repo dans un `couverture-<repo>.md` dédié.
 - `level` dérivé de la nature de l'erreur, pas de sa simple présence.
 - Redaction par fragment de clé (`isSensitiveKey`), une liste unique partagée.
 - Bodies logués sur échec ; succès → `debug` uniquement.
-- Templates ES versionnés (voir [infra-elasticsearch](./infra-elasticsearch.md)).
+- Templates ES versionnés (voir [infra-elasticsearch](infra-elasticsearch.md)).
 - Logs router Scalingo reformatés ECS côté Logstash (`request_routed`).
 - `apmService.captureError` conservé **en parallèle** des logs ECS (canal distinct).
 - `event.action` deux familles d'appels sortants unifiées sous un même schéma.
