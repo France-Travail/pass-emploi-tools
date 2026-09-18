@@ -10,6 +10,13 @@
 >
 > **Statut : WIP.** Ouvert le 2026-07-28. Le service de génération est un **POC**
 > destiné à valider la pertinence métier ; le branchement est en cours.
+>
+> **Décision (2026-09-17) : le service de génération sera internalisé**, mais
+> **doit rester décorrélé** du reste de l'API — son contrat et son
+> implémentation restent amenés à changer. Ne pas le recâbler comme un module
+> interne ordinaire tant que cette volatilité n'est pas retombée. `TODO` :
+> documenter la forme concrète de l'internalisation (module dédié dans
+> `pass-emploi-api` ? repo séparé toujours appelé en HTTP ?) une fois tranchée.
 
 ## Ce qu'est le plan d'action
 
@@ -99,9 +106,15 @@ du service, `apps/api/docs/integration.md`. Ne pas le recopier ici : il bougera.
 
 ### Principes
 
-- **Pass-through.** Le plan est relayé, **rien n'est persisté** côté API. Le
-  mobile stocke le plan et les cases cochées en local, comme il stocke déjà les
-  réponses du questionnaire.
+- **Persistance partitionnée par profil, pas pass-through pur.** L'invité
+  garde son plan **en local** côté mobile (comme les réponses du
+  questionnaire) ; un jeune **connecté** voit son plan **persisté côté API**
+  (`PlanActionSqlRepository`, table `plan_action` + `plan_action_objectif` +
+  `plan_action_tache`). Le handler
+  (`GenererPlanActionCommandHandler.handle`) décide via `estInvite(structure)`
+  : c'est un test technique, pas encore une politique nommée — à surveiller si
+  le partitionnement se complexifie (autre profil, autre critère que la
+  structure).
 - **Autorisé à l'invité.** L'invité dispose d'un JWT normal (structure
   `INVITE`) : c'est une route authentifiée classique, ouverte via
   l'autorisation dédiée à l'invité. Pas d'endpoint public.
@@ -220,11 +233,16 @@ signal que le POC doit produire.
 
 - **Prénom transmis ou non** (voir ci-dessus).
 - **Quelle commune relayer** : habitation ou ville de recherche.
-- **Persistance du plan.** Écartée pour le POC. Deviendra nécessaire pour
-  mesurer la complétion des actions, et pour qu'un plan survive à un changement
-  d'appareil.
+- ~~**Persistance du plan.** Écartée pour le POC.~~ **Tranché (2026-09-17)** :
+  persistance partitionnée par profil — invité en local mobile, connecté côté
+  API. Voir [Principes](#principes) ci-dessus.
 - **Devenir du plan à la transition invité → inscrit** — dépend du sujet plus
   large de la transition, non traité (voir
   [`utilisateurs-authentification.md`](./utilisateurs-authentification.md)).
-- **Industrialisation si le POC est validé** : le service reste-t-il externe, ou
-  est-il repris dans l'infrastructure France Travail ?
+  Question qui se pose différemment maintenant que les deux profils ont des
+  lieux de stockage distincts : y a-t-il une migration du plan local vers l'API
+  à l'inscription, ou le jeune nouvellement inscrit régénère-t-il un plan ?
+- **Industrialisation si le POC est validé** : **tranché en partie
+  (2026-09-17)** — le service sera internalisé, mais en restant décorrélé du
+  reste de l'API (contrat encore amené à changer). Forme technique exacte de
+  l'internalisation encore ouverte.
