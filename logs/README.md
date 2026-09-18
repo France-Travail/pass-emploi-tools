@@ -31,14 +31,14 @@ graph LR
         connect["pass-emploi-connect"]
     end
 
-    subgraph ingest_svc["pass-emploi-logstash-&lt;env&gt;\nINGEST_ENABLED=true"]
+    subgraph ingest_svc["pass-emploi-logstash-#60;env#62;\nINGEST_ENABLED=true"]
         ingest["pipeline ingest\nHTTP input — ACK ~1ms"]
         ea_ingest["Elastic Agent"]
     end
 
     redis[("Redis\nScalingo")]
 
-    subgraph process_svc["pass-emploi-logstash-process-&lt;env&gt;\nPROCESS_ENABLED=true"]
+    subgraph process_svc["pass-emploi-logstash-process-#60;env#62;\nPROCESS_ENABLED=true"]
         process["pipeline process\nfiltres + ES + DLQ"]
         ea_process["Elastic Agent"]
     end

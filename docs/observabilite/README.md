@@ -14,19 +14,19 @@ graph TB
         heartbeat_target["Endpoints HTTP\n(uptime)"]
     end
 
-    subgraph logstash_ingest["pass-emploi-logstash-&lt;env&gt;"]
+    subgraph logstash_ingest["pass-emploi-logstash-#60;env#62;"]
         ls_ingest["Logstash INGEST"]
         ea_ls_ingest["Elastic Agent"]
     end
 
     redis[("Redis\nScalingo")]
 
-    subgraph logstash_process["pass-emploi-logstash-process-&lt;env&gt;"]
+    subgraph logstash_process["pass-emploi-logstash-process-#60;env#62;"]
         ls_process["Logstash PROCESS"]
         ea_ls_process["Elastic Agent"]
     end
 
-    subgraph ea_dedicated["pass-emploi-elastic-agent-&lt;env&gt;"]
+    subgraph ea_dedicated["pass-emploi-elastic-agent-#60;env#62;"]
         ea_redis["Elastic Agent\n(dédié Redis)"]
     end
 

@@ -33,7 +33,7 @@ graph LR
         connect["pass-emploi-connect"]
     end
 
-    subgraph logstash["pass-emploi-logstash-&lt;env&gt; (2XL 4 Go en prod)"]
+    subgraph logstash["pass-emploi-logstash-#60;env#62; (2XL 4 Go en prod)"]
         ingest["pipeline ingest\nHTTP input\nACK ~1ms"]
         pq[("Persistent Queue\ndisque éphémère")]
         process["pipeline process\nfiltres + ES"]
@@ -59,19 +59,19 @@ graph LR
         connect["pass-emploi-connect"]
     end
 
-    subgraph ingest_svc["pass-emploi-logstash-&lt;env&gt; (XL 2 Go en prod)\nINGEST_ENABLED=true"]
+    subgraph ingest_svc["pass-emploi-logstash-#60;env#62; (XL 2 Go en prod)\nINGEST_ENABLED=true"]
         ingest["pipeline ingest\nHTTP input\nACK ~1ms"]
         ea_ingest["Elastic Agent\n(co-localisé)"]
     end
 
     redis[("Redis\nScalingo")]
 
-    subgraph process_svc["pass-emploi-logstash-process-&lt;env&gt; (XL 2 Go en prod)\nPROCESS_ENABLED=true"]
+    subgraph process_svc["pass-emploi-logstash-process-#60;env#62; (XL 2 Go en prod)\nPROCESS_ENABLED=true"]
         process["pipeline process\nfiltres + ES"]
         ea_process["Elastic Agent\n(co-localisé)"]
     end
 
-    subgraph ea_svc["pass-emploi-elastic-agent-&lt;env&gt;"]
+    subgraph ea_svc["pass-emploi-elastic-agent-#60;env#62;"]
         ea_redis["Elastic Agent\n(dédié Redis)"]
     end
 
