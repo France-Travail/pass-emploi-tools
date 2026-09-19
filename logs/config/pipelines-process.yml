@@ -1,0 +1,51 @@
+# Fragment de configuration des pipelines "process" et "dead_letter_queue".
+#
+# Ce fichier est inclus dans /app/config/pipelines.yml généré au démarrage
+# par start.sh selon la variable d'environnement PROCESS_ENABLED.
+#
+# Par défaut (INGEST_ENABLED et PROCESS_ENABLED non définies) : ce fragment
+# est inclus automatiquement (comportement identique à l'ancien pipelines.yml).
+#
+# Rôle : lire les événements depuis Redis, appliquer les filtres lourds
+# (kv/json/ruby) et indexer dans Elasticsearch. Découplé de l'ACK HTTP.
+# Un décrochage ES ou une pause GC ici n'affecte plus le drain Scalingo.
+
+- pipeline.id: process
+  path.config: "/app/pipeline-process.conf"
+  # Mémoire suffisante ici : Redis est le vrai buffer.
+  queue.type: memory
+  # Workers : configurable via variable d'env Scalingo (défaut : 1).
+  # Scalingo n'expose pas le nombre de vCPU — fixer une valeur statique
+  # serait arbitraire. Augmenter LOGSTASH_PROCESS_WORKERS si le pipeline
+  # process devient le goulot (mesurable via les tests de charge Gatling).
+  pipeline.workers: "${LOGSTASH_PROCESS_WORKERS:1}"
+  # Batch plus grand = moins de round-trips ES = meilleur débit.
+  # Configurable via variable d'env Scalingo (défaut : 250).
+  # Réduire LOGSTASH_PROCESS_BATCH_SIZE temporairement (ex: 50) en cas de
+  # backpressure ES pour diminuer la pression sur les bulk requests.
+  pipeline.batch.size: "${LOGSTASH_PROCESS_BATCH_SIZE:250}"
+  # Délai d'attente pour remplir un batch avant de l'envoyer.
+  # 50ms : bon compromis latence/débit pour des logs.
+  pipeline.batch.delay: 50
+  # Chaque log est indépendant : l'ordre d'indexation dans ES n'a aucune importance.
+  # false évite l'overhead de synchronisation du mode ordonné.
+  pipeline.ordered: false
+  # Dead Letter Queue : Capte les events rejetés définitivement par ES (erreurs de mapping, documents trop grands)
+  dead_letter_queue.enable: true
+  dead_letter_queue.max_bytes: 256mb
+  dead_letter_queue.storage_policy: drop_older
+  dead_letter_queue.retain.age: 2d
+  # Chemin explicite pour que le pipeline lecteur sache où la trouver
+  path.dead_letter_queue: "/app/data/dead_letter_queue"
+
+- pipeline.id: dead_letter_queue
+  path.config: "/app/pipeline-dlq-logstash.conf"
+  # Mémoire suffisante ici : la DLQ du pipeline process est le vrai buffer.
+  queue.type: memory
+  # Workers : configurable via variable d'env Scalingo (défaut : 1).
+  pipeline.workers: "${LOGSTASH_DLQ_WORKERS:1}"
+  # Chaque log est indépendant : l'ordre d'indexation dans ES n'a aucune importance.
+  # false évite l'overhead de synchronisation du mode ordonné.
+  pipeline.ordered: false
+  # Ce pipeline lit une DLQ mais n'en produit pas lui-même.
+  dead_letter_queue.enable: false

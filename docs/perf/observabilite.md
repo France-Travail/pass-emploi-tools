@@ -124,7 +124,7 @@ Règle de choix du mécanisme :
 
 - **L'étape est un use case api** → la convention existante **suffit** :
   `handler_executed` + `log.logger` + `event.outcome`/`event.duration`. Pas de
-  nouvel `event.action` ; on documente dans [kibana.md](../logs-ecs/kibana.md)
+  nouvel `event.action` ; on documente dans [kibana.md](../observabilite/logs-ecs/kibana.md)
   quel handler porte quel SLI (couplage au nom du handler assumé).
 - **L'étape ne passe pas par l'api** (autre service, ou purement côté app) →
   événement dédié conforme à l'invariant ECS (`event.action` au passé +
@@ -137,7 +137,7 @@ Règle de choix du mécanisme :
   à la conception de l'app (logs applicatifs mobiles vs analytics produit).
 
 **Point dur connu** : un flux non authentifié n'a ni `user.id` ni `trace.id`
-(limite documentée dans [kibana.md](../logs-ecs/kibana.md)). Or le funnel
+(limite documentée dans [kibana.md](../observabilite/logs-ecs/kibana.md)). Or le funnel
 d'entrée est précisément pré-authentification — et le **mode invité le reste
 toujours**. Il faut un **identifiant de corrélation** dès le premier écran
 (ex. `installationId` mobile), propagé sur tous les événements du funnel.
@@ -160,7 +160,7 @@ Exclusions explicites, pour tenir la pyramide :
 
 ## Mise en œuvre
 
-- Requêtes et alertes sur l'existant : [kibana.md](../logs-ecs/kibana.md)
+- Requêtes et alertes sur l'existant : [kibana.md](../observabilite/logs-ecs/kibana.md)
   (section monitoring tech) ; définitions versionnées sous
   [`logs/elastic/`](../../logs/elastic/).
 - Le dashboard de tir de perf (phase 2 du chantier) et le dashboard de pilotage

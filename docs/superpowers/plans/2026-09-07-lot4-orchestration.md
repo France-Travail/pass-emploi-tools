@@ -195,7 +195,7 @@ scalingo --region osc-secnum-fr1 --app pass-emploi-api-perf ps
 Attendu : le conteneur remonte **à sa taille d'avant** (Scalingo conserve la
 taille dans la formation, seul le nombre change). Vérifier en particulier que
 `pass-emploi-logstash-perf` revient en XL : un Logstash sous-dimensionné
-provoque un blackout du drain et un tir aveugle (`docs/blackout-logs/`).
+provoque un blackout du drain et un tir aveugle (`docs/observabilite/ingestion-logs/`).
 
 ---
 

@@ -3,22 +3,22 @@
 Staging et prod partagent **le même cluster ES** ; ils ne diffèrent que par le
 nom des data streams. Le Logstash mutualisé (`pass-emploi-tools/logs/`, archi
 **2 pipelines** depuis 2026-07 : `pipeline-ingest.conf` → `pipeline-process.conf`,
-cf. [blackout-logs/conventions](../blackout-logs/conventions.md)) reçoit les drains
+cf. [blackout-logs/conventions](../ingestion-logs/conventions.md)) reçoit les drains
 de toutes les apps Scalingo (api, connect, web) et route par `appname` vers
 `logs-<env>-default` (app) et `logs-router-<env>-default` (router).
 
 ## Data streams
 
-| Data stream | Index template | Contenu |
-|---|---|---|
-| `logs-{prod,staging,perf}-default` | `logs-<env>@template-custom` | logs applicatifs |
-| `logs-router-*-default` | `logs-router` | logs du router Scalingo (`request_routed`) |
-| `logs-logstash-errors-*-default` | `logs-logstash-errors@template-custom` | events en erreur de **traitement** Logstash (`_jsonparsefailure`, `_mutate_error`, `_rubyexception`…) |
-| `logs-logstash-dlq-*-default` | `logs-logstash-dlq@template-custom` | events **rejetés par ES** (conflit de mapping), relus depuis la Dead Letter Queue |
+| Data stream                        | Index template                         | Contenu                                                                                               |
+|------------------------------------|----------------------------------------|-------------------------------------------------------------------------------------------------------|
+| `logs-{prod,staging,perf}-default` | `logs-<env>@template-custom`           | logs applicatifs                                                                                      |
+| `logs-router-*-default`            | `logs-router`                          | logs du router Scalingo (`request_routed`)                                                            |
+| `logs-logstash-errors-*-default`   | `logs-logstash-errors@template-custom` | events en erreur de **traitement** Logstash (`_jsonparsefailure`, `_mutate_error`, `_rubyexception`…) |
+| `logs-logstash-dlq-*-default`      | `logs-logstash-dlq@template-custom`    | events **rejetés par ES** (conflit de mapping), relus depuis la Dead Letter Queue                     |
 
 Les deux derniers sont les index de diagnostic de la chaîne elle-même : leur
 exploitation (alertes, KQL, actions correctives) est dans le
-[runbook d'astreinte](./runbook-astreinte-logstash.md).
+[runbook d'astreinte](../ingestion-logs/runbook-astreinte-logstash.md).
 
 ## Templates versionnés — `pass-emploi-tools/logs/elastic/`
 
@@ -73,7 +73,7 @@ charge + crashs. Cause : heap JVM au défaut (~512 Mo sur conteneur L) → OOM +
 SerialGC à pauses multi-secondes figeant l'input Netty. Fix : conteneur **XL**
 (heap défaut ~1 Go + G1 auto) + `-Xmx1g`. Détail complet (fonctionnement
 JVM/Netty/GC, indicateurs, diagnostic) :
-[postmortem-logstash-5xx-2026-06.md](./postmortem-logstash-5xx-2026-06.md).
+[postmortem-logstash-5xx-2026-06.md](../post-mortems/postmortem-2026-06-logstash-5xx.md).
 
 À retenir : après tout changement de schéma d'ingestion, surveiller `_ignored`
 et prévoir un `_rollover` (non destructif).

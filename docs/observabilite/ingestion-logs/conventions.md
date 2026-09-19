@@ -4,7 +4,7 @@
 > de logs mutualisée : signatures de panne, garde-fous JVM/Scalingo, playbook de
 > diagnostic. Sert aussi de **contexte de reprise** pour une session outillée.
 >
-> Récit de l'incident qui a produit ces règles : [postmortem-2026-07.md](./postmortem-2026-07.md).
+> Récit de l'incident qui a produit ces règles : [postmortem-2026-07.md](../post-mortems/postmortem-2026-07-blackout-logs.md).
 > Conventions ECS du logging applicatif (autre sujet) :
 > [../logs-ecs/](../logs-ecs/README.md).
 
@@ -106,7 +106,7 @@ quarantaine. **Découpler recevoir de traiter** :
 - **À mesurer** : plafond d'**une** instance (req/min avant 429/499) → marge linéaire
   + seuil de bascule vers l'option A puis B.
 
-Détail et justification : [postmortem-2026-07.md § 7](./postmortem-2026-07.md#7-next-steps--tenir-à-x10).
+Détail et justification : [postmortem-2026-07.md § 7](../post-mortems/postmortem-2026-07-blackout-logs.md#7-next-steps--tenir-à-x10).
 
 ## Architecture 2 pipelines (option A — implémentée 2026-07)
 
@@ -178,11 +178,11 @@ Il se déclenche automatiquement sur les PR modifiant `logs/**`, ou manuellement
 
 **Changements et configurations appliqués :**
 - **3× XL** (2 Go), heap **`-Xms1g -Xmx1g`** via `JAVA_OPTS` (variable Scalingo).
-- **Logstash 9.4.5** — buildpack custom dans `pass-emploi-tools/logstash/`.
-- **Elastic Agent 9.4.5** — buildpack custom dans `pass-emploi-tools/elastic-agent/`, installé en mode colocalisé pour le monitoring Logstash via Fleet.
+- **Logstash 9.4.7** — buildpack custom dans `pass-emploi-tools/logstash/`.
+- **Elastic Agent 9.4.7** — buildpack custom dans `pass-emploi-tools/elastic-agent/`, installé en mode colocalisé pour le monitoring Logstash via Fleet.
 - **Heartbeat** — buildpack `SocialGouv/heartbeat-buildpack` (défaut 7.16.1, surchargeable via `HEARTBEAT_VERSION` sur Scalingo). ⚠️ Version à vérifier sur Scalingo.
 - **APM** — géré via Fleet/Elastic Cloud, version pilotée par le plan Elastic Cloud (9.1.5).
-  ⚠️ **Alignement des versions** : Elastic Cloud est en **9.1.5**, Logstash et Elastic Agent en **9.4.5** —
+  ⚠️ **Alignement des versions** : Elastic Cloud est en **9.1.5**, Logstash et Elastic Agent en **9.4.7** —
   les versions majeures sont alignées (9.x/9.x), mais il faudra **monter Elastic Cloud à 9.4.x**
   pour être en phase et bénéficier de toutes les fonctionnalités. Heartbeat et APM doivent également être alignés.
 - **Java 21** (upgrade depuis Java 11 via buildpack custom).
@@ -239,4 +239,18 @@ Il se déclenche automatiquement sur les PR modifiant `logs/**`, ou manuellement
 3. **Métriques à surveiller avec la nouvelle architecture** : 
    **Elastic Agent de monitoring installé en mode colocalisé** (buildpack `pass-emploi-tools/elastic-agent/`, lancé 
    via `start.sh`). Pour avoir dans Kibana les métriques Logstash (débit pipelines, taille PQ, latence, alertes), 
-   il faut configurer Fleet. Voir le guide complet : [`elastic-agent/README.md`](../../elastic-agent/README.md).
+   il faut configurer Fleet. Voir le guide complet : [`elastic-agent/README.md`](../../../elastic-agent/README.md).
+
+> Au **2026-09-14** (migration buffer PQ → Redis, cf. [ADR-002](../../../docs/decisions/ADR-002-buffer-redis-logstash.md)) :
+
+- **Architecture** : 2 services Logstash séparés (`pass-emploi-logstash-<env>` INGEST +
+  `pass-emploi-logstash-process-<env>` PROCESS) + addon Redis Scalingo comme buffer.
+- **Dimensionnement prod** : conteneurs **XL (2 Go)** par service (au lieu de 2XL (4 Go)
+  avec PQ). En perf/staging avec un débit moindre, des conteneurs L peuvent suffire.
+- **Heap** : **`-Xms256m -Xmx256m`** via `JAVA_OPTS` + **`GO_MEMLIMIT=128MiB`** pour
+  l'Elastic Agent Go. La mémoire totale monte progressivement jusqu'à ~1,6 Go en prod
+  (off-heap Logstash : Netty, JRuby, metaspace + runtime Go de l'agent) → XL (2 Go)
+  nécessaire pour tenir sans OOM.
+- **⚠️ Risque Redis** : si ES ou `logstash-process` sont indisponibles, le buffer grossit
+  sans être consommé → saturation mémoire Redis possible en < 50 min à 256 Mo.
+  Surveiller l'occupation mémoire Redis via Fleet.

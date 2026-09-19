@@ -94,7 +94,7 @@ env:
   # n'ont aucune raison de partager la même taille en prod). logstash-perf est
   # exclu de ce pilotage : son dimensionnement répond à logstash-perf.yml (son
   # propre test de charge), pas au SLO applicatif tiré ici.
-  APPS: pass-emploi-connect-perf pass-emploi-api-perf mock-externes-perf pass-emploi-logstash-perf
+  APPS: pass-emploi-connect-perf pass-emploi-api-perf mock-externes-perf pass-emploi-logstash-perf pass-emploi-logstash-process-perf pass-emploi-elastic-agent-perf
   GATLING_APP: gatling-perf
   TAILLE_INJECTEUR: XL
   MOCK_APP: mock-externes-perf

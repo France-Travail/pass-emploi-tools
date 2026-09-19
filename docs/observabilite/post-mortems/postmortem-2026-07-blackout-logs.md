@@ -4,9 +4,9 @@
 > modes de panne distincts** qu'on a démêlés, et **comment la chaîne d'ingestion
 > tiendra (ou pas) à x10 utilisateurs**.
 >
-> Garde-fous durables + playbook de diagnostic : [conventions.md](./conventions.md).
+> Garde-fous durables + playbook de diagnostic : [conventions.md](conventions.md).
 > Incident **distinct** du précédent (5xx/GC de juin, heap sous-dimensionnée) :
-> [../logs-ecs/postmortem-logstash-5xx-2026-06.md](../logs-ecs/postmortem-logstash-5xx-2026-06.md).
+> [../logs-ecs/postmortem-logstash-5xx-2026-06.md](postmortem-2026-06-logstash-5xx.md).
 > Celui-ci part **après** le correctif `-Xmx1g` de cette campagne-là.
 
 ## TL;DR
@@ -165,13 +165,13 @@ Le diagnostic a été **sinueux** ; consigner les impasses évite de les refaire
 
 **Outil de diagnostic clé** : les **router logs** contiennent l'app source dans le
 path (`?appname=pass-emploi-api-prod`) → on peut ventiler volume, 429, 499 et trous
-**par app**. C'est ce qui a isolé le mode B. Détail dans [conventions.md](./conventions.md#playbook-de-diagnostic).
+**par app**. C'est ce qui a isolé le mode B. Détail dans [conventions.md](conventions.md#playbook-de-diagnostic).
 
 ---
 
 ## 5. Garde-fous appris à la dure
 
-Résumé — détail complet dans [conventions.md](./conventions.md) :
+Résumé — détail complet dans [conventions.md](conventions.md) :
 
 - **XL Scalingo = 2 Go** (pas 4) → **`-Xmx` ≤ ~1 Go**. `-Xmx2g` = OOM-kill.
 - **Heap piloté via `JAVA_OPTS`**, jamais `LS_JAVA_OPTS` (écrasé par le buildpack).

@@ -281,7 +281,7 @@ oblige à déboguer le workflow et le scénario en même temps.
 - **Dimensionnement de `logstash-perf`** — à vérifier avant le premier tir
   sérieux : le débit de logs d'une API sous charge n'a rien à voir avec les
   200 logs/s du test de non-régression Logstash, et un blackout du drain
-  (cf. `docs/blackout-logs/`) donne un tir aveugle. Vérification, pas développement.
+  (cf. `docs/observabilite/ingestion-logs/`) donne un tir aveugle. Vérification, pas développement.
 - **APM dédiée** — à provisionner avec les apps.
 
 ## 10. Points à lever à l'implémentation
@@ -324,5 +324,5 @@ Décisions de ce design révisées après le premier jalon de valeur (fin lot 3,
 
 - `docs/perf/README.md` — démarche du chantier, principes
 - `docs/perf/observabilite.md` — SLI/SLO I1-I5
-- `docs/blackout-logs/` — garde-fous d'ingestion
+- `docs/observabilite/ingestion-logs/` — garde-fous d'ingestion
 - `.github/workflows/logstash-perf.yml` — motif d'orchestration réutilisé
