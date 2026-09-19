@@ -130,7 +130,7 @@ identique à l'ancienne architecture mono-service.
 | Variable            | Description                                                                              |
 |---------------------|------------------------------------------------------------------------------------------|
 | `PROJECT_DIR`       | Sous-dossier du monorepo à builder — toujours `logs` (cf. Déploiement)                   |
-| `LOGSTASH_VERSION`  | Version de Logstash à installer (ex: `9.4.6`)                                            |
+| `LOGSTASH_VERSION`  | Version de Logstash à installer (ex: `9.4.7`)                                            |
 | `ENVIRONMENT`       | Environnement de fallback (`prod`, `staging`, `perf`…) si non détecté via appname        |
 | `ELASTICSEARCH_URL` | URL du cluster Elasticsearch, credentials inclus (ex: `https://user:password@host:port`) |
 | `USER`              | Utilisateur HTTP pour l'authentification du drain Scalingo                               |
@@ -174,7 +174,7 @@ identique à l'ancienne architecture mono-service.
 
 | Variable                 | Description                                                                           |
 |--------------------------|---------------------------------------------------------------------------------------|
-| `ELASTIC_AGENT_VERSION`  | Version d'Elastic Agent à installer (ex: `9.4.6`) — doit être ≤ version du cluster ES |
+| `ELASTIC_AGENT_VERSION`  | Version d'Elastic Agent à installer (ex: `9.4.7`) — doit être ≤ version du cluster ES |
 | `FLEET_ENROLL`           | Mettre à `1` pour activer l'enrollment Fleet                                          |
 | `FLEET_URL`              | URL du Fleet Server (ex: `https://xxx.fleet.eu-west-1.aws.elastic-cloud.com:443`)     |
 | `FLEET_ENROLLMENT_TOKEN` | Token d'enrollment Fleet                                                              |

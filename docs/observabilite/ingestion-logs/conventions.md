@@ -178,11 +178,11 @@ Il se déclenche automatiquement sur les PR modifiant `logs/**`, ou manuellement
 
 **Changements et configurations appliqués :**
 - **3× XL** (2 Go), heap **`-Xms1g -Xmx1g`** via `JAVA_OPTS` (variable Scalingo).
-- **Logstash 9.4.6** — buildpack custom dans `pass-emploi-tools/logstash/`.
-- **Elastic Agent 9.4.6** — buildpack custom dans `pass-emploi-tools/elastic-agent/`, installé en mode colocalisé pour le monitoring Logstash via Fleet.
+- **Logstash 9.4.7** — buildpack custom dans `pass-emploi-tools/logstash/`.
+- **Elastic Agent 9.4.7** — buildpack custom dans `pass-emploi-tools/elastic-agent/`, installé en mode colocalisé pour le monitoring Logstash via Fleet.
 - **Heartbeat** — buildpack `SocialGouv/heartbeat-buildpack` (défaut 7.16.1, surchargeable via `HEARTBEAT_VERSION` sur Scalingo). ⚠️ Version à vérifier sur Scalingo.
 - **APM** — géré via Fleet/Elastic Cloud, version pilotée par le plan Elastic Cloud (9.1.5).
-  ⚠️ **Alignement des versions** : Elastic Cloud est en **9.1.5**, Logstash et Elastic Agent en **9.4.6** —
+  ⚠️ **Alignement des versions** : Elastic Cloud est en **9.1.5**, Logstash et Elastic Agent en **9.4.7** —
   les versions majeures sont alignées (9.x/9.x), mais il faudra **monter Elastic Cloud à 9.4.x**
   pour être en phase et bénéficier de toutes les fonctionnalités. Heartbeat et APM doivent également être alignés.
 - **Java 21** (upgrade depuis Java 11 via buildpack custom).
