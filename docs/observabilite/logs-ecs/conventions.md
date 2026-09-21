@@ -204,6 +204,16 @@ Garanties :
 
 Pas de wrapper, pas de DI.
 
+**Piège `nestjs-pino`** (vu sur `pass-emploi-api`, 2026-09) : le Logger Nest
+(`new Logger(ctx)` de `@nestjs/common`, branché via `app.useLogger`) ne
+réutilise `rootLogger` **que si** `LoggerModule.forRoot({ pinoHttp })` reçoit
+un **objet** contenant `logger: rootLogger`. Avec la forme tableau
+`pinoHttp: [options]`, `nestjs-pino` fait `pino(...pinoHttp)` et crée une
+**seconde instance** sans formatters (level numérique `50` au lieu de
+`"error"` → invisible aux filtres Kibana), sans mixin (pas de `job_run_id`,
+`user`, `trace.id`) et **sans redact**. Symptôme : un log `this.logger.error`
+qui n'a pas les mêmes champs que les logs `rootLogger` du même run.
+
 ## Patterns d'instrumentation (transverses)
 
 - **Appels sortants — deux familles, même `external_api_call`** :
