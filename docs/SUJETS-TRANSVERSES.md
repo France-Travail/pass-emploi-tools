@@ -67,14 +67,17 @@
   anonyme. Son accès est **fermé par défaut** : l'autorisation « jeune »
   standard le rejette, chaque route doit être ouverte explicitement. Charger la
   référence **avant** d'exposer une fonctionnalité à l'invité.
-- **Invariant plan d'action** : le plan de fin d'onboarding est produit par un
-  **service externe au stade POC**, hors SLA, exposé via un **proxy** dans
-  `pass-emploi-api` — dont la raison d'être est d'absorber les évolutions du
-  POC **sans livraison mobile**. Rien n'est persisté côté API.
+- **Invariant plan d'action** : le **questionnaire** porte ce que le jeune
+  déclare (**besoins** et **contraintes**) ; le **plan** en tire des
+  **objectifs** regroupant des solutions. Ne pas confondre besoin (entrée) et
+  objectif (sortie). Le plan est **calculé dans `pass-emploi-api`**, de façon
+  déterministe et sans IA, sur un référentiel de solutions ; toute évolution
+  s'absorbe **sans livraison mobile**. Rien n'est persisté côté API.
 - **Référence stable** : [`pass-emploi-tools/docs/app-jeune/`](./app-jeune/README.md)
   — `utilisateurs-authentification.md` (publics, modes d'authent, mode invité livré),
   `parcours-fonctionnalites.md` (parcours d'entrée, pages, matrice profils→accès),
-  `plan-action.md` (archi proxy vers le POC).
+  `plan-action.md` (vocabulaire questionnaire → plan, règles d'éligibilité et de
+  construction, contrat mobile).
 
 ## Performances · WIP, ouvert le 2026-07-06
 

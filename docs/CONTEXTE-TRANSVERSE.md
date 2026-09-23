@@ -78,7 +78,7 @@ parties du code legacy.
 | **pass-emploi-tools**   | Outillage / infra logs mutualisée (Logstash, templates Elasticsearch versionnés) | Logstash, ES `.console` | - |
 | **pass-emploi-auth**    | Keycloak (IdP), configuré via Terraform, packagé buildpack Scalingo | Keycloak, Terraform | - |
 | **pass-emploi-analytics** | Pipeline de données / suivi analytics (ex. taux de pénétration) | Make | - |
-| **1jeune-des-solutions** | Génération du plan d'action de fin d'onboarding (**POC**). Repo **bayesimpact**, hors orga France-Travail | NestJS, Gemini / Vertex AI | Bénéficiaires (jeunes) |
+| **1jeune-des-solutions** | Ancien **POC** de génération du plan d'action, **plus appelé** : le plan est calculé dans `pass-emploi-api`. Origine du référentiel de solutions. Repo **bayesimpact**, hors orga France-Travail | NestJS, Gemini / Vertex AI | - |
 
 ## Dispositifs d'accompagnement
 
@@ -136,6 +136,10 @@ parties du code legacy.
 | **Rendez-vous**          | RDV planifié entre conseiller et bénéficiaire              |
 | **Démarche**             | Action spécifique France Travail                           |
 | **Session MILO**         | Activité collective en Mission Locale                      |
+| **Questionnaire**        | Réponses du jeune à l'onboarding (situation, besoins, contraintes…) |
+| **Besoin**               | Ce que le jeune cherche, déclaré dans le questionnaire     |
+| **Contrainte**           | Ce qui freine le jeune, déclaré dans le questionnaire      |
+| **Plan d'action**        | Objectifs tirés du questionnaire, chacun regroupant des solutions pour répondre à un besoin ou lever une contrainte |
 | **MILO**                 | Mission Locale                                             |
 | **France Travail**       | Nouveau nom de Pôle Emploi                                 |
 | **RQTH**                 | Reconnaissance Qualité Travailleur Handicapé               |
@@ -274,6 +278,7 @@ scripts/release.sh 4.12.3   # bump pubspec.yaml sur main + commit + tag + push -
 | **Rendez-vous**      | Planification et suivi RDV                | api, web, app            |
 | **Sessions MILO**    | Activités collectives                     | api, web                 |
 | **Suivi des heures** | Comptabilisation activités                | api, web                 |
+| **Plan d'action**    | Plan personnalisé tiré du questionnaire   | api, app                 |
 
 ## Intégrations externes
 
@@ -299,7 +304,7 @@ scripts/release.sh 4.12.3   # bump pubspec.yaml sur main + commit + tag + push -
 - pass-emploi-tools (outillage / infra logs mutualisée)
 - pass-emploi-auth (Keycloak / IdP)
 - pass-emploi-analytics (pipeline données / analytics)
-- [1jeune-des-solutions](https://github.com/bayesimpact/1jeune-des-solutions) (POC plan d'action — orga bayesimpact)
+- [1jeune-des-solutions](https://github.com/bayesimpact/1jeune-des-solutions) (ancien POC du plan d'action, plus appelé — orga bayesimpact)
 
 ### Documentation officielle des dispositifs
 

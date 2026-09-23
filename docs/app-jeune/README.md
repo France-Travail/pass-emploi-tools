@@ -50,7 +50,7 @@ flèches entre elles.
 |---|---|---|
 | Nouveaux utilisateurs / authentification | [`utilisateurs-authentification.md`](./utilisateurs-authentification.md) | WIP — matrice publics→modes posée ; **mode invité livré** (couche 3 renseignée) ; transition invité→inscrit et candidat FT non accompagné à instruire |
 | Parcours & fonctionnalités | [`parcours-fonctionnalites.md`](./parcours-fonctionnalites.md) | WIP — parcours d'entrée, pages, matrice profils→accès posés ; typologie et règle de détermination à trancher |
-| Plan d'action | [`plan-action.md`](./plan-action.md) | WIP — archi proxy posée, branchement en cours ; service de génération au stade **POC** |
+| Plan d'action | [`plan-action.md`](./plan-action.md) | WIP — plan **calculé dans l'API** (déterministe, référentiel embarqué) ; référentiel en base et persistance du plan à instruire |
 
 > **Performances / montée en charge** : sujet transverse à part entière (il
 > dépasse l'app jeune et survit à la MES), traité dans le
@@ -59,6 +59,9 @@ flèches entre elles.
 
 ## Historique
 
+- **2026-09-23** — « Plan d'action » réécrit : génération internalisée dans
+  `pass-emploi-api` (le POC externe n'est plus appelé), vocabulaire métier
+  questionnaire (besoins, contraintes) → plan (objectifs, solutions).
 - **2026-07-28** — sous-chantier « Plan d'action » ouvert : archi proxy
   `pass-emploi-api` → service de génération externe (POC), mapping de contrat,
   trace analytique. Mise à jour des deux autres sous-chantiers suite à la
