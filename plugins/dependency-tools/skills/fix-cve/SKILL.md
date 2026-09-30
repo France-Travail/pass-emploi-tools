@@ -36,10 +36,13 @@ investigating majors and migrations, and reporting honestly.
 ## Step 1 — preconditions
 
 ```bash
-git status --porcelain   # must be empty: every group must be revertable and committed alone
+git status --porcelain   # must be empty: every group must be revertable, and only the fix committed
 ```
 Dirty → stop and say so (headless: write a report with `"status": "dirty-tree"` and exit).
 On `develop`/`master`/`main`, create a branch before the first commit (`fix/cve-<YYYY-MM-DD>`).
+
+No `node_modules` (fresh checkout, CI, new `git worktree`) → `yarn install` first: git hooks
+such as husky + lint-staged need it, and the first commit fails without it.
 
 The repo must be **Yarn Berry** (`yarn.lock` + `.yarnrc.yml`). Otherwise the script exits with
 code 3: apply the doctrine below by hand with the package manager's equivalents (`overrides`,
@@ -149,14 +152,19 @@ Out of plan — your decision:
 Not security — deprecations: [declared] lodash.isequal → node:util.isDeepStrictEqual · [transitive] glob, inflight
 Dev-only (out of scope): fast-uri (high ×6), …
 
-Nothing has changed yet. Apply 1-3, one commit per group? Drop any group in your answer.
+Nothing has changed yet. Apply 1-3, one commit per theme (each major alone)? Drop any group in your answer.
 ```
 
 - A partial answer ("yes but not 3") is a complete answer. **Never ask a second question.**
 - The deprecation and dev-only lines are always present, even as "none": proof you looked.
 - Headless: no gate; groups above `--max-risk` are reported as `skipped-risk`.
 
-## Step 5 — apply, group by group
+## Step 5 — apply, group by group, commit by theme
+
+Groups are applied one at a time, but committed **by theme** — one commit per lever of the
+step 3 table (obsolete pins, lockfile refresh, same-major bumps, resolutions), except **each
+major bump, which gets its own commit** since it is the one likely to be reverted. Few coherent
+commits keep the review readable; the index keeps each group revertable meanwhile.
 
 For each approved group, lowest risk first:
 
@@ -167,15 +175,17 @@ For each approved group, lowest risk first:
 3. Check the advisories are gone:
    `node ${CLAUDE_SKILL_DIR}/scripts/scan.mjs --no-probe --only <group's GHSAs>` → `0 advisories`.
 4. `git status`: only `package.json` / `yarn.lock` (plus the code a major announced). Anything
-   else → investigate before committing.
-5. Commit the group alone: `fix(deps): <lever> (<GHSA ids>)`.
+   else → investigate.
+5. Accepted → `git add -A`: the group joins its theme in the index.
+6. Last group of its theme → commit the theme, naming every package and GHSA it clears:
+   `fix(deps): retire les resolutions obsolètes brace-expansion et qs (GHSA-…, GHSA-…)`.
 
-A group that fails (advisory still there, install error, unexpected diff) →
-`git checkout -- . && git clean -fd`, record the reason, next group. **Never swap in another
-lever**: the user approved *that* change, not "whatever works".
+A group that fails (advisory still there, install error, unexpected diff) → `git checkout -- .`
+brings the tree back to the index, i.e. the groups already accepted; record the reason, next
+group. **Never swap in another lever**: the user approved *that* change, not "whatever works".
 
-Then **one** real `yarn install` and the checks (see modes). Checks fail → revert the high-risk
-groups first (`git revert --no-edit <sha>`), re-check, and report which group broke what. A
+Then **one** real `yarn install` and the checks (see modes). Checks fail → revert the major
+commits first (`git revert --no-edit <sha>`), re-check, and report which change broke what. A
 major whose plan announced code changes is approved work: do the refactor.
 
 ## Step 6 — final report
@@ -234,5 +244,6 @@ low risk**, the checks passed, no advisory was introduced, and every new version
 - Bypassing the age gate in headless, or preapproving a version without the user's go.
 - A subagent writing files, installing or committing — they would corrupt each other's readings.
 - Rescuing a failed group with a different lever.
-- Several groups in one commit, or a push / PR nobody asked for.
+- Mixing themes in one commit, a major sharing its commit, or one commit per group; a push / PR
+  nobody asked for.
 - Claiming success without the final re-audit, or counting deprecations as CVEs.

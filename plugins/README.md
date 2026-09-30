@@ -48,7 +48,7 @@ Pour vérifier qu'elles sont bien chargées : `claude plugin list`.
 ### `fix-cve` : conversationnel ou headless
 
 En conversation, la skill scanne, propose **un seul plan** (à valider en une
-réponse, partielle si besoin), applique un commit par groupe puis ré-audite.
+réponse, partielle si besoin), applique les corrections (un commit par thème, chaque majeure à part) puis ré-audite.
 
 Sans humain (tâche planifiée, CI), le flag `--headless` supprime toute question :
 seuls les groupes dont le risque est ≤ `--max-risk` (défaut `low`) sont appliqués,
