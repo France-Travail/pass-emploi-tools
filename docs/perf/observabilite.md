@@ -17,7 +17,7 @@ choisit à la conception, selon que l'étape traverse l'api ou non (non tranché
 | Étape du parcours | Signal requis | Notes |
 |---|---|---|
 | Tuto d'entrée affiché | vue + identifiant de corrélation (voir ci-dessous) | côté client uniquement |
-| Login | existant dans connect : `login_initiated` / `login_redirected` / `login_completed` / `login_failed` (`labels.idp`, `login.step`) | manque la **durée de bout en bout** du flow |
+| Login | existant dans connect : `login_initiated` / `login_redirected` / `login_completed` / `login_failed` (`labels.idp`, `error.type`) | manque la **durée de bout en bout** du flow |
 | Étape de questionnaire validée | n° d'étape + `event.outcome` | pour localiser où le funnel casse |
 | Plan d'action généré | `event.outcome` + `event.duration` (SLI ≤ 10 s), appel IA tracé en `external_api_call` | — |
 | Plan d'action affiché | vue côté client | le « généré » serveur ne prouve pas que le jeune l'a vu |

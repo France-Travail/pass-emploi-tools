@@ -24,7 +24,7 @@ Toutes notifient via Mattermost (`#monitoring-production`).
 | S2 | SLO latence api            | SLO Kibana          | burn rate ≥ 6 par parcours critique                   | 1 min     | —        | 🚨 Critical |
 | S3 | SLO réussite login         | SLO Kibana          | burn rate ≥ 6 par mode d'authentification             | 1 min     | —        | 🚨 Critical |
 | A1 | Pic d'échecs partenaire    | `logs-prod-default` | `external_api_call` `failure` > 25 / 5 min par client | 1 min     | 1h       | ⚠️Warning  |
-| A2 | Erreurs serveur 5xx        | `logs-prod-default` | requêtes en 5xx > 5 / 5 min                           | 1 min     | 1h       | 🚨 Critical |
+| A2 | Erreurs serveur 5xx        | `logs-prod-default` | requêtes api en 5xx > 5 / 5 min                       | 1 min     | 1h       | 🚨 Critical |
 | A3 | Pic d'auth refusées        | `logs-prod-default` | `auth_failed` > 3 × même heure sur 7 j, ≥ 20 / 10 min | 5 min     | 1h       | 🚨 Critical |
 
 > **Prod uniquement** : en staging, ces signaux reflètent les tests en cours, pas
@@ -47,9 +47,10 @@ longue et une fenêtre courte : la longue évite de déclencher sur un pic isol�
 la courte fait retomber l'alerte dès que le problème cesse. La règle s'évalue
 instance par instance : un parcours ou un mode d'authentification à la fois.
 
-- **S1** — SLO « API — disponibilité des parcours critiques » ;
+- **S1** — SLO « API — disponibilité des parcours critiques », à ne créer
+  qu'avec le correctif api, cf. [sli-slo](sli-slo.md#slo--api--disponibilité-des-parcours-critiques-) ;
 - **S2** — SLO « API — latence des parcours critiques » ;
-- **S3** — SLO « Login — réussite par mode d'authentification ».
+- **S3** — SLO « Login — réussite jeune France Travail » et « Login — réussite des autres modes ».
 
 **Création** : à l'enregistrement d'un SLO, Kibana propose de créer sa règle
 (sinon **Observability → Alerts → Manage Rules → Create rule → SLO burn rate**).
@@ -185,8 +186,7 @@ FROM logs-prod-default
 **Requête ES|QL** :
 ```
 FROM logs-prod-default
-| WHERE event.action == "request_failed"
-     OR (event.action == "request_completed" AND http.response.status_code >= 500)
+| WHERE service.name == "pass-emploi-api" AND event.action == "request_failed"
 | STATS erreurs_5xx = COUNT(*), statuts = VALUES(http.response.status_code),
         parcours = VALUES(labels.user_journey)
 | WHERE erreurs_5xx > 5
@@ -196,8 +196,7 @@ FROM logs-prod-default
 ```
 FROM logs-prod-default
 | WHERE @timestamp >= NOW() - 7 days
-    AND (event.action == "request_failed"
-      OR (event.action == "request_completed" AND http.response.status_code >= 500))
+    AND service.name == "pass-emploi-api" AND event.action == "request_failed"
 | STATS n = COUNT(*) BY tranche = BUCKET(@timestamp, 5 minutes)
 | STATS p99 = PERCENTILE(n, 99), max = MAX(n)
 ```
@@ -213,7 +212,7 @@ FROM logs-prod-default
         { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
         { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
         { "title": "Détail", "value": "{{context.message}}" },
-        { "title": "À vérifier", "value": "Dans Discover : `event.action: request_failed OR (event.action: request_completed AND http.response.status_code >= 500)` — `labels.user_journey`, `url.path`, `error.type`, puis `trace.id` pour remonter la requête" },
+        { "title": "À vérifier", "value": "Dans Discover : `service.name: pass-emploi-api and event.action: request_failed` — `labels.user_journey`, `url.path`, `error.type`, puis `trace.id` pour remonter la requête" },
         { "title": "Runbook", "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)" }
       ]
     }

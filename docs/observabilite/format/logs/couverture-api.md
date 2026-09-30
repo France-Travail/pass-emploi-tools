@@ -28,8 +28,9 @@ Spécificités api :
   décorateur `@UserJourney('<parcours>')` (controller par défaut, surchargé par
   route) et lu par `ContextInterceptor`. Découpe les SLO par parcours (cf.
   [sli-slo](../../supervision/sli-slo.md#mise-en-œuvre--slo-kibana)). Absent des
-  logs émis avant l'interceptor : les guards (`auth_failed`, 401/403 de
-  `OidcAuthGuard`) passent avant, les jobs worker n'ont pas de requête.
+  logs émis avant l'interceptor (les guards : `auth_failed`, 401/403 de
+  `OidcAuthGuard`), de **toutes les réponses en erreur** (`request_completed`
+  en 4xx, `request_failed`), et des jobs worker, qui n'ont pas de requête.
 - **`external_api_call`** via Template Method `ExternalApiClient` +
   `ExternalApiLoggerService`.
 - **Bodies** : `http.request.body.content` (entrant via pino-http, sortant via
