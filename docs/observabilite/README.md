@@ -67,6 +67,7 @@ Logstash est splitté en deux services depuis 2026-09 :
 - **PROCESS** (`pass-emploi-logstash-process-<env>`) : filtres ECS, indexation ES, DLQ
 
 > Décision d'architecture : [ADR-002 — Migration PQ disque → Redis](../decisions/ADR-002-buffer-redis-logstash.md)
+> et [ADR-003 — Pertinence de l'usage des Log Drains Scalingo](../decisions/ADR-003-usage-log-drain-scalingo.md)
 
 Référence complète : [logs-ecs/](logs-ecs/README.md) — conventions ECS,
 data streams, templates, runbook d'astreinte.

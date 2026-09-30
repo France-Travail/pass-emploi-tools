@@ -254,3 +254,18 @@ Il se déclenche automatiquement sur les PR modifiant `logs/**`, ou manuellement
 - **⚠️ Risque Redis** : si ES ou `logstash-process` sont indisponibles, le buffer grossit
   sans être consommé → saturation mémoire Redis possible en < 50 min à 256 Mo.
   Surveiller l'occupation mémoire Redis via Fleet.
+
+> Au **2026-09-23** (exploration d'un mécanisme de collecte alternatif au drain
+> Scalingo, cf. [ADR-003 — Pertinence de l'usage des Log Drains Scalingo](../../decisions/ADR-003-usage-log-drain-scalingo.md)) :
+
+- **Décision** : statu quo — pas de changement de transport (syslog écarté, aucune
+  exception documentée à la quarantaine par type de drain), pas de nouvelle
+  infrastructure (shipper applicatif direct ou broker en amont écartés : coût élevé,
+  risques déjà documentés déplacés plutôt que traités).
+- **Deux socles d'archivage distincts identifiés** : Logs Archives Scalingo (brut, non
+  indexé, 1 an, lié au `stdout`, indépendant du drain — filet déjà actif sans
+  configuration) vs rétention ES (indexée, cherchable, 180j prod, gap cold/frozen déjà
+  ouvert indépendamment de cette décision).
+- **Suites ouvertes** : confirmation à obtenir du support Scalingo sur le comportement
+  quarantaine en syslog ; vérification du plafond d'ingestion Scalingo (16 384
+  lignes/min et 64 MiB/min par conteneur) face au débit réel de `pass-emploi-api`.
