@@ -1,0 +1,128 @@
+# Logs ECS — pass-emploi-api
+
+> Spécifique au repo **pass-emploi-api**. Conventions transverses :
+> [conventions](conventions.md). Refonte mergée (PR #228), en prod (v9.37.x).
+
+## Taxonomie `event.action` (api)
+
+| `event.action` | `log.logger` | site d'émission |
+|---|---|---|
+| `request_completed` / `request_failed` | _absent_ | requête HTTP entrante (pino-http) |
+| `auth_succeeded` / `auth_failed` | `OidcAuthGuard` | validation JWT |
+| `handler_executed` | `<X>{Command,Query,Job}Handler` | exécution handler CQRS |
+| `external_api_call` | `MiloClient`, `PoleEmploiClient`, `PoleEmploiPartenaireClient`, `OidcClient`, `BrevoClient`, `MatomoClient`, `AntivirusClient`, `DiagorienteClient`, `ImmersionClient`, `ServiceCiviqueClient` | appel HTTP sortant |
+| `request_routed` | _absent, `tags: router`_ | router Scalingo (émis par Logstash) |
+| `accueil_sessions_milo_recuperees` (`failure`) | `GetAccueilJeuneMiloQueryHandler` | mode dégradé accueil : le `try/catch` autour des sessions Milo a avalé une exception → l'accueil répond 200 **sans sessions**. Seule trace de cette dégradation silencieuse (le `request_completed` voit un succès). Émis via `rootLogger.error` + `toEcsError`. |
+
+## Couverture
+
+HTTP entrant, auth OIDC, handlers CQRS, worker Bull, 10 clients HTTP externes,
+logs router. `trace.id` corrélation bout en bout.
+
+Spécificités api :
+
+- **`handler_executed`** émis par les base classes CQRS (`logHandlerExecuted`).
+  Discriminant crash / échec géré : `error instanceof Error` (les `DomainError`
+  sont des `implements`, pas des `extends Error`).
+- **`labels.user_journey`** : parcours métier de la requête, posé par le
+  décorateur `@UserJourney('<parcours>')` (controller par défaut, surchargé par
+  route) et lu par `ContextInterceptor`. Découpe les SLO par parcours (cf.
+  [sli-slo](../../supervision/sli-slo.md#mise-en-œuvre--slo-kibana)). Absent des
+  logs émis avant l'interceptor (les guards : `auth_failed`, 401/403 de
+  `OidcAuthGuard`), de **toutes les réponses en erreur** (`request_completed`
+  en 4xx, `request_failed`), et des jobs worker, qui n'ont pas de requête.
+- **`external_api_call`** via Template Method `ExternalApiClient` +
+  `ExternalApiLoggerService`.
+- **Bodies** : `http.request.body.content` (entrant via pino-http, sortant via
+  `external_api_call`) sur échec, et sur succès si `LOG_LEVEL=debug` ;
+  `http.response.body.content` côté partenaire. Voir [conventions](conventions.md) (redaction).
+- **Headers de diagnostic sur échec sortant** : un 401 partenaire ne dit rien
+  dans le body, la cause OAuth est dans `WWW-Authenticate` (RFC 6750). Allowlist
+  `DIAGNOSTIC_RESPONSE_HEADERS = ['www-authenticate','retry-after']` capturée
+  **uniquement sur échec**, extraction case-insensitive, set-cookie exclu.
+  ⚠️ Posée en **feuilles plates** `http.response.{www_authenticate,retry_after}`,
+  **pas** `http.response.headers.*` : le template APM mappe `http.response.headers`
+  en non-objet → tenter un objet donne `can't merge a non object mapping`, 400.
+  Chaîne 3 repos : api (`external-api-logger.helpers.ts`) → tools (renames logstash
+  `[msg][http][response][...]` + `logs@custom` keyword). Générique tous clients.
+
+## Envoi de communications
+
+Job `ENVOYER_COMMUNICATIONS` (`log.logger`), un lot par exécution du cron.
+Tous les logs portent `labels.communication_id`, qui sert de filtre de suivi.
+
+| `event.action` | `outcome` | champs |
+|---|---|---|
+| `communication_envoi_demarre` | `success` | `labels.population_id`, `communication.destinataires` |
+| `communication_lot_envoye` | `success` / `failure` (lot entièrement en erreur) | `communication.restantes`, `communication.lot.{envoyees,erreurs,tokens_invalides}` |
+| `communication_envoi_termine` | `success` | `communication.{a_envoyer,en_cours,envoyees,erreurs,tokens_invalides}` (totaux figés) |
+| `communication_envoi_en_erreur` | `failure` | idem, après `ECHECS_CONSECUTIFS_MAX` lots consécutifs en échec |
+| `communication_envois_liberes` | `failure` | `communication.envois_liberes` : lot interrompu, doublons de push possibles |
+| `communication_notification_envoyee` | `failure` | `labels.jeune_id`, `error.*` (exception Firebase) |
+
+Pièges d'agrégation :
+
+- **Erreurs** : sommer `communication.lot.erreurs` **uniquement sur
+  `event.outcome: success`**. Un lot entièrement en erreur est rendu pour retry :
+  ses erreurs seraient comptées à chaque tentative.
+- **Restantes** : prendre la dernière valeur de `communication.restantes`, pas la
+  somme.
+- **Durée d'un lot** : pas sur ces logs, mais sur `job_completed` filtré sur
+  `labels.job_type: ENVOYER_COMMUNICATIONS` (`event.duration`, en ns).
+
+Alertes utiles : `communication_envoi_en_erreur` et `communication_envois_liberes`.
+
+## Cas de validation end-to-end : RDV Milo
+
+Périmètre choisi comme exemple bout-en-bout : création/màj/suppression de RDV
+conseiller + inscriptions de jeunes aux sessions Milo.
+
+Trace attendue pour un `POST /rendez-vous` (filtrer sur `trace.id`) :
+
+1. `auth_succeeded` (`OidcAuthGuard`)
+2. `request_completed` `POST /rendez-vous` (201)
+3. `handler_executed` `CreateRendezVousCommandHandler` (success)
+4. `external_api_call` `MiloClient` (si sync Milo)
+5. `external_api_call` `BrevoClient` (si email invitation ICS)
+
+Tous corrélés par le même `trace.id`, portant `user.{id,type,structure}` du conseiller.
+
+Alerte RDV Milo : `external_api_call` `MiloClient` `failure` rate élevé →
+[alerte A1](../../supervision/alertes-applicatives.md#a1--pic-déchecs-partenaire-warning).
+Les échecs `CreateRendezVousCommandHandler` ne sont pas alertés.
+
+## Limites connues & pistes
+
+- **FirebaseClient** non instrumenté (firebase-admin SDK, pas Axios).
+- **Worker** : `trace.id` / `transaction.id` absents dans le contexte async des
+  jobs ; `labels.job_run_id` couvre en attendant.
+- **Corrélation chaînes de jobs Milo** (`SUIVRE_FILE_EVENEMENTS_MILO` →
+  `TRAITER_EVENEMENT_MILO`) : ajouter `milo.event_id` au payload si besoin.
+- **PII** : la log factory `MiloClient` leak un email.
+- **Retry 401 transient Milo (page 2)** : depuis le fix pagination (la page 2
+  échouée n'est plus avalée → renvoie `failure`), un 401 transient fait échouer
+  la requête conseiller. Piste : retry page 2 sur 401 (1 essai + re-exchange).
+  Contexte : token i-milo échangé 1×/requête (`exchangeTokenConseillerMilo`,
+  Keycloak token-exchange), même idpToken réutilisé page 1 & page 2 ; cas réel vu
+  page 1 200 en 4,92 s puis page 2 401 en 13 ms → branche probable = i-milo sous charge.
+- **`expires_in` jeté** (`oidc-client.db.ts`, parsé dans `TokenExchangeResponse`
+  mais seul `access_token` est renvoyé) : (a) le loguer = diagnostic TTL ;
+  (b) pré-refresh si proche expiration = prévention 401. Ordre : (a) d'abord.
+- **Pagination plafonnée à 2 pages (~300 résultats)** : si >300 sessions (vu 471),
+  le reste n'est jamais récupéré même en succès total. À challenger si besoin produit.
+- **`validation_failed` (ValidationPipe, `src/main.ts`)** : `message =
+  JSON.stringify(validationErrors)` déverse `target` (payload complet) + `value`
+  (doublon) → fuite PII potentielle (contourne la redaction pino) + bloat. Fix :
+  ne logger que `{property, constraints}` ; le `BadRequestException` renvoyé au
+  client garde le détail complet (voulu).
+- **`logger.error(<exception>)` sur exception brute** : sur une AxiosError, pino
+  sérialise `err.config` (URL, en-têtes, **corps** — donc le `client_secret` sur
+  un appel token partenaire) + `err.response`. La ligne dépasse 16 Ko, le drain
+  Scalingo la tronque, le filtre `json` de Logstash échoue → l'event part dans
+  `logs-logstash-errors-*` (log perdu pour l'exploitation). Corrigé aux 3 points
+  centraux (base classes `Command`/`Query` `.monitor().catch`, job
+  `NOTIFIER_RENDEZVOUS_PE`) via `rootLogger` + `toEcsError`. **Reste** : ~une
+  dizaine de job handlers (`this.logger.error(e)` / `.warn(e)` dans leur
+  `try/catch`) et `oidc.auth-guard.ts` (`err: error` brut dans l'objet loggé).
+  Piste : règle ESLint interdisant de passer une valeur `catch` à un logger sans
+  `toEcsError`.

@@ -6,7 +6,7 @@
 # dynamiquement dans /app/config/pipelines.yml au démarrage par start.sh
 # selon les variables INGEST_ENABLED / PROCESS_ENABLED.
 #
-# Cf. docs/blackout-logs/conventions.md pour le contexte de l'architecture
+# Cf. docs/observabilite/process/logs/pipeline.md pour le contexte de l'architecture
 # 2 services Logstash + Redis.
 
 # --- Chemins ---

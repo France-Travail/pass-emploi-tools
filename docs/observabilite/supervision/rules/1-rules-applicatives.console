@@ -1,0 +1,738 @@
+# Règles Kibana des alertes applicatives, notifiées dans #monitoring-production
+# (connecteur Mattermost-monitoring-production). Spécification : ../alertes-applicatives.md.
+#
+# À rejouer dans Dev Tools, après ../slo/1-slos.console. PUT met à jour une règle
+# existante ; sur un cluster vide, la créer avec POST kbn:/api/alerting/rule/<id>
+# et le même corps plus "rule_type_id" et "consumer" (slo.rules.burnRate / slo pour
+# S2 et S3, .es-query / alerts pour A1 à A3).
+#
+# S2, S3 — SLO burn rate. Seuls Critical (slo.burnRate.alert) et High notifient.
+#
+# maxBurnRateThreshold = 1 / (1 - objectif) : burn rate à 100 % d'échecs.
+#
+# Invité et conseiller départemental : quelques tentatives par jour, un seul échec
+# sur 1 h vaut 100 % d'échecs. Une seule fenêtre, longue, qui exige plusieurs
+# échecs : invité ≥ 20 % d'échecs sur 72 h (~18 tentatives), conseiller
+# départemental ≥ 20 % sur 168 h (~10 tentatives).
+
+PUT kbn:/api/alerting/rule/e41ef1d8-efd8-449b-b2a5-6fff758c8939
+{
+  "name": "SLO - Prod - API — latence des parcours critiques",
+  "schedule": {
+    "interval": "1m"
+  },
+  "tags": [
+    "prod",
+    "slo"
+  ],
+  "params": {
+    "sloId": "6c55ac3b-8b07-400c-89f8-0e46865166b2",
+    "windows": [
+      {
+        "id": "alert",
+        "actionGroup": "slo.burnRate.alert",
+        "burnRateThreshold": 14.4,
+        "maxBurnRateThreshold": 100.0,
+        "longWindow": {
+          "value": 1,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 5,
+          "unit": "m"
+        }
+      },
+      {
+        "id": "high",
+        "actionGroup": "slo.burnRate.high",
+        "burnRateThreshold": 6,
+        "maxBurnRateThreshold": 100.0,
+        "longWindow": {
+          "value": 6,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 30,
+          "unit": "m"
+        }
+      },
+      {
+        "id": "medium",
+        "actionGroup": "slo.burnRate.medium",
+        "burnRateThreshold": 3,
+        "maxBurnRateThreshold": 100.0,
+        "longWindow": {
+          "value": 24,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 2,
+          "unit": "h"
+        }
+      },
+      {
+        "id": "low",
+        "actionGroup": "slo.burnRate.low",
+        "burnRateThreshold": 1,
+        "maxBurnRateThreshold": 100.0,
+        "longWindow": {
+          "value": 72,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 6,
+          "unit": "h"
+        }
+      }
+    ]
+  },
+  "actions": [
+    {
+      "group": "slo.burnRate.alert",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **SLO menacé — prod** — {{context.reason}}",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        { "title": "SLO", "value": "{{context.sloName}}", "short": true },
+        { "title": "Parcours / mode", "value": "`{{context.sloInstanceId}}`", "short": true },
+        { "title": "Burn rate (longue / courte)", "value": "{{context.longWindow.burnRate}} / {{context.shortWindow.burnRate}} (seuil {{context.burnRateThreshold}})", "short": true },
+        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
+        { "title": "SLO", "value": "[Budget d'erreur et historique]({{context.viewInAppUrl}})" },
+        { "title": "Dashboard", "value": "[[Pass Emploi] SLO de PROD](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)" },
+        { "title": "À vérifier", "value": "Alertes de diagnostic A1 à A3 en cours : partenaire en panne, 5xx, IDP" },
+        { "title": "Runbook", "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)" }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "group": "slo.burnRate.high",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **SLO menacé — prod** — {{context.reason}}",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        { "title": "SLO", "value": "{{context.sloName}}", "short": true },
+        { "title": "Parcours / mode", "value": "`{{context.sloInstanceId}}`", "short": true },
+        { "title": "Burn rate (longue / courte)", "value": "{{context.longWindow.burnRate}} / {{context.shortWindow.burnRate}} (seuil {{context.burnRateThreshold}})", "short": true },
+        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
+        { "title": "SLO", "value": "[Budget d'erreur et historique]({{context.viewInAppUrl}})" },
+        { "title": "Dashboard", "value": "[[Pass Emploi] SLO de PROD](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)" },
+        { "title": "À vérifier", "value": "Alertes de diagnostic A1 à A3 en cours : partenaire en panne, 5xx, IDP" },
+        { "title": "Runbook", "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)" }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    }
+  ]
+}
+
+PUT kbn:/api/alerting/rule/72914c41-01ed-4ce7-ae68-a1b5eb445773
+{
+  "name": "SLO - Prod - Login — réussite jeune France Travail",
+  "schedule": {
+    "interval": "1m"
+  },
+  "tags": [
+    "prod",
+    "slo"
+  ],
+  "params": {
+    "sloId": "ec53b7e4-604e-4e33-a4df-ace9e4aea01b",
+    "windows": [
+      {
+        "id": "alert",
+        "actionGroup": "slo.burnRate.alert",
+        "burnRateThreshold": 3,
+        "maxBurnRateThreshold": 6.67,
+        "longWindow": {
+          "value": 1,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 5,
+          "unit": "m"
+        }
+      },
+      {
+        "id": "high",
+        "actionGroup": "slo.burnRate.high",
+        "burnRateThreshold": 2,
+        "maxBurnRateThreshold": 6.67,
+        "longWindow": {
+          "value": 6,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 30,
+          "unit": "m"
+        }
+      },
+      {
+        "id": "medium",
+        "actionGroup": "slo.burnRate.medium",
+        "burnRateThreshold": 1.5,
+        "maxBurnRateThreshold": 6.67,
+        "longWindow": {
+          "value": 24,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 2,
+          "unit": "h"
+        }
+      },
+      {
+        "id": "low",
+        "actionGroup": "slo.burnRate.low",
+        "burnRateThreshold": 1,
+        "maxBurnRateThreshold": 6.67,
+        "longWindow": {
+          "value": 72,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 6,
+          "unit": "h"
+        }
+      }
+    ]
+  },
+  "actions": [
+    {
+      "group": "slo.burnRate.alert",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **SLO menacé — prod** — {{context.reason}}",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        { "title": "SLO", "value": "{{context.sloName}}", "short": true },
+        { "title": "Parcours / mode", "value": "`{{context.sloInstanceId}}`", "short": true },
+        { "title": "Burn rate (longue / courte)", "value": "{{context.longWindow.burnRate}} / {{context.shortWindow.burnRate}} (seuil {{context.burnRateThreshold}})", "short": true },
+        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
+        { "title": "SLO", "value": "[Budget d'erreur et historique]({{context.viewInAppUrl}})" },
+        { "title": "Dashboard", "value": "[[Pass Emploi] SLO de PROD](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)" },
+        { "title": "À vérifier", "value": "Alertes de diagnostic A1 à A3 en cours : partenaire en panne, 5xx, IDP" },
+        { "title": "Runbook", "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)" }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "group": "slo.burnRate.high",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **SLO menacé — prod** — {{context.reason}}",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        { "title": "SLO", "value": "{{context.sloName}}", "short": true },
+        { "title": "Parcours / mode", "value": "`{{context.sloInstanceId}}`", "short": true },
+        { "title": "Burn rate (longue / courte)", "value": "{{context.longWindow.burnRate}} / {{context.shortWindow.burnRate}} (seuil {{context.burnRateThreshold}})", "short": true },
+        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
+        { "title": "SLO", "value": "[Budget d'erreur et historique]({{context.viewInAppUrl}})" },
+        { "title": "Dashboard", "value": "[[Pass Emploi] SLO de PROD](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)" },
+        { "title": "À vérifier", "value": "Alertes de diagnostic A1 à A3 en cours : partenaire en panne, 5xx, IDP" },
+        { "title": "Runbook", "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)" }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    }
+  ]
+}
+
+PUT kbn:/api/alerting/rule/ca02fee2-9d18-46bd-b2b9-dd96d8a6d593
+{
+  "name": "SLO - Prod - Login — réussite par mode d'authentification",
+  "schedule": {
+    "interval": "1m"
+  },
+  "tags": [
+    "prod",
+    "slo"
+  ],
+  "params": {
+    "sloId": "9afea251-1cf9-423f-a374-ca43c3e751ac",
+    "windows": [
+      {
+        "id": "alert",
+        "actionGroup": "slo.burnRate.alert",
+        "burnRateThreshold": 14.4,
+        "maxBurnRateThreshold": 100.0,
+        "longWindow": {
+          "value": 1,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 5,
+          "unit": "m"
+        }
+      },
+      {
+        "id": "high",
+        "actionGroup": "slo.burnRate.high",
+        "burnRateThreshold": 6,
+        "maxBurnRateThreshold": 100.0,
+        "longWindow": {
+          "value": 6,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 30,
+          "unit": "m"
+        }
+      },
+      {
+        "id": "medium",
+        "actionGroup": "slo.burnRate.medium",
+        "burnRateThreshold": 3,
+        "maxBurnRateThreshold": 100.0,
+        "longWindow": {
+          "value": 24,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 2,
+          "unit": "h"
+        }
+      },
+      {
+        "id": "low",
+        "actionGroup": "slo.burnRate.low",
+        "burnRateThreshold": 1,
+        "maxBurnRateThreshold": 100.0,
+        "longWindow": {
+          "value": 72,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 6,
+          "unit": "h"
+        }
+      }
+    ]
+  },
+  "actions": [
+    {
+      "group": "slo.burnRate.alert",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **SLO menacé — prod** — {{context.reason}}",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        { "title": "SLO", "value": "{{context.sloName}}", "short": true },
+        { "title": "Parcours / mode", "value": "`{{context.sloInstanceId}}`", "short": true },
+        { "title": "Burn rate (longue / courte)", "value": "{{context.longWindow.burnRate}} / {{context.shortWindow.burnRate}} (seuil {{context.burnRateThreshold}})", "short": true },
+        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
+        { "title": "SLO", "value": "[Budget d'erreur et historique]({{context.viewInAppUrl}})" },
+        { "title": "Dashboard", "value": "[[Pass Emploi] SLO de PROD](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)" },
+        { "title": "À vérifier", "value": "Alertes de diagnostic A1 à A3 en cours : partenaire en panne, 5xx, IDP" },
+        { "title": "Runbook", "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)" }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "group": "slo.burnRate.high",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **SLO menacé — prod** — {{context.reason}}",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        { "title": "SLO", "value": "{{context.sloName}}", "short": true },
+        { "title": "Parcours / mode", "value": "`{{context.sloInstanceId}}`", "short": true },
+        { "title": "Burn rate (longue / courte)", "value": "{{context.longWindow.burnRate}} / {{context.shortWindow.burnRate}} (seuil {{context.burnRateThreshold}})", "short": true },
+        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
+        { "title": "SLO", "value": "[Budget d'erreur et historique]({{context.viewInAppUrl}})" },
+        { "title": "Dashboard", "value": "[[Pass Emploi] SLO de PROD](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)" },
+        { "title": "À vérifier", "value": "Alertes de diagnostic A1 à A3 en cours : partenaire en panne, 5xx, IDP" },
+        { "title": "Runbook", "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)" }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    }
+  ]
+}
+
+PUT kbn:/api/alerting/rule/8c760b1b-5859-410e-9a0d-829fb0499412
+{
+  "name": "SLO - Prod - Login — réussite invité",
+  "schedule": {
+    "interval": "1m"
+  },
+  "tags": [
+    "prod",
+    "slo"
+  ],
+  "params": {
+    "sloId": "3d00217c-87b8-45f5-882c-3338bb60750c",
+    "windows": [
+      {
+        "id": "high",
+        "actionGroup": "slo.burnRate.high",
+        "burnRateThreshold": 2,
+        "maxBurnRateThreshold": 10.0,
+        "longWindow": {
+          "value": 72,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 6,
+          "unit": "h"
+        }
+      }
+    ]
+  },
+  "actions": [
+    {
+      "group": "slo.burnRate.high",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **SLO menacé — prod** — {{context.reason}}",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        { "title": "SLO", "value": "{{context.sloName}}", "short": true },
+        { "title": "Parcours / mode", "value": "`{{context.sloInstanceId}}`", "short": true },
+        { "title": "Burn rate (longue / courte)", "value": "{{context.longWindow.burnRate}} / {{context.shortWindow.burnRate}} (seuil {{context.burnRateThreshold}})", "short": true },
+        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
+        { "title": "SLO", "value": "[Budget d'erreur et historique]({{context.viewInAppUrl}})" },
+        { "title": "Dashboard", "value": "[[Pass Emploi] SLO de PROD](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)" },
+        { "title": "À vérifier", "value": "Alertes de diagnostic A1 à A3 en cours : partenaire en panne, 5xx, IDP" },
+        { "title": "Runbook", "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)" }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    }
+  ]
+}
+
+PUT kbn:/api/alerting/rule/00f15660-40ba-4fb1-a59d-6345ce07c360
+{
+  "name": "SLO - Prod - Login — réussite conseiller départemental",
+  "schedule": {
+    "interval": "1m"
+  },
+  "tags": [
+    "prod",
+    "slo"
+  ],
+  "params": {
+    "sloId": "61f38008-cb75-41de-aadc-0a65d2cb7a0d",
+    "windows": [
+      {
+        "id": "high",
+        "actionGroup": "slo.burnRate.high",
+        "burnRateThreshold": 4,
+        "maxBurnRateThreshold": 20.0,
+        "longWindow": {
+          "value": 168,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 12,
+          "unit": "h"
+        }
+      }
+    ]
+  },
+  "actions": [
+    {
+      "group": "slo.burnRate.high",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **SLO menacé — prod** — {{context.reason}}",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        { "title": "SLO", "value": "{{context.sloName}}", "short": true },
+        { "title": "Parcours / mode", "value": "`{{context.sloInstanceId}}`", "short": true },
+        { "title": "Burn rate (longue / courte)", "value": "{{context.longWindow.burnRate}} / {{context.shortWindow.burnRate}} (seuil {{context.burnRateThreshold}})", "short": true },
+        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
+        { "title": "SLO", "value": "[Budget d'erreur et historique]({{context.viewInAppUrl}})" },
+        { "title": "Dashboard", "value": "[[Pass Emploi] SLO de PROD](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)" },
+        { "title": "À vérifier", "value": "Alertes de diagnostic A1 à A3 en cours : partenaire en panne, 5xx, IDP" },
+        { "title": "Runbook", "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)" }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    }
+  ]
+}
+
+# A1 — Pic d'échecs partenaire (Warning)
+PUT kbn:/api/alerting/rule/1b751543-4233-4857-8fe6-8141a7c2d040
+{
+  "name": "API - Prod - Pic d'échecs partenaire",
+  "tags": [
+    "prod",
+    "applicatif"
+  ],
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": """FROM logs-prod-default
+| WHERE event.action == "external_api_call" AND event.outcome == "failure"
+| STATS echecs = COUNT(*), dont_crash = COUNT(*) WHERE log.level == "error",
+        statuts = VALUES(http.response.status_code)
+  BY log.logger
+| WHERE echecs > 25"""
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "aggType": "count",
+    "groupBy": "row",
+    "termSize": 5,
+    "sourceFields": [],
+    "excludeHitsFromPreviousRun": false
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "⚠️ **Pic d'échecs partenaire — prod** — un client partenaire dépasse 25 échecs en 5 min.",
+  "attachments": [
+    {
+      "color": "#f2c744",
+      "fields": [
+        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
+        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
+        { "title": "Détail", "value": "{{context.message}}" },
+        { "title": "À vérifier", "value": "[Échecs des appels partenaires dans Discover](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)" },
+        { "title": "Contacts partenaires", "value": "[Partenariats (Notion)](https://app.notion.com/p/Partenariats-2077bd17c27a812a8700e489fe8ca506) : qui prévenir chez le partenaire en panne" },
+        { "title": "Runbook", "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)" }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "1h"
+      }
+    }
+  ]
+}
+
+# A2 — Erreurs serveur 5xx (Critical)
+PUT kbn:/api/alerting/rule/98e0103a-f809-48f2-8343-d1269213dce4
+{
+  "name": "API - Prod - Erreurs 5xx",
+  "tags": [
+    "prod",
+    "applicatif"
+  ],
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": """FROM logs-prod-default
+| WHERE service.name == "pass-emploi-api" AND event.action == "request_failed"
+| EVAL message = SUBSTRING(error.message, 1, 120)
+| STATS erreurs_5xx = COUNT(*), statuts = VALUES(http.response.status_code),
+        parcours = VALUES(labels.user_journey), messages = VALUES(message)
+| WHERE erreurs_5xx > 5
+| EVAL messages = MV_SLICE(messages, 0, 4)"""
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "aggType": "count",
+    "groupBy": "row",
+    "termSize": 5,
+    "sourceFields": [],
+    "excludeHitsFromPreviousRun": false
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **Erreurs 5xx — prod** — plus de 5 requêtes en erreur serveur en 5 min.",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
+        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
+        { "title": "Détail", "value": "{{context.message}}" },
+        { "title": "À vérifier", "value": "Le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73), liste les logs des requêtes HTTP 5xx avec le motif et le `trace.id` pour remonter la requête" },
+        { "title": "Runbook", "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)" }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "1h"
+      }
+    }
+  ]
+}
+
+# A3 — Pic d'authentifications refusées (Critical)
+PUT kbn:/api/alerting/rule/ad326ad3-aea7-4ef8-be28-31008c4aebce
+{
+  "name": "API - Prod - Pic d'auth refusées",
+  "tags": [
+    "prod",
+    "applicatif"
+  ],
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": """FROM logs-prod-default
+| WHERE event.action == "auth_failed"
+| EVAL recent = @timestamp >= NOW() - 10 minutes,
+       meme_heure = @timestamp < NOW() - 1 day
+                AND DATE_EXTRACT("HOUR_OF_DAY", @timestamp) == DATE_EXTRACT("HOUR_OF_DAY", NOW())
+| STATS refus = COUNT(*) WHERE recent, historique = COUNT(*) WHERE meme_heure
+| EVAL reference = ROUND(historique / 42.0, 1)
+| WHERE refus >= 20 AND refus > 3 * reference"""
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 8,
+    "timeWindowUnit": "d",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "aggType": "count",
+    "groupBy": "row",
+    "termSize": 5,
+    "sourceFields": [],
+    "excludeHitsFromPreviousRun": false
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **Pic d'authentifications refusées — prod** — plus de 3 × la normale sur 10 min : IDP ou Keycloak probablement en cause.",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
+        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
+        { "title": "Détail", "value": "{{context.message}}" },
+        { "title": "À vérifier", "value": "Le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8), liste les logs de type `auth_failed` avec le motif de l'erreur d'habilitation - L'onglet `Field statistics` permet de comprendre la répartition (Ex : Quels IDP touchés ?)" },
+        { "title": "Runbook", "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)" }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "1h"
+      }
+    }
+  ]
+}

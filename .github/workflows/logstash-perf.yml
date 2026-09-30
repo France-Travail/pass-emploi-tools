@@ -24,7 +24,7 @@
 #
 # Cible : instance Logstash dédiée perf (pass-emploi-logstash-perf sur Scalingo).
 # Données isolées dans logs-perf-default (appname=*-perf), purgées après chaque test.
-# Cf. docs/blackout-logs/conventions.md pour le contexte.
+# Cf. docs/observabilite/process/logs/performances.md pour le contexte.
 
 name: Logstash - Test de non régression des performances
 

@@ -1,0 +1,27 @@
+# Component templates — traces (APM). A importer apres 1-ilm-policies.console.
+#
+# apm-retention-custom : brique PARTAGÉE avec ../logs/ — composée en dernier par
+# traces-apm@template-custom, traces-apm.rum@template-custom (ce dossier) ET par
+# logs-apm.error@template-custom (../logs/, flux logs-apm.error — classé "logs" au
+# sens ECS malgré son origine APM). Elle est VIDÉE (no-op) : chaque flux porte sa
+# propre rétention via sa brique <flux>@custom dédiée, définie UNE SEULE FOIS ici
+# (pattern miroir de logs@custom). Ne pas redéfinir apm-retention-custom ailleurs.
+PUT _component_template/apm-retention-custom
+{
+  "template": { "settings": {} },
+  "_meta": { "description": "Rétention APM portée par flux dans <flux>@custom (traces/ et ../logs/) ; brique partagée neutralisée", "managed_by": "pass-emploi-tools" }
+}
+
+# Traces APM → traces-apm-retention (21 j)
+PUT _component_template/traces-apm@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "traces-apm-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+# RUM APM → traces-apm-retention (21 j)
+PUT _component_template/traces-apm.rum@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "traces-apm-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
