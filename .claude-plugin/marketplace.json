@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "dependency-tools",
-      "description": "Skills de gestion des dépendances : upgrade-dependency (montée de version) et fix-cve (correction de vulnérabilités).",
+      "description": "Skills de gestion des dépendances : upgrade-dependency (montée de version) et fix-cve (correction de vulnérabilités, conversationnel ou headless).",
       "category": "dependencies",
       "source": "./plugins/dependency-tools"
     }
