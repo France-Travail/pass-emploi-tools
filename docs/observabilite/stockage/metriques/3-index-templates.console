@@ -1,0 +1,64 @@
+# Index templates — métriques (Fleet + heartbeat). A importer en dernier.
+#
+# Pour les flux Fleet (Logstash/Redis/System/Elastic Agent/Fleet Server) : PAS
+# d'index template custom ici. Le template managé fourni par le package Fleet
+# (ex: metrics-logstash.node, priorité standard) référence déjà nos briques
+# <type>-<dataset>@custom (2-component-templates.console) par convention de
+# nommage — rien à recréer, seulement à composer via ce nom réservé. Voir
+# https://www.elastic.co/docs/reference/fleet/data-streams-ilm-tutorial
+# scénario "Apply an ILM policy to specific data streams" — c'est celui utilisé
+# ici (pas de clonage d'index template).
+#
+# heartbeat n'a pas non plus de template ES custom : c'est un component
+# `output.elasticsearch` du binaire Heartbeat lui-même (cf. ../../heartbeat/
+# heartbeat.template.yml) qui écrit directement, sans template managé à composer.
+#
+# ⚠️ Aucun `PUT _index_template` dans ce fichier — volontaire, pas un oubli.
+
+# ═════════════════════════════════════════════════════════════════════════════
+# ROLLOVER (matérialisation) — nécessaire pour que le backing index EN COURS
+# D'ÉCRITURE de chaque data stream prenne la nouvelle policy immédiatement.
+# Sans ce rollover, elle ne s'appliquera qu'au prochain rollover naturel de la
+# policy système d'origine (jusqu'à 30 j). Idempotence : rejouer crée un
+# nouvel index vide, sans dommage.
+# ═════════════════════════════════════════════════════════════════════════════
+
+# Logstash
+POST metrics-logstash.node-default/_rollover
+POST metrics-logstash.pipeline-default/_rollover
+POST metrics-logstash.plugins-default/_rollover
+POST metrics-logstash.health_report-default/_rollover
+
+# Redis
+POST metrics-redis.info-default/_rollover
+POST metrics-redis.key-default/_rollover
+POST metrics-redis.keyspace-default/_rollover
+
+# Système (hosts Scalingo)
+POST metrics-system.cpu-default/_rollover
+POST metrics-system.diskio-default/_rollover
+POST metrics-system.filesystem-default/_rollover
+POST metrics-system.fsstat-default/_rollover
+POST metrics-system.load-default/_rollover
+POST metrics-system.memory-default/_rollover
+POST metrics-system.network-default/_rollover
+POST metrics-system.process-default/_rollover
+POST metrics-system.process.summary-default/_rollover
+POST metrics-system.socket_summary-default/_rollover
+POST metrics-system.uptime-default/_rollover
+
+# Elastic Agent — métriques internes
+POST metrics-elastic_agent.elastic_agent-default/_rollover
+POST metrics-elastic_agent.filebeat-default/_rollover
+POST metrics-elastic_agent.filebeat_input-default/_rollover
+POST metrics-elastic_agent.metricbeat-default/_rollover
+
+# Fleet Server
+POST metrics-fleet_server.agent_status-default/_rollover
+POST metrics-fleet_server.agent_versions-default/_rollover
+
+# Elastic Agent — logs internes
+POST logs-elastic_agent-default/_rollover
+POST logs-elastic_agent.filebeat-default/_rollover
+POST logs-elastic_agent.metricbeat-default/_rollover
+POST logs-elastic_agent.status_change-default/_rollover

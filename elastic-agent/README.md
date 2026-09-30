@@ -10,6 +10,11 @@ plusieurs apps** (ex: un cluster Redis utilisé par plusieurs services).
 Un seul agent dédié évite les doublons de métriques qui surviendraient si chaque
 instance Logstash monitorait la même ressource.
 
+> **Rétention des métriques dans Elasticsearch** (`metrics-redis.*` — info, key,
+> keyspace) : [`stockage/metriques/README.md`](../docs/observabilite/stockage/metriques/README.md), section
+> `metriques/`. Ce README-ci documente **quoi** superviser (Fleet, intégrations) ;
+> l'autre documente **combien de temps** la donnée est gardée (policies ILM).
+
 ## Architecture
 
 ```

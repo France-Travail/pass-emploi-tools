@@ -4,7 +4,7 @@
 > Fleet bloque le ré-enrollment, et comment débloquer sans recréer l'app.
 >
 > Correctif opérationnel : variable `ELASTIC_AGENT_ID_SUFFIX` dans
-> [`logs/README.md`](../../../logs/README.md#elastic-agent-fleet).
+> [`logs/README.md`](../../../logs/README.md#elastic-agent-fleet--configuration-requise) et [pilotage.md](../pilotage.md).
 
 ## TL;DR
 

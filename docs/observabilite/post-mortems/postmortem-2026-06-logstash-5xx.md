@@ -3,7 +3,7 @@
 > **Type** : explication (Diataxis). Document de compréhension : comment Logstash
 > fonctionne, pourquoi l'incident s'est produit, et comment lire les indicateurs
 > qu'on a mis en place. Pour la config ES / l'historique des autres incidents,
-> voir [infra-elasticsearch.md](../logs-ecs/infra-elasticsearch.md).
+> voir [stockage/logs](../stockage/logs/README.md).
 
 ## TL;DR
 

@@ -1,20 +1,50 @@
 # Runbook d'astreinte — supervision Logstash
 
 > **Type** : tutoriel (Diataxis). Procédures pas-à-pas pour diagnostiquer et
-> résoudre les 4 scénarios de panne de la chaîne d'ingestion Logstash.
+> résoudre les 5 scénarios de panne de la chaîne d'ingestion Logstash.
 >
-> Contexte et invariants durables : [conventions.md](conventions.md).
-> Définitions des alertes Kibana : [`logs/elastic/4-kibana-alerts.md`](../../../logs/elastic/4-kibana-alerts.md).
+> Contexte et invariants durables : [collecte/logs](../collecte/logs/README.md),
+> [process/logs](../process/logs/README.md), [infrastructure.md](../infrastructure.md).
+> Définitions des alertes de la stack d'observabilité : [`supervision/alertes-stack-observabilite.md`](../supervision/alertes-stack-observabilite.md).
+> Rétention par télémétrie (logs/traces/métriques) : [`stockage/`](../stockage/README.md).
 > Dashboards Fleet Logstash :
 > https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/integrations/detail/logstash-2.11.3/assets
+
+## Playbook de diagnostic de l'ingestion
+
+Méthode générale, avant de choisir un scénario ci-dessous. Signatures des modes
+de panne A/B : [collecte/logs](../collecte/logs/README.md#les-2-modes-de-panne--signatures).
+
+1. **Travailler sur la donnée du MOMENT T du trou**, pas une fenêtre saine (source
+   n°1 de temps perdu lors de l'incident de juillet 2026).
+2. **Router logs = l'arme principale** : le path contient `appname=<source>`.
+   Ventiler par app :
+   - `grep -oE 'appname=[a-z0-9-]+' F | sort | uniq -c` → volume par app.
+   - idem filtré `status=429` / `status=499` → qui est puni.
+   - **200/min par app** autour du trou → **quelle app tombe à 0** (une seule = mode B).
+   - trous de secondes sans requête → durée réelle du blackout.
+3. **GC vs ES** (pics de response time) : activer le log GC
+   (`-Xlog:gc,safepoint:stderr:utctime,level,tags` dans les options JVM, cf.
+   [infrastructure § garde-fous](../infrastructure.md#garde-fous-jvm--scalingo)),
+   lire les logs **de l'app logstash** : pic **avec** `Pause … ms` = GC ; pic
+   **sans** = ES (corréler au monitoring Elastic Cloud). **Retirer après** (verbeux).
+4. **Codes** : **429** = input plein (backpressure) ; **499** = le drain a coupé
+   (Logstash trop lent à répondre) ; **0 requête** d'une app = son drain en quarantaine.
+
+**Fausses pistes écartées** (ne pas y retourner sans raison nouvelle) : GC
+(0 % CPU pendant les trous), OOM (mémoire plate ~1,3 Go), coût de traitement
+d'api (durées égales aux autres apps), saturation de volume (le trou api arrive
+à bas régime), fsync PQ (pics présents avec ET sans PQ).
+
+---
 
 ## Vue d'ensemble — les 5 scénarios
 
 | #                                                     | Scénario                   | Signal d'entrée                                  | Urgence     |
 | ----------------------------------------------------- | -------------------------- | ------------------------------------------------ |-------------|
-| [1](#scénario-1--backpressure-elasticsearch)          | Backpressure Elasticsearch | `queue_backpressure > 0.5` + erreurs bulk ES     | ⚠️ Warning   |
-| [2](#scénario-2--gel-gc-jvm)                          | Gel GC JVM                 | Pic soudain GC + `events.out` tombe à 0          | ⚠️ Warning   |
-| [3](#scénario-3--rejet-de-mapping--dead-letter-queue) | Rejet de mapping / DLQ     | DLQ non vide + events dans `logs-logstash-dlq-*` | ⚠️ Warning   |
+| [1](#scénario-1--backpressure-elasticsearch)          | Backpressure Elasticsearch | `queue_backpressure > 0.5` + erreurs bulk ES     | ⚠️Warning  |
+| [2](#scénario-2--gel-gc-jvm)                          | Gel GC JVM                 | Pic soudain GC + `events.out` tombe à 0          | ⚠️Warning  |
+| [3](#scénario-3--rejet-de-mapping--dead-letter-queue) | Rejet de mapping / DLQ     | DLQ non vide + events dans `logs-logstash-dlq-*` | ⚠️Warning  |
 | [4](#scénario-4--crash-du-conteneur-logstash)         | Crash du conteneur         | Alerte restart Scalingo + silence logs           | 🚨 Critical |
 | [5](#scénario-5--backlog-redis-logstashingest)        | Backlog Redis              | `redis.key.length > 1 000` sur `logstash:ingest` | 🚨 Critical |
 
@@ -121,8 +151,8 @@ HTTP ralentit → les drains reçoivent des 429 → quarantaine.
 
 ### Références
 
-- [conventions.md — Mode A](conventions.md#les-2-modes-de-panne--signatures)
-- [postmortem-2026-07.md — §2](../post-mortems/postmortem-2026-07-blackout-logs.md)
+- [collecte/logs — Mode A](../collecte/logs/README.md#les-2-modes-de-panne--signatures)
+- [postmortem-2026-07-blackout-logs.md — §2](../post-mortems/postmortem-2026-07-blackout-logs.md)
 
 ---
 
@@ -173,8 +203,8 @@ dans les logs Scalingo de l'app `pass-emploi-logstash-prod`, chercher les lignes
 
 ### Références
 
-- [conventions.md — Garde-fous JVM](conventions.md#garde-fous-durables-ne-pas-se-faire-avoir)
-- [postmortem-logstash-5xx-2026-06.md](../post-mortems/postmortem-2026-06-logstash-5xx.md)
+- [infrastructure.md — Garde-fous JVM](../infrastructure.md#garde-fous-jvm--scalingo)
+- [postmortem-2026-06-logstash-5xx.md](../post-mortems/postmortem-2026-06-logstash-5xx.md)
 
 ---
 
@@ -231,8 +261,8 @@ Des `_ignored` indiquent un dépassement de `total_fields.limit` → prévoir un
 
 **Si DLQ non vide (conflit de mapping)** :
 1. Identifier le champ fautif via `logstash.dlq.reason` dans `logs-logstash-dlq-*`.
-2. Corriger le mapping dans `logs/elastic/2-component-templates.console` (ajouter
-   le champ dans `logs@custom` ou le template concerné).
+2. Corriger le mapping dans `docs/observabilite/stockage/logs/2-component-templates.console`
+   (ajouter le champ dans `logs@custom` ou le template concerné).
 3. Appliquer via Kibana Dev Tools et faire un rollover :
    ```
    POST logs-prod-default/_rollover
@@ -247,14 +277,14 @@ Des `_ignored` indiquent un dépassement de `total_fields.limit` → prévoir un
    terminant en plein milieu d'une valeur** → ligne applicative tronquée par le
    drain Scalingo, pas un bug de pipeline. Rien à corriger côté Logstash : la
    ligne source dépasse 16 Ko et doit être réduite côté app (cf.
-   [logs-ecs/conventions](../logs-ecs/conventions.md) § « Ne jamais logger une exception
+   [format/logs/conventions](../format/logs/conventions.md) § « Ne jamais logger une exception
    brute »). Le `context` en tête du `message` tronqué désigne le handler fautif.
 3. Sinon, reproduire localement avec le pipeline `process` pour identifier le
    filtre défaillant, corriger `logs/pipeline-process.conf` et déployer.
 
 ### Références
 
-- [infra-elasticsearch.md — Historique incidents](../logs-ecs/infra-elasticsearch.md#historique-incidents)
+- [stockage/logs — Pièges connus](../stockage/logs/README.md#pièges-connus)
 - [`logs/pipeline-dlq-logstash.conf`](../../../logs/pipeline-dlq-logstash.conf)
 - [`logs/pipeline-process.conf`](../../../logs/pipeline-process.conf)
 
@@ -329,9 +359,9 @@ http.response.status_code: (429 OR 499) AND service.environment: "prod"
 
 ### Références
 
-- [conventions.md — Quarantaine drain](conventions.md#garde-fous-durables-ne-pas-se-faire-avoir)
-- [postmortem-2026-07.md — §3 Mode B](../post-mortems/postmortem-2026-07-blackout-logs.md)
-- [4-kibana-alerts.md — Alerte 6 (webhook Scalingo)](../../../logs/elastic/4-kibana-alerts.md#alerte-6--restart-du-conteneur-logstash-scalingo-webhook)
+- [drain-scalingo.md — Quarantaine](../collecte/logs/drain-scalingo.md)
+- [postmortem-2026-07-blackout-logs.md — §3 Mode B](../post-mortems/postmortem-2026-07-blackout-logs.md)
+- [supervision/alertes-stack-observabilite.md — Alerte 6 (webhook Scalingo)](../supervision/alertes-stack-observabilite.md#alerte-6--restart-du-conteneur-logstash-scalingo-webhook)
 
 ---
 
@@ -409,7 +439,7 @@ Un backlog signale que le pipeline `process` ne consomme plus Redis. Causes poss
 
 ### Références
 
-- [4-kibana-alerts.md — Alerte 7](../../../logs/elastic/4-kibana-alerts.md#alerte-7--backlog-redis-logstashingest-pipeline-process-découplé)
+- [supervision/alertes-stack-observabilite.md — Alerte 7](../supervision/alertes-stack-observabilite.md#alerte-7--backlog-redis-logstashingest-pipeline-process-découplé)
 
 ---
 
@@ -451,17 +481,19 @@ GET logs-prod-default/_search
 
 ### Liens directs Kibana
 
-| Ressource                                           | URL                                                                                                                       |
-|-----------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------|
-| Fleet — Agents Logstash                             | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/fleet/agents                                                   |
-| Dashboards intégration Logstash                     | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/integrations/detail/logstash-2.11.3/assets                     |
-| Stack Management → Rules                            | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/management/insightsAndAlerting/triggersActions/rules           |
-| [Metrics Logstash] Pipeline Health Report           | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-838aac39-8edd-48b0-95b4-289e42b1e98a |
-| [Metrics Logstash] Elasticsearch output plugin info | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086 |
-| [Metrics Logstash] Logstash Overview                | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522 |
-| [Metrics Logstash] Single Node Advanced View        | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-a42d7060-45e6-11ee-957b-3720c0b0fbc5 |
-| [Metrics Logstash] Node Health Report               | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9a72208d-e446-48b9-8a63-c4256b9aa4e3 |
-| [Metrics Redis] Keys                                | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5    |
+| Ressource                                           | URL                                                                                                                            |
+|-----------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|
+| Fleet — Agents Logstash                             | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/fleet/agents                                                        |
+| Dashboards intégration Logstash                     | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/integrations/detail/logstash-2.11.3/assets                          |
+| Stack Management → Rules                            | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/management/insightsAndAlerting/triggersActions/rules                |
+| [Metrics Logstash] Pipeline Health Report           | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-838aac39-8edd-48b0-95b4-289e42b1e98a      |
+| [Metrics Logstash] Elasticsearch output plugin info | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086      |
+| [Metrics Logstash] Logstash Overview                | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522      |
+| [Metrics Logstash] Single Node Advanced View        | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-a42d7060-45e6-11ee-957b-3720c0b0fbc5      |
+| [Metrics Logstash] Node Health Report               | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9a72208d-e446-48b9-8a63-c4256b9aa4e3      |
+| [Metrics Redis] Keys                                | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5         |
+| [Elastic Agent] Overview                            | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824 |
+| [Elastic Agent] Concerning Agents                   | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-0600ffa0-6b5e-11ed-98de-67bdecd21824 |
 
 ### Liens directs Scalingo
 

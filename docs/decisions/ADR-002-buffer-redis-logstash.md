@@ -7,7 +7,7 @@
 ## Contexte et Définition du Problème
 
 L'architecture 2 pipelines Logstash (implémentée en 2026-07, cf.
-[blackout-logs/conventions.md](../observabilite/ingestion-logs/conventions.md)) utilise une
+[process/logs/performances.md](../observabilite/process/logs/performances.md#étape-1--architecture-2-pipelines-avec-persistent-queue-2026-07)) utilise une
 **Persistent Queue (PQ) disque** comme buffer entre le pipeline `ingest` (ACK
 rapide) et le pipeline `process` (filtres + ES). Cette PQ est **éphémère** (disque
 Scalingo non persisté) et **co-localisée** dans le même conteneur que les deux
@@ -154,6 +154,6 @@ le volume actuel, disponible en addon Scalingo, supportée nativement par Logsta
 
 ## Liens
 
-* [blackout-logs/conventions.md — Architecture 2 pipelines](../observabilite/ingestion-logs/conventions.md#architecture-2-pipelines-option-a--implémentée-2026-07)
+* [process/logs/performances.md — Architecture 2 pipelines](../observabilite/process/logs/performances.md#étape-1--architecture-2-pipelines-avec-persistent-queue-2026-07)
 * [logs/README.md — Architecture et déploiement](../../logs/README.md)
 * [elastic-agent/README.md — App Elastic Agent dédiée](../../elastic-agent/README.md)

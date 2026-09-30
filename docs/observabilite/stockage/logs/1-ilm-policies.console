@@ -1,4 +1,9 @@
-# Politiques ILM. A importer en premier (les templates les referencent).
+# Politiques ILM — logs (applicatif, router, DLQ/erreurs Logstash, erreurs APM).
+#
+# Logs = événements discrets (une ligne = un fait daté), au sens ECS. Distinct de
+# traces/ (mesures de durée d'une requête) et metriques/ (mesures numériques
+# périodiques). logs-apm.error est classé ici malgré son origine APM : c'est un
+# événement discret (une erreur = une ligne), pas une série temporelle.
 #
 # Fenêtre HOT = ~14 j : `warm.min_age: 14d` (compté depuis le rollover, indépendant
 # de la cadence). Rééquilibre le tier warm saturé vers le hot inutilisé. staging
@@ -82,6 +87,32 @@ PUT _ilm/policy/logs-staging-retention
       "hot": { "min_age": "0ms", "actions": { "rollover": { "max_age": "7d", "max_primary_shard_size": "25gb" } } },
       "warm": { "min_age": "0d", "actions": { "set_priority": { "priority": 50 } } },
       "delete": { "min_age": "14d", "actions": { "delete": {} } }
+    }
+  }
+}
+
+# Erreurs APM — 90 j (logs-apm.error-default). Découplé de traces-apm-retention :
+# le suivi des régressions d'erreurs a une valeur diagnostique plus longue que la
+# trace brute (30 j).
+PUT _ilm/policy/logs-apm.error-retention
+{
+  "policy": {
+    "phases": {
+      "hot": {
+        "min_age": "0ms",
+        "actions": {
+          "set_priority": { "priority": 100 },
+          "rollover": { "max_age": "30d", "max_primary_shard_size": "20gb" }
+        }
+      },
+      "warm": {
+        "min_age": "14d",
+        "actions": { "set_priority": { "priority": 50 } }
+      },
+      "delete": {
+        "min_age": "90d",
+        "actions": { "delete": {} }
+      }
     }
   }
 }

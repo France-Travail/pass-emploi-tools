@@ -22,6 +22,10 @@ Par défaut (aucune variable définie), les deux pipelines tournent dans le mêm
 
 > Pour comprendre la décision de migrer de la Persistent Queue vers Redis, voir
 > [ADR-002 — Migration du buffer Logstash : PQ disque → Redis](../docs/decisions/ADR-002-buffer-redis-logstash.md).
+>
+> **Rétention des métriques Logstash dans Elasticsearch** (`metrics-logstash.*` —
+> node, pipeline, plugins, health report, collectées par l'Elastic Agent
+> co-localisé) : [`stockage/metriques/README.md`](../docs/observabilite/stockage/metriques/README.md).
 
 ```mermaid
 graph LR

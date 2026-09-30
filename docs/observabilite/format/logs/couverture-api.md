@@ -24,6 +24,12 @@ Spécificités api :
 - **`handler_executed`** émis par les base classes CQRS (`logHandlerExecuted`).
   Discriminant crash / échec géré : `error instanceof Error` (les `DomainError`
   sont des `implements`, pas des `extends Error`).
+- **`labels.user_journey`** : parcours métier de la requête, posé par le
+  décorateur `@UserJourney('<parcours>')` (controller par défaut, surchargé par
+  route) et lu par `ContextInterceptor`. Découpe les SLO par parcours (cf.
+  [sli-slo](../../supervision/sli-slo.md#mise-en-œuvre--slo-kibana)). Absent des
+  logs émis avant l'interceptor : les guards (`auth_failed`, 401/403 de
+  `OidcAuthGuard`) passent avant, les jobs worker n'ont pas de requête.
 - **`external_api_call`** via Template Method `ExternalApiClient` +
   `ExternalApiLoggerService`.
 - **Bodies** : `http.request.body.content` (entrant via pino-http, sortant via
@@ -54,8 +60,9 @@ Trace attendue pour un `POST /rendez-vous` (filtrer sur `trace.id`) :
 
 Tous corrélés par le même `trace.id`, portant `user.{id,type,structure}` du conseiller.
 
-Alertes RDV Milo : `external_api_call` `MiloClient` `failure` rate élevé →
-Slack #ops ; échecs `CreateRendezVousCommandHandler` → Slack #dev.
+Alerte RDV Milo : `external_api_call` `MiloClient` `failure` rate élevé →
+[alerte A1](../../supervision/alertes-applicatives.md#a1--pic-déchecs-partenaire-warning).
+Les échecs `CreateRendezVousCommandHandler` ne sont pas alertés.
 
 ## Limites connues & pistes
 

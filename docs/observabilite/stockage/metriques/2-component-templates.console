@@ -1,0 +1,186 @@
+# Component templates — métriques (Fleet + heartbeat). A importer apres
+# 1-ilm-policies.console.
+#
+# Pattern : une brique <type>-<dataset>@custom par flux (jamais de brique
+# partagée mutualisée — même principe que apm-retention-custom vidée dans
+# ../logs/ et ../traces/). Chaque intégration Fleet réserve déjà ce point
+# d'ancrage par défaut (nom conventionnel), mais NE LE REMPLIT PAS — on le crée
+# ici pour la première fois pour chacun des flux concernés.
+
+# ─── Logstash (self-monitoring, co-localisé dans pass-emploi-logstash-<env>
+#      et pass-emploi-logstash-process-<env>) ───
+PUT _component_template/metrics-logstash.node@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "description": "Retention métriques node Logstash (santé JVM/pipeline)", "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/metrics-logstash.pipeline@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "description": "Retention métriques pipeline Logstash (backpressure, queues)", "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/metrics-logstash.plugins@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "description": "Retention métriques plugins Logstash (bulk requests ES, erreurs output)", "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/metrics-logstash.health_report@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "description": "Retention health report Logstash (Logstash >= 8.16)", "managed_by": "pass-emploi-tools" }
+}
+
+# ─── Redis (agent dédié pass-emploi-elastic-agent-<env>) ───
+PUT _component_template/metrics-redis.info@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "description": "Retention métriques info Redis (mémoire, connexions, stats)", "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/metrics-redis.key@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "description": "Retention métriques key Redis (taille listes, ex: logstash:ingest)", "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/metrics-redis.keyspace@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "description": "Retention métriques keyspace Redis", "managed_by": "pass-emploi-tools" }
+}
+
+# ─── Système (hosts Scalingo sous-jacents aux conteneurs Elastic Agent) ───
+PUT _component_template/metrics-system.cpu@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/metrics-system.diskio@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/metrics-system.filesystem@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/metrics-system.fsstat@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/metrics-system.load@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/metrics-system.memory@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/metrics-system.network@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/metrics-system.process@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/metrics-system.process.summary@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/metrics-system.socket_summary@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/metrics-system.uptime@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+# ─── Elastic Agent — métriques internes de l'agent lui-même (pas ce qu'il supervise) ───
+PUT _component_template/metrics-elastic_agent.elastic_agent@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/metrics-elastic_agent.filebeat@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/metrics-elastic_agent.filebeat_input@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/metrics-elastic_agent.metricbeat@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+# ─── Fleet Server (recensement des agents enrôlés) ───
+PUT _component_template/metrics-fleet_server.agent_status@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/metrics-fleet_server.agent_versions@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+# ─── Elastic Agent — logs internes (logs-*, pas metrics-*) ───
+PUT _component_template/logs-elastic_agent@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "logs-elastic-agent-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/logs-elastic_agent.filebeat@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "logs-elastic-agent-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/logs-elastic_agent.metricbeat@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "logs-elastic-agent-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+# Journal des changements de statut (source de l'alerte 8). La policy du package
+# (logs-elastic_agent.status_change_logs-default_policy) n'a qu'une phase delete
+# à 90 j, sans rollover : un seul index, supprimé d'un bloc à 90 j d'âge.
+PUT _component_template/logs-elastic_agent.status_change@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "logs-elastic-agent-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}

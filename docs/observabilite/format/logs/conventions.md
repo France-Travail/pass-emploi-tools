@@ -7,7 +7,7 @@
 
 ## Finalités
 
-Trois usages cibles structurent toute la démarche (détail : [kibana](kibana.md)) :
+Trois usages cibles structurent toute la démarche (détail : [routine-surveillance](../../routine-surveillance.md)) :
 
 - **Investigation incident** — reconstituer ce qui s'est passé pour un utilisateur / une requête.
 - **Reporting métier** — compter les actions métier par structure / dispositif.
@@ -124,7 +124,7 @@ lignes ; tout autre niveau les coupe à la source.
 - **Contrainte de typage ES.** Un `debug` indexé doit respecter les mappings des
   index `logs-*`. En particulier, un champ libre qui dumpe un payload
   hétérogène (objet **ou** string selon les cas) provoque un
-  `document_parsing_exception` (rejet 400). Cf. règle ci-dessous + [infra-elasticsearch](infra-elasticsearch.md).
+  `document_parsing_exception` (rejet 400). Cf. règle ci-dessous + [stockage/logs](../../stockage/logs/README.md).
 
 ## Diagnostic libre → `labels.*`
 
@@ -178,7 +178,7 @@ JS, erreur métier (code/message), valeur inconnue → `{type, message, stack_tr
    pas si le log ne passe pas par le `rootLogger` — ce n'est pas un filet fiable.
 2. **Troncature.** La ligne dépasse vite **16 Ko**, plafond au-delà duquel le
    drain Scalingo coupe (voir
-   [blackout-logs/conventions](../ingestion-logs/conventions.md)). Le JSON arrive
+   [collecte/logs/drain-scalingo](../../collecte/logs/drain-scalingo.md)). Le JSON arrive
    incomplet, le filtre `json` de Logstash échoue, et l'event part dans
    `logs-logstash-errors-*` au lieu de l'index applicatif : **le log est perdu
    pour l'exploitation**.
@@ -240,7 +240,7 @@ taxonomie du repo dans un `couverture-<repo>.md` dédié.
 | `ExternalApiClient` (base axios) | pass-emploi-api | `src/infrastructure/clients/external-api-client.ts` |
 | `logExternalCall` (SDK non-axios) | pass-emploi-connect | `src/utils/monitoring/external-call.logger.ts` |
 | Logger + `RequestContext` connect | pass-emploi-connect | `src/utils/monitoring/{logger.module,request-context}.ts` |
-| Logstash + templates ES | pass-emploi-tools | `logs/pipeline-{ingest,process,dlq-logstash}.conf`, `logs/elastic/*.console` |
+| Logstash + templates ES | pass-emploi-tools | `logs/pipeline-{ingest,process,dlq-logstash}.conf`, `docs/observabilite/stockage/*/*.console` |
 
 ## Décisions durables (transverses)
 
@@ -248,7 +248,7 @@ taxonomie du repo dans un `couverture-<repo>.md` dédié.
 - `level` dérivé de la nature de l'erreur, pas de sa simple présence.
 - Redaction par fragment de clé (`isSensitiveKey`), une liste unique partagée.
 - Bodies logués sur échec ; succès → `debug` uniquement.
-- Templates ES versionnés (voir [infra-elasticsearch](infra-elasticsearch.md)).
+- Templates ES versionnés (voir [stockage/logs](../../stockage/logs/README.md)).
 - Logs router Scalingo reformatés ECS côté Logstash (`request_routed`).
 - `apmService.captureError` conservé **en parallèle** des logs ECS (canal distinct).
 - `event.action` deux familles d'appels sortants unifiées sous un même schéma.

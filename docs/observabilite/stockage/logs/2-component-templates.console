@@ -1,4 +1,5 @@
-# Component templates. A importer apres les politiques ILM.
+# Component templates — logs (applicatif, router, DLQ/erreurs Logstash, erreurs APM).
+# A importer apres 1-ilm-policies.console.
 
 PUT _component_template/logs@custom
 {
@@ -85,8 +86,13 @@ PUT _component_template/logs-router@settings
   "version": 2
 }
 
-# Briques de rétention (une par flux, lifecycle uniquement) — pattern homogène
-# avec les briques `<flux>@custom` de observabilite.console.
+# apm-retention-custom : brique PARTAGÉE avec ../traces/. Composée en dernier par
+# logs-apm.error@template-custom (ce dossier) ET par traces-apm@template-custom,
+# traces-apm.rum@template-custom (../traces/). Elle est VIDÉE (no-op) : chaque flux
+# porte sa propre rétention via sa brique <flux>@custom dédiée. Définie UNE SEULE
+# FOIS dans ../traces/2-component-templates.console — référencée seulement ici.
+
+# Briques de rétention (une par flux, lifecycle uniquement) — pattern homogène.
 PUT _component_template/logs-logstash-errors-retention-custom
 {
   "template": { "settings": { "index": { "lifecycle": { "name": "logs-logstash-errors-retention" } } } },
@@ -127,4 +133,12 @@ PUT _component_template/logs-perf-retention-custom
   "template": { "settings": { "index": { "lifecycle": { "name": "logs-perf-retention" } } } },
   "_meta": { "description": "Retention logs de test de perf (courte ; filet du workflow logstash-perf)", "managed_by": "pass-emploi-tools" },
   "version": 1
+}
+
+# Erreurs APM → logs-apm.error-retention (90 j). Classé "logs" au sens ECS
+# (événement discret) malgré son origine APM — cf. 1-ilm-policies.console.
+PUT _component_template/logs-apm.error@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "logs-apm.error-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
 }
