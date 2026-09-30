@@ -45,6 +45,34 @@ n'y a rien à invoquer :
 
 Pour vérifier qu'elles sont bien chargées : `claude plugin list`.
 
+### `fix-cve` : conversationnel ou headless
+
+En conversation, la skill scanne, propose **un seul plan** (à valider en une
+réponse, partielle si besoin), applique un commit par groupe puis ré-audite.
+
+Sans humain (tâche planifiée, CI), le flag `--headless` supprime toute question :
+seuls les groupes dont le risque est ≤ `--max-risk` (défaut `low`) sont appliqués,
+le reste est listé dans un rapport JSON (`--report`) qui indique si la PR est
+éligible à l'auto-merge (`autoMergeEligible`). La skill ne pousse jamais : c'est
+au workflow appelant d'ouvrir la PR.
+
+```bash
+claude -p "/dependency-tools:fix-cve --headless --report fix-cve-report.json"
+claude -p "/dependency-tools:fix-cve GHSA-xxxx-xxxx-xxxx --headless --max-risk medium"
+```
+
+| Argument             | Effet                                                                 |
+|----------------------|-----------------------------------------------------------------------|
+| ids ou paquets       | restreint à ces advisories (CVE, GHSA ou nom de paquet)               |
+| `--headless`         | aucune question, rapport JSON                                          |
+| `--max-risk`         | `low` (défaut) · `medium` (resolutions) · `high` (majeures)           |
+| `--dev`              | inclut les dépendances de dev (défaut : prod uniquement)              |
+| `--min-age <jours>`  | âge minimal d'une nouvelle version pour l'auto-merge (défaut : 3)     |
+
+Le scan (`skills/fix-cve/scripts/scan.mjs`, Node ≥ 22, Yarn Berry uniquement)
+peut aussi se lancer seul depuis la racine d'un repo pour un état des lieux
+sans rien modifier : `node <chemin>/scan.mjs --help`.
+
 ## Mise à jour — côté utilisateur
 
 Récupérer la dernière version publiée d'un plugin demande **deux** commandes,
