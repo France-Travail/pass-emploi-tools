@@ -184,3 +184,39 @@ PUT _component_template/logs-elastic_agent.status_change@custom
   "template": { "settings": { "index": { "lifecycle": { "name": "logs-elastic-agent-retention" } } } },
   "_meta": { "managed_by": "pass-emploi-tools" }
 }
+
+# ─── Mémoire des conteneurs Scalingo (Custom API sur l'agent dédié) ───
+# Input CEL = data stream de type logs, mais mesure périodique : rétention métriques.
+PUT _component_template/logs-scalingo.container_stats@custom
+{
+  "template": {
+    "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } },
+    "mappings": {
+      "properties": {
+        "scalingo": {
+          "properties": {
+            "app": { "type": "keyword" },
+            "container": { "type": "keyword" },
+            "container_type": { "type": "keyword" },
+            "cpu": { "properties": { "usage": { "type": "float" } } },
+            "memory": {
+              "properties": {
+                "usage": { "properties": { "bytes": { "type": "long" } } },
+                "limit": { "properties": { "bytes": { "type": "long" } } },
+                "highest": { "properties": { "bytes": { "type": "long" } } },
+                "pct": { "type": "scaled_float", "scaling_factor": 1000 }
+              }
+            },
+            "swap": {
+              "properties": {
+                "usage": { "properties": { "bytes": { "type": "long" } } },
+                "highest": { "properties": { "bytes": { "type": "long" } } }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "_meta": { "description": "Mémoire des conteneurs Scalingo (API /stats)", "managed_by": "pass-emploi-tools" }
+}

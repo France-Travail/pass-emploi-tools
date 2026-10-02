@@ -12,8 +12,8 @@ SDK APM** (cf. [collecte/traces](collecte/traces/README.md)).
 
 | Agent | App Scalingo | Policy (Kibana → Fleet → Agent Policies) | Intégrations |
 |---|---|---|---|
-| co-localisé INGEST | `pass-emploi-logstash-<env>` | une par env | Logstash, System |
-| co-localisé PROCESS | `pass-emploi-logstash-process-<env>` | une par env | Logstash, System |
+| co-localisé INGEST | `pass-emploi-logstash-<env>` | une par env | Logstash seule ([garde-fou 6](infrastructure.md#garde-fous-jvm--scalingo)) |
+| co-localisé PROCESS | `pass-emploi-logstash-process-<env>` | une par env | Logstash seule ([garde-fou 6](infrastructure.md#garde-fous-jvm--scalingo)) |
 | dédié | `pass-emploi-elastic-agent-<env>` | ex. `pass-emploi-elastic-agent-<env>` | Redis (+ System optionnel) |
 
 **Environnement perf** : ses agents sont **volontairement désactivés** pour
@@ -67,7 +67,8 @@ Récit complet : [postmortem-2026-09-unenrolled-elastic-agent.md](post-mortems/p
 - Mémoire Go bornée par `ELASTIC_AGENT_GO_OPTS` (`GOMEMLIMIT`) — cf.
   [infrastructure.md](infrastructure.md#garde-fous-jvm--scalingo).
 - Agent dédié : **1 seule instance** (plusieurs remonteraient les mêmes métriques
-  en doublon), conteneur M (512 Mo).
+  en doublon), conteneur L (1 Go) depuis l'ajout de l'input CEL
+  ([`elastic-agent/README.md`](../../elastic-agent/README.md#configuration-scalingo)).
 
 ## Savoir qu'un agent a décroché
 

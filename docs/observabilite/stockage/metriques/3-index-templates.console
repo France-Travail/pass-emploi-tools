@@ -57,6 +57,9 @@ POST metrics-elastic_agent.metricbeat-default/_rollover
 POST metrics-fleet_server.agent_status-default/_rollover
 POST metrics-fleet_server.agent_versions-default/_rollover
 
+# Mémoire des conteneurs Scalingo (Custom API)
+POST logs-scalingo.container_stats-default/_rollover
+
 # Elastic Agent — logs internes
 POST logs-elastic_agent-default/_rollover
 POST logs-elastic_agent.filebeat-default/_rollover

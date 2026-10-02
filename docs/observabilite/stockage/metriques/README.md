@@ -10,6 +10,7 @@ Rétention des métriques Fleet et Heartbeat. Collecte : [collecte/metriques](..
 | `metrics-system.*-default` (11 datasets — hosts Scalingo)                   | `metrics-fleet-retention`     | 90 j  |
 | `metrics-elastic_agent.*-default` (4 datasets — santé de l'agent lui-même)   | `metrics-fleet-retention`     | 90 j  |
 | `metrics-fleet_server.{agent_status,agent_versions}-default`                | `metrics-fleet-retention`     | 90 j  |
+| `logs-scalingo.container_stats-default` (Custom API — mémoire des conteneurs) | `metrics-fleet-retention`     | 90 j  |
 | `logs-elastic_agent{,.filebeat,.metricbeat,.status_change}-default`         | `logs-elastic-agent-retention`| 90 j  |
 | `heartbeat-<version>` (seul `heartbeat-9.1.5` existe au 2026-09-30)         | `heartbeat`                   | 90 j  |
 
@@ -83,6 +84,7 @@ GET _ilm/policy/metrics-fleet-retention,logs-elastic-agent-retention,heartbeat
 GET _component_template/metrics-logstash.node@custom
 GET _component_template/metrics-redis.key@custom
 GET _component_template/logs-elastic_agent@custom
+GET _component_template/logs-scalingo.container_stats@custom
 
-GET _data_stream/metrics-logstash*,metrics-redis*,metrics-system*,metrics-elastic_agent*,metrics-fleet_server*,logs-elastic_agent*,heartbeat-*?filter_path=data_streams.name,data_streams.ilm_policy
+GET _data_stream/metrics-logstash*,metrics-redis*,metrics-system*,metrics-elastic_agent*,metrics-fleet_server*,logs-elastic_agent*,logs-scalingo*,heartbeat-*?filter_path=data_streams.name,data_streams.ilm_policy
 ```

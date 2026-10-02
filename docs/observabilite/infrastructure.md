@@ -87,12 +87,12 @@ Relevé du 2026-09-30 — vérifier l'état réel avant d'agir.
 
 1. **Conteneur XL Scalingo = 2 Go** (pas 4). Logstash consomme ~0,8-1 Go **hors
    heap** (Netty/direct memory, JRuby, metaspace, threads) + l'OS + l'Elastic Agent
-   co-localisé. **`-Xmx2g` sur XL 2 Go = 100 % du conteneur → OOM-kill → restart →
-   blackout.** Garder `-Xmx` ≤ ~1 Go.
+   co-localisé. Avec `-Xmx256m`, la mémoire totale plafonne à ~1,7 Go sur les 2 Go :
+   **ne pas augmenter le heap**, sous peine d'OOM-kill → restart → blackout.
 2. **Conteneur L (1 Go) minimum** : Logstash et Elastic Agent cohabitent. En
    dessous, le boot est tué par l'OOM killer (`Killed ... memory quota exceeded`)
    quel que soit le heap.
-3. **Le heap se règle via `LS_JAVA_OPTS`** (ex. `-Xms1g -Xmx1g`), appendé après
+3. **Le heap se règle via `LS_JAVA_OPTS`** (`-Xms256m -Xmx256m`), appendé après
    `jvm.options` → override sans redéploiement. **`JAVA_OPTS` n'a aucun effet
    sur Logstash** : le lanceur l'ignore
    (`warning: ignoring JAVA_OPTS=…; pass JVM parameters via LS_JAVA_OPTS`). Les
@@ -103,6 +103,11 @@ Relevé du 2026-09-30 — vérifier l'état réel avant d'agir.
 5. **Poule et œuf sur une app neuve** : Scalingo refuse `scale` tant qu'aucun
    déploiement n'a réussi — procédure de déblocage dans
    [`logs/README.md`](../../logs/README.md#dimensionnement--1-go-minimum).
+6. **Agent co-localisé : intégration Logstash seule.** Activer l'intégration System
+   sur les conteneurs Logstash a coûté **~300 Mo par conteneur** (process : 1,6 →
+   1,9 Go sur 2 Go, le 2026-10-02), sans même fournir la mémoire du conteneur (cgroup
+   illisible, la somme des RSS sous-estime de ~500 Mo). La mémoire des conteneurs se
+   suit côté Scalingo, pas depuis l'intérieur.
 
 ## Dimensionnement au 2026-09-14
 

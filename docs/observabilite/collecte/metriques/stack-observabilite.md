@@ -11,19 +11,21 @@ qu'elle ne soit visible côté apps (cf. philosophie des
   mesure **son** Logstash via l'API locale `/_node/stats` (port 9600).
 - **Dédié** (`pass-emploi-elastic-agent-<env>`) : mesure les ressources
   **partagées** entre plusieurs apps — aujourd'hui le Redis attaché à
-  `pass-emploi-logstash-process-<env>`. Un agent co-localisé dans l'un ou l'autre
+  `pass-emploi-logstash-process-<env>` — et la mémoire des conteneurs Logstash via
+  l'API Scalingo ([intégration Custom API](../../../../elastic-agent/README.md#mémoire-des-conteneurs-scalingo-intégration-custom-api)). Un agent co-localisé dans l'un ou l'autre
   service Logstash produirait ces métriques en double.
 
 ## Data streams
 
 | Data stream | Contenu | Usage |
 |---|---|---|
-| `metrics-logstash.node-default` | stats nœud : JVM heap, GC, events in/out | alerte 5 (heap), diagnostic GC |
+| `metrics-logstash.node-default` | stats nœud : JVM heap, events in/out (champs GC mappés mais vides) | alerte 5 (heap) |
 | `metrics-logstash.pipeline-default` | stats pipeline : queue depth, workers, batch | alerte 4 (backpressure) |
 | `metrics-logstash.plugins-default` | stats plugins : bulk requests ES, erreurs output | diagnostic (compteurs cumulatifs, non alertables) |
 | `metrics-logstash.health_report-default` | état de santé global du nœud | diagnostic |
 | `metrics-redis.{info,key,keyspace}-default` | mémoire, connexions, longueur de `logstash:ingest` (`redis.key.length`) | alerte 7 (backlog) |
-| `metrics-system.*-default` | 11 datasets — hosts Scalingo | diagnostic |
+| `metrics-system.*-default` | 11 datasets — agent dédié uniquement | diagnostic |
+| `logs-scalingo.container_stats-default` | mémoire totale de chaque conteneur Logstash, vue par Scalingo (`scalingo.memory.*`) | dashboard, future alerte mémoire conteneur |
 
 Data view Kibana : `metrics-logstash*` (timestamp `@timestamp`). La taille de la
 DLQ (`queue_size_in_bytes`) n'est **pas** exposée par l'intégration : l'alerte DLQ
