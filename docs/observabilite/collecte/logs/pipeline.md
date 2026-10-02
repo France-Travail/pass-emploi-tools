@@ -26,6 +26,7 @@ Chaque filtre ajouté rallonge l'ACK et risque de réintroduire la quarantaine.
 |---|---|---|
 | `LOGSTASH_INGEST_THREADS` | `4` | Threads Netty de l'input HTTP |
 | `LOGSTASH_INGEST_WORKERS` | `1` | Workers — augmenter si l'écriture Redis est le goulot |
+| `LOGSTASH_INGEST_REDIS_BATCH_EVENTS` | `250` | Événements par RPUSH. Sans `batch => true`, l'output `redis` fait un RPUSH par événement |
 
 `pipeline.ordered: false` (supprime l'overhead de synchronisation). Liste
 complète des variables : [`logs/README.md`](../../../../logs/README.md#variables-denvironnement).

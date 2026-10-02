@@ -46,8 +46,9 @@
   Logstash est suspecté, ou on redimensionne un maillon de la chaîne d'ingestion.
 - **Invariant** : le log-drain Scalingo **quarantine une app 5 min** dès **10 lignes
   consécutives** refusées (escalade 10/15/20 min) → un hoquet Logstash = blackout de
-  la plus grosse app (`pass-emploi-api`). Conteneur XL Scalingo = **2 Go** → `-Xmx`
-  ≤ ~1 Go, piloté via `LS_JAVA_OPTS` (`JAVA_OPTS` est ignoré par Logstash).
+  la plus grosse app (`pass-emploi-api`). Conteneur XL Scalingo = **2 Go** → heap figé à
+  `-Xmx256m` (mémoire totale ~1,7 Go, ne pas monter), piloté via `LS_JAVA_OPTS`
+  (`JAVA_OPTS` est ignoré par Logstash).
   Charger la référence **avant** de scaler ou retoucher la chaîne d'ingestion.
 - **Référence stable** : [`collecte/logs/`](./observabilite/collecte/logs/README.md)
   — `drain-scalingo.md` (quarantaine, troncature, décision ADR-003), `pipeline.md` (ingest) ;

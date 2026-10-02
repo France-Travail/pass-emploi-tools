@@ -141,7 +141,7 @@ identique à l'ancienne architecture mono-service.
 | `PASSWORD`          | Mot de passe HTTP pour l'authentification du drain Scalingo                              |
 | `REDIS_HOST`        | Hôte Redis (ex: `my-redis.scalingo.com`)                                                 |
 | `REDIS_PASSWORD`    | Mot de passe Redis                                                                       |
-| `LS_JAVA_OPTS`      | Options JVM, heap compris (ex: `-Xms1g -Xmx1g` dans un conteneur XL)                     |
+| `LS_JAVA_OPTS`      | Options JVM, heap compris (`-Xms256m -Xmx256m` dans un conteneur XL)                     |
 
 ### Logstash — configuration optionnelle
 
@@ -151,6 +151,7 @@ identique à l'ancienne architecture mono-service.
 | `REDIS_CA_CERT_BASE64`        | —      | CA cert Redis encodé en base64 (onglet SSL/TLS de la page Redis Scalingo). Décodé au démarrage vers `/app/certs/redis-ca.pem` |
 | `LOGSTASH_INGEST_THREADS`     | `4`    | Threads Netty du pipeline ingest                                                                                              |
 | `LOGSTASH_INGEST_WORKERS`     | `1`    | Workers du pipeline `ingest` — augmenter si l'écriture Redis est le goulot                                                    |
+| `LOGSTASH_INGEST_REDIS_BATCH_EVENTS` | `250` | Événements regroupés par RPUSH vers Redis (output `redis` en mode batch)                                         |
 | `LOGSTASH_PROCESS_WORKERS`    | `1`    | Workers du pipeline `process` — augmenter si le traitement ES est le goulot                                                   |
 | `LOGSTASH_PROCESS_BATCH_SIZE` | `250`  | Taille des batches du pipeline `process` — réduire temporairement (ex: `50`) en cas de backpressure ES                        |
 | `LOGSTASH_DLQ_WORKERS`        | `1`    | Workers du pipeline `dead_letter_queue`                                                                                       |
@@ -171,8 +172,9 @@ identique à l'ancienne architecture mono-service.
 
 > **Le heap se règle via `LS_JAVA_OPTS`, pas `JAVA_OPTS`.** Le lanceur Logstash
 > ignore explicitement le second (`warning: ignoring JAVA_OPTS=…; pass JVM
-> parameters via LS_JAVA_OPTS`). Garder `-Xmx` ≤ ~1 Go dans un conteneur 2 Go
-> pour laisser la place au non-heap et à Elastic Agent.
+> parameters via LS_JAVA_OPTS`). Avec `-Xmx256m`, la mémoire totale plafonne à
+> ~1,7 Go dans un conteneur 2 Go : ne pas monter le heap, le non-heap et Elastic Agent
+> occupent le reste.
 
 ### Elastic Agent (Fleet) — configuration requise
 
