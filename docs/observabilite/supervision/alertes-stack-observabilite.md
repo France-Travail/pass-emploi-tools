@@ -27,13 +27,13 @@ Stack Management → Rules**, qui notifient via Mattermost
 | 3b | Silence logs router — prod                    | `logs-router-prod-default`                      | `Is below or equals 0` / 5 min                           | 2 min      | 6h       | 🚨 Critical |
 | 3c | Silence logs applicatifs — staging/perf       | `logs-staging/perf-default`                     | `Is below or equals 0` / 5 min                           | 5 min      | 6h       | ⚠️Warning  |
 | 3d | Silence logs router — staging/perf            | `logs-router-staging/perf-default`              | `Is below or equals 0` / 5 min                           | 5 min      | 6h       | ⚠️Warning  |
-| 4a | Backpressure — workers bloqués — prod         | `metrics-logstash.pipeline-default`             | `Is above 0.5` / 5 min                                   | 2 min      | 6h       | 🚨 Critical |
-| 4b | Backpressure — workers bloqués — staging/perf | `metrics-logstash.pipeline-default`             | `Is above 0.5` / 5 min                                   | 5 min      | 6h       | ⚠️Warning  |
-| 5a | Heap JVM élevé — prod                         | `metrics-logstash.node-default`                 | `Is above 85` / 5 min                                    | 2 min      | 6h       | 🚨 Critical |
-| 5b | Heap JVM élevé — staging/perf                 | `metrics-logstash.node-default`                 | `Is above 85` / 5 min                                    | 5 min      | 6h       | ⚠️Warning  |
-| 6  | Restart conteneur                             | Scalingo webhook                                | `app_crashed/app_restarted`                              | —          | —        | 🚨 Critical |
-| 7a | Backlog Redis `logstash:ingest` — prod        | `metrics-redis.key-default`                     | `Is above 1 000` / 5 min                                 | 2 min      | 6h       | 🚨 Critical |
-| 7b | Backlog Redis `logstash:ingest` — staging/perf| `metrics-redis.key-default`                     | `Is above 1 000` / 5 min                                 | 5 min      | 6h       | ⚠️Warning  |
+| 4a | Backpressure ingest — prod                    | `metrics-logstash.pipeline-default`             | `Min` `≥ 1` / 15 min                                     | 2 min      | 6h       | 🚨 Critical |
+| 4b | Backpressure ingest — staging/perf            | `metrics-logstash.pipeline-default`             | `Min` `≥ 1` / 15 min                                     | 5 min      | 6h       | ⚠️Warning  |
+| 5a | Heap JVM élevé — prod                         | `metrics-logstash.node-default`                 | `Min` `≥ 90` / 15 min                                    | 2 min      | 6h       | 🚨 Critical |
+| 5b | Heap JVM élevé — staging/perf                 | `metrics-logstash.node-default`                 | `Min` `≥ 90` / 15 min                                    | 5 min      | 6h       | ⚠️Warning  |
+| 6  | Restart conteneur                             | Scalingo webhook                                | `app_crashed_repeated/app_restarted`                     | —          | —        | 🚨 Critical |
+| 7a | Backlog Redis `logstash:ingest` — prod        | `metrics-redis.key-default`                     | `Min` `Is above 1 000` / 15 min                          | 2 min      | 6h       | 🚨 Critical |
+| 7b | Backlog Redis `logstash:ingest` — staging/perf| `metrics-redis.key-default`                     | `Min` `Is above 1 000` / 15 min                          | 5 min      | 6h       | ⚠️Warning  |
 | 8a | Elastic Agent en défaut — prod                | status_change + `metrics-elastic_agent.*beat-*` | offline/unenrolled/unhealthy ou > 25 err. output / 5 min | 1 min      | 6h       | 🚨 Critical |
 | 8b | Elastic Agent en défaut — staging             | status_change + `metrics-elastic_agent.*beat-*` | offline/unenrolled/unhealthy ou > 25 err. output / 5 min | 1 min      | 6h       | ⚠️Warning  |
 
@@ -64,7 +64,7 @@ erreur de transformation) qui n'a **pas** été indexé dans `logs-*`.
 > ```
 
 > **Data streams de métriques Logstash** (intégration Elastic Agent) :
-> - `metrics-logstash.node-default` — stats nœud : JVM heap, GC, events in/out
+> - `metrics-logstash.node-default` — stats nœud : JVM heap, events in/out
 > - `metrics-logstash.pipeline-default` — stats pipeline : queue depth, workers, batch
 > - `metrics-logstash.plugins-default` — stats plugins : bulk requests ES, erreurs output
 > - `metrics-logstash.health_report-default` — état de santé global du nœud
@@ -84,7 +84,7 @@ erreur de transformation) qui n'a **pas** été indexé dans `logs-*`.
 | **Sévérité**            | Critical                                                                                                                                                                                 |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                               |
 | **Action**              | Connecteur Kibana **Mattermost-o11y-production** — voir body ci-dessous                                                                                                            |
-| **Related dashboards**  | `[Metrics Logstash] Pipeline Health Report`                                                                                                                                              |
+| **Related dashboards**  | `[Metrics Logstash] Elasticsearch output plugin info` |
 | **Investigation guide** | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue) |
 
 **Body du webhook** (champ "Body" dans l'onglet Message de l'action) :
@@ -97,8 +97,8 @@ erreur de transformation) qui n'a **pas** été indexé dans `logs-*`.
       "fields": [
         { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
         { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Pipeline Health Report](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-838aac39-8edd-48b0-95b4-289e42b1e98a)" },
         { "title": "Dashboard", "value": "[[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)" },
+        { "title": "À vérifier", "value": "Dans Discover, l'index DLQ : le motif de rejet d'Elasticsearch (mapping, document trop gros…)" },
         { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)" }
       ]
     }
@@ -119,7 +119,7 @@ erreur de transformation) qui n'a **pas** été indexé dans `logs-*`.
 | **Sévérité**            | Warning                                                                                                                                                                                    |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                 |
 | **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — voir body ci-dessous                                                                                                                 |
-| **Related dashboards**  | `[Metrics Logstash] Pipeline Health Report`                                                                                                                                                |
+| **Related dashboards**  | `[Metrics Logstash] Elasticsearch output plugin info` |
 | **Investigation guide** | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)   |
 
 **Body du webhook** :
@@ -132,8 +132,8 @@ erreur de transformation) qui n'a **pas** été indexé dans `logs-*`.
       "fields": [
         { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
         { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Pipeline Health Report](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-838aac39-8edd-48b0-95b4-289e42b1e98a)" },
         { "title": "Dashboard", "value": "[[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)" },
+        { "title": "À vérifier", "value": "Dans Discover, l'index DLQ : le motif de rejet d'Elasticsearch (mapping, document trop gros…)" },
         { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)" }
       ]
     }
@@ -175,7 +175,7 @@ Logstash (`_mutate_error`, `_jsonparsefailure`, `_rubyexception`…) et n'ont **
 | **Sévérité**            | Critical                                                                                                                                                                                                       |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                               |
 | **Action**              | Connecteur Kibana **Mattermost-o11y-production** — voir body ci-dessous                                                                                                                                  |
-| **Related dashboards**  | `[Metrics Logstash] Pipeline Health Report` |
+| **Related dashboards**  | — |
 | **Investigation guide** | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue) |
 
 **Body du webhook** :
@@ -188,7 +188,7 @@ Logstash (`_mutate_error`, `_jsonparsefailure`, `_rubyexception`…) et n'ont **
       "fields": [
         { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
         { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Pipeline Health Report](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-838aac39-8edd-48b0-95b4-289e42b1e98a)" },
+        { "title": "À vérifier", "value": "Dans Discover, l'index `logs-logstash-errors-*` : `tags` et `message` désignent le filtre en échec" },
         { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)" }
       ]
     }
@@ -209,7 +209,7 @@ Logstash (`_mutate_error`, `_jsonparsefailure`, `_rubyexception`…) et n'ont **
 | **Sévérité**            | Warning                                                                                                                                                                                                        |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                               |
 | **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — voir body ci-dessous                                                                                                                                     |
-| **Related dashboards**  | `[Metrics Logstash] Pipeline Health Report` |
+| **Related dashboards**  | — |
 | **Investigation guide** | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue) |
 
 **Body du webhook** :
@@ -222,7 +222,7 @@ Logstash (`_mutate_error`, `_jsonparsefailure`, `_rubyexception`…) et n'ont **
       "fields": [
         { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
         { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Pipeline Health Report](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-838aac39-8edd-48b0-95b4-289e42b1e98a)" },
+        { "title": "À vérifier", "value": "Dans Discover, l'index `logs-logstash-errors-*` : `tags` et `message` désignent le filtre en échec" },
         { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)" }
       ]
     }
@@ -428,58 +428,76 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 
 ---
 
-## Alerte 4 — Backpressure Elasticsearch (workers bloqués sur la queue)
+## Alerte 4 — Backpressure (inputs bloqués sur la queue)
 
-**Objectif** : détecter une backpressure ES **avant** que la queue ne soit profonde.
-`queue_backpressure.current` mesure le ratio de temps que les workers passent bloqués
-à attendre que la Persistent Queue accepte de nouveaux events (0 = pas de backpressure,
-1 = 100 % du temps bloqué). Il monte dès que ES commence à ralentir, bien avant que
-`queues.events` ne s'accumule.
+**Objectif** : détecter un pipeline qui n'absorbe plus son entrée **avant** que des
+logs ne se perdent. `queue_backpressure.current` mesure le temps que les **inputs**
+passent bloqués à pousser dans la queue mémoire du pipeline, faute de workers
+disponibles. La valeur **se cumule sur les threads d'input** : elle va de 0 au nombre
+de threads, soit 4 sur `ingest` (`LOGSTASH_INGEST_THREADS`) et 1 sur `process`
+(un seul input Redis). Il monte dès que l'aval ralentit (ES pour `process`, Redis
+pour `ingest`).
+
+**Seul `ingest` est alerté** : c'est son input HTTP qui répond au drain Scalingo, et
+un drain qui attend finit en quarantaine. Sur `process`, l'input Redis bloqué est
+attendu : Redis absorbe, et un backlog qui ne se vide pas relève de l'alerte 7.
 
 > **Champ surveillé** : `logstash.pipeline.total.flow.queue_backpressure.current`
 > dans le data stream `metrics-logstash.pipeline-default`.
 >
-> **Seuil de 0.5** : les workers sont bloqués > 50 % du temps sur la queue.
-> En régime normal ce champ est proche de 0. À ajuster après observation du régime
-> nominal sur prod.
+> **Seuil : minimum ≥ 1 sur 15 min** (mesuré sur la prod, 30 jours au 02/10/2026).
+> Par tranche de 5 min, le maximum ne distingue rien : sur `ingest`, p95 3,28, p99 et
+> max à 4, avec 18 % des tranches au-dessus de 0.5. Ce sont des à-coups de quelques
+> secondes. Le minimum sur 15 min, lui, est bimodal : p99 à 0,009, et les seules
+> tranches au-dessus de 1 (22 sur 2 805) sont aussi à 4, soit les 4 threads bloqués
+> en continu. Le seuil de 1, un thread bloqué en permanence, ne retient que ces cas.
+>
+> Ces 22 tranches tombent toutes sur des incidents : les après-midi des 03/09, 07/09
+> et 08/09, puis la nuit du 14 au 15/09 (de 20 h 45 à 8 h 30), après le crash de Redis.
+> Aucun faux positif sur la période.
+>
+> Les rejets du drain (429/499) ne sont pas observables dans Kibana : les router logs
+> des apps Logstash ne sont pas drainés vers ES. Pour les voir, passer par les logs
+> Scalingo de l'app (cf. [runbook](../runbooks/runbook-logstash.md#playbook-de-diagnostic-de-lingestion)).
 >
 > **Indicateur de diagnostic complémentaire** (non alerté) :
 > `logstash.pipeline.total.queues.events` — nombre d'events en attente dans la queue.
-> À consulter dans le dashboard `[Metrics Logstash] Pipeline Health Report` pour
+> À consulter dans le dashboard `[Metrics Logstash] Pipelines Overview` pour
 > confirmer l'accumulation une fois l'alerte déclenchée.
 
 ### 4a — Backpressure prod (Critical)
 
 | Paramètre                 | Valeur                                                                                                                                                                                                   |
 |---------------------------| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Rule name**             | `Logstash - Prod - Détection backpressure ES (workers bloqués)`                                                                                                                                          |
+| **Rule name**             | `Logstash - Prod - Détection backpressure ingest (inputs bloqués)`                                                                                                                                       |
 | **Type**                  | Elasticsearch query rule                                                                                                                                                                                 |
 | **Index**                 | `metrics-logstash.pipeline-default`                                                                                                                                                                      |
-| **KQL filter**            | `logstash.pipeline.host.name: (pass-emploi-logstash-prod-* OR pass-emploi-logstash-process-prod-*)`                                                                                                      |
-| **Aggregation**           | `Max` de `logstash.pipeline.total.flow.queue_backpressure.current`                                                                                                                                       |
-| **Condition**             | `Is above` `0.5`                                                                                                                                                                                         |
-| **Fenêtre**               | 5 min                                                                                                                                                                                                    |
+| **KQL filter**            | `logstash.pipeline.name: ingest and logstash.pipeline.host.name: pass-emploi-logstash-prod-*`                                                                                                            |
+| **Aggregation**           | `Min` de `logstash.pipeline.total.flow.queue_backpressure.current`                                                                                                                                       |
+| **Condition**             | `Is above or equals` `1`                                                                                                                                                                                 |
+| **Fenêtre**               | 15 min                                                                                                                                                                                                   |
 | **Fréquence**             | 2 min                                                                                                                                                                                                    |
 | **Sévérité**              | Critical                                                                                                                                                                                                 |
 | **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-o11y-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — voir body ci-dessous               |
 | **Action 2 (résolution)** | Connecteur Kibana **Mattermost-o11y-production** — `On status changes` / `Run when: Recovered` (onglet Actions → Settings) — voir body ci-dessous                                               |
-| **Related dashboards**    | `[Metrics Logstash] Pipeline Health Report` |
+| **Related dashboards**    | `[Metrics Logstash] Logstash Single Pipeline View`, `[Metrics Logstash] Input plugin Info`, `[Metrics Logstash] Output plugin info` |
 | **Investigation guide**   | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch) |
 
 **Body du webhook — Action 1 (alerte)** :
 ```json
 {
-  "text": "🚨 **Backpressure Logstash prod** — workers bloqués > 50 % du temps sur la queue (`queue_backpressure > 0.5`). Elasticsearch ne consomme plus assez vite.",
+  "text": "🚨 **Backpressure Logstash prod** — le pipeline `ingest` a au moins un thread HTTP bloqué en continu depuis 15 min (`queue_backpressure ≥ 1`) : l'écriture dans Redis ne suit plus, le drain Scalingo attend.",
   "attachments": [
     {
       "color": "#d00000",
       "fields": [
         { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
         { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "À vérifier", "value": "`logstash.pipeline.total.queues.events` dans Pipeline Health Report" },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Pipeline Health Report](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-838aac39-8edd-48b0-95b4-289e42b1e98a)" },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)" },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Single Node Advanced View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-a42d7060-45e6-11ee-957b-3720c0b0fbc5)" },
+        { "title": "À vérifier", "value": "Le statut et la mémoire de Redis dans le dashboard Scalingo, puis le temps d'écriture de l'output `redis` dans Output plugin info" },
+        { "title": "Dashboard", "value": "[[Pass Emploi] Chaîne de logs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)" },
+        { "title": "Dashboard", "value": "[[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)" },
+        { "title": "Dashboard", "value": "[[Metrics Logstash] Input plugin Info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-8f8c78a0-6e9e-11ee-86f6-d7074508d975)" },
+        { "title": "Dashboard", "value": "[[Metrics Logstash] Output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-fe17b800-6eb4-11ee-86f6-d7074508d975)" },
         { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch)" }
       ]
     }
@@ -490,7 +508,7 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 **Body du webhook — Action 2 (résolution)** :
 ```json
 {
-  "text": "✅ **Backpressure Logstash prod résolue** — `queue_backpressure` est retombé sous 0.5.",
+  "text": "✅ **Backpressure Logstash prod résolue** — le pipeline `ingest` n'a plus de thread bloqué en continu.",
   "attachments": [
     {
       "color": "#2eb886",
@@ -507,33 +525,34 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 
 | Paramètre               | Valeur                                                                                                                                                                                                   |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Rule name**           | `Logstash - Hors-Prod - Détection backpressure ES (workers bloqués)`                                                                                                                                     |
+| **Rule name**           | `Logstash - Hors-Prod - Détection backpressure ingest (inputs bloqués)`                                                                                                                                  |
 | **Type**                | Elasticsearch query rule                                                                                                                                                                                 |
 | **Index**               | `metrics-logstash.pipeline-default`                                                                                                                                                                      |
-| **KQL filter**          | `logstash.pipeline.host.name: (pass-emploi-logstash-staging-* OR pass-emploi-logstash-perf-*)`                                                                                                           |
-| **Aggregation**         | `Max` de `logstash.pipeline.total.flow.queue_backpressure.current`                                                                                                                                       |
-| **Condition**           | `Is above` `0.5`                                                                                                                                                                                         |
-| **Fenêtre**             | 5 min                                                                                                                                                                                                    |
+| **KQL filter**          | `logstash.pipeline.name: ingest and logstash.pipeline.host.name: (pass-emploi-logstash-staging-* OR pass-emploi-logstash-perf-*)`                                                                        |
+| **Aggregation**         | `Min` de `logstash.pipeline.total.flow.queue_backpressure.current`                                                                                                                                       |
+| **Condition**           | `Is above or equals` `1`                                                                                                                                                                                 |
+| **Fenêtre**             | 15 min                                                                                                                                                                                                   |
 | **Fréquence**           | 5 min                                                                                                                                                                                                    |
 | **Sévérité**            | Warning                                                                                                                                                                                                  |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                         |
 | **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — voir body ci-dessous                                                                                                                               |
-| **Related dashboards**  | `[Metrics Logstash] Pipeline Health Report` |
+| **Related dashboards**  | `[Metrics Logstash] Logstash Single Pipeline View`, `[Metrics Logstash] Input plugin Info`, `[Metrics Logstash] Output plugin info` |
 | **Investigation guide** | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch) |
 
 **Body du webhook** :
 ```json
 {
-  "text": "⚠️ **Backpressure Logstash staging/perf** — workers bloqués > 50 % du temps sur la queue (`queue_backpressure > 0.5`).",
+  "text": "⚠️ **Backpressure Logstash staging/perf** — le pipeline `ingest` a au moins un thread HTTP bloqué en continu depuis 15 min (`queue_backpressure ≥ 1`).",
   "attachments": [
     {
       "color": "#f2c744",
       "fields": [
         { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
         { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Pipeline Health Report](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-838aac39-8edd-48b0-95b4-289e42b1e98a)" },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)" },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Single Node Advanced View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-a42d7060-45e6-11ee-957b-3720c0b0fbc5)" },
+        { "title": "Dashboard", "value": "[[Pass Emploi] Chaîne de logs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)" },
+        { "title": "Dashboard", "value": "[[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)" },
+        { "title": "Dashboard", "value": "[[Metrics Logstash] Input plugin Info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-8f8c78a0-6e9e-11ee-86f6-d7074508d975)" },
+        { "title": "Dashboard", "value": "[[Metrics Logstash] Output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-fe17b800-6eb4-11ee-86f6-d7074508d975)" },
         { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch)" }
       ]
     }
@@ -545,11 +564,20 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 
 ## Alerte 5 — Heap JVM élevé (risque GC agressif)
 
-**Objectif** : détecter un heap JVM Logstash > 85 %, signe d'un GC agressif imminent
-pouvant provoquer des pauses stop-the-world (scénario 2 du runbook) ou un OOM-kill.
+**Objectif** : détecter un heap JVM Logstash que le GC n'arrive plus à libérer, signe
+de pauses stop-the-world (scénario 2 du runbook) puis d'un `OutOfMemoryError`. La
+mémoire totale du conteneur, qui déclenche l'OOM-kill Scalingo, n'est pas couverte
+ici : elle n'est pas collectée.
 
 > **Champ surveillé** : `logstash.node.stats.jvm.mem.heap_used_percent`
 > dans le data stream `metrics-logstash.node-default`.
+>
+> **Seuil : minimum ≥ 90 % sur 15 min** (mesuré sur la prod, 30 jours au 02/10/2026).
+> Avec `-Xmx256m`, le heap monte à 93 % avant chaque GC (médiane du maximum par
+> tranche de 15 min), sur `ingest` comme sur `process` : un seuil sur le maximum
+> sonnerait en permanence. Le minimum, c'est-à-dire ce qui reste après le GC, ne
+> dépasse jamais 84 % (p99 83 % sur `process`, 82 % sur `ingest`). À 90 %, le GC
+> ne libère plus que 10 % d'un heap de 256 Mo.
 
 ### 5a — Heap élevé prod (Critical)
 
@@ -559,29 +587,29 @@ pouvant provoquer des pauses stop-the-world (scénario 2 du runbook) ou un OOM-k
 | **Type**                | Elasticsearch query rule                                                                                                                                                 |
 | **Index**               | `metrics-logstash.node-default`                                                                                                                                          |
 | **KQL filter**          | `host.name: (pass-emploi-logstash-prod-* OR pass-emploi-logstash-process-prod-*)`                                                                                        |
-| **Aggregation**         | `Max` de `logstash.node.stats.jvm.mem.heap_used_percent`                                                                                                                 |
-| **Condition**           | `Is above` `85`                                                                                                                                                          |
-| **Fenêtre**             | 5 min                                                                                                                                                                    |
+| **Aggregation**         | `Min` de `logstash.node.stats.jvm.mem.heap_used_percent`                                                                                                                 |
+| **Condition**           | `Is above or equals` `90`                                                                                                                                                 |
+| **Fenêtre**             | 15 min                                                                                                                                                                   |
 | **Fréquence**           | 2 min                                                                                                                                                                    |
 | **Sévérité**            | Critical                                                                                                                                                                 |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                         |
 | **Action**              | Connecteur Kibana **Mattermost-o11y-production** — voir body ci-dessous                                                                                            |
-| **Related dashboards**  | `[Metrics Logstash] Node Health Report` |
+| **Related dashboards**  | `[Metrics Logstash] Single Node Overview` |
 | **Investigation guide** | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-2--gel-gc-jvm) |
 
 **Body du webhook** :
 ```json
 {
-  "text": "🚨 **Heap JVM Logstash prod > 85 %** — GC agressif imminent ou risque OOM-kill.",
+  "text": "🚨 **Heap JVM Logstash prod** — le heap reste au-dessus de 90 % depuis 15 min : le GC ne libère plus, pauses stop-the-world et `OutOfMemoryError` en vue.",
   "attachments": [
     {
       "color": "#d00000",
       "fields": [
         { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
         { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "À vérifier", "value": "`LS_JAVA_OPTS` : doit être `-Xms1g -Xmx1g`" },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Node Health Report](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9a72208d-e446-48b9-8a63-c4256b9aa4e3)" },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Single Node Advanced View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-a42d7060-45e6-11ee-957b-3720c0b0fbc5)" },
+        { "title": "À vérifier", "value": "`LS_JAVA_OPTS` : doit être `-Xms256m -Xmx256m`" },
+        { "title": "Dashboard", "value": "[[Pass Emploi] Chaîne de logs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)" },
+        { "title": "Dashboard", "value": "[[Metrics Logstash] Single Node Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9d450b10-4680-11ee-9ddc-919f87fe352d)" },
         { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-2--gel-gc-jvm)" }
       ]
     }
@@ -597,28 +625,28 @@ pouvant provoquer des pauses stop-the-world (scénario 2 du runbook) ou un OOM-k
 | **Type**                | Elasticsearch query rule                                                                                                                                                 |
 | **Index**               | `metrics-logstash.node-default`                                                                                                                                          |
 | **KQL filter**          | `host.name: (pass-emploi-logstash-staging-* OR pass-emploi-logstash-perf-*)`                                                                                             |
-| **Aggregation**         | `Max` de `logstash.node.stats.jvm.mem.heap_used_percent`                                                                                                                 |
-| **Condition**           | `Is above` `85`                                                                                                                                                          |
-| **Fenêtre**             | 5 min                                                                                                                                                                    |
+| **Aggregation**         | `Min` de `logstash.node.stats.jvm.mem.heap_used_percent`                                                                                                                 |
+| **Condition**           | `Is above or equals` `90`                                                                                                                                                 |
+| **Fenêtre**             | 15 min                                                                                                                                                                   |
 | **Fréquence**           | 5 min                                                                                                                                                                    |
 | **Sévérité**            | Warning                                                                                                                                                                  |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                         |
 | **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — voir body ci-dessous                                                                                               |
-| **Related dashboards**  | `[Metrics Logstash] Node Health Report` |
+| **Related dashboards**  | `[Metrics Logstash] Single Node Overview` |
 | **Investigation guide** | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-2--gel-gc-jvm) |
 
 **Body du webhook** :
 ```json
 {
-  "text": "⚠️ **Heap JVM Logstash staging/perf > 85 %** — GC agressif imminent.",
+  "text": "⚠️ **Heap JVM Logstash staging/perf** — le heap reste au-dessus de 90 % depuis 15 min : le GC ne libère plus.",
   "attachments": [
     {
       "color": "#f2c744",
       "fields": [
         { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
         { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Node Health Report](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9a72208d-e446-48b9-8a63-c4256b9aa4e3)" },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Single Node Advanced View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-a42d7060-45e6-11ee-957b-3720c0b0fbc5)" },
+        { "title": "Dashboard", "value": "[[Pass Emploi] Chaîne de logs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)" },
+        { "title": "Dashboard", "value": "[[Metrics Logstash] Single Node Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9d450b10-4680-11ee-9ddc-919f87fe352d)" },
         { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-2--gel-gc-jvm)" }
       ]
     }
@@ -636,27 +664,33 @@ pouvant provoquer des pauses stop-the-world (scénario 2 du runbook) ou un OOM-k
 
 Répéter l'opération pour chaque app Logstash :
 
-| App Scalingo                | Canal Mattermost   |
-| --------------------------- | ------------------ |
-| `pass-emploi-logstash-prod` | `#o11y-production` |
-| `pass-emploi-logstash-perf` | `#o11y-staging`    |
+| App Scalingo                           | Canal Mattermost   |
+| -------------------------------------- | ------------------ |
+| `pass-emploi-logstash-prod`            | `#o11y-production` |
+| `pass-emploi-logstash-process-prod`    | `#o11y-production` |
+| `pass-emploi-logstash-staging`         | `#o11y-staging`    |
+| `pass-emploi-logstash-process-staging` | `#o11y-staging`    |
+| `pass-emploi-logstash-perf`            | `#o11y-staging`    |
+| `pass-emploi-logstash-process-perf`    | `#o11y-staging`    |
 
 Pour chaque app :
 
 1. Aller sur l'app dans le dashboard Scalingo.
 2. **Settings → Notifications → Add notification**.
 3. Choisir le type **Webhook**.
-4. Événements à surveiller : `app_restarted`, `app_crashed`, `app_stopped`.
+4. Événements à surveiller : `app_restarted`, `app_crashed_repeated`, `app_stopped`.
+   Pas `app_crashed` : Scalingo ne l'envoie qu'aux 2ᵉ, 5ᵉ et 12ᵉ crashs ;
+   `app_crashed_repeated` part à chaque crash.
 5. URL du webhook : URL du webhook entrant Mattermost du canal correspondant.
 
 > **Note** : le throttle ne s'applique pas aux webhooks Scalingo — chaque événement
-> `app_crashed` / `app_restarted` est une notification unitaire envoyée par Scalingo.
+> `app_crashed_repeated` / `app_restarted` est une notification unitaire envoyée par Scalingo.
 
 **Payload Scalingo** (exemple pour un restart OOM) :
 ```json
 {
   "app": { "name": "pass-emploi-logstash-prod" },
-  "event_type": "app_crashed",
+  "event_type": "app_crashed_repeated",
   "event": {
     "container_type": "web",
     "reason": "OOM"
@@ -676,8 +710,8 @@ Pour chaque app :
 **Objectif** : détecter une accumulation anormale d'événements dans la liste Redis
 `logstash:ingest`, buffer inter-services entre le pipeline `ingest` et le pipeline
 `process`. En régime normal, le pipeline `process` consomme la liste en temps réel
-et sa longueur reste proche de 0 (0–250 éléments en régime normal). Un backlog
-signale que le pipeline `process` ne consomme plus Redis : redémarrage ou blocage
+et la liste se vide en quelques minutes, même après les pics de :00 et :30 (cf.
+seuil ci-dessous). Un backlog durable signale que le pipeline `process` ne consomme plus Redis : redémarrage ou blocage
 de `pass-emploi-logstash-process-prod`, coupure réseau Redis, ou backpressure ES
 sévère côté `process`.
 
@@ -691,11 +725,15 @@ sévère côté `process`.
 > **Source** : data stream `metrics-redis.key-default` (intégration Redis Elastic
 > Agent, collectée par `pass-emploi-elastic-agent-prod`). Champ : `redis.key.length`.
 >
-> **Seuil de 1 000** : en régime normal rétabli, la liste oscille entre 25 et 250
-> éléments par fenêtre de 30 secondes (mesuré le 15/09/2026 après l'incident Redis).
-> 1 000 représente ~4× le pic max observé → pas de faux positif sur les micro-pics.
-> En cas de coupure réelle, la liste atteint 1 000 en quelques dizaines de secondes
-> au débit prod → alerte déclenchée en moins de 2 minutes (fréquence de l'alerte 7a).
+> **Seuil : minimum > 1 000 sur 15 min** (mesuré sur la prod du 14/09 au
+> 30/09/2026, par tranche de 5 min). En nominal, la liste fait le yo-yo : p50 77,
+> p95 1 875, p99 11 606. Les pics tombent les jours ouvrés, de 8 h 30 à 17 h,
+> presque tous à :00 ou :30, avec une médiane de 5 259 et un p90 de 14 095, et
+> se vident dans la tranche de 5 min. Un `Max` déclenche donc chaque demi-heure.
+> Le `Min` ne retient que la liste qui ne redescend pas : sur la période, seul
+> l'incident du 14/09 (90 min, jusqu'à 180 799) et le 21/09 à 10 h 50 (15 min,
+> 11 500) y passent. L'alerte part 15 à 17 min après le début de la coupure ;
+> le 14/09, la saturation est arrivée ~1 h 20 après.
 
 ### 7a — Backlog Redis prod (Critical)
 
@@ -704,21 +742,21 @@ sévère côté `process`.
 | **Rule name**             | `Redis - Prod - Backlog logstash:ingest anormal`                                                                                                                                           |
 | **Type**                  | Elasticsearch query rule                                                                                                                                                                   |
 | **Index**                 | `metrics-redis.key-default`                                                                                                                                                                |
-| **KQL filter**            | `redis.key.name: "logstash:ingest"`                                                                                                                                                        |
-| **Aggregation**           | `Max` de `redis.key.length`                                                                                                                                                                |
+| **KQL filter**            | `redis.key.name: "logstash:ingest" and agent.name: pass-emploi-elastic-agent-prod-*`                                                                                                       |
+| **Aggregation**           | `Min` de `redis.key.length`                                                                                                                                                                |
 | **Condition**             | `Is above` `1000`                                                                                                                                                                         |
-| **Fenêtre**               | 5 min                                                                                                                                                                                      |
+| **Fenêtre**               | 15 min                                                                                                                                                                                     |
 | **Fréquence**             | 2 min                                                                                                                                                                                      |
 | **Sévérité**              | Critical                                                                                                                                                                                   |
 | **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-o11y-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — voir body ci-dessous |
 | **Action 2 (résolution)** | Connecteur Kibana **Mattermost-o11y-production** — `On status changes` / `Run when: Recovered` (onglet Actions → Settings) — voir body ci-dessous                                    |
-| **Related dashboards**    | `[Metrics Redis] Keys` |
+| **Related dashboards**    | `[Metrics Redis] Keys`, `[Metrics Logstash] Logstash Single Pipeline View`, `[Metrics Logstash] Elasticsearch output plugin info` |
 | **Investigation guide**   | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-5--backlog-redis-logstashingest) |
 
 **Body du webhook — Action 1 (alerte)** :
 ```json
 {
-  "text": "🚨 **Backlog Redis prod** — la liste `logstash:ingest` dépasse 1 000 événements. Le pipeline `process` ne consomme plus Redis (redémarrage ou blocage de `pass-emploi-logstash-process-prod`, ou backpressure ES sévère).",
+  "text": "🚨 **Backlog Redis prod** — la liste `logstash:ingest` reste au-dessus de 1 000 événements depuis 15 min. Le pipeline `process` ne consomme plus Redis (redémarrage ou blocage de `pass-emploi-logstash-process-prod`, ou backpressure ES sévère).",
   "attachments": [
     {
       "color": "#d00000",
@@ -727,8 +765,10 @@ sévère côté `process`.
         { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
         { "title": "À vérifier", "value": "Les logs de `pass-emploi-logstash-process-prod` sur Scalingo" },
         { "title": "À vérifier", "value": "Le statut Redis dans le dashboard Scalingo" },
+        { "title": "Dashboard", "value": "[[Pass Emploi] Chaîne de logs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)" },
         { "title": "Dashboard", "value": "[[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)" },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Pipeline Health Report](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-838aac39-8edd-48b0-95b4-289e42b1e98a)" },
+        { "title": "Dashboard", "value": "[[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)" },
+        { "title": "Dashboard", "value": "[[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)" },
         { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-5--backlog-redis-logstashingest)" }
       ]
     }
@@ -739,7 +779,7 @@ sévère côté `process`.
 **Body du webhook — Action 2 (résolution)** :
 ```json
 {
-  "text": "✅ **Backlog Redis prod résorbé** — la liste `logstash:ingest` est retombée sous 1 000 événements. Le pipeline `process` a reconnecté et vide le backlog.",
+  "text": "✅ **Backlog Redis prod résorbé** — la liste `logstash:ingest` est redescendue sous 1 000 événements. Le pipeline `process` a reconnecté et vide le backlog.",
   "attachments": [
     {
       "color": "#2eb886",
@@ -760,21 +800,21 @@ sévère côté `process`.
 | **Rule name**           | `Redis - Hors-Prod - Backlog logstash:ingest anormal`                                                           |
 | **Type**                | Elasticsearch query rule                                                                                        |
 | **Index**               | `metrics-redis.key-default`                                                                                     |
-| **KQL filter**          | `redis.key.name: "logstash:ingest"`                                                                             |
-| **Aggregation**         | `Max` de `redis.key.length`                                                                                     |
+| **KQL filter**          | `redis.key.name: "logstash:ingest" and agent.name: (pass-emploi-elastic-agent-staging-* or pass-emploi-elastic-agent-perf-*)` |
+| **Aggregation**         | `Min` de `redis.key.length`                                                                                     |
 | **Condition**           | `Is above` `1000`                                                                                              |
-| **Fenêtre**             | 5 min                                                                                                           |
+| **Fenêtre**             | 15 min                                                                                                          |
 | **Fréquence**           | 5 min                                                                                                           |
 | **Sévérité**            | Warning                                                                                                         |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)      |
 | **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — voir body ci-dessous                                                                                                                                                    |
-| **Related dashboards**  | `[Metrics Redis] Keys` |
+| **Related dashboards**  | `[Metrics Redis] Keys`, `[Metrics Logstash] Logstash Single Pipeline View`, `[Metrics Logstash] Elasticsearch output plugin info` |
 | **Investigation guide** | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-5--backlog-redis-logstashingest) |
 
 **Body du webhook** :
 ```json
 {
-  "text": "⚠️ **Backlog Redis staging/perf** — la liste `logstash:ingest` dépasse 1 000 événements. Le pipeline `process` ne consomme plus Redis.",
+  "text": "⚠️ **Backlog Redis staging/perf** — la liste `logstash:ingest` reste au-dessus de 1 000 événements depuis 15 min. Le pipeline `process` ne consomme plus Redis.",
   "attachments": [
     {
       "color": "#f2c744",
@@ -782,19 +822,16 @@ sévère côté `process`.
         { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
         { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
         { "title": "À vérifier", "value": "Les logs de `pass-emploi-logstash-process-staging` / `pass-emploi-logstash-process-perf` sur Scalingo" },
+        { "title": "Dashboard", "value": "[[Pass Emploi] Chaîne de logs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)" },
         { "title": "Dashboard", "value": "[[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)" },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Pipeline Health Report](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-838aac39-8edd-48b0-95b4-289e42b1e98a)" },
+        { "title": "Dashboard", "value": "[[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)" },
+        { "title": "Dashboard", "value": "[[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)" },
         { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-5--backlog-redis-logstashingest)" }
       ]
     }
   ]
 }
 ```
-
-> **Note** : si staging et perf partagent le même Redis (addon lié à
-> `pass-emploi-logstash-process-perf`), une seule alerte 7b suffit. Si chaque
-> environnement a son propre Redis, dupliquer l'alerte avec un KQL filter sur
-> `service.environment: "staging"` ou `"perf"`.
 
 ---
 
@@ -862,7 +899,7 @@ agent ressemble à une infra saine. Contexte :
 | **Sévérité**              | Critical                                                                                                                                                                                                                                                                                                       |
 | **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-o11y-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — voir body ci-dessous                                                                                                                     |
 | **Action 2 (résolution)** | **Aucune** — voir note « Transition, pas état » ci-dessus                                                                                                                                                                                                                                                      |
-| **Related dashboards**    | `[Elastic Agent] Overview`, `[Elastic Agent] Concerning Agents`                                                                                                                                                                                                                                                |
+| **Related dashboards**    | `[Elastic Agent] Concerning Agents`, `[Elastic Agent] Overview`, `[Elastic Agent] Agent metrics` |
 | **Investigation guide**   | Voir [pilotage des agents](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/pilotage.md) et [post-mortem — agent UNENROLLED](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/post-mortems/postmortem-2026-09-unenrolled-elastic-agent.md) |
 
 **Requête ES|QL** :
@@ -896,6 +933,7 @@ FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*
         { "title": "unhealthy / erreurs d'output", "value": "Kibana → Fleet → Agents → composants en erreur, output ES de la policy" },
         { "title": "Dashboard", "value": "[[Elastic Agent] Concerning Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-0600ffa0-6b5e-11ed-98de-67bdecd21824)" },
         { "title": "Dashboard", "value": "[[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824)" },
+        { "title": "Dashboard", "value": "[[Elastic Agent] Agent metrics](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-f47f18cc-9c7d-4278-b2ea-a6dee816d395)" },
         { "title": "Fleet", "value": "[Fleet → Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/fleet/agents)" },
         { "title": "Doc", "value": "[Pilotage des agents](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/pilotage.md)" }
       ]
@@ -916,7 +954,7 @@ FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*
 | **Sévérité**            | Warning                                                                                                                                                                                                                                                                                                        |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                                                                                     |
 | **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — voir body ci-dessous                                                                                                                                                                                                                                     |
-| **Related dashboards**  | `[Elastic Agent] Overview`, `[Elastic Agent] Concerning Agents`                                                                                                                                                                                                                                                |
+| **Related dashboards**  | `[Elastic Agent] Concerning Agents`, `[Elastic Agent] Overview`, `[Elastic Agent] Agent metrics` |
 | **Investigation guide** | Voir [pilotage des agents](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/pilotage.md) et [post-mortem — agent UNENROLLED](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/post-mortems/postmortem-2026-09-unenrolled-elastic-agent.md) |
 
 **Requête ES|QL** :
@@ -950,6 +988,7 @@ FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*
         { "title": "unhealthy / erreurs d'output", "value": "Kibana → Fleet → Agents → composants en erreur, output ES de la policy" },
         { "title": "Dashboard", "value": "[[Elastic Agent] Concerning Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-0600ffa0-6b5e-11ed-98de-67bdecd21824)" },
         { "title": "Dashboard", "value": "[[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824)" },
+        { "title": "Dashboard", "value": "[[Elastic Agent] Agent metrics](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-f47f18cc-9c7d-4278-b2ea-a6dee816d395)" },
         { "title": "Fleet", "value": "[Fleet → Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/fleet/agents)" },
         { "title": "Doc", "value": "[Pilotage des agents](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/pilotage.md)" }
       ]
@@ -973,10 +1012,10 @@ FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*
 >
 > **Chaîne causale type (backpressure ES) :**
 > ```
-> ES ralentit / heap monte           → Alertes 4a / 5a  ← intervenir ici
+> ES ralentit / heap monte           → Alerte 5a       ← intervenir ici
 >   → queue process se remplit       → Logstash process rejette les events
 >     → backlog Redis croît          → Alerte 7a          ← filet inter-services
->       → ingest ne peut plus écrire → Logstash ingest rejette les drains
+>       → ingest ne peut plus écrire → Alerte 4a (ingest bloqué)
 >         → 429 sur les apps         → (signal de réaction — pas alerté)
 >           → drain en quarantaine   → Alertes 3a/3b (filet de sécurité final)
 >             → silence total        → trop tard, perte avérée
@@ -1007,8 +1046,8 @@ FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*
 >    de définir un seuil d'alerte clair.
 > 4. **Calibrer le seuil pour laisser une marge d'intervention** : l'alerte doit se
 >    déclencher assez tôt pour qu'une action corrective soit possible avant que la
->    situation ne devienne critique (ex : heap > 85 % laisse le temps d'agir avant
->    l'OOM-kill à 100 %).
+>    situation ne devienne critique (ex : un heap qui ne redescend plus sous 90 % laisse
+>    le temps d'agir avant l'`OutOfMemoryError`).
 > 5. **Les alertes de silence** (alerte 3) sont des filets de sécurité de dernier
 >    recours — elles signalent que tous les mécanismes d'anticipation ont échoué.
 >    Leur déclenchement doit être traité comme une urgence maximale.

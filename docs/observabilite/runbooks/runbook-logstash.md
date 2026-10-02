@@ -43,10 +43,10 @@ d'api (durées égales aux autres apps), saturation de volume (le trou api arriv
 | #                                                     | Scénario                   | Signal d'entrée                                  | Urgence     |
 | ----------------------------------------------------- | -------------------------- | ------------------------------------------------ |-------------|
 | [1](#scénario-1--backpressure-elasticsearch)          | Backpressure Elasticsearch | `queue_backpressure > 0.5` + erreurs bulk ES     | ⚠️Warning  |
-| [2](#scénario-2--gel-gc-jvm)                          | Gel GC JVM                 | Pic soudain GC + `events.out` tombe à 0          | ⚠️Warning  |
+| [2](#scénario-2--gel-gc-jvm)                          | Gel GC JVM                 | Heap bloqué ≥ 90 % + `events.out` tombe à 0      | ⚠️Warning  |
 | [3](#scénario-3--rejet-de-mapping--dead-letter-queue) | Rejet de mapping / DLQ     | DLQ non vide + events dans `logs-logstash-dlq-*` | ⚠️Warning  |
 | [4](#scénario-4--crash-du-conteneur-logstash)         | Crash du conteneur         | Alerte restart Scalingo + silence logs           | 🚨 Critical |
-| [5](#scénario-5--backlog-redis-logstashingest)        | Backlog Redis              | `redis.key.length > 1 000` sur `logstash:ingest` | 🚨 Critical |
+| [5](#scénario-5--backlog-redis-logstashingest)        | Backlog Redis              | `redis.key.length` reste > 1 000 sur 15 min, sur `logstash:ingest` | 🚨 Critical |
 
 **Règle d'or du diagnostic** : toujours travailler sur la **donnée du moment T du
 trou**, pas sur une fenêtre saine. C'est la source n°1 de temps perdu.
@@ -59,8 +59,8 @@ trou**, pas sur une fenêtre saine. C'est la source n°1 de temps perdu.
 
 | Métrique                                                                          | Data stream                         | Dashboard Fleet                                     | Signal d'alarme                               |
 | --------------------------------------------------------------------------------- |-------------------------------------|-----------------------------------------------------|-----------------------------------------------|
-| `logstash.pipeline.total.flow.queue_backpressure.current`                         | `metrics-logstash.pipeline-default` | [Metrics Logstash] Pipeline Health Report           | > 0.5 → **Alerte Kibana 4a** (anticipation)   |
-| `logstash.pipeline.total.queues.events`                                           | `metrics-logstash.pipeline-default` | [Metrics Logstash] Pipeline Health Report           | Montée continue (diagnostic post-alerte)      |
+| `logstash.pipeline.total.flow.queue_backpressure.current`                         | `metrics-logstash.pipeline-default` | [Metrics Logstash] Logstash Single Pipeline View (*Time spent pushing to queues*) | `ingest` ≥ 1 en continu sur 15 min → **Alerte Kibana 4a** |
+| `logstash.pipeline.total.queues.events`                                           | `metrics-logstash.pipeline-default` | [Metrics Logstash] Pipelines Overview               | Montée continue (diagnostic post-alerte)      |
 | `logstash.node.stats.pipelines.process.plugins.outputs.bulk_requests.with_errors` | `metrics-logstash.plugins-default`  | [Metrics Logstash] Elasticsearch output plugin info | Compteur qui monte (confirme rejet ES)        |
 | `logstash.node.stats.events.out`                                                  | `metrics-logstash.node-default`     | [Metrics Logstash] Logstash Overview                | Chute ou plateau à 0                          |
 | CPU Logstash (Scalingo)                                                           | Dashboard Scalingo                  | Dashboard Scalingo                                  | **0 % sur tous les conteneurs simultanément** |
@@ -116,7 +116,7 @@ HTTP ralentit → les drains reçoivent des 429 → quarantaine.
      signaux indiquent un cluster surchargé par trop de shards.
 
 2. **Vérifier la Persistent Queue** : `logstash.pipeline.total.queues.events` dans
-   Pipeline Health Report. La PQ peut être faible même en cas de backpressure sévère
+   Pipelines Overview. La PQ peut être faible même en cas de backpressure sévère
    (voir note ci-dessus). Se concentrer sur `queue_backpressure.current` plutôt que
    sur la profondeur de la PQ.
 
@@ -162,9 +162,7 @@ HTTP ralentit → les drains reçoivent des 429 → quarantaine.
 
 | Métrique                                                                | Data stream                     | Dashboard Fleet                              | Signal d'alarme               |
 | ----------------------------------------------------------------------- | ------------------------------- | -------------------------------------------- | ----------------------------- |
-| `logstash.node.stats.jvm.gc.collectors.old.collection_time_in_millis`   | `metrics-logstash.node-default` | [Metrics Logstash] Single Node Advanced View | Pic soudain (pause > 500 ms)  |
-| `logstash.node.stats.jvm.gc.collectors.young.collection_time_in_millis` | `metrics-logstash.node-default` | [Metrics Logstash] Single Node Advanced View | Fréquence élevée              |
-| `logstash.node.stats.jvm.mem.heap_used_percent`                         | `metrics-logstash.node-default` | [Metrics Logstash] Node Health Report        | > 85 % → **Alerte Kibana 5a** |
+| `logstash.node.stats.jvm.mem.heap_used_percent`                         | `metrics-logstash.node-default` | [Metrics Logstash] Single Node Overview      | reste ≥ 90 % sur 15 min → **Alerte Kibana 5a** |
 | `logstash.node.stats.events.out`                                        | `metrics-logstash.node-default` | [Metrics Logstash] Logstash Overview         | Tombe à 0 pendant la pause GC |
 
 **Signature caractéristique** : pic de latence **bimodal** (temps de réponse normal
@@ -175,8 +173,11 @@ puis pic soudain), CPU **élevé** pendant le pic (≠ scénario 1 où CPU = 0),
 
 Dans Discover, data view `metrics-logstash*` :
 ```
-logstash.node.stats.jvm.mem.heap_used_percent > 85
+logstash.node.stats.jvm.mem.heap_used_percent >= 90
 ```
+
+Les temps de GC ne sont pas collectés : les champs
+`logstash.node.stats.jvm.gc.collectors.*` existent dans le mapping mais restent vides.
 
 Pour corréler avec les logs GC (si `-Xlog:gc,safepoint` est activé dans `LS_JAVA_OPTS`) :
 dans les logs Scalingo de l'app `pass-emploi-logstash-prod`, chercher les lignes
@@ -184,21 +185,20 @@ dans les logs Scalingo de l'app `pass-emploi-logstash-prod`, chercher les lignes
 
 ### Actions correctives
 
-1. **Vérifier le heap utilisé** : dashboard [Metrics Logstash] Node Health Report →
-   `jvm.mem.heap_used_percent`. Si > 85 % en régime normal, le heap est
-   sous-dimensionné.
-2. **Vérifier `LS_JAVA_OPTS`** sur Scalingo : doit contenir `-Xms1g -Xmx1g`.
-   ⚠️ Ne jamais dépasser `-Xmx1g` sur un conteneur XL (2 Go) — le reste est
-   consommé par Netty/direct memory, JRuby, metaspace, threads + OS.
-   Sur Scalingo, les conteneurs tournent sans swap : quand la mémoire totale
-   (heap 1 Go + off-heap ~600 Mo + OS ~200 Mo ≈ 1,8 Go) dépasse la limite du
+1. **Vérifier le heap utilisé** : dashboard [Metrics Logstash] Single Node Overview →
+   graphe *JVM Heap*. En régime normal, il oscille entre ~80 % après GC et ~93 %
+   avant GC. S'il ne redescend plus sous 90 %, le GC ne libère plus rien.
+2. **Vérifier `LS_JAVA_OPTS`** sur Scalingo : doit contenir `-Xms256m -Xmx256m`.
+   ⚠️ Ne pas augmenter le heap : avec 256 Mo, la mémoire totale du conteneur
+   plafonne déjà à ~1,7 Go sur les 2 Go d'un XL, le reste étant consommé par
+   Netty/direct memory, JRuby, metaspace, threads, l'Elastic Agent et l'OS.
+   Sur Scalingo, les conteneurs tournent sans swap : au-delà de la limite du
    conteneur, le kernel envoie un SIGKILL immédiat sans avertissement.
-   **`-Xmx2g` sur XL = OOM-kill garanti.**
 3. **Si le heap est correctement dimensionné** mais les GC sont fréquents : le
    volume d'ingestion dépasse la capacité de traitement. Scaler horizontalement
    (ajouter des instances Logstash sur Scalingo).
 4. **Pour diagnostiquer en live** : activer temporairement les logs GC via
-   `LS_JAVA_OPTS="-Xms1g -Xmx1g -Xlog:gc,safepoint:stderr:utctime,level,tags"` sur
+   `LS_JAVA_OPTS="-Xms256m -Xmx256m -Xlog:gc,safepoint:stderr:utctime,level,tags"` sur
    Scalingo. **Retirer après le diagnostic** (verbeux : pollue le drain + stockage ES).
 
 ### Références
@@ -296,7 +296,7 @@ Des `_ignored` indiquent un dépassement de `total_fields.limit` → prévoir un
 
 | Signal                                  | Source                | Description                                           |
 |-----------------------------------------|-----------------------| ----------------------------------------------------- |
-| Alerte webhook Scalingo                 | Scalingo → Mattermost | `app_crashed` avec `reason: OOM` ou `reason: SIGKILL` |
+| Alerte webhook Scalingo                 | Scalingo → Mattermost | `app_crashed_repeated` avec `reason: OOM` ou `reason: SIGKILL` |
 | Silence dans `logs-prod-default`        | Alerte Kibana 3a      | `Is below or equals 0` sur 5 min                      |
 | Silence dans `logs-router-prod-default` | Alerte Kibana 3b      | `Is below or equals 0` sur 5 min                      |
 | Absence de métriques Fleet              | Kibana Fleet → Agents | Agent Elastic Agent passe en `offline`                |
@@ -335,8 +335,8 @@ http.response.status_code: (429 OR 499) AND service.environment: "prod"
 ### Actions correctives
 
 **Si crash OOM** :
-1. Vérifier `LS_JAVA_OPTS` sur Scalingo : doit être `-Xms1g -Xmx1g`.
-   ⚠️ `-Xmx2g` sur XL (2 Go) = OOM-kill garanti (voir scénario 2).
+1. Vérifier `LS_JAVA_OPTS` sur Scalingo : doit être `-Xms256m -Xmx256m`.
+   ⚠️ Augmenter le heap sur XL (2 Go) mène à l'OOM-kill (voir scénario 2).
 2. Vérifier la mémoire consommée dans les métriques Scalingo juste avant le crash.
 3. Si le heap est correct mais l'OOM persiste : la mémoire hors-heap (Netty/direct
    memory) déborde. Réduire `LOGSTASH_INGEST_THREADS` (défaut : 4) ou scaler le
@@ -397,7 +397,7 @@ Un backlog signale que le pipeline `process` ne consomme plus Redis. Causes poss
 
 | Métrique            | Data stream                 | Dashboard                                                                        | Signal d'alarme                |
 |---------------------|-----------------------------|----------------------------------------------------------------------------------|--------------------------------|
-| `redis.key.length`  | `metrics-redis.key-default` | **[Metrics Redis] Keys** → graphe **Lists length** → clé `db0 › logstash:ingest` | > 1 000 → **Alerte Kibana 7a** |
+| `redis.key.length`  | `metrics-redis.key-default` | **[Metrics Redis] Keys** → graphe **Lists length** → clé `db0 › logstash:ingest` | reste > 1 000 sur 15 min → **Alerte Kibana 7a** (des pics à :00 et :30 en journée sont nominaux) |
 
 ### Diagnostic
 
@@ -433,8 +433,8 @@ Un backlog signale que le pipeline `process` ne consomme plus Redis. Causes poss
 
 **Signature B — Backpressure ES** (pas d'erreur Redis, `queue_backpressure > 0.5`) :
 
-1. Ouvrir le dashboard `[Metrics Logstash] Pipeline Health Report` → confirmer
-   `queue_backpressure.current > 0.5` sur le pipeline `process`.
+1. Ouvrir le dashboard `[Metrics Logstash] Logstash Single Pipeline View` sur le
+   pipeline `process` → confirmer que *Time spent pushing to queues* monte.
 2. Traiter la cause racine ES → voir **scénario 1**.
 
 ### Références
@@ -486,11 +486,12 @@ GET logs-prod-default/_search
 | Fleet — Agents Logstash                             | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/fleet/agents                                                        |
 | Dashboards intégration Logstash                     | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/integrations/detail/logstash-2.11.3/assets                          |
 | Stack Management → Rules                            | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/management/insightsAndAlerting/triggersActions/rules                |
-| [Metrics Logstash] Pipeline Health Report           | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-838aac39-8edd-48b0-95b4-289e42b1e98a      |
+| [Metrics Logstash] Logstash Single Pipeline View    | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc      |
+| [Metrics Logstash] Pipelines Overview               | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-c0594170-526a-11ee-9ecc-31444cb79548      |
+| [Metrics Logstash] Input plugin Info                | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-8f8c78a0-6e9e-11ee-86f6-d7074508d975      |
 | [Metrics Logstash] Elasticsearch output plugin info | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086      |
 | [Metrics Logstash] Logstash Overview                | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522      |
-| [Metrics Logstash] Single Node Advanced View        | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-a42d7060-45e6-11ee-957b-3720c0b0fbc5      |
-| [Metrics Logstash] Node Health Report               | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9a72208d-e446-48b9-8a63-c4256b9aa4e3      |
+| [Metrics Logstash] Single Node Overview             | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9d450b10-4680-11ee-9ddc-919f87fe352d      |
 | [Metrics Redis] Keys                                | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5         |
 | [Elastic Agent] Overview                            | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824 |
 | [Elastic Agent] Concerning Agents                   | https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-0600ffa0-6b5e-11ed-98de-67bdecd21824 |

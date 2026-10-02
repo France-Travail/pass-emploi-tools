@@ -216,7 +216,8 @@ sous X ». `event.duration` est en **nanosecondes** (converti par Logstash).
 Le seuil dépend de la famille du parcours. Sur la baseline du 2026-09-30, seul
 `authentification` tient 500 ms (99,86 %) ; les autres parcours attendent un
 partenaire (Milo, France Travail, Firebase) et tombent entre 83 % et 98 % sous
-500 ms, pour un p99 de 1,7 à 2 s à l'accueil.
+500 ms, pour un p99 de 1,7 à 2 s à l'accueil. Avec ces seuils, chaque parcours
+critique est entre 99,67 % (`accueil_jeune_milo`) et 99,9 % sous son seuil.
 
 | Famille             | Parcours                                                                                                  | Seuil  |
 |---------------------|-----------------------------------------------------------------------------------------------------------|--------|
@@ -291,10 +292,10 @@ FROM logs-prod-default
     AND service.name == "pass-emploi-api"
     AND event.action IN ("request_completed", "request_failed")
 | EVAL parcours = COALESCE(labels.user_journey, "(aucun)"),
-       seuil_ns = CASE(parcours == "authentification", 500000000, 2500000000)
+       seuil_ms = CASE(parcours == "authentification", 500, 2500)
 | STATS requetes = COUNT(*),
         echecs = COUNT(*) WHERE event.action == "request_failed",
-        lentes = COUNT(*) WHERE event.duration >= seuil_ns,
+        lentes = COUNT(*) WHERE event.duration / 1000000 >= seuil_ms,
         p99_ms = PERCENTILE(event.duration, 99) / 1000000
   BY parcours
 | EVAL disponibilite = ROUND(100.0 * (requetes - echecs) / requetes, 2),
