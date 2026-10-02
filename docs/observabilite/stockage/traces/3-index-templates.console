@@ -1,0 +1,79 @@
+# Index templates — traces (APM). A importer en dernier (référencent la policy et
+# les component templates de ce dossier).
+#
+# managed:false = à nous (clonés des défauts APM pour attacher notre rétention).
+# Composent des briques Elastic (apm@mappings…) + nos <flux>@custom.
+# ⚠️ DÉPENDANCE : l'intégration APM d'Elastic doit être installée (elle fournit
+# apm@mappings, traces@mappings, *-fallback@ilm, traces-apm@default-pipeline…,
+# référencés seulement, jamais versionnés ici).
+
+PUT _index_template/traces-apm@template-custom
+{
+  "index_patterns": ["traces-apm-default"],
+  "template": {
+    "settings": {
+      "index": {
+        "mode": "standard",
+        "default_pipeline": "traces-apm@default-pipeline",
+        "final_pipeline": "traces-apm@pipeline"
+      }
+    },
+    "mappings": {
+      "properties": {
+        "data_stream.dataset": { "type": "constant_keyword", "value": "apm" },
+        "data_stream.type": { "type": "constant_keyword", "value": "traces" }
+      }
+    }
+  },
+  "composed_of": [
+    "traces@mappings", "apm@mappings", "apm@settings", "traces-apm@mappings",
+    "traces-apm-fallback@ilm", "ecs@mappings", "apm-retention-custom",
+    "traces@custom", "traces-apm@custom"
+  ],
+  "priority": 250,
+  "version": 101,
+  "_meta": { "description": "Custom index template for traces-apm-* with custom policy", "managed": false },
+  "data_stream": { "hidden": false, "allow_custom_routing": false },
+  "allow_auto_create": true,
+  "ignore_missing_component_templates": ["traces@custom", "traces-apm@custom", "traces-apm-fallback@ilm"]
+}
+
+PUT _index_template/traces-apm.rum@template-custom
+{
+  "index_patterns": ["traces-apm.rum-default"],
+  "template": {
+    "settings": {
+      "index": {
+        "mode": "standard",
+        "default_pipeline": "traces-apm.rum@default-pipeline",
+        "final_pipeline": "traces-apm@pipeline"
+      }
+    },
+    "mappings": {
+      "properties": {
+        "data_stream.dataset": { "type": "constant_keyword", "value": "apm.rum" },
+        "data_stream.type": { "type": "constant_keyword", "value": "traces" }
+      }
+    }
+  },
+  "composed_of": [
+    "traces@mappings", "apm@mappings", "apm@settings", "traces-apm@mappings",
+    "traces-apm.rum@mappings", "traces-apm.rum-fallback@ilm", "ecs@mappings",
+    "traces@custom", "traces-apm.rum@custom", "apm-retention-custom"
+  ],
+  "priority": 250,
+  "version": 101,
+  "_meta": { "managed": false, "description": "Index custom template for traces-apm.rum-* with custom policy" },
+  "data_stream": { "hidden": false, "allow_custom_routing": false },
+  "allow_auto_create": true,
+  "ignore_missing_component_templates": ["traces@custom", "traces-apm.rum@custom", "traces-apm.rum-fallback@ilm"]
+}
+
+# ═════════════════════════════════════════════════════════════════════════════
+# ROLLOVER — aucun nécessaire pour ce dossier.
+#
+# La policy traces-apm-retention garde son nom historique (déjà en place avant
+# la réorganisation en sous-dossiers) : un changement de CONTENU de policy
+# s'applique sans rollover. Rien à rejouer ici.
+# ═════════════════════════════════════════════════════════════════════════════
+

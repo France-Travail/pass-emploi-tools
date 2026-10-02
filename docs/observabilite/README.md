@@ -1,138 +1,49 @@
-# Observabilité — vue d'ensemble
+# Observabilité — index
 
-Vue transverse de l'outillage de supervision de pass-emploi : logs, métriques,
-traces distribuées et uptime. Ce fichier est le point d'entrée ; chaque signal
-a sa documentation détaillée dans les sous-dossiers référencés.
+Outillage de supervision de pass-emploi : logs, métriques, traces. La doc suit
+le **cycle de vie de la télémétrie**, chaque étape déclinée par télémétrie
+(`logs`, `metriques`, `traces`) — un sous-répertoire n'existe que s'il a du
+contenu. Chaque `<étape>/<télémétrie>/README.md` donne la vue d'ensemble de
+l'archi et pointe vers les sujets plus précis.
 
-## Schéma global
-
-```mermaid
-graph TB
-    subgraph apps["Apps Scalingo (api / web / connect)"]
-        apm_sdk["APM agent\n(SDK NestJS)"]
-        drain["Log Drain\n(stdout → HTTP)"]
-        heartbeat_target["Endpoints HTTP\n(uptime)"]
-    end
-
-    subgraph logstash_ingest["pass-emploi-logstash-#60;env#62;"]
-        ls_ingest["Logstash INGEST"]
-        ea_ls_ingest["Elastic Agent"]
-    end
-
-    redis[("Redis\nScalingo")]
-
-    subgraph logstash_process["pass-emploi-logstash-process-#60;env#62;"]
-        ls_process["Logstash PROCESS"]
-        ea_ls_process["Elastic Agent"]
-    end
-
-    subgraph ea_dedicated["pass-emploi-elastic-agent-#60;env#62;"]
-        ea_redis["Elastic Agent\n(dédié Redis)"]
-    end
-
-    heartbeat["Heartbeat\n(pass-emploi-tools/logs)"]
-
-    subgraph elastic["Elastic Cloud"]
-        es_logs["logs-*-default\n(logs applicatifs)"]
-        es_apm["traces-apm-* / logs-apm.*\n(traces + errors APM)"]
-        es_hb["heartbeat-*\n(uptime)"]
-        fleet["Fleet Server\n(métriques Logstash + Redis)"]
-    end
-
-    drain --> ls_ingest --> redis --> ls_process --> es_logs
-    apm_sdk -->|APM protocol| es_apm
-    heartbeat -->|ping HTTP| heartbeat_target
-    heartbeat --> es_hb
-    ea_ls_ingest -->|métriques Logstash| fleet
-    ea_ls_process -->|métriques Logstash| fleet
-    ea_redis -->|métriques Redis| fleet
+```
+format ──► collecte ──► process ──► stockage ──► exploitation (routine, supervision, runbooks)
 ```
 
-## Les quatre signaux
+## Vue d'ensemble et sujets transverses
 
-| Signal                          | Outil                                                                         | Data streams ES                                             | Documentation                                                         |
-|---------------------------------|-------------------------------------------------------------------------------|-------------------------------------------------------------|-----------------------------------------------------------------------|
-| **Logs applicatifs**            | Logstash (drain Scalingo → ES)                                                | `logs-{prod,staging,perf}-default`, `logs-router-*-default` | [logs-ecs/](logs-ecs/README.md)                                    |
-| **Traces distribuées & errors** | Elastic APM (SDK NestJS dans api, web, connect)                               | `traces-apm-default`, `logs-apm.error-default`              | [logs-ecs/infra-elasticsearch.md](logs-ecs/infra-elasticsearch.md) |
-| **Uptime**                      | Heartbeat (buildpack Scalingo, co-localisé dans `pass-emploi-logstash-<env>`) | `heartbeat-*`                                               | [logs/elastic/README.md](../../logs/elastic/README.md)                |
-| **Métriques infra**             | Elastic Agent Fleet (co-localisé dans chaque Logstash + dédié pour Redis)     | via Fleet → Kibana                                          | [elastic-agent/README.md](../../elastic-agent/README.md)              |
+| Fichier | Question à laquelle il répond |
+|---|---|
+| [infrastructure.md](infrastructure.md) | Quelles briques, où, dans quelles versions, avec quels garde-fous de dimensionnement ? |
+| [pilotage.md](pilotage.md) | Comment Fleet pilote les Elastic Agents (enrôlement, policies, identité) ? |
 
-## Logs applicatifs
+## Cycle de vie par télémétrie
 
-Les apps (api, web, connect) émettent leurs logs en JSON structuré ECS via
-`stdout`. Scalingo les achemine via des **Log Drains HTTP** vers Logstash.
+| Étape | logs | metriques | traces |
+|---|---|---|---|
+| **format** — ce que l'app émet | [format/logs](format/logs/README.md) | — | — |
+| **collecte** — transport jusqu'au premier buffer | [collecte/logs](collecte/logs/README.md) | [collecte/metriques](collecte/metriques/README.md) | [collecte/traces](collecte/traces/README.md) |
+| **process** — transformation avant indexation | [process/logs](process/logs/README.md) | — (écriture directe) | — (APM Server) |
+| **stockage** — data streams, mapping, rétention | [stockage/logs](stockage/logs/README.md) | [stockage/metriques](stockage/metriques/README.md) | [stockage/traces](stockage/traces/README.md) |
 
-Logstash est splitté en deux services depuis 2026-09 :
-- **INGEST** (`pass-emploi-logstash-<env>`) : ACK rapide, zéro filtre, écrit dans Redis
-- **PROCESS** (`pass-emploi-logstash-process-<env>`) : filtres ECS, indexation ES, DLQ
+Principes et import des templates ES : [stockage/README.md](stockage/README.md).
 
-> Décision d'architecture : [ADR-002 — Migration PQ disque → Redis](../decisions/ADR-002-buffer-redis-logstash.md)
-> et [ADR-003 — Pertinence de l'usage des Log Drains Scalingo](../decisions/ADR-003-usage-log-drain-scalingo.md)
+## Exploitation
 
-Référence complète : [logs-ecs/](logs-ecs/README.md) — conventions ECS,
-data streams, templates, runbook d'astreinte.
+| Fichier | Usage |
+|---|---|
+| [routine-surveillance.md](routine-surveillance.md) | Ce qu'on regarde régulièrement : reporting métier, santé tech, dashboards |
+| [supervision/sli-slo.md](supervision/sli-slo.md) | Les promesses de service (I1-I5, seuil commun) et leurs requêtes |
+| [supervision/alertes-applicatives.md](supervision/alertes-applicatives.md) | Alertes sur les pannes visibles des utilisateurs (partenaires, 5xx, auth) |
+| [supervision/alertes-stack-observabilite.md](supervision/alertes-stack-observabilite.md) | Alertes sur notre infra de télémétrie (Logstash, Redis, agents Fleet) |
+| [runbooks/investigation-incident.md](runbooks/investigation-incident.md) | Enquêter sur un incident applicatif (KQL par `user.id`, `trace.id`…) |
+| [runbooks/runbook-logstash.md](runbooks/runbook-logstash.md) | Diagnostiquer une panne de la chaîne de logs (5 scénarios + playbook) |
+| [post-mortems/](post-mortems/) | Récits d'incidents : [5xx Logstash (06/2026)](post-mortems/postmortem-2026-06-logstash-5xx.md), [blackout logs (07/2026)](post-mortems/postmortem-2026-07-blackout-logs.md), [agent UNENROLLED (09/2026)](post-mortems/postmortem-2026-09-unenrolled-elastic-agent.md) |
 
-## Traces distribuées & errors (APM)
+## Décisions d'architecture
 
-Le SDK Elastic APM est intégré dans les apps NestJS (api, web, connect). Il
-capture automatiquement :
-- les **traces** de chaque requête HTTP (latence, erreurs, dépendances)
-- les **errors** non catchées
+- [ADR-002 — Migration du buffer Logstash : PQ disque → Redis](../decisions/ADR-002-buffer-redis-logstash.md)
+- [ADR-003 — Pertinence de l'usage des Log Drains Scalingo](../decisions/ADR-003-usage-log-drain-scalingo.md)
 
-Les données sont envoyées directement à Elastic Cloud (APM Server intégré),
-sans passer par Logstash.
-
-Rétentions : traces 30 j, errors 90 j — cf.
-[logs/elastic/README.md § Observabilité APM & Heartbeat](../../logs/elastic/README.md).
-
-## Uptime (Heartbeat)
-
-Heartbeat est déployé via le buildpack `SocialGouv/heartbeat-buildpack`,
-co-localisé dans `pass-emploi-logstash-<env>`. Il effectue des pings HTTP
-périodiques sur les endpoints des apps pour détecter les indisponibilités.
-
-Rétention : 90 j.
-
-## Métriques infra (Elastic Agent Fleet)
-
-Deux types d'agents Elastic Agent supervisent l'infra Logstash + Redis :
-
-- **Co-localisés** dans chaque service Logstash (INGEST et PROCESS) : métriques
-  Logstash via l'API `/_node/stats` (débit pipelines, taille queue, latence, GC)
-- **Dédié** (`pass-emploi-elastic-agent-<env>`) : métriques Redis (taille de la
-  liste `logstash:ingest`, mémoire, connexions)
-
-Tous les agents s'enrôlent dans Fleet et reçoivent leur configuration depuis
-Kibana → Fleet → Agent Policies.
-
-## Alertes de supervision
-
-Deux types d'alertes coexistent :
-
-- **Alertes Kibana Rules** (infra Logstash + Redis) — notifient via Mattermost
-  (`#monitoring-production` et `#monitoring-staging`) :
-  [logs/elastic/4-kibana-alerts.md](../../logs/elastic/4-kibana-alerts.md)
-- **Alertes Watcher** (signaux applicatifs : pic d'échecs partenaire, erreurs 5xx,
-  taux d'auth refusées) :
-  [logs-ecs/kibana.md — § Alertes prioritaires](logs-ecs/kibana.md)
-
-Investigation et diagnostic — deux périmètres complémentaires :
-
-- **Signaux applicatifs** (erreurs partenaires, 5xx, auth refusées) — requêtes KQL,
-  méthodologies d'analyse par axe (incident, reporting, monitoring) :
-  [logs-ecs/kibana.md](logs-ecs/kibana.md)
-- **Infra Logstash + Redis** (backpressure, DLQ, silence, backlog Redis) — procédures
-  pas-à-pas pour les 5 scénarios de panne :
-  [docs/logs-ecs/runbook-astreinte-logstash.md](ingestion-logs/runbook-astreinte-logstash.md)
-
-Signatures des modes de panne et garde-fous durables (quarantaine drain, JVM) :
-[docs/blackout-logs/conventions.md](ingestion-logs/conventions.md)
-
-## SLO & indicateurs métier
-
-Les indicateurs de performance (I1 login, I2 parcours, I3 pages critiques) et
-leurs seuils (p99 < 500 ms, réussite > 99,5 %) sont définis dans
-[docs/perf/observabilite.md](../perf/observabilite.md).
-
-Tirs de charge : le harnais, les scénarios et l'orchestration CI :
-[docs/perf/harnais.md](../perf/harnais.md)
+Tirs de charge applicatifs (harnais, scénarios, instrumentation requise) :
+[docs/perf/](../perf/README.md).

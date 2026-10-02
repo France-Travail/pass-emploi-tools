@@ -32,10 +32,13 @@
   (sinon `err.config`/`err.response` axios → fuite d'identifiants + ligne > 16 Ko
   tronquée par le drain → log perdu). Charger le détail **avant** d'ajouter ou
   modifier un log.
-- **Référence stable** : [`pass-emploi-tools/docs/observabilite/logs-ecs/`](./observabilite/logs-ecs/README.md)
-  — `conventions.md` (format, nommage, redaction, « ne jamais logger une exception
-  brute »), `infra-elasticsearch.md` (data streams, templates, ILM),
-  `kibana.md` (use cases), `couverture-api.md` (ce qui est tracé côté api).
+- **Référence stable** : [`pass-emploi-tools/docs/observabilite/`](./observabilite/README.md)
+  (index par étape × télémétrie) — [`format/logs/conventions.md`](./observabilite/format/logs/conventions.md)
+  (format, nommage, redaction, « ne jamais logger une exception brute »),
+  [`format/logs/couverture-api.md`](./observabilite/format/logs/couverture-api.md) (ce qui est tracé côté api),
+  [`stockage/logs/README.md`](./observabilite/stockage/logs/README.md) (data streams, templates, ILM),
+  [`routine-surveillance.md`](./observabilite/routine-surveillance.md) (dashboards, reporting),
+  [`runbooks/investigation-incident.md`](./observabilite/runbooks/investigation-incident.md) (KQL d'enquête).
 
 ## Ingestion des logs · résilience & scaling (blackouts, drain) · 2026-07
 
@@ -43,13 +46,19 @@
   Logstash est suspecté, ou on redimensionne un maillon de la chaîne d'ingestion.
 - **Invariant** : le log-drain Scalingo **quarantine une app 5 min** dès **10 lignes
   consécutives** refusées (escalade 10/15/20 min) → un hoquet Logstash = blackout de
-  la plus grosse app (`pass-emploi-api`). Conteneur XL Scalingo = **2 Go** → `-Xmx`
-  ≤ ~1 Go, piloté via `JAVA_OPTS` (jamais `LS_JAVA_OPTS`, écrasé par le buildpack).
+  la plus grosse app (`pass-emploi-api`). Conteneur XL Scalingo = **2 Go** → heap figé à
+  `-Xmx256m` (mémoire totale ~1,7 Go, ne pas monter), piloté via `LS_JAVA_OPTS`
+  (`JAVA_OPTS` est ignoré par Logstash).
   Charger la référence **avant** de scaler ou retoucher la chaîne d'ingestion.
-- **Référence stable** : [`pass-emploi-tools/docs/observabilite/ingestion-logs/`](./observabilite/ingestion-logs/README.md)
-  — `runbook-astreinte-logstash.md` (5 scénarios de panne : backpressure ES, gel GC,
-  DLQ, crash conteneur, backlog Redis),
-  `conventions.md` (garde-fous JVM/Scalingo, playbook de diagnostic).
+- **Référence stable** : [`collecte/logs/`](./observabilite/collecte/logs/README.md)
+  — `drain-scalingo.md` (quarantaine, troncature, décision ADR-003), `pipeline.md` (ingest) ;
+  [`process/logs/`](./observabilite/process/logs/README.md) — `pipeline.md` (process, routage, DLQ),
+  `performances.md` (tirs, trajectoire x10) ;
+  [`infrastructure.md`](./observabilite/infrastructure.md) (inventaire, garde-fous JVM/Scalingo, dimensionnement) ;
+  [`pilotage.md`](./observabilite/pilotage.md) (Fleet, agents) ;
+  [`supervision/alertes-stack-observabilite.md`](./observabilite/supervision/alertes-stack-observabilite.md).
+  Procédures pas-à-pas de diagnostic : [`pass-emploi-tools/docs/observabilite/runbooks/runbook-logstash.md`](./observabilite/runbooks/runbook-logstash.md)
+  (5 scénarios de panne : backpressure ES, gel GC, DLQ, crash conteneur, backlog Redis).
   Post-mortems associés dans `../post-mortems/` :
   `postmortem-2026-06-logstash-5xx.md` (fonctionnement JVM/Netty/GC, correctif XL),
   `postmortem-2026-07-blackout-logs.md` (les 2 modes de panne observés),

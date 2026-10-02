@@ -4,9 +4,9 @@
 > modes de panne distincts** qu'on a démêlés, et **comment la chaîne d'ingestion
 > tiendra (ou pas) à x10 utilisateurs**.
 >
-> Garde-fous durables + playbook de diagnostic : [conventions.md](conventions.md).
+> Garde-fous durables : [infrastructure.md](../infrastructure.md#garde-fous-jvm--scalingo) ; playbook de diagnostic : [runbook-logstash](../runbooks/runbook-logstash.md#playbook-de-diagnostic-de-lingestion).
 > Incident **distinct** du précédent (5xx/GC de juin, heap sous-dimensionnée) :
-> [../logs-ecs/postmortem-logstash-5xx-2026-06.md](postmortem-2026-06-logstash-5xx.md).
+> [postmortem-2026-06-logstash-5xx.md](postmortem-2026-06-logstash-5xx.md).
 > Celui-ci part **après** le correctif `-Xmx1g` de cette campagne-là.
 
 ## TL;DR
@@ -165,16 +165,16 @@ Le diagnostic a été **sinueux** ; consigner les impasses évite de les refaire
 
 **Outil de diagnostic clé** : les **router logs** contiennent l'app source dans le
 path (`?appname=pass-emploi-api-prod`) → on peut ventiler volume, 429, 499 et trous
-**par app**. C'est ce qui a isolé le mode B. Détail dans [conventions.md](conventions.md#playbook-de-diagnostic).
+**par app**. C'est ce qui a isolé le mode B. Détail dans [runbook-logstash](../runbooks/runbook-logstash.md#playbook-de-diagnostic-de-lingestion).
 
 ---
 
 ## 5. Garde-fous appris à la dure
 
-Résumé — détail complet dans [conventions.md](conventions.md) :
+Résumé — détail complet dans [infrastructure.md](../infrastructure.md#garde-fous-jvm--scalingo) et [collecte/logs](../collecte/logs/README.md#les-2-modes-de-panne--signatures) :
 
 - **XL Scalingo = 2 Go** (pas 4) → **`-Xmx` ≤ ~1 Go**. `-Xmx2g` = OOM-kill.
-- **Heap piloté via `JAVA_OPTS`**, jamais `LS_JAVA_OPTS` (écrasé par le buildpack).
+- **Heap piloté via `LS_JAVA_OPTS`** (`JAVA_OPTS` est ignoré par Logstash — correction du 2026-09-30).
 - **Signatures** : 0 % CPU global = backpressure ES (mode A) ; trou d'une seule app
   = quarantaine drain (mode B) ; latence bimodale = pause stop-the-world (GC).
 
@@ -183,6 +183,10 @@ Résumé — détail complet dans [conventions.md](conventions.md) :
 ## 6. État actuel & décisions ouvertes
 
 Config déployée au 2026-07-02 :
+
+> **Correction (2026-09-30)** : le heap Logstash se règle via **`LS_JAVA_OPTS`** ;
+> `JAVA_OPTS` est ignoré par le lanceur. Les mentions de `JAVA_OPTS` ci-dessous
+> sont erronées, cf. [infrastructure.md](../infrastructure.md#garde-fous-jvm--scalingo).
 
 - **4× XL** (2 Go), heap **`-Xms1g -Xmx1g`** (posé via `JAVA_OPTS`).
 - **PQ retirée** (du repo et du déployé) — **temporairement**, pour un test
@@ -265,8 +269,8 @@ le plafond drain/ES**, donc quand basculer sur l'option A puis B.
 3. **10 échecs *consécutifs* = piège des flux à haut débit.** Un seuil « consécutif »
    se franchit d'autant plus vite que le débit est élevé → punit toujours la plus
    grosse app en premier.
-4. **XL Scalingo = 2 Go** → `-Xmx` plafonné à ~1 Go ; heap piloté via `JAVA_OPTS`
-   (pas `LS_JAVA_OPTS`). Vérifier au boot avec `-Xlog:gc+init`.
+4. **XL Scalingo = 2 Go** → `-Xmx` plafonné à ~1 Go ; heap piloté via `LS_JAVA_OPTS`
+   (`JAVA_OPTS` est ignoré — correction du 2026-09-30). Vérifier au boot avec `-Xlog:gc+init`.
 5. **Diagnostiquer sur la donnée du moment T, pas sur une fenêtre saine.** Une grande
    part du temps perdu venait de fenêtres de logs qui **ne couvraient pas** le trou.
 6. **Scaler horizontalement gagne du temps, pas une architecture.** Pour x10,
