@@ -39,6 +39,32 @@ Spécificités api :
   Chaîne 3 repos : api (`external-api-logger.helpers.ts`) → tools (renames logstash
   `[msg][http][response][...]` + `logs@custom` keyword). Générique tous clients.
 
+## Envoi de communications
+
+Job `ENVOYER_COMMUNICATIONS` (`log.logger`), un lot par exécution du cron.
+Tous les logs portent `labels.communication_id`, qui sert de filtre de suivi.
+
+| `event.action` | `outcome` | champs |
+|---|---|---|
+| `communication_envoi_demarre` | `success` | `labels.population_id`, `communication.destinataires` |
+| `communication_lot_envoye` | `success` / `failure` (lot entièrement en erreur) | `communication.restantes`, `communication.lot.{envoyees,erreurs,tokens_invalides}` |
+| `communication_envoi_termine` | `success` | `communication.{a_envoyer,en_cours,envoyees,erreurs,tokens_invalides}` (totaux figés) |
+| `communication_envoi_en_erreur` | `failure` | idem, après `ECHECS_CONSECUTIFS_MAX` lots consécutifs en échec |
+| `communication_envois_liberes` | `failure` | `communication.envois_liberes` : lot interrompu, doublons de push possibles |
+| `communication_notification_envoyee` | `failure` | `labels.jeune_id`, `error.*` (exception Firebase) |
+
+Pièges d'agrégation :
+
+- **Erreurs** : sommer `communication.lot.erreurs` **uniquement sur
+  `event.outcome: success`**. Un lot entièrement en erreur est rendu pour retry :
+  ses erreurs seraient comptées à chaque tentative.
+- **Restantes** : prendre la dernière valeur de `communication.restantes`, pas la
+  somme.
+- **Durée d'un lot** : pas sur ces logs, mais sur `job_completed` filtré sur
+  `labels.job_type: ENVOYER_COMMUNICATIONS` (`event.duration`, en ns).
+
+Alertes utiles : `communication_envoi_en_erreur` et `communication_envois_liberes`.
+
 ## Cas de validation end-to-end : RDV Milo
 
 Périmètre choisi comme exemple bout-en-bout : création/màj/suppression de RDV

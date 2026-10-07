@@ -165,6 +165,24 @@ Champs standards : `event.*`, `error.*`, `http.*`, `url.*`, `user.*`,
 `service.*` → flatten automatique côté Logstash. Tout nouveau sous-namespace
 demande un ajout dans `logs/pipeline-process.conf`.
 
+⚠️ Logstash ne remonte à la racine **que** les champs listés dans ses renames
+(`pipeline-process.conf`, blocs 1 et 2). Tout le reste reste sous **`msg.*`**, et
+n'est donc pas là où on le cherche (`msg.lot.envoyees` au lieu de
+`lot.envoyees`). Un nouveau namespace applicatif demande deux ajouts :
+
+1. un rename `"[msg][<namespace>]" => "[<namespace>]"` dans le bloc 2 ;
+2. son mapping dans `logs@custom` (`logs/elastic/2-component-templates.console`),
+   avec des types explicites (`long` pour un compteur, sinon il n'est pas
+   agrégeable), puis un **rollover** des data streams concernés.
+
+Choix du porteur :
+
+- **`labels.<nom>`** (keyword) pour une dimension ou un identifiant de corrélation
+  (`labels.communication_id`, `labels.job_run_id`) ;
+- **namespace dédié typé** pour une métrique numérique (`communication.lot.envoyees`).
+  Pas de compteur dans `labels` : il serait indexé en keyword, donc impossible à
+  sommer.
+
 `error` au format ECS via **`toEcsError(error)`** : helper unique gérant Error
 JS, erreur métier (code/message), valeur inconnue → `{type, message, stack_trace}`.
 

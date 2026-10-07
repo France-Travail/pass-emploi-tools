@@ -29,12 +29,27 @@ PUT _component_template/logs@custom
         } },
         "login": { "properties": {
           "step": { "type": "keyword", "ignore_above": 1024 }
+        } },
+        "communication": { "dynamic": false, "properties": {
+          "destinataires":    { "type": "long" },
+          "restantes":        { "type": "long" },
+          "a_envoyer":        { "type": "long" },
+          "en_cours":         { "type": "long" },
+          "envoyees":         { "type": "long" },
+          "erreurs":          { "type": "long" },
+          "tokens_invalides": { "type": "long" },
+          "envois_liberes":   { "type": "long" },
+          "lot": { "dynamic": false, "properties": {
+            "envoyees":         { "type": "long" },
+            "erreurs":          { "type": "long" },
+            "tokens_invalides": { "type": "long" }
+          } }
         } }
       }
     }
   },
   "_meta": { "description": "Champs ECS custom CEJ, communs app + router", "managed_by": "pass-emploi-tools" },
-  "version": 5
+  "version": 6
 }
 
 PUT _component_template/logs-router@mappings
