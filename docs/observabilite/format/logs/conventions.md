@@ -171,7 +171,7 @@ n'est donc pas là où on le cherche (`msg.lot.envoyees` au lieu de
 `lot.envoyees`). Un nouveau namespace applicatif demande deux ajouts :
 
 1. un rename `"[msg][<namespace>]" => "[<namespace>]"` dans le bloc 2 ;
-2. son mapping dans `logs@custom` (`logs/elastic/2-component-templates.console`),
+2. son mapping dans `logs@custom` (`docs/observabilite/stockage/logs/2-component-templates.console`),
    avec des types explicites (`long` pour un compteur, sinon il n'est pas
    agrégeable), puis un **rollover** des data streams concernés.
 
