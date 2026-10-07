@@ -1,0 +1,30 @@
+# Politiques ILM — traces (APM).
+#
+# Traces = mesures de durée/latence d'une requête (spans, transactions), au sens
+# ECS. Rétention courte : valeur diagnostique décroissante rapidement après incident.
+# Distinct de metriques/ (mesures numériques périodiques) et logs/ (événements discrets).
+
+# Traces / RUM APM — 21 j : 14 j hot, 7 j warm, pas de frozen (plan de rétention x3.1 du conseiller Elastic (2026-10-05)).
+# Partagée par traces-apm-default et traces-apm.rum-default.
+PUT _ilm/policy/traces-apm-retention
+{
+  "policy": {
+    "phases": {
+      "hot": {
+        "min_age": "0ms",
+        "actions": {
+          "set_priority": { "priority": 100 },
+          "rollover": { "max_age": "30d", "max_primary_shard_size": "20gb" }
+        }
+      },
+      "warm": {
+        "min_age": "14d",
+        "actions": { "set_priority": { "priority": 50 } }
+      },
+      "delete": {
+        "min_age": "21d",
+        "actions": { "delete": { "delete_searchable_snapshot": true } }
+      }
+    }
+  }
+}

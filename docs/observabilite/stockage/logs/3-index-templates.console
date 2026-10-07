@@ -1,0 +1,164 @@
+# Index templates — logs (applicatif, router, DLQ/erreurs Logstash, erreurs APM).
+# A importer en dernier (referencent ILM + component templates).
+#
+# _source synthetic : posé via le setting `index.mapping.source.mode` — la forme
+# `mappings._source.mode` est dépréciée depuis ES 8.17/9.x (warning au PUT).
+# (logsdb implique déjà synthetic par défaut ; on l'explicite volontairement.)
+
+PUT _index_template/logs-prod@template-custom
+{
+  "index_patterns": ["logs-prod-default"],
+  "priority": 250,
+  "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "pass-emploi-logs@mappings", "logs-prod-retention-custom"],
+  "template": {
+    "settings": { "index": { "mode": "logsdb", "mapping": { "source": { "mode": "synthetic" } } } }
+  },
+  "data_stream": { "hidden": false, "allow_custom_routing": false },
+  "allow_auto_create": true,
+  "_meta": { "description": "Logs applicatifs pass-emploi (prod)", "managed_by": "pass-emploi-tools" },
+  "version": 20
+}
+
+PUT _index_template/logs-staging@template-custom
+{
+  "index_patterns": ["logs-staging-default"],
+  "priority": 250,
+  "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "pass-emploi-logs@mappings", "logs-staging-retention-custom"],
+  "template": {
+    "settings": { "index": { "mode": "logsdb", "mapping": { "source": { "mode": "synthetic" } } } }
+  },
+  "data_stream": { "hidden": false, "allow_custom_routing": false },
+  "allow_auto_create": true,
+  "_meta": { "description": "Logs applicatifs pass-emploi (staging), miroir de la prod", "managed_by": "pass-emploi-tools" },
+  "version": 2
+}
+
+# Logs du test de charge Gatling (workflow logstash-perf : appname=*-perf).
+# Sans ce template, logs-perf-default tomberait sur le template built-in
+# logs-*-* d'Elasticsearch, dont la policy ILM (`logs`) n'a PAS de phase
+# delete → rétention infinie sur le cluster de prod. Ce template = miroir de
+# logs-prod (mêmes composants → mesures de perf représentatives) + la
+# rétention courte logs-perf-retention.
+PUT _index_template/logs-perf@template-custom
+{
+  "index_patterns": ["logs-perf-default"],
+  "priority": 250,
+  "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "pass-emploi-logs@mappings", "logs-perf-retention-custom"],
+  "template": {
+    "settings": { "index": { "mode": "logsdb", "mapping": { "source": { "mode": "synthetic" } } } }
+  },
+  "data_stream": { "hidden": false, "allow_custom_routing": false },
+  "allow_auto_create": true,
+  "_meta": { "description": "Logs de test de perf Logstash (Gatling), purgés après chaque run", "managed_by": "pass-emploi-tools" },
+  "version": 2
+}
+
+# Erreurs de traitement Logstash (mutate_error, jsonparsefailure, etc.).
+# dynamic:false + logsdb : même structure que les flux applicatifs pour
+# pouvoir corréler avec les logs normaux via trace.id / @timestamp.
+PUT _index_template/logs-logstash-errors@template-custom
+{
+  "index_patterns": ["logs-logstash-errors-*"],
+  "priority": 250,
+  "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "pass-emploi-logs@mappings", "logs-logstash-errors-retention-custom"],
+  "template": {
+    "settings": { "index": { "mode": "logsdb", "mapping": { "source": { "mode": "synthetic" } } } }
+  },
+  "data_stream": { "hidden": false, "allow_custom_routing": false },
+  "allow_auto_create": true,
+  "_meta": { "description": "Logs d'erreurs de traitement Logstash (pipeline process)", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+# Events Dead Letter Queue Logstash (rejetés par ES via dlq_on_failed_indexing).
+# dynamic:true volontairement : le document original peut avoir n'importe quelle
+# structure (on ne sait pas à l'avance ce qui a été rejeté).
+PUT _index_template/logs-logstash-dlq@template-custom
+{
+  "index_patterns": ["logs-logstash-dlq-*"],
+  "priority": 250,
+  "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "logs-logstash-dlq-retention-custom"],
+  "template": {
+    "settings": { "index": { "mode": "logsdb", "mapping": { "source": { "mode": "synthetic" } } } }
+  },
+  "data_stream": { "hidden": false, "allow_custom_routing": false },
+  "allow_auto_create": true,
+  "_meta": { "description": "Events Dead Letter Queue Logstash (rejetés par ES)", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+PUT _index_template/logs-router
+{
+  "index_patterns": ["logs-router-*"],
+  "priority": 200,
+  "composed_of": ["logs@mappings", "logs@settings", "logs-router@mappings", "pass-emploi-logs@mappings", "logs-router@settings", "logs-router-retention-custom"],
+  "data_stream": { "hidden": false, "allow_custom_routing": false },
+  "allow_auto_create": true,
+  "_meta": { "description": "Logs router Scalingo (prod + staging + perf)", "managed_by": "pass-emploi-tools" },
+  "version": 3
+}
+
+PUT _index_template/logs-apm.error@template-custom
+{
+  "index_patterns": ["logs-apm.error-default"],
+  "template": {
+    "settings": {
+      "index": {
+        "mode": "standard",
+        "default_pipeline": "logs-apm.error@default-pipeline",
+        "final_pipeline": "logs-apm@pipeline"
+      }
+    },
+    "mappings": {
+      "properties": {
+        "processor.event": { "type": "constant_keyword", "value": "error" }
+      }
+    }
+  },
+  "composed_of": [
+    "logs@mappings", "apm@mappings", "apm@settings", "logs-apm@settings",
+    "logs-apm.error@mappings", "logs-apm.error-fallback@ilm", "ecs@mappings",
+    "pass-emploi-logs@mappings", "logs-apm.error@custom", "apm-retention-custom"
+  ],
+  "priority": 250,
+  "version": 101,
+  "_meta": { "description": "Index custom template for logs-apm.error-* with custom policy", "managed": false },
+  "data_stream": { "hidden": false, "allow_custom_routing": false },
+  "allow_auto_create": true,
+  "ignore_missing_component_templates": ["logs-apm.error@custom", "logs-apm.error-fallback@ilm"]
+}
+
+# ═════════════════════════════════════════════════════════════════════════════
+# ROLLOVER (matérialisation) — action one-shot après un changement de template
+#
+# Nécessaire après tout changement de composed_of ou de settings qui doit
+# s'appliquer aux nouveaux backing indices (les existants ne sont pas modifiés).
+# Idempotence : rejouer crée un nouvel index vide, sans dommage.
+#
+# logs-router : passage de logs-prod-retention à logs-router-retention (historique)
+POST logs-router-prod-default/_rollover
+POST logs-router-staging-default/_rollover
+
+# logs-prod/staging/perf : rollover one-shot pour forcer la rotation du write index
+# (ex: index actif trop volumineux, changement de template à matérialiser).
+POST logs-prod-default/_rollover
+POST logs-staging-default/_rollover
+POST logs-perf-default/_rollover
+
+# logs-logstash-errors et logs-logstash-dlq : rollover one-shot après création
+# des templates custom. Sans ce rollover, les backing indices créés avant
+# l'application du template restent avec ilm_policy: logs (built-in, sans phase
+# delete) au lieu de la policy de rétention dédiée. À rejouer si les data
+# streams existaient déjà.
+POST logs-logstash-errors-prod-default/_rollover
+POST logs-logstash-errors-staging-default/_rollover
+POST logs-logstash-errors-perf-default/_rollover
+
+POST logs-logstash-dlq-prod-default/_rollover
+POST logs-logstash-dlq-staging-default/_rollover
+POST logs-logstash-dlq-perf-default/_rollover
+
+# logs-apm.error : sa policy passe de traces-apm-retention (avant réorganisation
+# des dossiers) à logs-apm.error-retention → les nouveaux backing indices doivent
+# la prendre. Idempotence : rejouer crée un index vide, sans dommage.
+POST logs-apm.error-default/_rollover

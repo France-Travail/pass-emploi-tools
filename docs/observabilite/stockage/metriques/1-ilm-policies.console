@@ -1,0 +1,146 @@
+# Politiques ILM — métriques (Fleet : Logstash, Redis, hosts Scalingo, agents
+# Elastic Agent eux-mêmes, Fleet Server), + heartbeat (uptime).
+#
+# Métriques = mesures numériques périodiques (une valeur à intervalle régulier),
+# au sens ECS. Distinct de logs/ (événements discrets) et traces/ (durée d'une
+# requête). heartbeat est un cas limite : classé "logs" par Elastic
+# (data_stream.type: logs), mais éditorialement rattaché ici — c'est une mesure
+# périodique (ping HTTP toutes les 5s), pas un événement métier discret.
+#
+# GAP IDENTIFIÉ le 2026-09-23 : les datasets Fleet (Logstash, Redis, System,
+# Elastic Agent, Fleet Server) tombent par défaut sur les policies système
+# `metrics@lifecycle` / `logs@lifecycle` — rollover uniquement, AUCUNE phase
+# delete → rétention infinie non voulue. Confirmé en direct sur le cluster
+# (GET _ilm/policy/metrics@lifecycle, GET _ilm/policy/logs@lifecycle).
+#
+# Règle Elastic : "You should never edit managed policies directly" (policies
+# @lifecycle marquées managed:true, écrasables à toute mise à jour) — on les
+# CLONE avec un nom à nous, jamais on ne les modifie en place.
+# Réf: https://www.elastic.co/docs/manage-data/lifecycle/index-lifecycle-management/tutorial-customize-built-in-policies
+#
+# Rétention retenue : 90 j, alignée sur heartbeat (même famille "métrique
+# périodique de supervision infra", décision du 2026-09-23).
+
+# Métriques Logstash (node/pipeline/plugins/health_report) + Redis (info/key/keyspace)
+# + hosts Scalingo (metrics-system.*) + agents Elastic Agent eux-mêmes
+# (metrics-elastic_agent.*) + Fleet Server (metrics-fleet_server.*) — 90 j.
+# Clone de metrics@lifecycle (hot/rollover 30j/50gb identique) + phase delete ajoutée.
+PUT _ilm/policy/metrics-fleet-retention
+{
+  "policy": {
+    "phases": {
+      "hot": {
+        "min_age": "0ms",
+        "actions": { "rollover": { "max_age": "30d", "max_primary_shard_size": "50gb" } }
+      },
+      "delete": {
+        "min_age": "90d",
+        "actions": { "delete": {} }
+      }
+    }
+  }
+}
+
+# Logs internes Elastic Agent lui-même (pas ce qu'il supervise) — logs-elastic_agent,
+# .filebeat, .metricbeat. 90 j, même famille que metrics-fleet-retention (santé
+# infra), alignement volontaire malgré le préfixe logs-* (classé metriques/ ici :
+# c'est un flux de diagnostic périodique de l'agent, pas un événement métier).
+# Clone de logs@lifecycle (hot/rollover 30j/50gb identique) + phase delete ajoutée.
+PUT _ilm/policy/logs-elastic-agent-retention
+{
+  "policy": {
+    "phases": {
+      "hot": {
+        "min_age": "0ms",
+        "actions": { "rollover": { "max_age": "30d", "max_primary_shard_size": "50gb" } }
+      },
+      "delete": {
+        "min_age": "90d",
+        "actions": { "delete": {} }
+      }
+    }
+  }
+}
+
+# Heartbeat / Uptime — 90 j : 14 j hot, 7 j warm, 69 j frozen (plan de rétention x3.1 du conseiller Elastic (2026-10-05)).
+# heartbeat-<version> ; corrige l'absence de delete = ∞.
+# Heartbeat rattache chaque nouveau data stream à cette policy par son nom
+# (défaut setup.ilm.policy_name) sans l'écraser : elle survit aux montées de version.
+# Policy pré-existante (avant réorganisation des dossiers), nom conservé.
+PUT _ilm/policy/heartbeat
+{
+  "policy": {
+    "phases": {
+      "hot": {
+        "min_age": "0ms",
+        "actions": {
+          "rollover": { "max_age": "30d", "max_primary_shard_size": "50gb" }
+        }
+      },
+      "warm": {
+        "min_age": "14d",
+        "actions": { "set_priority": { "priority": 50 } }
+      },
+      "frozen": {
+        "min_age": "21d",
+        "actions": { "searchable_snapshot": { "snapshot_repository": "found-snapshots" } }
+      },
+      "delete": {
+        "min_age": "90d",
+        "actions": { "delete": { "delete_searchable_snapshot": true } }
+      }
+    }
+  }
+}
+
+# Métriques APM agrégées à 10 et 60 min, et metrics-apm.internal — 90 j : 14 j hot,
+# 7 j warm, 69 j frozen (plan de rétention x3.1 du conseiller Elastic (2026-10-05)). Remplace les policies du package APM
+# (metrics-apm.*_metrics-default_policy), qu'on ne modifie pas en place.
+PUT _ilm/policy/metrics-apm-retention
+{
+  "policy": {
+    "phases": {
+      "hot": {
+        "min_age": "0ms",
+        "actions": { "rollover": { "max_age": "30d", "max_primary_shard_size": "50gb" } }
+      },
+      "warm": {
+        "min_age": "14d",
+        "actions": { "set_priority": { "priority": 50 } }
+      },
+      "frozen": {
+        "min_age": "21d",
+        "actions": { "searchable_snapshot": { "snapshot_repository": "found-snapshots" } }
+      },
+      "delete": {
+        "min_age": "90d",
+        "actions": { "delete": { "delete_searchable_snapshot": true } }
+      }
+    }
+  }
+}
+
+# Métriques APM agrégées à 1 min (metrics-apm.{service_destination,service_summary,
+# service_transaction,transaction}.1m) — 21 j : 14 j hot, 7 j warm, pas de frozen.
+# Alignées sur les traces (21 j) : au-delà, la trace détaillée n'existe plus, et
+# Kibana affiche les longues périodes avec les versions 10 et 60 min (90 j).
+# Décision du 2026-10-07 (réduction du nombre de shards), écart assumé au plan x3.1.
+PUT _ilm/policy/metrics-apm-1m-retention
+{
+  "policy": {
+    "phases": {
+      "hot": {
+        "min_age": "0ms",
+        "actions": { "rollover": { "max_age": "30d", "max_primary_shard_size": "50gb" } }
+      },
+      "warm": {
+        "min_age": "14d",
+        "actions": { "set_priority": { "priority": 50 } }
+      },
+      "delete": {
+        "min_age": "21d",
+        "actions": { "delete": { "delete_searchable_snapshot": true } }
+      }
+    }
+  }
+}

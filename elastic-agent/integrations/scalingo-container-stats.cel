@@ -1,0 +1,45 @@
+state.?secret.api_token.orValue(state.?api_token.orValue("")).as(api_token,
+request("POST", state.auth_url).with({
+  "Header": {"Authorization": ["Basic " + (":" + api_token).base64()]},
+}).do_request().as(auth,
+  auth.StatusCode != 200 && auth.StatusCode != 201 ?
+    state.with({
+      "events": [{"error": {"message": "Scalingo tokens/exchange : HTTP " + string(auth.StatusCode)}}],
+      "want_more": false,
+    })
+  :
+    auth.Body.decode_json().token.as(jwt,
+      state.with({
+        "events": state.apps.map(app,
+          request("GET", state.url + "/v1/apps/" + app + "/stats").with({
+            "Header": {"Authorization": ["Bearer " + jwt], "Accept": ["application/json"]},
+          }).do_request().as(resp,
+            resp.StatusCode != 200 ?
+              [{"error": {"message": "Scalingo stats " + app + " : HTTP " + string(resp.StatusCode)}}]
+            :
+              resp.Body.decode_json().stats.map(c, {
+                "host": {"name": app + "-" + c.id},
+                "scalingo": {
+                  "app": app,
+                  "container": c.id,
+                  "container_type": c.id.split("-")[0],
+                  "cpu": {"usage": c.cpu_usage},
+                  "memory": {
+                    "usage": {"bytes": int(c.memory_usage)},
+                    "limit": {"bytes": int(c.memory_limit)},
+                    "highest": {"bytes": int(c.highest_memory_usage)},
+                    "pct": c.memory_limit > 0.0 ? c.memory_usage / c.memory_limit : 0.0,
+                  },
+                  "swap": {
+                    "usage": {"bytes": int(c.swap_usage)},
+                    "highest": {"bytes": int(c.highest_swap_usage)},
+                  },
+                },
+              })
+          )
+        ).flatten(),
+        "want_more": false,
+      })
+    )
+)
+)

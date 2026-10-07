@@ -1,0 +1,113 @@
+# SLO Kibana — prod. Spécification et calibrage : ../sli-slo.md.
+#
+# À rejouer dans Dev Tools. PUT met à jour un SLO existant ; sur un cluster vide,
+# le créer avec POST kbn:/api/observability/slos et le même corps plus son "id".
+# Modifier un indicateur relance le calcul des 30 jours.
+#
+# SLO « API — disponibilité des parcours critiques » : non créé, bloqué tant que
+# les réponses en erreur de l'api ne portent pas de parcours (cf. sli-slo.md).
+
+PUT kbn:/api/observability/slos/6c55ac3b-8b07-400c-89f8-0e46865166b2
+{
+  "name": "API — latence des parcours critiques",
+  "description": "I1 étape api + I3. 99 % des requêtes sous 500 ms (authentification) ou 2,5 s (parcours avec partenaire). Cf. https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/sli-slo.md#slo--api--latence-des-parcours-critiques-",
+  "indicator": {
+    "type": "sli.kql.custom",
+    "params": {
+      "index": "logs-prod-default",
+      "filter": "service.name: pass-emploi-api and event.action: (request_completed or request_failed) and labels.user_journey: (authentification or accueil_jeune_milo or accueil_jeune_france_travail or recherche_offres or messagerie or mon_suivi_milo or mon_suivi_france_travail)",
+      "good": "(labels.user_journey: authentification and event.duration < 500000000) or (not labels.user_journey: authentification and event.duration < 2500000000)",
+      "total": "*",
+      "timestampField": "@timestamp"
+    }
+  },
+  "timeWindow": { "duration": "30d", "type": "rolling" },
+  "budgetingMethod": "occurrences",
+  "objective": { "target": 0.99 },
+  "groupBy": "labels.user_journey",
+  "tags": ["prod", "api", "latence"]
+}
+
+PUT kbn:/api/observability/slos/ec53b7e4-604e-4e33-a4df-ace9e4aea01b
+{
+  "name": "Login — réussite jeune France Travail",
+  "description": "I1 de bout en bout (pass-emploi-connect), hors refus métier. Objectif à relever à mesure que les OPError et SessionNotFound se résorbent. Cf. https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/sli-slo.md#slo-login--r%C3%A9ussite-par-mode-dauthentification",
+  "indicator": {
+    "type": "sli.kql.custom",
+    "params": {
+      "index": "logs-prod-default",
+      "filter": "event.action: (login_completed or login_failed) and not error.type: UTILISATEUR_NON_TRAITABLE and labels.idp: francetravail-jeune",
+      "good": "event.action: login_completed",
+      "total": "*",
+      "timestampField": "@timestamp"
+    }
+  },
+  "timeWindow": { "duration": "30d", "type": "rolling" },
+  "budgetingMethod": "occurrences",
+  "objective": { "target": 0.85 },
+  "groupBy": "*",
+  "tags": ["prod", "connect", "login"]
+}
+
+PUT kbn:/api/observability/slos/9afea251-1cf9-423f-a374-ca43c3e751ac
+{
+  "name": "Login — réussite par mode d'authentification",
+  "description": "I1 de bout en bout (pass-emploi-connect), hors refus métier, un budget par mode d'authentification. Cf. https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/sli-slo.md#slo-login--r%C3%A9ussite-par-mode-dauthentification",
+  "indicator": {
+    "type": "sli.kql.custom",
+    "params": {
+      "index": "logs-prod-default",
+      "filter": "event.action: (login_completed or login_failed) and not error.type: UTILISATEUR_NON_TRAITABLE and not labels.idp: (francetravail-jeune or invite or conseildepartemental-conseiller)",
+      "good": "event.action: login_completed",
+      "total": "*",
+      "timestampField": "@timestamp"
+    }
+  },
+  "timeWindow": { "duration": "30d", "type": "rolling" },
+  "budgetingMethod": "occurrences",
+  "objective": { "target": 0.99 },
+  "groupBy": "labels.idp",
+  "tags": ["prod", "connect", "login"]
+}
+
+PUT kbn:/api/observability/slos/3d00217c-87b8-45f5-882c-3338bb60750c
+{
+  "name": "Login — réussite invité",
+  "description": "I1 de bout en bout (pass-emploi-connect), mode invité, hors refus métier. Faible trafic : alerte burn rate sur fenêtre longue. Cf. https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/sli-slo.md#slo-login--r%C3%A9ussite-par-mode-dauthentification",
+  "indicator": {
+    "type": "sli.kql.custom",
+    "params": {
+      "index": "logs-prod-default",
+      "filter": "event.action: (login_completed or login_failed) and not error.type: UTILISATEUR_NON_TRAITABLE and labels.idp: invite",
+      "good": "event.action: login_completed",
+      "total": "*",
+      "timestampField": "@timestamp"
+    }
+  },
+  "timeWindow": { "duration": "30d", "type": "rolling" },
+  "budgetingMethod": "occurrences",
+  "objective": { "target": 0.9 },
+  "groupBy": "*",
+  "tags": ["prod", "connect", "login"]
+}
+
+PUT kbn:/api/observability/slos/61f38008-cb75-41de-aadc-0a65d2cb7a0d
+{
+  "name": "Login — réussite conseiller départemental",
+  "description": "I1 de bout en bout (pass-emploi-connect), mode conseildepartemental-conseiller, hors refus métier. Faible trafic : alerte burn rate sur fenêtre longue. Cf. https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/sli-slo.md#slo-login--r%C3%A9ussite-par-mode-dauthentification",
+  "indicator": {
+    "type": "sli.kql.custom",
+    "params": {
+      "index": "logs-prod-default",
+      "filter": "event.action: (login_completed or login_failed) and not error.type: UTILISATEUR_NON_TRAITABLE and labels.idp: conseildepartemental-conseiller",
+      "good": "event.action: login_completed",
+      "total": "*",
+      "timestampField": "@timestamp"
+    }
+  },
+  "timeWindow": { "duration": "30d", "type": "rolling" },
+  "budgetingMethod": "occurrences",
+  "objective": { "target": 0.95 },
+  "groupBy": "*",
+  "tags": ["prod", "connect", "login"]
+}
