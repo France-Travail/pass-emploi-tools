@@ -8,8 +8,8 @@
 
 | Couche | Où | Pour qui | Nature |
 |---|---|---|---|
-| **Stable / référence** | repo `pass-emploi-tools/docs/` (versionné) | équipe + tout outil | conventions, décisions, archi — curé, durable |
-| **Vivant / travail** | notes personnelles (hors repo) | l'auteur | findings, WIP, débats ouverts, observations datées |
+| **Stable / référence** | repo `pass-emploi-tools/docs/` (versionné) | équipe + tout outil | invariants, conventions, runbooks, traces datées — curé, durable |
+| **Vivant / travail** | board Notion, description de PR, notes personnelles (hors repo) | l'équipe ou l'auteur | specs, plans, WIP, débats ouverts, observations datées |
 
 **Règle de direction des liens :**
 - versionné → versionné : OK
@@ -19,16 +19,11 @@
 Quand un élément de la couche vivante se stabilise et devient utile à l'équipe,
 on le **promeut** dans la doc versionnée.
 
-## Faut-il documenter ? (test de durabilité)
+## Faut-il documenter ?
 
-Avant d'ajouter à la doc versionnée, un seul test : **« est-ce encore vrai après
-3 refactos ? »**
-
-- **Oui** (invariant, décision d'archi, vérité structurelle d'un outil) → doc versionnée.
-- **Non** (incident daté, ligne de code précise, valeur courante, WIP) → git / code / notes perso.
-
-Objectif : éviter la sur-documentation qui se périme et fait perdre confiance dans
-la doc. Une doc qu'on n'ose plus croire ne vaut pas mieux que pas de doc.
+Les règles vivent dans [`CONTEXTE-TRANSVERSE.md`](./CONTEXTE-TRANSVERSE.md),
+« Conventions partagées → Documentation », parce que ce fichier-là est chargé à
+chaque session. Ne pas les recopier ici.
 
 ## Où vit quoi
 
