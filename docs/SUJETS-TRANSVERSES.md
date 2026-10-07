@@ -71,10 +71,17 @@
   anonyme. Son accès est **fermé par défaut** : l'autorisation « jeune »
   standard le rejette, chaque route doit être ouverte explicitement. Charger la
   référence **avant** d'exposer une fonctionnalité à l'invité.
-- **Invariant plan d'action** : le plan de fin d'onboarding est produit par un
-  **service externe au stade POC**, hors SLA, exposé via un **proxy** dans
-  `pass-emploi-api` — dont la raison d'être est d'absorber les évolutions du
-  POC **sans livraison mobile**. Rien n'est persisté côté API.
+- **Invariant plan d'action** : le plan a un **domaine** (`domain/plan-action/`).
+  Le générateur — aujourd'hui le POC externe hors SLA, demain une implémentation
+  interne — est derrière le port `PlanAction.Generateur` et ne rend que des
+  **identifiants de solutions** ; l'API les réconcilie contre **son propre
+  référentiel** (tables `referentiel_plan_action_*`, synchronisées depuis un
+  document Grist par un cron mensuel) puis attribue **ses propres identifiants**
+  au plan, aux objectifs et aux tâches. Deux règles à ne pas enfreindre : un
+  identifiant venu du générateur n'est **jamais** une clé primaire, et le
+  référentiel ne s'écrit **que** dans son job de synchro, jamais en effet de bord
+  d'une génération. Persistance **partitionnée par profil** : l'invité garde son
+  plan en local côté mobile, le jeune connecté l'a persisté côté API.
 - **Référence stable** : [`pass-emploi-tools/docs/app-jeune/`](./app-jeune/README.md)
   — `utilisateurs-authentification.md` (publics, modes d'authent, mode invité livré),
   `parcours-fonctionnalites.md` (parcours d'entrée, pages, matrice profils→accès),

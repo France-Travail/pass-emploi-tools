@@ -50,7 +50,7 @@ flèches entre elles.
 |---|---|---|
 | Nouveaux utilisateurs / authentification | [`utilisateurs-authentification.md`](./utilisateurs-authentification.md) | WIP — matrice publics→modes posée ; **mode invité livré** (couche 3 renseignée) ; transition invité→inscrit et candidat FT non accompagné à instruire |
 | Parcours & fonctionnalités | [`parcours-fonctionnalites.md`](./parcours-fonctionnalites.md) | WIP — parcours d'entrée, pages, matrice profils→accès posés ; typologie et règle de détermination à trancher |
-| Plan d'action | [`plan-action.md`](./plan-action.md) | WIP — archi proxy posée, branchement en cours ; service de génération au stade **POC** |
+| Plan d'action | [`plan-action.md`](./plan-action.md) | WIP — **domaine et référentiel Grist livrés** (générateur derrière un port, plan persisté pour les connectés) ; générateur encore le **POC** externe, internalisation à venir |
 
 > **Performances / montée en charge** : sujet transverse à part entière (il
 > dépasse l'app jeune et survit à la MES), traité dans le
@@ -59,6 +59,12 @@ flèches entre elles.
 
 ## Historique
 
+- **2026-09-23** — plan d'action : sortie de l'archi proxy. Le plan a un
+  **domaine** (`domain/plan-action/`), le générateur passe derrière le port
+  `PlanAction.Generateur`, et le référentiel des solutions devient **notre
+  donnée**, importée d'un document Grist par un cron mensuel. Les identifiants
+  du plan, des objectifs et des tâches sont désormais les nôtres — ce qui rend
+  une tâche cochable et le générateur remplaçable sans migration.
 - **2026-07-28** — sous-chantier « Plan d'action » ouvert : archi proxy
   `pass-emploi-api` → service de génération externe (POC), mapping de contrat,
   trace analytique. Mise à jour des deux autres sous-chantiers suite à la

@@ -87,5 +87,22 @@ ouverts à tous, y compris l'invité.
   conseiller inscrit le jeune dans le dispositif via son n° MILO ou FT alors
   *accompagné*, sinon *non accompagné* — **même s'il possède un compte FT/MILO**.
   À confirmer côté produit et à raccorder à la couche 3 (représentation API).
+- **« Accompagné » doit avoir une seule source de vérité.** Côté API, la notion
+  est aujourd'hui portée par deux choses qui ne se recouvrent pas forcément :
+  - **un pseudo-dispositif** : `DEMANDEUR_D_EMPLOI` et `ESPACE_CANDIDAT` vivent
+    dans `Profil.Dispositif` à côté des vrais dispositifs (CEJ, AIJ, BRSA…),
+    alors qu'ils décrivent une situation (pas de conseiller), pas un
+    accompagnement. C'est la même surcharge que `Core.Structure`, un niveau plus
+    bas. Le login FT s'en sert pour décider qu'un jeune est non accompagné ;
+  - **l'absence de conseiller de référence** : c'est ce que regarde le ciblage
+    des populations (ADR-006). Un jeune non accompagné y est visé par son propre
+    profil, un jeune accompagné par celui de son conseiller.
+
+  Les deux concordent tant que la seule transition est « non accompagné → pris
+  en accompagnement », car elle donne au jeune le dispositif de son conseiller.
+  Elles divergent dès qu'un accompagné perd son conseiller (migrants Parcours
+  Emploi) : il reste accompagné par son dispositif, mais devient non accompagné
+  pour le ciblage. Pour la couche 3, il faut trancher quel axe fait foi
+  (présence d'un conseiller ?) et sortir la situation de l'enum des dispositifs.
 - **Publics migrants Parcours Emploi** : statut exact (accompagné hors
   CEJ/PACEA vs invité) et droits associés — en cours d'instruction avec le métier.
