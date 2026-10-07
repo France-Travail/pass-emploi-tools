@@ -38,16 +38,9 @@ apps (api / web / connect)  ──drain HTTP Scalingo──►  Logstash mutuali
    consomme ~0,8-1 Go **hors heap** (Netty/direct memory, JRuby, metaspace, threads)
    + l'OS. **`-Xmx2g` sur XL 2 Go = 100 % du conteneur → OOM-kill → restart →
    blackout.**
-2. **Heap piloté UNIQUEMENT par la var d'env Scalingo `JAVA_OPTS`**, jamais
-   `LS_JAVA_OPTS`. Le wrapper du buildpack (`bin/logstash`) fait :
-   ```
-   if JAVA_OPTS contient "-Xms" : LS_JAVA_OPTS="$JAVA_OPTS"        (pas de -Xms128m)
-   sinon                        : LS_JAVA_OPTS="-Xms128m $JAVA_OPTS"
-   puis: unset JAVA_OPTS
-   ```
-   → une var `LS_JAVA_OPTS` posée en env est **toujours écrasée** ; le `-Xms` de
-   `jvm.options` est **inerte** (le buildpack force `-Xms128m` sauf si `JAVA_OPTS`
-   contient `-Xms`). Heap fixe → `JAVA_OPTS="-Xms1g -Xmx1g"`.
+2. **La variable qui pilote le heap dépend du buildpack** : elle a déjà changé
+   une fois. Elle est documentée à un seul endroit, à côté de la config :
+   [`logs/README.md`](../../../logs/README.md).
 3. **Quarantaine du drain Scalingo** = **10 lignes consécutives** refusées → drain
    quarantiné **5 min** (aucun log envoyé), escalade **10/15/20 min**. Frappe la
    **plus grosse** app en premier (api ≈ 59 % du volume, ~5-6× web/connect) : elle
