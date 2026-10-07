@@ -77,17 +77,9 @@ Gatling ne choisit pas l'identité du jeune — le mock l'a tirée au sort. Il l
 dans le claim `userId` du token, celui-là même que l'API lit pour autoriser
 l'appel.
 
-> **État d'avancement.** Lots 1 à 3 en place et **joués de bout en bout** le
-> 2026-09-03, contre un `connect` et une `api` réels en local
-> ([`local-run/`](./local-run/README.md)) : les 7 étapes passent, 0 % d'échec.
-> La chaîne fait bien **7 sauts**, comme la spec le supposait — aucun écart sur
-> le nombre de redirections.
->
-> Ce que ce tir **ne** valide **pas** : les SLO. Machine locale, mock en local,
-> pas d'APM — les temps mesurés (p95 de l'accueil à 136 ms à 1 utilisateur) ne
-> disent rien de la tenue en charge. Il faut les environnements Scalingo dédiés
-> (spec §9). Voir
-> [`docs/superpowers/specs/2026-09-01-harnais-tir-perf-design.md`](../docs/superpowers/specs/2026-09-01-harnais-tir-perf-design.md).
+> **Un run local ([`local-run/`](./local-run/README.md)) valide le parcours,
+> jamais la tenue en charge** : machine locale, mock en local, pas d'APM. Les
+> SLO se jugent sur les environnements Scalingo dédiés.
 
 ## Setup
 

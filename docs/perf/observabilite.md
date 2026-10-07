@@ -50,7 +50,7 @@ ligne de verdict en échec nomme elle-même l'étape coupable. Voir
 
 **L'exception, et la seule.** La génération du plan d'action de fin
 d'onboarding reste à **≤ 10 s** : elle traverse un service IA externe, au stade
-POC et hors SLA (cf. [chantier app-jeune](../app-jeune/plan-action.md)). Un
+POC et hors SLA (cf. [app-jeune](../app-jeune/README.md)). Un
 seuil à 500 ms y serait un vœu, pas un objectif. L'écran de loading est assumé.
 
 ## Les indicateurs (actés en atelier)
@@ -137,13 +137,10 @@ Règle de choix du mécanisme :
   à la conception de l'app (logs applicatifs mobiles vs analytics produit).
 
 **Point dur connu** : un flux non authentifié n'a ni `user.id` ni `trace.id`
-(limite documentée dans [kibana.md](../observabilite/logs-ecs/kibana.md)). Or le funnel
-d'entrée est précisément pré-authentification — et le **mode invité le reste
-toujours**. Il faut un **identifiant de corrélation** dès le premier écran
-(ex. `installationId` mobile), propagé sur tous les événements du funnel.
-À raccorder au chantier [mode invité](../app-jeune/utilisateurs-authentification.md)
-(l'identifiant d'observabilité et l'identifiant fonctionnel de l'invité peuvent
-être le même sujet).
+(limite documentée dans [kibana.md](../observabilite/logs-ecs/kibana.md)). Or le
+tuto d'entrée et le début du login sont pré-authentification. Il faut un
+**identifiant de corrélation** dès le premier écran (ex. `installationId`
+mobile), propagé sur tous les événements du funnel.
 
 ## Ce qu'on ne mesure PAS (couche verdict)
 

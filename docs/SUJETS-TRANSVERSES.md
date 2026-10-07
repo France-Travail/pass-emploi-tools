@@ -6,7 +6,10 @@
 >
 > Chaque entrée = **ouvrir quand** (déclencheur de lecture) + **invariant**
 > (garde-fou avant d'agir) + **référence stable** (doc versionnée). Ne lister ici
-> que du **versionné** — pas de pointeur vers des notes personnelles.
+> que du **versionné** — pas de pointeur vers des notes personnelles. Une entrée
+> tient en 10 lignes hors liste de références, suit les règles « Documentation »
+> de `CONTEXTE-TRANSVERSE.md`, et ne cite ni variable ni valeur de configuration :
+> elle renvoie au mode d'emploi qui les porte.
 > Tenue à jour : voir [CONVENTIONS-DOC.md](./CONVENTIONS-DOC.md).
 
 ## Règle de chargement
@@ -21,13 +24,13 @@
 3. **Sujet absent de cet index = pas de doc d'équipe.** Le dire explicitement
    plutôt que de supposer qu'elle existe ailleurs.
 
-## Logs ECS · durable, en prod (v9.37.x)
+## Logs ECS
 
 - **Ouvrir quand** : on parle de logs, de champs ECS, d'un dashboard Kibana, ou
   qu'on cherche à savoir si un événement est déjà tracé.
 - **Invariant** : tout log passe par le `rootLogger` au format ECS (`event.action`
   au passé + `event.outcome`). Logs opérationnels en `level` info|error (pas de
-  `warn`) ; `debug` en plus, opt-in via `LOG_LEVEL`. Jamais de `console.log`.
+  `warn`) ; `debug` en plus, en opt-in. Jamais de `console.log`.
   **Jamais d'exception brute passée à un logger** : `toEcsError(e)` d'abord
   (sinon `err.config`/`err.response` axios → fuite d'identifiants + ligne > 16 Ko
   tronquée par le drain → log perdu). Charger le détail **avant** d'ajouter ou
@@ -37,15 +40,15 @@
   brute »), `infra-elasticsearch.md` (data streams, templates, ILM),
   `kibana.md` (use cases), `couverture-api.md` (ce qui est tracé côté api).
 
-## Ingestion des logs · résilience & scaling (blackouts, drain) · 2026-07
+## Ingestion des logs · résilience & scaling (blackouts, drain)
 
 - **Ouvrir quand** : des logs manquent ou arrivent en retard, le drain Scalingo ou
   Logstash est suspecté, ou on redimensionne un maillon de la chaîne d'ingestion.
 - **Invariant** : le log-drain Scalingo **quarantine une app 5 min** dès **10 lignes
   consécutives** refusées (escalade 10/15/20 min) → un hoquet Logstash = blackout de
-  la plus grosse app (`pass-emploi-api`). Conteneur XL Scalingo = **2 Go** → `-Xmx`
-  ≤ ~1 Go, piloté via `JAVA_OPTS` (jamais `LS_JAVA_OPTS`, écrasé par le buildpack).
-  Charger la référence **avant** de scaler ou retoucher la chaîne d'ingestion.
+  la plus grosse app (`pass-emploi-api`). Conteneur XL Scalingo = **2 Go** → heap
+  ≤ ~1 Go (Logstash consomme presque autant hors heap). Charger la référence
+  **avant** de scaler ou retoucher la chaîne d'ingestion.
 - **Référence stable** : [`pass-emploi-tools/docs/observabilite/ingestion-logs/`](./observabilite/ingestion-logs/README.md)
   — `runbook-astreinte-logstash.md` (5 scénarios de panne : backpressure ES, gel GC,
   DLQ, crash conteneur, backlog Redis),
@@ -54,40 +57,21 @@
   `postmortem-2026-06-logstash-5xx.md` (fonctionnement JVM/Netty/GC, correctif XL),
   `postmortem-2026-07-blackout-logs.md` (les 2 modes de panne observés),
   `postmortem-2026-09-unenrolled-elastic-agent.md` (Elastic Agent bloqué UNENROLLED
-  après recréation d'app Scalingo — correctif : `ELASTIC_AGENT_ID_SUFFIX`).
+  après recréation d'app Scalingo).
 
-## App Jeune · WIP, ouvert le 2026-07-02
+## App Jeune
 
-- **Ouvrir quand** : **toute** question touchant la nouvelle app jeune — publics,
-  authentification, mode invité, onboarding, plan d'action — y compris les
-  questions d'organisation, de planning et de livraison.
-- **Invariant** : raisonner l'élargissement des publics de la future app jeune
-  sur **3 couches distinctes** — public fonctionnel / mode d'authentification /
-  représentation API — sans les confondre (piège historique de `Core.Structure`).
-  Rappel structurant : côté FT, le mode d'authent est **unique** (FT Connect), la
-  structure est décidée par la **porte d'entrée** au login, pas par l'IDP.
-- **Invariant invité** : l'invité est un utilisateur **authentifié à identité
-  pseudonyme** (JWT, structure `INVITE`, table `jeune_invite`), pas un appelant
-  anonyme. Son accès est **fermé par défaut** : l'autorisation « jeune »
-  standard le rejette, chaque route doit être ouverte explicitement. Charger la
-  référence **avant** d'exposer une fonctionnalité à l'invité.
-- **Invariant plan d'action** : le plan a un **domaine** (`domain/plan-action/`).
-  Le générateur — aujourd'hui le POC externe hors SLA, demain une implémentation
-  interne — est derrière le port `PlanAction.Generateur` et ne rend que des
-  **identifiants de solutions** ; l'API les réconcilie contre **son propre
-  référentiel** (tables `referentiel_plan_action_*`, synchronisées depuis un
-  document Grist par un cron mensuel) puis attribue **ses propres identifiants**
-  au plan, aux objectifs et aux tâches. Deux règles à ne pas enfreindre : un
-  identifiant venu du générateur n'est **jamais** une clé primaire, et le
-  référentiel ne s'écrit **que** dans son job de synchro, jamais en effet de bord
-  d'une génération. Persistance **partitionnée par profil** : l'invité garde son
-  plan en local côté mobile, le jeune connecté l'a persisté côté API.
-- **Référence stable** : [`pass-emploi-tools/docs/app-jeune/`](./app-jeune/README.md)
-  — `utilisateurs-authentification.md` (publics, modes d'authent, mode invité livré),
-  `parcours-fonctionnalites.md` (parcours d'entrée, pages, matrice profils→accès),
-  `plan-action.md` (archi proxy vers le POC).
+- **Ouvrir quand** : **toute** question touchant l'app jeune — publics,
+  authentification, invité, droits, plan d'action.
+- **Invariant** : ne pas confondre public, mode d'authentification et
+  représentation dans l'API ; les droits se déduisent de la présence d'un
+  conseiller chez nous, d'un dossier France Travail ou d'un rattachement Mission
+  Locale, jamais du mode d'authentification. Une fonctionnalité ne s'ouvre à
+  l'invité qu'explicitement, et le mécanisme d'autorisation ne le garantit pas
+  seul. Un identifiant venu du générateur de plan n'est jamais une clé chez nous.
+- **Référence stable** : [`pass-emploi-tools/docs/app-jeune/README.md`](./app-jeune/README.md).
 
-## Performances · WIP, ouvert le 2026-07-06
+## Performances
 
 - **Ouvrir quand** : on parle de charge, de pic de trafic, de MES, de SLO, de
   temps de réponse, ou de dimensionnement Scalingo.
