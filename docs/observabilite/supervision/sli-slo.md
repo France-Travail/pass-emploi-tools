@@ -51,7 +51,7 @@ ligne de verdict en échec nomme elle-même l'étape coupable. Voir
 
 **L'exception, et la seule.** La génération du plan d'action de fin
 d'onboarding reste à **≤ 10 s** : elle traverse un service IA externe, au stade
-POC et hors SLA (cf. [chantier app-jeune](../../app-jeune/plan-action.md)). Un
+POC et hors SLA (cf. [app-jeune](../../app-jeune/README.md)). Un
 seuil à 500 ms y serait un vœu, pas un objectif. L'écran de loading est assumé.
 
 ## Les indicateurs (actés en atelier)

@@ -6,7 +6,8 @@
 > Ne **pas** dupliquer ce contenu dans un CLAUDE.md d'app.
 >
 > Index des gros sujets transverses (invariants + réf. stable, toujours chargé) ↓.
-> Règles de doc d'équipe : `pass-emploi-tools/docs/CONVENTIONS-DOC.md`.
+> Règles d'écriture de la doc : « Conventions partagées → Documentation » ci-dessous.
+> Mécanique de rangement et de chargement : `pass-emploi-tools/docs/CONVENTIONS-DOC.md`.
 
 @./SUJETS-TRANSVERSES.md
 
@@ -69,40 +70,28 @@ parties du code legacy.
 
 ### Les repositories
 
-| Repository              | Rôle                            | Stack                        | Public cible           |
-|-------------------------|---------------------------------|------------------------------|------------------------|
-| **pass-emploi-api**     | Backend API REST                | NestJS, PostgreSQL, Redis    | -                      |
-| **pass-emploi-web**     | Application web conseiller      | Next.js 15, React 19         | Conseillers            |
-| **pass-emploi-connect** | Service d'authentification OIDC | NestJS, oidc-provider, Redis | -                      |
-| **pass_emploi_app**     | Application mobile              | Flutter                      | Bénéficiaires (jeunes) |
-| **pass-emploi-tools**   | Outillage / infra logs mutualisée (Logstash, templates Elasticsearch versionnés) | Logstash, ES `.console` | - |
-| **pass-emploi-auth**    | Keycloak (IdP), configuré via Terraform, packagé buildpack Scalingo | Keycloak, Terraform | - |
-| **pass-emploi-analytics** | Pipeline de données / suivi analytics (ex. taux de pénétration) | Make | - |
-| **1jeune-des-solutions** | Génération du plan d'action de fin d'onboarding (**POC**). Repo **bayesimpact**, hors orga France-Travail | NestJS, Gemini / Vertex AI | Bénéficiaires (jeunes) |
+| Repository | Rôle | Stack | Public cible |
+|---|---|---|---|
+| [**pass-emploi-api**](https://github.com/France-Travail/pass-emploi-api) | Backend API REST | NestJS, PostgreSQL, Redis | - |
+| [**pass-emploi-web**](https://github.com/France-Travail/pass-emploi-web) | Application web conseiller | Next.js, React | Conseillers |
+| [**pass-emploi-connect**](https://github.com/France-Travail/pass-emploi-connect) | Service d'authentification OIDC | NestJS, oidc-provider, Redis | - |
+| [**pass_emploi_app**](https://github.com/France-Travail/pass_emploi_app) | Application mobile | Flutter | Bénéficiaires (jeunes) |
+| **pass-emploi-tools** | Outillage, infra de logs mutualisée, doc transverse | Logstash, Elasticsearch | - |
+| **pass-emploi-auth** | Keycloak (IdP), configuré via Terraform | Keycloak, Terraform | - |
+| **pass-emploi-analytics** | Pipeline de données / suivi analytics | Make | - |
+| [**1jeune-des-solutions**](https://github.com/bayesimpact/1jeune-des-solutions) | Génération du plan d'action (**POC**). Repo **bayesimpact**, hors orga France-Travail | NestJS, Gemini / Vertex AI | Bénéficiaires (jeunes) |
 
 ## Dispositifs d'accompagnement
 
-### CEJ (Contrat d'Engagement Jeune)
+- **CEJ** (Contrat d'Engagement Jeune) : accompagnement intensif des jeunes vers
+  l'emploi, porté par France Travail et les Missions Locales —
+  [ministère](https://travail-emploi.gouv.fr/le-contrat-dengagement-jeune-cej).
+- **PACEA** (Parcours Contractualisé d'Accompagnement) : parcours modulable,
+  porté par les Missions Locales —
+  [ministère](https://travail-emploi.gouv.fr/le-parcours-contractualise-daccompagnement-vers-lemploi-et-lautonomie-pacea).
 
-| Critère        | Valeur                                                 |
-|----------------|--------------------------------------------------------|
-| **Public**     | Jeunes 16-25 ans (29 ans si RQTH)                      |
-| **Durée**      | 6-18 mois                                              |
-| **Intensité**  | 15-20h/semaine minimum                                 |
-| **Allocation** | Jusqu'à 561,68€/mois                                   |
-| **Structures** | France Travail + Missions Locales                      |
-| **Objectif**   | Emploi durable, apprentissage ou formation qualifiante |
-
-### PACEA (Parcours Contractualisé d'Accompagnement)
-
-| Critère        | Valeur                         |
-|----------------|--------------------------------|
-| **Public**     | Jeunes 16-25 ans               |
-| **Durée**      | Maximum 24 mois                |
-| **Intensité**  | Modulable                      |
-| **Allocation** | Ponctuelle (jusqu'à 6x RSA/an) |
-| **Structures** | Missions Locales               |
-| **Objectif**   | Autonomie et emploi            |
+Durées, intensités et montants d'allocation : se référer aux sources officielles,
+ils changent par voie réglementaire.
 
 ## Acteurs et structures
 
@@ -112,16 +101,12 @@ parties du code legacy.
 - **Conseiller** : Accompagne les bénéficiaires (app web)
 - **Superviseur** : Supervise plusieurs conseillers
 
-### Structures (organisations)
+### Organisations
 
-| Structure                 | Code           | Description           |
-|---------------------------|----------------|-----------------------|
-| **France Travail**        | `POLE_EMPLOI`  | Ex-Pôle Emploi        |
-| **Mission Locale**        | `MILO`         | Accompagnement jeunes |
-| **Conseil Départemental** | `CONSEIL_DEPT` | RSA, BRSA             |
-| **Pass Emploi**           | `PASS_EMPLOI`  | Structure générique   |
-
-**Note :** Un conseiller peut appartenir à plusieurs structures et travailler sur plusieurs dispositifs simultanément.
+Les bénéficiaires et conseillers relèvent de **France Travail**, d'une **Mission
+Locale** ou d'un **Conseil départemental**. Une même organisation porte
+plusieurs dispositifs, et un conseiller peut travailler sur plusieurs
+dispositifs à la fois : organisation et dispositif sont deux notions distinctes.
 
 ## Glossaire
 
@@ -145,34 +130,13 @@ parties du code legacy.
 
 ## Conventions partagées
 
-### Stack commune
+### Outillage
 
-| Technologie         | Version    | Notes                             |
-|---------------------|------------|-----------------------------------|
-| **Node.js**         | 22.14.0    | Fichier `.nvmrc` dans chaque repo |
-| **Package Manager** | Yarn 4.x   | Jamais npm                        |
-| **TypeScript**      | 4.9+ / 5.x | Mode strict                       |
-
-### Linting & Formatting
-
-Tous les repos partagent des conventions similaires :
-
-**Prettier :**
-
-```json
-{
-  "semi": false,
-  "singleQuote": true,
-  "tabWidth": 2,
-  "useTabs": false
-}
-```
-
-**ESLint :**
-
-- Pas de `console.log` → utiliser le logger
-- Pas de `process.env` direct → utiliser la config centralisée
-- Pas de `any` sans justification
+- **Yarn, jamais npm.** Version de Node : le `.nvmrc` du repo fait foi.
+- **TypeScript en mode strict.**
+- **Prettier et ESLint** : la config de chaque repo fait foi, ne pas la recopier.
+  Esprit commun : pas de `console.log` (logger), pas de `process.env` direct
+  (config centralisée), pas de `any`.
 
 ### Commentaires — par défaut, on n'en écrit pas
 
@@ -197,6 +161,46 @@ le commenter.
 Tout le reste — en-têtes de fichier décoratifs, sections « Contexte / Utilité »,
 paraphrase d'une ligne, commentaire qui répète le nom de la fonction — est à
 supprimer, y compris dans le code existant qu'on touche au passage.
+
+### Documentation — par défaut, on n'en écrit pas
+
+Même test que pour un commentaire, à l'échelle du système : **quelqu'un
+risque-t-il de casser ça en toute bonne foi sans cette information ?** Une doc
+qui se périme fait plus de dégâts qu'une doc absente : on la croit.
+
+1. **Cinq genres, pas un de plus** :
+   - *invariant* : règle métier ou d'archi qui ne doit pas casser, en une phrase
+     plus son pourquoi ;
+   - *convention* : comment on écrit le code ;
+   - *mode d'emploi* : comment se servir d'un outil, dans le README à côté de
+     l'outil ;
+   - *runbook* : que faire quand ça casse ;
+   - *trace datée* : ADR, post-mortem, mesure datée.
+
+   Tout le reste — spec, plan, design, note d'investigation, description du
+   fonctionnement — ne se versionne pas. Ce fichier y ajoute seulement le
+   contexte d'entrée (glossaire, carte des repos), sans version ni montant.
+2. **Aucun nom de code dans un invariant** : ni chemin, ni classe, ni enum, ni
+   table, ni route. Si un renommage casse la phrase, c'est un choix
+   d'implémentation, et il vit dans le code. Une convention cite ce qu'elle
+   impose ; un mode d'emploi ou un runbook, ses commandes et ses variables. La
+   doc toujours chargée (ce fichier et l'index des sujets) ne cite **aucune
+   variable ni valeur de configuration** : elle renvoie au mode d'emploi qui
+   les porte.
+3. **Rien qui dépende du temps** : ni statut, ni WIP, ni calendrier, ni `TODO`,
+   ni « à confirmer », ni « à ce jour ». C'est le rôle du board. Une trace
+   datée est figée, sauf son statut (proposé → accepté → remplacé). Une décision
+   qui mérite son pourquoi devient un ADR court, pas un « décidé le » dans une
+   doc vivante.
+4. **Un fait, un endroit.** Une doc d'outil vit à côté de l'outil et change dans
+   la même PR. Une règle appliquée par le code a ses tests pour référence. Un
+   routeur ne contient que des liens, une ligne par lien. Deux docs qui disent
+   la même chose finissent par se contredire.
+5. **Pas d'avance.** On écrit quand c'est tranché, ou quand quelqu'un s'est fait
+   piéger. Une question ouverte n'est pas de la doc ; une limite connue (« ce
+   tir ne prouve pas X ») en est une.
+6. **Doc fausse, on coupe.** Un passage trouvé faux se supprime ; on ne le
+   réécrit que s'il passe les règles 1 à 5.
 
 ### Secrets & Variables d'environnement
 
@@ -256,54 +260,14 @@ scripts/release.sh 4.12.3   # bump pubspec.yaml sur main + commit + tag + push -
 ```
 
 - **Version** : `pubspec.yaml`. **Tag sans préfixe `v`** (`4.12.3`, pas `v4.12.3`).
-- Le **tag** déclenche `release-workflow.yml` (build Android + iOS prod).
+- Le **tag** déclenche le workflow de release (build Android + iOS prod).
 - **Correctifs** : branches `release/X.Y.Z` + `scripts/hotfix.sh`, qui tague depuis
   la branche de release puis rebumpe `main` — le report du correctif sur `main` est
   **manuel** (le script se contente d'avertir).
-- Le repo build **plusieurs apps** depuis la même base (`cej_main.dart`,
-  `brsa_main.dart`, `app_main.dart`) ; le flavor staging/prod est déduit du
-  *package name*.
-
-## Fonctionnalités principales
-
-| Fonctionnalité       | Description                               | Repos concernés          |
-|----------------------|-------------------------------------------|--------------------------|
-| **Messagerie**       | Chat temps réel conseiller ↔ bénéficiaire | api, web, app (Firebase) |
-| **Offres d'emploi**  | Proposition et recherche d'offres         | api, web, app            |
-| **Actions**          | Gestion des tâches/démarches              | api, web, app            |
-| **Rendez-vous**      | Planification et suivi RDV                | api, web, app            |
-| **Sessions MILO**    | Activités collectives                     | api, web                 |
-| **Suivi des heures** | Comptabilisation activités                | api, web                 |
-
-## Intégrations externes
-
-| Service                | Usage                          | Repo principal    |
-|------------------------|--------------------------------|-------------------|
-| **France Travail API** | Offres d'emploi, profils       | api               |
-| **MILO API**           | Sessions, événements, dossiers | api               |
-| **Firebase**           | Messagerie temps réel          | api, web, app     |
-| **Diagoriente**        | Métiers favoris                | api               |
-| **Immersion Facile**   | Immersions professionnelles    | api               |
-| **Service Civique**    | Engagements civiques           | api               |
-| **Elastic APM**        | Monitoring                     | api, web, connect |
-| **Matomo**             | Analytics web                  | web               |
+- Le repo build **plusieurs apps** depuis la même base ; le flavor staging/prod
+  est déduit du *package name*.
 
 ## Liens utiles
 
-### Repositories
-
-- [pass-emploi-api](https://github.com/France-Travail/pass-emploi-api)
-- [pass-emploi-web](https://github.com/France-Travail/pass-emploi-web)
-- [pass-emploi-connect](https://github.com/France-Travail/pass-emploi-connect)
-- [pass_emploi_app](https://github.com/France-Travail/pass_emploi_app)
-- pass-emploi-tools (outillage / infra logs mutualisée)
-- pass-emploi-auth (Keycloak / IdP)
-- pass-emploi-analytics (pipeline données / analytics)
-- [1jeune-des-solutions](https://github.com/bayesimpact/1jeune-des-solutions) (POC plan d'action — orga bayesimpact)
-
-### Documentation officielle des dispositifs
-
-- [CEJ - Ministère du Travail](https://travail-emploi.gouv.fr/le-contrat-dengagement-jeune-cej)
 - [CEJ - France Travail](https://www.francetravail.fr/actualites/a-laffiche/2022/le-contrat-dengagement-jeune-cej.html)
-- [PACEA - Ministère du Travail](https://travail-emploi.gouv.fr/le-parcours-contractualise-daccompagnement-vers-lemploi-et-lautonomie-pacea)
 - [1 jeune 1 solution](https://www.1jeune1solution.gouv.fr/)
