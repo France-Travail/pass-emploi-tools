@@ -1,7 +1,11 @@
 # Component templates — logs (applicatif, router, DLQ/erreurs Logstash, erreurs APM).
 # A importer apres 1-ilm-policies.console.
 
-PUT _component_template/logs@custom
+# Nos champs ECS custom, composés par nos seuls templates (3-index-templates.console).
+# Ils ne sont pas dans logs@custom : ce point d'ancrage est composé par TOUS les
+# templates logs-* d'Elastic, dont logs-otel@template, qui déclare error.stack_trace
+# en alias. Elasticsearch refuse alors notre error.stack_trace concret (07/10/2026).
+PUT _component_template/pass-emploi-logs@mappings
 {
   "template": {
     "mappings": {
@@ -50,7 +54,17 @@ PUT _component_template/logs@custom
     }
   },
   "_meta": { "description": "Champs ECS custom CEJ, communs app + router", "managed_by": "pass-emploi-tools" },
-  "version": 6
+  "version": 1
+}
+
+# logs@custom, point d'ancrage global d'Elastic, laissé vide (cf. ci-dessus).
+# À rejouer APRÈS 3-index-templates.console, une fois nos templates rebranchés sur
+# pass-emploi-logs@mappings.
+PUT _component_template/logs@custom
+{
+  "template": {},
+  "_meta": { "description": "Laissé vide : nos champs sont dans pass-emploi-logs@mappings", "managed_by": "pass-emploi-tools" },
+  "version": 7
 }
 
 PUT _component_template/logs-router@mappings
@@ -85,7 +99,7 @@ PUT _component_template/logs-router@mappings
       }
     }
   },
-  "_meta": { "description": "Champs propres aux logs router Scalingo. dynamic:false ; event.action/outcome viennent de logs@custom", "managed_by": "pass-emploi-tools" },
+  "_meta": { "description": "Champs propres aux logs router Scalingo. dynamic:false ; event.action/outcome viennent de pass-emploi-logs@mappings", "managed_by": "pass-emploi-tools" },
   "version": 1
 }
 

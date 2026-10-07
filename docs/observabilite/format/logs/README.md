@@ -19,5 +19,5 @@ passée à un logger (`toEcsError(e)` d'abord). Lire
 
 Contraintes imposées par l'aval : une ligne ne doit pas dépasser **16 Ko**
 (troncature du drain, cf. [collecte/logs/drain-scalingo](../../collecte/logs/drain-scalingo.md)) ;
-tout champ ECS custom doit être déclaré dans `logs@custom`
+tout champ ECS custom doit être déclaré dans `pass-emploi-logs@mappings`
 (cf. [stockage/logs](../../stockage/logs/README.md)).

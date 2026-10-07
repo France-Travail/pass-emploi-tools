@@ -24,7 +24,7 @@ Deux familles de logs (applicatifs et router Scalingo), trois environnements,
 un seul jeu de briques partagées :
 
 ```
-                        logs@custom  (event.action/outcome, log.logger, error.*)
+              pass-emploi-logs@mappings  (event.action/outcome, log.logger, error.*)
                        /     |      \
         logs-prod@tpl-custom |       logs-router
         logs-staging@tpl-cust|            |
@@ -53,9 +53,16 @@ un seul jeu de briques partagées :
 
 Les champs ECS custom (`event.action`, `event.outcome`, `log.logger`,
 `error.*`) sont définis **une seule fois**, dans le component template
-`logs@custom`, composé par les templates applicatifs ET le template router.
-Ajouter un champ ECS custom = le déclarer dans `logs@custom`, et nulle part
-ailleurs.
+`pass-emploi-logs@mappings`, composé par les templates applicatifs ET le template
+router. Ajouter un champ ECS custom = le déclarer dans `pass-emploi-logs@mappings`,
+et nulle part ailleurs.
+
+> **Pas dans `logs@custom`** : ce nom est le point d'ancrage que **tous** les
+> templates `logs-*` d'Elastic composent, y compris `logs-otel@template`, qui
+> déclare `error.stack_trace` en alias. Depuis l'arrivée de ce template,
+> Elasticsearch refuse tout `logs@custom` qui déclare ce champ en concret (constaté
+> le 2026-10-07). `logs@custom` est laissé vide ; nos templates composent
+> `pass-emploi-logs@mappings`.
 
 Les component templates `logs@mappings`, `logs@settings`, `ecs@mappings` sont
 fournis par Elasticsearch (x-pack) — on s'y réfère seulement.
@@ -91,8 +98,8 @@ en `_ignored` malgré présence dans `_source`. Cause : datastream en générati
 **Router — `event.action` non cherchables (mai 2026)** : cause **différente**
 (pas de saturation) — le template `logs-router` ne composait pas `logs@custom`,
 et son `logs-router@mappings` hand-rollé en `dynamic: false` ne déclarait pas
-`event.action` / `outcome`. Fix : `logs-router` compose désormais `logs@custom`,
-puis rollover.
+`event.action` / `outcome`. Fix : `logs-router` compose désormais `logs@custom`
+(devenu `pass-emploi-logs@mappings` le 2026-10-07), puis rollover.
 
 À retenir : après tout changement de schéma d'ingestion, surveiller `_ignored`
 et prévoir un `_rollover` (non destructif).
@@ -108,7 +115,7 @@ POST <datastream>/_rollover       # non destructif
 ```
 
 ```
-GET _component_template/logs@custom
+GET _component_template/pass-emploi-logs@mappings
 GET _component_template/logs-router@mappings
 GET _component_template/logs-router@settings
 GET _component_template/logs-prod-retention-custom
@@ -132,13 +139,13 @@ POST _index_template/_simulate_index/logs-router-prod-default
 GET .ds-logs-router-prod-default-*/_mapping/field/event.action,event.outcome
 ```
 
-- `GET _index_template/logs-router` → `composed_of` doit lister `logs@custom`.
+- `GET _index_template/logs-router` → `composed_of` doit lister `pass-emploi-logs@mappings`.
 - `_simulate_index` renvoie le mapping **fusionné** (pas `composed_of`) : ses
   `mappings.properties` doivent contenir `event.action` / `event.outcome` en
   `keyword`.
 - `_mapping/field/...` sur le backing index courant confirme l'indexation
   effective.
 
-Le `_simulate_index` doit lister `logs@custom` dans `composed_of`, et le mapping
+Le `_simulate_index` doit lister `pass-emploi-logs@mappings` dans `composed_of`, et le mapping
 doit contenir `event.action` / `event.outcome` (type `keyword`). Côté Discover,
 filtrer `event.action: request_routed` doit alors retourner des résultats.

@@ -9,8 +9,7 @@ PUT _index_template/logs-prod@template-custom
 {
   "index_patterns": ["logs-prod-default"],
   "priority": 250,
-  "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "logs@custom", "logs-prod-retention-custom"],
-  "ignore_missing_component_templates": ["logs@custom"],
+  "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "pass-emploi-logs@mappings", "logs-prod-retention-custom"],
   "template": {
     "settings": { "index": { "mode": "logsdb", "mapping": { "source": { "mode": "synthetic" } } } }
   },
@@ -24,8 +23,7 @@ PUT _index_template/logs-staging@template-custom
 {
   "index_patterns": ["logs-staging-default"],
   "priority": 250,
-  "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "logs@custom", "logs-staging-retention-custom"],
-  "ignore_missing_component_templates": ["logs@custom"],
+  "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "pass-emploi-logs@mappings", "logs-staging-retention-custom"],
   "template": {
     "settings": { "index": { "mode": "logsdb", "mapping": { "source": { "mode": "synthetic" } } } }
   },
@@ -45,8 +43,7 @@ PUT _index_template/logs-perf@template-custom
 {
   "index_patterns": ["logs-perf-default"],
   "priority": 250,
-  "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "logs@custom", "logs-perf-retention-custom"],
-  "ignore_missing_component_templates": ["logs@custom"],
+  "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "pass-emploi-logs@mappings", "logs-perf-retention-custom"],
   "template": {
     "settings": { "index": { "mode": "logsdb", "mapping": { "source": { "mode": "synthetic" } } } }
   },
@@ -63,8 +60,7 @@ PUT _index_template/logs-logstash-errors@template-custom
 {
   "index_patterns": ["logs-logstash-errors-*"],
   "priority": 250,
-  "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "logs@custom", "logs-logstash-errors-retention-custom"],
-  "ignore_missing_component_templates": ["logs@custom"],
+  "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "pass-emploi-logs@mappings", "logs-logstash-errors-retention-custom"],
   "template": {
     "settings": { "index": { "mode": "logsdb", "mapping": { "source": { "mode": "synthetic" } } } }
   },
@@ -95,8 +91,7 @@ PUT _index_template/logs-router
 {
   "index_patterns": ["logs-router-*"],
   "priority": 200,
-  "composed_of": ["logs@mappings", "logs@settings", "logs-router@mappings", "logs@custom", "logs-router@settings", "logs-router-retention-custom"],
-  "ignore_missing_component_templates": ["logs@custom"],
+  "composed_of": ["logs@mappings", "logs@settings", "logs-router@mappings", "pass-emploi-logs@mappings", "logs-router@settings", "logs-router-retention-custom"],
   "data_stream": { "hidden": false, "allow_custom_routing": false },
   "allow_auto_create": true,
   "_meta": { "description": "Logs router Scalingo (prod + staging + perf)", "managed_by": "pass-emploi-tools" },
@@ -123,14 +118,14 @@ PUT _index_template/logs-apm.error@template-custom
   "composed_of": [
     "logs@mappings", "apm@mappings", "apm@settings", "logs-apm@settings",
     "logs-apm.error@mappings", "logs-apm.error-fallback@ilm", "ecs@mappings",
-    "logs@custom", "logs-apm.error@custom", "apm-retention-custom"
+    "pass-emploi-logs@mappings", "logs-apm.error@custom", "apm-retention-custom"
   ],
   "priority": 250,
   "version": 101,
   "_meta": { "description": "Index custom template for logs-apm.error-* with custom policy", "managed": false },
   "data_stream": { "hidden": false, "allow_custom_routing": false },
   "allow_auto_create": true,
-  "ignore_missing_component_templates": ["logs@custom", "logs-apm.error@custom", "logs-apm.error-fallback@ilm"]
+  "ignore_missing_component_templates": ["logs-apm.error@custom", "logs-apm.error-fallback@ilm"]
 }
 
 # ═════════════════════════════════════════════════════════════════════════════

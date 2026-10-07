@@ -44,7 +44,7 @@ Spécificités api :
   **pas** `http.response.headers.*` : le template APM mappe `http.response.headers`
   en non-objet → tenter un objet donne `can't merge a non object mapping`, 400.
   Chaîne 3 repos : api (`external-api-logger.helpers.ts`) → tools (renames logstash
-  `[msg][http][response][...]` + `logs@custom` keyword). Générique tous clients.
+  `[msg][http][response][...]` + `pass-emploi-logs@mappings` keyword). Générique tous clients.
 
 ## Envoi de communications
 

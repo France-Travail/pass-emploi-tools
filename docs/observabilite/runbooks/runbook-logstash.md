@@ -266,7 +266,7 @@ Des `_ignored` indiquent un dépassement de `total_fields.limit` → prévoir un
 **Si DLQ non vide (conflit de mapping)** :
 1. Identifier le champ fautif via `logstash.dlq.reason` dans `logs-logstash-dlq-*`.
 2. Corriger le mapping dans `docs/observabilite/stockage/logs/2-component-templates.console`
-   (ajouter le champ dans `logs@custom` ou le template concerné).
+   (ajouter le champ dans `pass-emploi-logs@mappings` ou le template concerné).
 3. Appliquer via Kibana Dev Tools et faire un rollover :
    ```
    POST logs-prod-default/_rollover

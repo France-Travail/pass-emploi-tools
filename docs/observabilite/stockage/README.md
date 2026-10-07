@@ -79,8 +79,8 @@ deux bundles** (jamais redéfinies deux fois) :
 - `apm-retention-custom` — définie dans `traces/2-component-templates.console`,
   référencée (vidée, no-op) par `traces/3-index-templates.console` **et**
   `logs/3-index-templates.console` (flux `logs-apm.error`).
-- `logs@custom` — définie dans `logs/2-component-templates.console`, composée
-  aussi par le template `logs-router`.
+- `pass-emploi-logs@mappings` — définie dans `logs/2-component-templates.console`,
+  composée par les templates applicatifs, erreurs Logstash, router et `logs-apm.error`.
 
 
 ## Contrôles transverses (Dev Tools)
