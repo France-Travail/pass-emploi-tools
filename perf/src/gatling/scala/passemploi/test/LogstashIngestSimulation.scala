@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicLong
 // Simulation de charge sur le pipeline-ingest Logstash.
 //
 // Objectif : valider que l'architecture 2 pipelines + Persistent Queue
-// résout la quarantaine du drain Scalingo (cf. docs/blackout-logs/).
+// résout la quarantaine du drain Scalingo (cf. docs/observabilite/collecte/logs/drain-scalingo.md).
 //
 // Scénario : montée en charge progressive 1 → USERS_PER_SEC logs/s.
 // Chaque utilisateur virtuel envoie un log JSON applicatif (format pino-http)

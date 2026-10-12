@@ -2,7 +2,7 @@
 
 > **Statut : historique, largement implémenté.** Rédigé le 2026-09-01 ; les
 > lots 1 à 5 sont livrés (voir `perf/README.md`, § Historique). Le document à
-> jour est [`docs/perf/harnais.md`](../../docs/perf/harnais.md) — ce fichier-ci
+> jour est [`docs/perf/harnais.md`](../../perf/harnais.md) — ce fichier-ci
 > reste comme trace des décisions et de leurs raisons, mais **plusieurs
 > décisions ci-dessous ont été révisées en implémentation** : voir « Écarts
 > avec l'implémentation » en fin de fichier avant de s'y fier pour l'état
@@ -314,7 +314,7 @@ Décisions de ce design révisées après le premier jalon de valeur (fin lot 3,
 | Décision d'origine | Révisé en | Devenu |
 |---|---|---|
 | D3 : image de base figée + seed | 2026-09-09 | Pas de restore de snapshot (point 3 ci-dessus toujours ouvert) ; fond de charge **synthétique** en attendant — approximation de volume, pas une vraie donnée de prod |
-| D7 : seuils SLO différenciés par indicateur (I1 ≥ 99 %, I3 p95 ≤ 5 s…) | 2026-09-08 | **Seuil commun** à tous les parcours mesurés : p99 < 500 ms, réussite > 99,5 % (cf. [`docs/perf/observabilite.md`](../../docs/perf/observabilite.md)) — décidé faute de baseline et d'estimation de trafic pour calibrer des seuils différenciés |
+| D7 : seuils SLO différenciés par indicateur (I1 ≥ 99 %, I3 p95 ≤ 5 s…) | 2026-09-08 | **Seuil commun** à tous les parcours mesurés : p99 < 500 ms, réussite > 99,5 % (cf. [`docs/perf/observabilite.md`](../../perf/observabilite.md)) — décidé faute de baseline et d'estimation de trafic pour calibrer des seuils différenciés |
 | Injection : non spécifiée en détail (§5, modèle implicitement fermé) | 2026-09-08 | **Modèle ouvert** (`constantUsersPerSec`/`incrementUsersPerSec`) : un modèle fermé s'auto-régule sous saturation et peut rester vert en pleine dégradation, alors que les arrivants réels (MES, notification push) n'attendent personne |
 | D6 : injecteur au choix runner hébergé ou one-off Scalingo | tranché | One-off Scalingo, taille pilotée séparément des apps mesurées (`TAILLE_INJECTEUR`, XL) — un injecteur sous-dimensionné peut devenir lui-même le facteur limitant |
 | (non prévu au design) | 2026-09-09 | **Profil escalier** ajouté à la simulation (débit croissant par paliers, sans assertion) pour chercher le point de rupture — le design v1 ne couvrait qu'un tir à débit fixe |
