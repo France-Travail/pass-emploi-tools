@@ -1,0 +1,99 @@
+# Pipeline par défaut de logs-alertes-github-default. Spécification :
+# ../alertes-externes.md.
+#
+# Un document par alerte, tel que renvoyé par
+# GET /repos/{owner}/{repo}/dependabot/alerts, plus "repository" (nom court du
+# repo) ajouté par security-alerts.yml. @timestamp = date de la détection par le
+# workflow, pas de création de l'alerte GitHub : la règle X4 compte les CVE
+# encore ouvertes à chaque passage.
+PUT _ingest/pipeline/ingest-alertes-github-default
+{
+  "description": "Alerte Dependabot (CVE) envoyée par security-alerts.yml → ECS",
+  "processors": [
+    {
+      "fail": {
+        "if": "ctx.security_advisory == null",
+        "message": "Pas une alerte Dependabot : security_advisory absent"
+      }
+    },
+    {
+      "script": {
+        "description": "Range le payload brut sous github.*",
+        "source": """
+          Map raw = new HashMap();
+          for (String key : new ArrayList(ctx.keySet())) {
+            if (!key.startsWith('_')) {
+              raw.put(key, ctx.remove(key));
+            }
+          }
+          ctx.github = raw;
+        """
+      }
+    },
+    {
+      "set": {
+        "field": "@timestamp",
+        "value": "{{{_ingest.timestamp}}}"
+      }
+    },
+    {
+      "script": {
+        "description": "service, event, vulnerability, package",
+        "source": """
+          Map alert = ctx.github;
+          Map advisory = alert.security_advisory instanceof Map ? alert.security_advisory : new HashMap();
+          String repository = alert.repository;
+          if (repository == null && alert.html_url != null) {
+            repository = alert.html_url.splitOnToken('/')[4];
+          }
+          ctx.service = ['name': repository];
+          ctx.event = [
+            'provider': 'github',
+            'kind': 'alert',
+            'action': 'dependency_vulnerability_detected',
+            'id': repository + '#' + alert.number
+          ];
+
+          Map vulnerability = [
+            'id': advisory.cve_id != null ? advisory.cve_id : advisory.ghsa_id,
+            'severity': advisory.severity,
+            'description': advisory.summary,
+            'reference': alert.html_url,
+            'scanner': ['vendor': 'GitHub Dependabot']
+          ];
+          def score = null;
+          if (advisory.cvss_severities instanceof Map && advisory.cvss_severities.cvss_v3 instanceof Map) {
+            score = advisory.cvss_severities.cvss_v3.score;
+          }
+          if ((score == null || score == 0) && advisory.cvss instanceof Map) {
+            score = advisory.cvss.score;
+          }
+          if (score != null) {
+            vulnerability.score = ['base': score];
+          }
+          ctx.vulnerability = vulnerability;
+
+          if (alert.dependency instanceof Map && alert.dependency.package instanceof Map) {
+            ctx['package'] = ['name': alert.dependency.package.name];
+            ctx.labels = ['ecosystem': alert.dependency.package.ecosystem, 'ghsa_id': advisory.ghsa_id];
+          }
+        """
+      }
+    }
+  ]
+}
+
+# ═════════════════════════════════════════════════════════════════════════════
+# TESTS — rejouer après toute modification.
+
+# Dependabot (alerte fictive, schéma de l'API REST) → event.provider: github,
+#   service.name: pass-emploi-api, vulnerability.id: CVE-2026-00000,
+#   vulnerability.severity: high, package.name: axios
+# payload sans security_advisory → erreur (failure store en réel)
+POST _ingest/pipeline/ingest-alertes-github-default/_simulate
+{
+  "docs": [
+    { "_source": {"number":42,"state":"open","repository":"pass-emploi-api","html_url":"https://github.com/France-Travail/pass-emploi-api/security/dependabot/42","dependency":{"package":{"ecosystem":"npm","name":"axios"},"scope":"runtime"},"security_advisory":{"ghsa_id":"GHSA-xxxx-xxxx-xxxx","cve_id":"CVE-2026-00000","summary":"Exemple de vulnérabilité","severity":"high","cvss":{"score":7.5}}} },
+    { "_source": {"message":"payload sans source connue"} }
+  ]
+}

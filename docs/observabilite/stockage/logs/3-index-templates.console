@@ -128,6 +128,74 @@ PUT _index_template/logs-apm.error@template-custom
   "ignore_missing_component_templates": ["logs-apm.error@custom", "logs-apm.error-fallback@ilm"]
 }
 
+# Alertes émises hors Elastic, écrites directement par leur émetteur (sans
+# Logstash) : un data stream par source, par environnement pour Scalingo, avec
+# la rétention des logs applicatifs du même environnement.
+# default_pipeline remplace celui de logs@settings (logs@default-pipeline) : les
+# émetteurs n'ont pas à passer ?pipeline=, qu'un notifier Scalingo ne sait pas
+# poser. Failure store : un payload rejeté par le pipeline y est conservé au
+# lieu d'être perdu ; l'émetteur reçoit 201 dans les deux cas
+# (règle X5, ../../supervision/rules/3-rules-alertes-externes.console).
+PUT _index_template/logs-alertes-scalingo-prod@template-custom
+{
+  "index_patterns": ["logs-alertes-scalingo-prod-default"],
+  "priority": 250,
+  "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "pass-emploi-logs@mappings", "logs-alertes@mappings", "logs-alertes-scalingo@mappings", "logs-prod-retention-custom"],
+  "template": {
+    "settings": { "index": { "mode": "logsdb", "mapping": { "source": { "mode": "synthetic" } }, "default_pipeline": "ingest-alertes-scalingo-prod-default" } },
+    "data_stream_options": { "failure_store": { "enabled": true } }
+  },
+  "data_stream": { "hidden": false, "allow_custom_routing": false },
+  "allow_auto_create": true,
+  "_meta": { "description": "Notifiers Scalingo des apps de prod", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+PUT _index_template/logs-alertes-scalingo-staging@template-custom
+{
+  "index_patterns": ["logs-alertes-scalingo-staging-default"],
+  "priority": 250,
+  "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "pass-emploi-logs@mappings", "logs-alertes@mappings", "logs-alertes-scalingo@mappings", "logs-staging-retention-custom"],
+  "template": {
+    "settings": { "index": { "mode": "logsdb", "mapping": { "source": { "mode": "synthetic" } }, "default_pipeline": "ingest-alertes-scalingo-staging-default" } },
+    "data_stream_options": { "failure_store": { "enabled": true } }
+  },
+  "data_stream": { "hidden": false, "allow_custom_routing": false },
+  "allow_auto_create": true,
+  "_meta": { "description": "Notifiers Scalingo des apps de staging", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+PUT _index_template/logs-alertes-scalingo-perf@template-custom
+{
+  "index_patterns": ["logs-alertes-scalingo-perf-default"],
+  "priority": 250,
+  "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "pass-emploi-logs@mappings", "logs-alertes@mappings", "logs-alertes-scalingo@mappings", "logs-perf-retention-custom"],
+  "template": {
+    "settings": { "index": { "mode": "logsdb", "mapping": { "source": { "mode": "synthetic" } }, "default_pipeline": "ingest-alertes-scalingo-perf-default" } },
+    "data_stream_options": { "failure_store": { "enabled": true } }
+  },
+  "data_stream": { "hidden": false, "allow_custom_routing": false },
+  "allow_auto_create": true,
+  "_meta": { "description": "Notifiers Scalingo des apps de perf", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+PUT _index_template/logs-alertes-github@template-custom
+{
+  "index_patterns": ["logs-alertes-github-default"],
+  "priority": 250,
+  "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "pass-emploi-logs@mappings", "logs-alertes@mappings", "logs-alertes-github@mappings", "logs-prod-retention-custom"],
+  "template": {
+    "settings": { "index": { "mode": "logsdb", "mapping": { "source": { "mode": "synthetic" } }, "default_pipeline": "ingest-alertes-github-default" } },
+    "data_stream_options": { "failure_store": { "enabled": true } }
+  },
+  "data_stream": { "hidden": false, "allow_custom_routing": false },
+  "allow_auto_create": true,
+  "_meta": { "description": "CVE Dependabot remontées par security-alerts.yml", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
 # ═════════════════════════════════════════════════════════════════════════════
 # ROLLOVER (matérialisation) — action one-shot après un changement de template
 #

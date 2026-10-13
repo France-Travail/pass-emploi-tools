@@ -730,17 +730,22 @@ Pour chaque app :
 > **Note** : le throttle ne s'applique pas aux webhooks Scalingo — chaque événement
 > `app_crashed_repeated` / `app_restarted` est une notification unitaire envoyée par Scalingo.
 
-**Payload Scalingo** (exemple pour un restart OOM) :
+**Payload Scalingo** (capture réelle d'un redémarrage, 2026-09-23) :
 ```json
 {
-  "app": { "name": "pass-emploi-logstash-prod" },
-  "event_type": "app_crashed_repeated",
-  "event": {
-    "container_type": "web",
-    "reason": "OOM"
-  }
+  "id": "6ab3fc9805b3851e56c0404f",
+  "created_at": "2026-09-23T16:21:44.047Z",
+  "type": "restart",
+  "app_id": "6a9972b3d144aa4ac4db658b",
+  "app_name": "pass-emploi-logstash-perf",
+  "user": { "username": "…", "email": "…", "id": "…" },
+  "type_data": { "scope": ["web"], "reason": "user_restart" }
 }
 ```
+
+> **En cours de remplacement** : ces notifiers seront redirigés vers Kibana, où
+> les règles X1 et X3 prennent le relais, avec l'historique des événements, cf.
+> [alertes externes](alertes-externes.md).
 
 > **Alternative** : utiliser l'alerte 3 (absence de logs) comme proxy indirect du
 > crash — un crash Logstash se traduit immédiatement par un silence dans

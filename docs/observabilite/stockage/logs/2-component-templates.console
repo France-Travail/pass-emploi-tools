@@ -171,3 +171,63 @@ PUT _component_template/logs-apm.error@custom
   "template": { "settings": { "index": { "lifecycle": { "name": "logs-apm.error-retention" } } } },
   "_meta": { "managed_by": "pass-emploi-tools" }
 }
+
+# Alertes émises hors Elastic, une famille de data streams par source :
+# logs-alertes-scalingo-<env>-default (notifiers Scalingo) et
+# logs-alertes-github-default (CVE Dependabot). Rétention : les briques
+# logs-<env>-retention-custom ci-dessus, comme les logs applicatifs du même env.
+# Champs posés par les ingest pipelines de ../../supervision/pipelines/.
+PUT _component_template/logs-alertes@mappings
+{
+  "template": {
+    "mappings": {
+      "properties": {
+        "event": { "properties": {
+          "id":       { "type": "keyword", "ignore_above": 1024 },
+          "kind":     { "type": "keyword", "ignore_above": 1024 },
+          "provider": { "type": "keyword", "ignore_above": 1024 },
+          "reason":   { "type": "keyword", "ignore_above": 1024 }
+        } }
+      }
+    }
+  },
+  "_meta": { "description": "Champs ECS communs aux alertes externes, toutes sources", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+# Le payload brut est gardé sous scalingo.* en dynamic:false : lisible dans le
+# _source pour enquêter, sans indexer les ~40 formes de type_data.
+PUT _component_template/logs-alertes-scalingo@mappings
+{
+  "template": {
+    "mappings": {
+      "properties": {
+        "scalingo": { "type": "object", "dynamic": false }
+      }
+    }
+  },
+  "_meta": { "description": "Notifiers Scalingo ; payload brut sous scalingo.* non indexé", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+PUT _component_template/logs-alertes-github@mappings
+{
+  "template": {
+    "mappings": {
+      "properties": {
+        "vulnerability": { "properties": {
+          "id":          { "type": "keyword", "ignore_above": 1024 },
+          "severity":    { "type": "keyword", "ignore_above": 1024 },
+          "reference":   { "type": "keyword", "ignore_above": 1024 },
+          "description": { "type": "match_only_text" },
+          "score":       { "properties": { "base": { "type": "float" } } },
+          "scanner":     { "properties": { "vendor": { "type": "keyword", "ignore_above": 1024 } } }
+        } },
+        "package": { "properties": { "name": { "type": "keyword", "ignore_above": 1024 } } },
+        "github":  { "type": "object", "dynamic": false }
+      }
+    }
+  },
+  "_meta": { "description": "CVE Dependabot ; alerte brute sous github.* non indexée", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}

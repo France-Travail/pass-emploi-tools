@@ -1,0 +1,57 @@
+# Accès en écriture des émetteurs d'alertes externes, un accès par source.
+# Spécification : ../alertes-externes.md.
+#
+# Un émetteur ne peut qu'ajouter des documents aux data streams de SA source :
+# ni lire, ni modifier, ni supprimer, ni écrire chez l'autre source.
+# auto_configure est indispensable à côté de create_doc : le premier document
+# portant un champ nouveau met à jour le mapping, et sans ce privilège
+# Elasticsearch l'envoie au failure store tout en répondant 201 à l'émetteur
+# (constaté en test le 2026-10-12). Noms explicites, pas de joker : un joker
+# laisserait créer un data stream hors de nos templates.
+
+PUT _security/role/alertes-scalingo-writer
+{
+  "indices": [
+    {
+      "names": ["logs-alertes-scalingo-prod-default", "logs-alertes-scalingo-staging-default", "logs-alertes-scalingo-perf-default"],
+      "privileges": ["create_doc", "auto_configure"]
+    }
+  ],
+  "metadata": { "managed_by": "pass-emploi-tools" }
+}
+
+# Scalingo : un notifier webhook n'accepte qu'une URL, sans header. Seule voie
+# d'authentification, la Basic Auth dans l'URL, d'où un utilisateur natif.
+# Mot de passe : alphanumérique (pas d'échappement dans l'URL), généré au
+# moment de l'import, rangé dans le coffre de l'équipe, JAMAIS commité.
+# L'URL est visible des collaborateurs de chaque app Scalingo : c'est
+# acceptable uniquement parce que ce rôle ne fait qu'ajouter des documents
+# aux data streams Scalingo. Un notifier qui vise le data stream d'un autre
+# environnement est rejeté par son pipeline.
+POST _security/user/alertes-scalingo
+{
+  "password": "<mot-de-passe-généré>",
+  "roles": ["alertes-scalingo-writer"],
+  "full_name": "Notifiers webhook Scalingo",
+  "metadata": { "managed_by": "pass-emploi-tools" }
+}
+
+# GitHub Actions (security-alerts.yml) : un curl peut poser un header, donc une
+# API Key, révocable sans toucher aux notifiers Scalingo. Ses droits sont dans
+# role_descriptors (une API Key ne référence pas un rôle par son nom). Copier le
+# champ "encoded" de la réponse dans le secret GitHub ELASTIC_ALERTES_GITHUB_API_KEY.
+POST _security/api_key
+{
+  "name": "alertes-github-actions",
+  "role_descriptors": {
+    "alertes-github-writer": {
+      "indices": [
+        {
+          "names": ["logs-alertes-github-default"],
+          "privileges": ["create_doc", "auto_configure"]
+        }
+      ]
+    }
+  },
+  "metadata": { "managed_by": "pass-emploi-tools", "emetteur": "security-alerts.yml" }
+}

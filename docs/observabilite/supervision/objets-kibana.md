@@ -40,6 +40,7 @@ les logs à examiner.
 | [`slo/1-slos.console`](slo/1-slos.console) | les SLO, cf. [sli-slo](sli-slo.md) |
 | [`rules/1-rules-applicatives.console`](rules/1-rules-applicatives.console) | règles S2, S3 et A1 à A3, cf. [alertes applicatives](alertes-applicatives.md) |
 | [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console) | règles 1 à 5 et 7 à 9, cf. [alertes de la stack](alertes-stack-observabilite.md) |
+| [`rules/3-rules-alertes-externes.console`](rules/3-rules-alertes-externes.console) | règles X1 à X5, cf. [alertes externes](alertes-externes.md) ; ingest pipelines dans [`pipelines/`](pipelines/), accès des émetteurs dans [`security/`](security/) |
 
 Les rétentions (ILM, templates) sont dans [`stockage/`](../stockage/README.md#import--ordre-et-portée).
 
@@ -64,6 +65,8 @@ Copier le fichier dans Dev Tools et exécuter les requêtes, dans l'ordre :
 `slo/1-slos.console`, puis `rules/1-rules-applicatives.console`, puis
 `rules/2-rules-stack-observabilite.console`. Sur un cluster vide, l'en-tête de
 chaque fichier indique comment transformer les `PUT` en `POST` de création.
+`rules/3-rules-alertes-externes.console` suit sa propre
+[mise en service](alertes-externes.md#mise-en-service).
 
 ## Modifier un objet
 

@@ -13,6 +13,8 @@ de ce dossier : [stockage/README](../README.md#import--ordre-et-portée).
 | `logs-logstash-errors-*-default` | events en erreur de **traitement** Logstash (`_jsonparsefailure`, `_mutate_error`, `_rubyexception`…) |
 | `logs-logstash-dlq-*-default` | events **rejetés par ES** (conflit de mapping), relus depuis la Dead Letter Queue |
 | `logs-apm.error-default` | errors non catchées remontées par l'APM (cf. [collecte/traces](../../collecte/traces/README.md)) |
+| `logs-alertes-scalingo-{prod,staging,perf}-default` | événements des notifiers Scalingo, écrits sans Logstash (cf. [alertes externes](../../supervision/alertes-externes.md)) |
+| `logs-alertes-github-default` | CVE Dependabot remontées par `security-alerts.yml` (idem) |
 
 Les index `logs-logstash-*` sont les index de diagnostic de la chaîne elle-même :
 leur exploitation (alertes, KQL, actions correctives) est dans le
@@ -41,6 +43,8 @@ un seul jeu de briques partagées :
 | `logs-logstash-errors-*-default`      | `logs-logstash-errors@template-custom` | `logs-logstash-errors-retention` | 30 j |
 | `logs-logstash-dlq-*-default`         | `logs-logstash-dlq@template-custom`    | `logs-logstash-dlq-retention`    | 30 j |
 | `logs-apm.error-default`              | `logs-apm.error@template-custom`       | `logs-apm.error-retention`       | 90 j (14 hot + 7 warm + 69 frozen) |
+| `logs-alertes-scalingo-<env>-default` | `logs-alertes-scalingo-<env>@template-custom` | `logs-<env>-retention`    | celle des logs applicatifs de l'env |
+| `logs-alertes-github-default`         | `logs-alertes-github@template-custom`  | `logs-prod-retention`            | 90 j (14 hot + 7 warm + 69 frozen) |
 
 > **Plan de rétention x3.1** (conseiller Elastic, 2026-10-05) : 14 j hot et 7 j
 > warm avec 1 réplica, puis frozen sans réplica (searchable snapshot sur

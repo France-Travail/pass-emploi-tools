@@ -1,0 +1,405 @@
+# Règles Kibana des alertes externes (notifiers Scalingo, CVE Dependabot), lues
+# dans logs-alertes-scalingo-<env>-default et logs-alertes-github-default.
+# Spécification : ../alertes-externes.md.
+#
+# Création : POST ci-dessous, à rejouer dans Dev Tools après les pipelines
+# (../pipelines/). Pour une mise à jour, PUT sur la même URL avec le même corps
+# SANS "rule_type_id" ni "consumer".
+#
+# Chaque événement est notifié une fois : excludeHitsFromPreviousRun ne compte
+# que les documents arrivés depuis l'exécution précédente, et onActiveAlert
+# notifie chaque exécution qui en trouve, en les listant. La fenêtre, plus
+# large que l'intervalle, rattrape un document indexé en retard sans le
+# notifier deux fois.
+# Pas de groupBy top par app : Kibana y ignore excludeHitsFromPreviousRun et
+# renotifierait le même événement à chaque minute (constaté en test, 9.4.7).
+
+# X1 — Scalingo prod : crash, redémarrage, arrêt (Critical)
+POST kbn:/api/alerting/rule/1b97f0e0-870f-498d-8dd7-1c2f9aeba665
+{
+  "name": "Scalingo - Prod - Crash, redémarrage ou arrêt d'une app",
+  "tags": [
+    "prod",
+    "alertes-externes"
+  ],
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "event.action : (\"app_crashed\" or \"app_crashed_repeatedly\" or \"app_restarted\" or \"app_stopped\")",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "d327d85c-91ea-4092-867f-08a940504c96",
+        "title": "logs-alertes-scalingo-prod-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Alertes Scalingo - Prod",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 20,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": true,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **Apps Scalingo de prod crashées, redémarrées ou arrêtées** ({{context.value}})",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "text": "{{#context.hits}}• `{{_source.service.name}}` : `{{_source.event.action}}`{{#_source.event.reason}} ({{_source.event.reason}}){{/_source.event.reason}}{{#_source.labels.scope}} sur `{{_source.labels.scope}}`{{/_source.labels.scope}}{{#_source.user.name}}, par {{_source.user.name}}{{/_source.user.name}}\n{{/context.hits}}",
+      "fields": [
+        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
+        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
+        { "title": "À vérifier", "value": "Les logs de l'app dans Kibana au moment de l'événement, puis son onglet Activity dans le dashboard Scalingo" },
+        { "title": "Documents", "value": "[Ouvrir dans Discover]({{context.link}})" }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActiveAlert",
+        "throttle": null
+      }
+    }
+  ],
+  "rule_type_id": ".es-query",
+  "consumer": "alerts"
+}
+
+# X2 — Scalingo prod : seuil d'alerte Scalingo franchi (Warning)
+POST kbn:/api/alerting/rule/c16f2ab5-6103-4f69-bdc3-b4a10a38deb0
+{
+  "name": "Scalingo - Prod - Seuil de ressource dépassé",
+  "tags": [
+    "prod",
+    "alertes-externes"
+  ],
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "event.action : \"resource_threshold_exceeded\"",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "d327d85c-91ea-4092-867f-08a940504c96",
+        "title": "logs-alertes-scalingo-prod-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Alertes Scalingo - Prod",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 20,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": true,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "⚠️ **Seuils de ressource Scalingo dépassés en prod** ({{context.value}})",
+  "attachments": [
+    {
+      "color": "#ffa500",
+      "text": "{{#context.hits}}• `{{_source.service.name}}` : {{_source.labels.metric}} à {{_source.labels.value_text}} (seuil {{_source.labels.limit_text}}){{#_source.service.node.name}} sur `{{_source.service.node.name}}`{{/_source.service.node.name}}\n{{/context.hits}}",
+      "fields": [
+        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
+        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
+        { "title": "À vérifier", "value": "Les métriques de l'app dans le dashboard Scalingo (onglet Metrics) et ses derniers déploiements" },
+        { "title": "Documents", "value": "[Ouvrir dans Discover]({{context.link}})" }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActiveAlert",
+        "throttle": null
+      }
+    }
+  ],
+  "rule_type_id": ".es-query",
+  "consumer": "alerts"
+}
+
+# X3 — Scalingo hors prod : tous les événements alertés en prod (Warning)
+POST kbn:/api/alerting/rule/07c9c5d7-e8fe-4964-ac8d-684b1c4c39b8
+{
+  "name": "Scalingo - Hors-Prod - Crash, redémarrage, arrêt ou seuil dépassé",
+  "tags": [
+    "hors-prod",
+    "alertes-externes"
+  ],
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "event.action : (\"app_crashed\" or \"app_crashed_repeatedly\" or \"app_restarted\" or \"app_stopped\" or \"resource_threshold_exceeded\")",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "a67a2388-a6a3-42e3-b1c4-15dc61bf5585",
+        "title": "logs-alertes-scalingo-staging-default,logs-alertes-scalingo-perf-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Alertes Scalingo - Hors-Prod",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 10,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 20,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": true,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "c4a313b3-aa42-4e07-8196-c007625ce8af",
+      "params": {
+        "body": """{
+  "text": "⚠️ **Événements Scalingo hors prod** ({{context.value}})",
+  "attachments": [
+    {
+      "color": "#ffa500",
+      "text": "{{#context.hits}}• `{{_source.service.name}}` ({{_source.service.environment}}) : `{{_source.event.action}}`{{#_source.event.reason}} ({{_source.event.reason}}){{/_source.event.reason}}{{#_source.labels.metric}} {{_source.labels.metric}} à {{_source.labels.value_text}}{{/_source.labels.metric}}\n{{/context.hits}}",
+      "fields": [
+        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
+        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
+        { "title": "À vérifier", "value": "Les logs de l'app dans Kibana au moment de l'événement, puis son onglet Activity dans le dashboard Scalingo" },
+        { "title": "Documents", "value": "[Ouvrir dans Discover]({{context.link}})" }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActiveAlert",
+        "throttle": null
+      }
+    }
+  ],
+  "rule_type_id": ".es-query",
+  "consumer": "alerts"
+}
+
+# X4 — CVE high/critical encore ouvertes, à chaque passage de security-alerts.yml (Critical)
+POST kbn:/api/alerting/rule/67846c2c-45d1-45be-89f5-ce9a340240a0
+{
+  "name": "GitHub - CVE high ou critical ouverte",
+  "tags": [
+    "prod",
+    "alertes-externes",
+    "securite"
+  ],
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "vulnerability.severity : (\"high\" or \"critical\")",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "8a589b67-53bc-407d-9d76-c68b41271bbe",
+        "title": "logs-alertes-github-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Alertes GitHub - CVE",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 10,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 20,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": true,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **CVE high/critical ouvertes** ({{context.value}})",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "text": "{{#context.hits}}• `{{_source.service.name}}` : **{{_source.vulnerability.id}}** — {{_source.package.name}} ({{_source.vulnerability.severity}}) : {{_source.vulnerability.description}} — [Voir]({{_source.vulnerability.reference}})\n{{/context.hits}}",
+      "fields": [
+        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
+        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
+        { "title": "À vérifier", "value": "Les alertes Dependabot de chaque repo cité (lien Voir), à traiter selon leur sévérité" },
+        { "title": "Documents", "value": "[Ouvrir dans Discover]({{context.link}})" }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActiveAlert",
+        "throttle": null
+      }
+    }
+  ],
+  "rule_type_id": ".es-query",
+  "consumer": "alerts"
+}
+
+# X5 — Document rejeté par le pipeline ou par Elasticsearch (Warning). L'émetteur
+# reçoit 201 même quand le document part au failure store : sans cette règle, un
+# changement de format chez Scalingo ou GitHub, ou un notifier qui vise le
+# mauvais environnement, passerait inaperçu.
+POST kbn:/api/alerting/rule/ae398f47-0ed9-427e-a090-cf774acc7d16
+{
+  "name": "Alertes externes - Payload rejeté (failure store)",
+  "tags": [
+    "prod",
+    "o11y",
+    "alertes-externes"
+  ],
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "0f25bbf6-abdf-41f9-8bab-4a4911c13ebc",
+        "title": "logs-alertes-scalingo-prod-default::failures,logs-alertes-scalingo-staging-default::failures,logs-alertes-scalingo-perf-default::failures,logs-alertes-github-default::failures",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Alertes externes - rejets (failure store)",
+        "allowHidden": true,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 10,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 20,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": true,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
+      "params": {
+        "body": """{
+  "text": "⚠️ **Alertes externes rejetées** ({{context.value}}) — des notifications Scalingo ou GitHub ne sont pas arrivées dans Kibana : leur émetteur a pourtant reçu un succès.",
+  "attachments": [
+    {
+      "color": "#ffa500",
+      "text": "{{#context.hits}}• `{{_source.error.type}}` : {{_source.error.message}}\n{{/context.hits}}",
+      "fields": [
+        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
+        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
+        { "title": "À vérifier", "value": "Le payload d'origine (document.source) dans le failure store, puis adapter le pipeline alertes-externes et le rejouer en _simulate" },
+        { "title": "Documents", "value": "[Ouvrir dans Discover]({{context.link}})" }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActiveAlert",
+        "throttle": null
+      }
+    }
+  ],
+  "rule_type_id": ".es-query",
+  "consumer": "alerts"
+}
