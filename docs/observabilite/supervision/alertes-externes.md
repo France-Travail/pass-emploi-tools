@@ -4,13 +4,14 @@ Les alertes **émises hors d'Elastic** : les notifiers des apps Scalingo
 (crash, redémarrage, arrêt, seuils RAM/CPU) et les CVE remontées par
 Dependabot via [`security-alerts.yml`](../../../.github/workflows/security-alerts.yml).
 Elles postaient directement dans Mattermost, sans trace dans Kibana. Elles sont
-désormais écrites dans un data stream par source, d'où des **Kibana Rules** notifient
-Mattermost comme toutes les autres alertes : un seul endroit pour les retrouver,
-les corréler avec les logs et les compter.
+désormais écrites dans un data stream par source, d'où des **Kibana Rules** les
+notifient, dans Tchap et, jusqu'au 1er novembre 2026, dans Mattermost : un seul
+endroit pour les retrouver, les corréler avec les logs et les compter.
 
 > **Statut** : validé de bout en bout le 2026-10-12 sur une pile Elasticsearch +
 > Kibana 9.4.7 locale (pipelines, droits, failure store, règles, messages
-> Mattermost rendus). **Pas encore déployé** sur Elastic Cloud : suivre la
+> Mattermost rendus). Notification Tchap : validée sur la même pile locale avec
+> Synapse le 2026-10-13. **Pas encore déployé** sur Elastic Cloud : suivre la
 > [mise en service](#mise-en-service).
 
 ## La chaîne
@@ -18,7 +19,7 @@ les corréler avec les logs et les compter.
 ```
 Notifier webhook Scalingo ──► logs-alertes-scalingo-<env>-default ──┐
   (Basic Auth dans l'URL)       pipeline ingest-alertes-scalingo-<env>-default
-                                                                     ├──► Kibana Rules X1 à X4 ──► Mattermost
+                                                                     ├──► Kibana Rules X1 à X4 ──► Tchap (Workflows) + Mattermost
 security-alerts.yml (curl) ──► logs-alertes-github-default ─────────┘
   (API Key)                     pipeline ingest-alertes-github-default
 
@@ -40,16 +41,17 @@ transformation en champs ECS se fait dans un **ingest pipeline**.
 | [`pipelines/ingest-alertes-github-default.console`](pipelines/ingest-alertes-github-default.console) | transformation des alertes Dependabot |
 | [`security/acces-alertes-externes.console`](security/acces-alertes-externes.console) | rôle et utilisateur Scalingo, API Key GitHub |
 | [`rules/3-rules-alertes-externes.console`](rules/3-rules-alertes-externes.console) | règles X1 à X5 |
+| [`workflows/tchap/`](workflows/tchap/README.md) | notifications Tchap : connecteur, tchap-client, Workflows de salon |
 
 ## Récapitulatif des règles
 
-| #  | Signal                                       | Data stream                                   | Condition                                                               | Fréquence  | Canal                    | Sévérité    |
-|----|----------------------------------------------|-----------------------------------------------|-------------------------------------------------------------------------|------------|--------------------------|-------------|
-| X1 | Crash, redémarrage ou arrêt d'une app — prod | `logs-alertes-scalingo-prod-default`          | `app_crashed`, `app_crashed_repeatedly`, `app_restarted`, `app_stopped` | 1 min      | `#monitoring-production` | 🚨 Critical |
-| X2 | Seuil de ressource Scalingo dépassé — prod   | `logs-alertes-scalingo-prod-default`          | `resource_threshold_exceeded`                                           | 1 min      | `#monitoring-production` | ⚠ Warning  |
-| X3 | X1 + X2 — staging/perf                       | `logs-alertes-scalingo-{staging,perf}-default` | idem X1 + X2                                                            | 5 min      | `#o11y-staging`          | ⚠ Warning  |
-| X4 | CVE high/critical ouverte                    | `logs-alertes-github-default`                 | `vulnerability.severity` high ou critical                               | 5 min      | `#monitoring-production` | 🚨 Critical |
-| X5 | Alerte externe rejetée                       | les 4, sélecteur `::failures`                 | tout document                                                           | 5 min      | `#o11y-production`       | ⚠ Warning  |
+| #  | Signal                                       | Data stream                                   | Condition                                                               | Fréquence  | Canal Tchap (Mattermost) | Sévérité    |
+|----|----------------------------------------------|-----------------------------------------------|-------------------------------------------------------------------------|------------|--------------------|-------------|
+| X1 | Crash, redémarrage ou arrêt d'une app — prod | `logs-alertes-scalingo-prod-default`          | `app_crashed`, `app_crashed_repeatedly`, `app_restarted`, `app_stopped` | 1 min      | `monitoring-production` (`#monitoring-production`) | 🚨 Critical |
+| X2 | Seuil de ressource Scalingo dépassé — prod   | `logs-alertes-scalingo-prod-default`          | `resource_threshold_exceeded`                                           | 1 min      | `monitoring-production` (`#monitoring-production`) | ⚠ Warning  |
+| X3 | X1 + X2 — staging/perf                       | `logs-alertes-scalingo-{staging,perf}-default` | idem X1 + X2                                                            | 5 min      | `monitoring-staging` (`#o11y-staging`) | ⚠ Warning  |
+| X4 | CVE high/critical ouverte                    | `logs-alertes-github-default`                 | `vulnerability.severity` high ou critical                               | 5 min      | `monitoring-production` (`#monitoring-production`) | 🚨 Critical |
+| X5 | Alerte externe rejetée                       | les 4, sélecteur `::failures`                 | tout document                                                           | 5 min      | `o11y-production` (`#o11y-production`) | ⚠ Warning  |
 
 **Un événement = une notification.** Chaque exécution ne compte que les
 documents arrivés depuis la précédente (`excludeHitsFromPreviousRun`) et
@@ -65,7 +67,9 @@ encore ouvertes, X4 les notifie donc à chaque passage, comme aujourd'hui.
 ## Champs ECS produits
 
 Commun aux deux sources : `event.provider` (`scalingo` | `github`),
-`event.kind`, `event.action`, `event.id`, `service.name`. Le payload brut est
+`event.kind`, `event.action`, `event.id`, `service.name`, et `message`, la ligne
+de notification de l'événement en texte brut, lue par les Workflows Tchap (cf.
+[workflows/tchap](workflows/tchap/README.md#le-message)). Le payload brut est
 gardé sous `scalingo.*` ou `github.*`, lisible dans le document mais **non
 indexé** (`dynamic: false`) : on ne cherche pas dedans, on s'en sert pour
 enquêter ou faire évoluer le mapping.
@@ -129,30 +133,36 @@ du repo). `@timestamp` est l'heure d'envoi par le workflow.
 3. **Accès** : rejouer [`security/acces-alertes-externes.console`](security/acces-alertes-externes.console)
    en remplaçant `<mot-de-passe-généré>` par un mot de passe alphanumérique,
    rangé dans le coffre de l'équipe. Copier le champ `encoded` de l'API Key.
-4. **Règles** : rejouer [`rules/3-rules-alertes-externes.console`](rules/3-rules-alertes-externes.console).
-5. **Test sans Scalingo** :
+4. **Tchap** : suivre la [mise en service des Workflows Tchap](workflows/tchap/README.md#mise-en-service)
+   (bot, 4 salons, connecteur, Workflows) **avant** les règles : elles
+   référencent les Workflows de salon.
+5. **Règles** : rejouer [`rules/3-rules-alertes-externes.console`](rules/3-rules-alertes-externes.console),
+   puis [`rules/4-rules-tchap.console`](rules/4-rules-tchap.console).
+6. **Test sans Scalingo** :
    ```bash
    curl -X POST "https://alertes-scalingo:<mdp>@<endpoint-es>/logs-alertes-scalingo-staging-default/_doc" \
      -H 'Content-Type: application/json' \
      -d '{"id":"test","created_at":"'"$(date -u +%FT%TZ)"'","type":"restart","app_id":"test","app_name":"pass-emploi-api-staging","user":{"username":"test"},"type_data":{"scope":["web"],"reason":"user_restart"}}'
    ```
    La réponse doit contenir `"result":"created"` **sans** `"failure_store":"used"`.
-   Sous 5 min, X3 poste dans `#o11y-staging`. L'endpoint Elasticsearch est
+   Sous 5 min, X3 poste dans `#o11y-staging` et dans le salon Tchap
+   `monitoring-staging`. L'endpoint Elasticsearch est
    indiqué sur la page du déploiement Elastic Cloud.
-6. **Scalingo** : sur une app non critique d'abord (`pass-emploi-logstash-perf`),
+7. **Scalingo** : sur une app non critique d'abord (`pass-emploi-logstash-perf`),
    **Settings → Notifications → Add notification**, type **Webhook**, URL
    `https://alertes-scalingo:<mdp>@<endpoint-es>/logs-alertes-scalingo-<env>-default/_doc`
    (`<env>` = suffixe de l'app),
    événements `app_crashed_repeated`, `app_restarted`, `app_stopped` et les
    alertes de métriques. Redémarrer l'app et vérifier X3. Puis étendre aux apps de
    prod.
-7. **GitHub Actions** : ajouter à `security-alerts.yml` un envoi par CVE vers
+8. **GitHub Actions** : ajouter à `security-alerts.yml` un envoi par CVE vers
    `logs-alertes-github-default` (header `Authorization: ApiKey <encoded>`,
    secret `ELASTIC_ALERTES_GITHUB_API_KEY`), en gardant l'envoi Mattermost
    actuel pendant la période de test. *Pas encore fait.*
-8. **Bascule** : une fois X1 à X4 constatés en réel, supprimer les notifiers
+9. **Bascule** : une fois X1 à X4 constatés en réel, supprimer les notifiers
    Scalingo vers Mattermost et l'envoi direct de `security-alerts.yml`, puis
    mettre à jour l'[alerte 6](alertes-stack-observabilite.md#alerte-6--restart-du-conteneur-logstash-scalingo-webhook).
+   Le 1er novembre 2026, retirer les actions Mattermost de X1 à X5.
 
 ## Points ouverts
 

@@ -7,7 +7,7 @@ se rejoue à l'identique sur un cluster vide. Deux formats :
   leurs data views et tags), importé par la page *Saved objects* ;
 - **`.console`** : requêtes Dev Tools (SLO, règles d'alerte, ILM et templates).
 
-Les identifiants sont conservés à l'import : les messages Mattermost des alertes
+Les identifiants sont conservés à l'import : les messages des alertes (Mattermost, Tchap)
 et cette doc pointent vers les objets par leur id.
 
 ## Dashboards
@@ -41,6 +41,8 @@ les logs à examiner.
 | [`rules/1-rules-applicatives.console`](rules/1-rules-applicatives.console) | règles S2, S3 et A1 à A3, cf. [alertes applicatives](alertes-applicatives.md) |
 | [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console) | règles 1 à 5 et 7 à 9, cf. [alertes de la stack](alertes-stack-observabilite.md) |
 | [`rules/3-rules-alertes-externes.console`](rules/3-rules-alertes-externes.console) | règles X1 à X5, cf. [alertes externes](alertes-externes.md) ; ingest pipelines dans [`pipelines/`](pipelines/), accès des émetteurs dans [`security/`](security/) |
+| [`rules/4-rules-tchap.console`](rules/4-rules-tchap.console) | règle « Tchap - Envoi en échec », sans action |
+| [`workflows/tchap/`](workflows/tchap/README.md) | connecteur Tchap et Workflows de notification (tchap-client, un par salon) |
 
 Les rétentions (ILM, templates) sont dans [`stockage/`](../stockage/README.md#import--ordre-et-portée).
 

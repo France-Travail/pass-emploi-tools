@@ -68,5 +68,6 @@ top `error.type`, ratio `auth_failed`, count `request_failed` par status.
 | Dashboards Fleet Logstash | [assets de l'intégration Logstash](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/integrations/detail/logstash-2.11.3/assets) | débit des pipelines, queue, heap, GC                                  |
 | **[Metrics Redis] Keys**  | intégration Redis → graphe **Lists length** → clé `db0 › logstash:ingest`                                                                 | backlog entre INGEST et PROCESS                                       |
 | Kibana → Fleet → Agents   | filtrer par tag                                                                                                                           | agents `Healthy` / offline / UNENROLLED (cf. [pilotage](pilotage.md)) |
+| Kibana → Alerts, règle **Tchap - Envoi en échec** | versionnée dans [`supervision/rules/4-rules-tchap.console`](supervision/rules/4-rules-tchap.console) | une alerte = des notifications Tchap perdues ; l'erreur Matrix est dans l'exécution du Workflow (*Workflows → Executions*), cf. [Workflows Tchap](supervision/workflows/tchap/README.md#pièges) |
 
 Signification des métriques : [collecte/metriques/stack-observabilite](collecte/metriques/stack-observabilite.md).

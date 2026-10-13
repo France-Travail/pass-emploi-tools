@@ -1,6 +1,6 @@
 # Notifications d'alertes vers Tchap via Kibana Workflows — design
 
-> **Statut : validé le 2026-10-13, non implémenté.** Premier lot : les règles
+> **Statut : implémenté le 2026-10-13** (validé sur pile locale, pas encore déployé sur Elastic Cloud). Premier lot : les règles
 > X1 à X5 des [alertes externes](../../observabilite/supervision/alertes-externes.md).
 >
 > Artefact de travail : il guide l'implémentation, il n'a pas vocation à rester
@@ -258,3 +258,11 @@ caché) par une règle.
   en ajoutant un tag de sévérité et une action vers un Workflow de salon.
 - La bascule des notifiers Scalingo directs et de `security-alerts.yml`
   (étapes 6 à 8 de la mise en service de `alertes-externes.md`).
+
+## 9. Écarts avec l'implémentation
+
+- La ligne `message` des événements Scalingo commence par le nom complet de
+  l'app (`scalingo.app_name`, ex. `pass-emploi-api-prod`) et non par
+  `service.name`, qui a perdu son suffixe d'environnement.
+- Le README de `workflows/tchap/` porte la mise en service Tchap (bot, salons,
+  imports, test), à laquelle renvoie `alertes-externes.md`.

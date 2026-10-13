@@ -48,6 +48,7 @@ Principes et import des templates ES : [stockage/README.md](stockage/README.md).
 
 - [ADR-002 — Migration du buffer Logstash : PQ disque → Redis](../decisions/ADR-002-buffer-redis-logstash.md)
 - [ADR-003 — Pertinence de l'usage des Log Drains Scalingo](../decisions/ADR-003-usage-log-drain-scalingo.md)
+- [ADR-004 — Notifications d'alertes vers Tchap par les Workflows Kibana](../decisions/ADR-004-notifications-tchap-kibana-workflows.md)
 
 Tirs de charge applicatifs (harnais, scénarios, instrumentation requise) :
 [docs/perf/](../perf/README.md).
