@@ -29,6 +29,7 @@ URL fixe : il ne peut pas produire ce `txnId`.
 * Watcher Elasticsearch (`PUT` avec `{{ctx.id}}`)
 * Workflows Kibana, avec un Workflow par règle
 * Workflows Kibana, avec un Workflow par salon
+* Workflows Kibana, avec un Workflow générique et le salon porté par un tag de la règle
 
 ## Résultat de la Décision
 
@@ -88,6 +89,13 @@ appeler Tchap. Détail : [`supervision/workflows/tchap/`](../observabilite/super
 * Bien, car message sur mesure par règle.
 * Mauvais, car un Workflow à écrire par règle, et le salon se change dans le
   Workflow, pas dans la règle.
+
+### Salon porté par un tag de la règle
+
+* Bien, car un seul Workflow pour toutes les règles.
+* Mauvais, car la liste des salons possibles n'est visible nulle part, et une
+  faute de frappe dans le tag perd l'alerte sans erreur ; avec un Workflow par
+  salon, le salon se choisit dans une liste déroulante de l'action.
 
 ## Liens
 

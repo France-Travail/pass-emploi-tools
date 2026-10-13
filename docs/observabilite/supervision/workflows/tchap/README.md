@@ -87,8 +87,14 @@ et ne poste rien.
    `ongoing: true` : une alerte reste active tant que des événements arrivent,
    chacun doit être notifié. `recovered: false` : pas de message à la fin de
    l'alerte.
-3. Si les documents de la règle ont un champ `message` lisible, ce sont eux
-   qui font les lignes ; sinon, la raison de l'alerte.
+3. Si les documents de la règle ont un champ `message`, ce sont eux qui font
+   les lignes ; sinon, la raison de l'alerte. **Attention** : dans les logs
+   applicatifs (`logs-<env>-default`), `message` est la ligne de log brute, pas
+   une ligne de notification. Brancher tel quel une règle sur ces logs
+   listerait jusqu'à 20 lignes de log brutes (illisibles, peut-être
+   personnelles, et au-delà de 65 Ko l'envoi échoue). Pour ces règles, il faut
+   d'abord décider entre un Workflow de salon qui n'utilise que la raison de
+   l'alerte et un champ de notification dédié, distinct de `message`.
 
 ## Ajouter un salon
 

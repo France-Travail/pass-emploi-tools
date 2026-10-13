@@ -256,6 +256,10 @@ caché) par une règle.
 - Les **29 autres règles** (applicatives, stack, SLO) : lot suivant, **avant le
   1ᵉʳ novembre** (elles ne notifient que Mattermost). Avec D2, chacune se migre
   en ajoutant un tag de sévérité et une action vers un Workflow de salon.
+  **Sauf** pour les règles sur les logs applicatifs (`logs-<env>-default`) : leur
+  `message` est la ligne de log brute, que les Workflows de salon listeraient
+  telle quelle. À trancher en début de lot : Workflow de salon limité à
+  `kibana.alert.reason`, ou champ de notification dédié.
 - La bascule des notifiers Scalingo directs et de `security-alerts.yml`
   (étapes 6 à 8 de la mise en service de `alertes-externes.md`).
 
