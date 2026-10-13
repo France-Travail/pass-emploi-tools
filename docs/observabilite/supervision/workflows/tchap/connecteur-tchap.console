@@ -1,0 +1,24 @@
+# Connecteur .http vers Tchap, le seul utilisé par les Workflows Tchap
+# (tchap-client). Spécification : README.md.
+#
+# Jeton du compte bot : à substituer à <jeton-du-bot> au moment de l'import,
+# rangé dans le coffre de l'équipe, JAMAIS commité. Kibana le chiffre et ne le
+# renvoie plus, ni par l'API ni dans les exécutions. authType: null est exigé
+# avec hasAuth: false (sinon erreur de validation).
+# Mise à jour (rotation du jeton) : PUT sur la même URL, même corps SANS
+# "connector_type_id".
+POST kbn:/api/actions/connector/a81b2350-0d23-4358-b984-2c18ceef8601
+{
+  "name": "Tchap",
+  "connector_type_id": ".http",
+  "config": {
+    "url": "https://matrix.agent.tchap.gouv.fr",
+    "hasAuth": false,
+    "authType": null
+  },
+  "secrets": {
+    "secretHeaders": {
+      "Authorization": "Bearer <jeton-du-bot>"
+    }
+  }
+}
