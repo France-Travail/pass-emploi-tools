@@ -1,0 +1,35 @@
+# Workflow du salon Tchap o11y-staging : à choisir dans l'action
+# .workflows d'une règle pour y envoyer ses alertes. Spécification : README.md.
+#
+# ID du salon : à substituer à <id-salon-o11y-staging> au moment de
+# l'import (Tchap → paramètres du salon → Avancé). Ne parle pas à Matrix :
+# construit le message et appelle tchap-client.
+# La boucle doit être une étape « type: foreach » : une propriété foreach:
+# posée sur l'étape workflow.execute est ignorée sans erreur.
+# Mise à jour : PUT kbn:/api/workflows/workflow/tchap-o11y-staging avec {"yaml": …}.
+POST kbn:/api/workflows/workflow
+{
+  "id": "tchap-o11y-staging",
+  "yaml": """
+name: Tchap - o11y-staging
+description: Envoie les alertes de la règle dans le salon Tchap o11y-staging
+enabled: true
+triggers:
+  - type: alert
+consts:
+  salon: "<id-salon-o11y-staging>"
+steps:
+  - name: chaque-alerte
+    type: foreach
+    foreach: "{{ event.alerts | json }}"
+    steps:
+      - name: notifier
+        type: workflow.execute
+        with:
+          workflow-id: tchap-client
+          inputs:
+            salon: "{{ consts.salon }}"
+            texte: "{% if event.rule.tags contains 'critical' %}🚨 {% elsif event.rule.tags contains 'warning' %}⚠️ {% endif %}{{ event.rule.name }}{% if foreach.item.kibana.alert.evaluation.value %} ({{ foreach.item.kibana.alert.evaluation.value }}){% endif %}{% if foreach.item.message %}{% for ligne in foreach.item.message %}\n• {{ ligne }}{% endfor %}{% else %}\n• {{ foreach.item.kibana.alert.reason }}{% endif %}{% if foreach.item.kibana.alert.url %}\n{{ foreach.item.kibana.alert.url }}{% endif %}"
+            html: "<p>{% if event.rule.tags contains 'critical' %}🚨 {% elsif event.rule.tags contains 'warning' %}⚠️ {% endif %}<strong>{{ event.rule.name | escape }}</strong>{% if foreach.item.kibana.alert.evaluation.value %} ({{ foreach.item.kibana.alert.evaluation.value }}){% endif %}</p><ul>{% if foreach.item.message %}{% for ligne in foreach.item.message %}<li>{{ ligne | escape }}</li>{% endfor %}{% else %}<li>{{ foreach.item.kibana.alert.reason | escape }}</li>{% endif %}</ul><p>{% if foreach.item.kibana.alert.url %}<a href=\"{{ foreach.item.kibana.alert.url }}\">Ouvrir dans Discover</a> · {% endif %}<a href=\"{{ event.ruleUrl }}\">Voir la règle</a></p>"
+"""
+}
