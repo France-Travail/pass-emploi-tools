@@ -13,12 +13,18 @@
 # notifier deux fois.
 # Pas de groupBy top par app : Kibana y ignore excludeHitsFromPreviousRun et
 # renotifierait le même événement à chaque minute (constaté en test, 9.4.7).
+#
+# Chaque règle notifie aussi Tchap : action .workflows vers le Workflow du salon
+# (../workflows/tchap/). ongoing: true est nécessaire, une alerte restant active
+# tant que des événements arrivent ; recovered: false évite un message à la fin
+# de l'alerte. Les actions Mattermost sont retirées le 1er novembre 2026.
 
 # X1 — Scalingo prod : crash, redémarrage, arrêt (Critical)
 POST kbn:/api/alerting/rule/1b97f0e0-870f-498d-8dd7-1c2f9aeba665
 {
   "name": "Scalingo - Prod - Crash, redémarrage ou arrêt d'une app",
   "tags": [
+    "critical",
     "prod",
     "alertes-externes"
   ],
@@ -85,6 +91,21 @@ POST kbn:/api/alerting/rule/1b97f0e0-870f-498d-8dd7-1c2f9aeba665
         "notify_when": "onActiveAlert",
         "throttle": null
       }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
     }
   ],
   "rule_type_id": ".es-query",
@@ -96,6 +117,7 @@ POST kbn:/api/alerting/rule/c16f2ab5-6103-4f69-bdc3-b4a10a38deb0
 {
   "name": "Scalingo - Prod - Seuil de ressource dépassé",
   "tags": [
+    "warning",
     "prod",
     "alertes-externes"
   ],
@@ -162,6 +184,21 @@ POST kbn:/api/alerting/rule/c16f2ab5-6103-4f69-bdc3-b4a10a38deb0
         "notify_when": "onActiveAlert",
         "throttle": null
       }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
     }
   ],
   "rule_type_id": ".es-query",
@@ -173,6 +210,7 @@ POST kbn:/api/alerting/rule/07c9c5d7-e8fe-4964-ac8d-684b1c4c39b8
 {
   "name": "Scalingo - Hors-Prod - Crash, redémarrage, arrêt ou seuil dépassé",
   "tags": [
+    "warning",
     "hors-prod",
     "alertes-externes"
   ],
@@ -239,6 +277,21 @@ POST kbn:/api/alerting/rule/07c9c5d7-e8fe-4964-ac8d-684b1c4c39b8
         "notify_when": "onActiveAlert",
         "throttle": null
       }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-staging",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
     }
   ],
   "rule_type_id": ".es-query",
@@ -250,6 +303,7 @@ POST kbn:/api/alerting/rule/67846c2c-45d1-45be-89f5-ce9a340240a0
 {
   "name": "GitHub - CVE high ou critical ouverte",
   "tags": [
+    "critical",
     "prod",
     "alertes-externes",
     "securite"
@@ -317,6 +371,21 @@ POST kbn:/api/alerting/rule/67846c2c-45d1-45be-89f5-ce9a340240a0
         "notify_when": "onActiveAlert",
         "throttle": null
       }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
     }
   ],
   "rule_type_id": ".es-query",
@@ -331,6 +400,7 @@ POST kbn:/api/alerting/rule/ae398f47-0ed9-427e-a090-cf774acc7d16
 {
   "name": "Alertes externes - Payload rejeté (failure store)",
   "tags": [
+    "warning",
     "prod",
     "o11y",
     "alertes-externes"
@@ -397,6 +467,21 @@ POST kbn:/api/alerting/rule/ae398f47-0ed9-427e-a090-cf774acc7d16
         "summary": false,
         "notify_when": "onActiveAlert",
         "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
       }
     }
   ],
