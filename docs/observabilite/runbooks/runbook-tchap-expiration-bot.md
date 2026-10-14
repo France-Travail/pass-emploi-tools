@@ -12,7 +12,7 @@ Le bot qui poste toutes nos alertes dans Tchap est un compte Tchap ordinaire :
 Tchap n'a pas de compte de service. Comme tout compte, il doit être renouvelé
 selon les [CGU Tchap](https://tchap.numerique.gouv.fr/cgu). Durées relevées dans
 les CGU le **2026-10-14** : les CGU peuvent changer, les relire à chaque
-renouvellement (étape 1) et corriger ce tableau, la règle et le pipeline de
+renouvellement (§ 1, étape 2) et corriger ce tableau, la règle et le pipeline de
 [`5-rules-tchap-expiration-bot.console`](../supervision/rules/5-rules-tchap-expiration-bot.console)
 si elles ont bougé.
 
