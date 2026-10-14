@@ -196,6 +196,23 @@ PUT _index_template/logs-alertes-github@template-custom
   "version": 1
 }
 
+# Création à l'avance des 4 data streams et de leur failure store, à rejouer
+# juste après leurs templates. Les règles X1 à X5 et leurs sessions Discover
+# partagent des data views : tant qu'aucun document n'est arrivé, ces data
+# views ne trouvent aucun champ et les règles tombent en erreur (« Data view …
+# no longer contains a time field »). Le failure store, lu par X5, n'est créé
+# qu'au premier rejet : son rollover le crée vide. Rejouer est sans effet sur
+# les data streams existants (resource_already_exists_exception) et crée un
+# nouvel index de failure store vide, sans dommage.
+PUT _data_stream/logs-alertes-scalingo-prod-default
+PUT _data_stream/logs-alertes-scalingo-staging-default
+PUT _data_stream/logs-alertes-scalingo-perf-default
+PUT _data_stream/logs-alertes-github-default
+POST logs-alertes-scalingo-prod-default::failures/_rollover
+POST logs-alertes-scalingo-staging-default::failures/_rollover
+POST logs-alertes-scalingo-perf-default::failures/_rollover
+POST logs-alertes-github-default::failures/_rollover
+
 # ═════════════════════════════════════════════════════════════════════════════
 # ROLLOVER (matérialisation) — action one-shot après un changement de template
 #

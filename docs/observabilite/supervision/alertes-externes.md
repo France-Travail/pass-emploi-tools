@@ -125,8 +125,11 @@ du repo). `@timestamp` est l'heure d'envoi par le workflow.
 
 1. **Stockage** : dans [`stockage/logs/`](../stockage/logs/README.md), rejouer
    les blocs `logs-alertes*` de `2-component-templates.console`, puis de
-   `3-index-templates.console`. Ils s'appuient sur des briques déjà présentes
-   sur le cluster (`pass-emploi-logs@mappings`, `logs-<env>-retention-custom`).
+   `3-index-templates.console`, **y compris la création des 4 data streams et
+   de leur failure store** qui suit les templates : sans elle, les règles X1 à
+   X5 tombent en erreur tant qu'aucun document n'est arrivé. Ils s'appuient sur
+   des briques déjà présentes sur le cluster (`pass-emploi-logs@mappings`,
+   `logs-<env>-retention-custom`).
 2. **Pipelines** : rejouer [`pipelines/ingest-alertes-scalingo.console`](pipelines/ingest-alertes-scalingo.console)
    en premier, puis les trois `ingest-alertes-scalingo-<env>-default.console` et
    `ingest-alertes-github-default.console`. Les `_simulate` en fin de fichier
