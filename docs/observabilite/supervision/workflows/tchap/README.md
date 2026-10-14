@@ -65,6 +65,9 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
    un lien de renouvellement à cette adresse ; sans clic, le compte expire
    60 jours plus tard et **toutes** les notifications Tchap s'arrêtent.
    Noter la date de renouvellement dans l'agenda de l'équipe.
+   **Un seul bot pour tous les salons** : il lit et poste dans tous les salons
+   où on l'invite. Adresse `@francetravail.fr` confirmée par l'équipe beta.gouv
+   le 2026-10-14 (Julien Bouquillon).
 2. **Serveur du bot** : Tchap répartit les comptes sur plusieurs serveurs selon
    le domaine de l'email. Le vérifier avant tout :
    ```bash
@@ -103,13 +106,21 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
    en remplaçant `<date-expiration>` par la date d'inscription du bot + 11 mois
    + 60 jours.
 
-**Questions ouvertes**, à poser dans le salon Bots et Intégrations :
+**Questions ouvertes**, à poser à l'équipe Tchap dans le salon Bots et
+Intégrations (l'équipe beta.gouv n'a pas la réponse, 2026-10-14) :
 - la durée de vie du jeton et des sessions inactives. Tchap délègue son
   authentification au Matrix Authentication Service (`auth.agent.tchap.gouv.fr`),
   où elles se règlent côté serveur ; la connexion par mot de passe reste
   acceptée. Un bot qui alerte rarement pourrait voir sa session expirer ;
 - l'acceptation durable du `POST …/send/m.room.message` sans `txnId`, dont
-  dépendent les alertes AutoOps.
+  dépendent les alertes AutoOps. À tester soi-même dès que le compte existe,
+  dans un salon de test :
+  ```bash
+  curl -s -X POST "https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/<id du salon encodé>/send/m.room.message" \
+    -H "Authorization: Bearer <jeton>" -H 'Content-Type: application/json' -d '{"msgtype":"m.text","body":"test POST"}'
+  ```
+  Lancée deux fois, la commande doit renvoyer deux `event_id` différents et
+  poster deux messages.
 
 ## Brancher une règle
 
