@@ -9,10 +9,14 @@ dans [alertes-applicatives](alertes-applicatives.md). Hors alertes 6
 
 > ⚠️ **Mattermost est décommissionné le 1er novembre 2026.** Les Kibana Rules
 > migrent vers Tchap par les [Workflows Tchap](workflows/tchap/README.md). Les
-> alertes 6, 11 et 12 postent directement dans Mattermost, hors Kibana : elles
-> ne sont pas couvertes par cette migration et s'arrêteront avec Mattermost.
-> Leur voie vers Tchap reste à trouver (connecteur de l'émetteur vers Tchap, ou
-> passage par Elasticsearch comme les [alertes externes](alertes-externes.md)).
+> alertes émises hors Kibana suivent une autre voie
+> ([ADR-004](../../decisions/ADR-004-notifications-tchap-kibana-workflows.md#alertes-émises-hors-kibana-autoops)) :
+> - **11 et 12 (AutoOps)** postent directement dans Tchap, par un connecteur
+>   Webhook AutoOps en `POST` (cf. leur section). Elles ne passent surtout pas
+>   par Elasticsearch : elles doivent alerter quand le cluster va mal ;
+> - **6 (webhook Scalingo)** est retirée à la bascule : les règles X1 et X3 des
+>   [alertes externes](alertes-externes.md) couvrent les mêmes événements et
+>   notifient Tchap.
 
 **Création** : les alertes 1 à 5 et 7 à 10 sont versionnées dans
 [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console),
@@ -752,7 +756,8 @@ Pour chaque app :
 
 > **En cours de remplacement** : ces notifiers seront redirigés vers Kibana, où
 > les règles X1 et X3 prennent le relais, avec l'historique des événements, cf.
-> [alertes externes](alertes-externes.md).
+> [alertes externes](alertes-externes.md). Ils seront supprimés au plus tard le
+> 1er novembre 2026, avec Mattermost : X1 et X3 notifient Tchap.
 
 > **Alternative** : utiliser l'alerte 3 (absence de logs) comme proxy indirect du
 > crash — un crash Logstash se traduit immédiatement par un silence dans
@@ -1319,6 +1324,38 @@ version).
 }
 ```
 
+**Connecteur Tchap** (à créer avant le 1er novembre 2026, en plus du connecteur
+Mattermost jusqu'à cette date ; même filtre) : type **Webhook**, nom
+`Tchap o11y-production - Monitoring disque et santé Elasticsearch`, méthode `POST`, URL
+`https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/<id du salon o11y-production, encodé>/send/m.room.message`,
+en-têtes `Content-Type: application/json` et
+`Authorization: Bearer <jeton du bot Tchap>` (le bot des
+[Workflows Tchap](workflows/tchap/README.md) ; secret : ne pas le versionner).
+
+> **Pourquoi `POST` sans `txnId`** : AutoOps n'a ni variable unique par
+> événement ni variable dans l'URL, il ne peut pas produire le `txnId` de
+> l'envoi normalisé (`PUT …/{txnId}`). La route `POST` sans `txnId` est
+> ancienne, hors norme Matrix, mais acceptée par Synapse (le serveur de Tchap).
+> Concession : un envoi rejoué après une coupure réseau peut doubler le message.
+> Si une montée de version de Tchap supprimait cette route, les notifications
+> cesseraient : garder une notification AutoOps **par email** vers l'équipe en
+> secours.
+
+**Body du webhook Tchap** : `${DESCRIPTION}` est omis, identique à
+`${MESSAGE}` sur le premier événement réel (le rajouter si un événement montre
+une différence). Dans le HTML, les `<br />` de `${MESSAGE}` s'affichent comme des
+retours à la ligne.
+```json
+{
+  "msgtype": "m.text",
+  "body": "🚨 AutoOps — ${TITLE} (${SEVERITY}, ${STATUS}) — ${RESOURCE_NAME}\n${MESSAGE}\nNœuds : ${AFFECTED_NODES} · Index : ${AFFECTED_INDICES}\nDébut : ${START_TIME} · Fin : ${END_TIME}\n${EVENT_LINK}",
+  "format": "org.matrix.custom.html",
+  "formatted_body": "<p>🚨 <strong>AutoOps — ${TITLE}</strong> (${SEVERITY}, ${STATUS}) — ${RESOURCE_NAME}</p><p>${MESSAGE}</p><p>Nœuds : ${AFFECTED_NODES} · Index : ${AFFECTED_INDICES}<br />Début : <code>${START_TIME}</code> · Fin : <code>${END_TIME}</code></p><p>À vérifier : <a href=\"${EVENT_LINK}\">l'événement dans AutoOps</a></p><p>Runbook : <a href=\"https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-disque-elasticsearch.md\">Disque des nœuds Elasticsearch</a></p>"
+}
+```
+Tester avec **Run to test** : le message doit arriver dans le salon, variables
+non remplies.
+
 ---
 
 ## Alerte 12 — Saturation de l'indexation Elasticsearch (AutoOps)
@@ -1388,6 +1425,38 @@ variables `${…}` arrivent non remplies au test, c'est normal.
   ]
 }
 ```
+
+**Connecteur Tchap** (à créer avant le 1er novembre 2026, en plus du connecteur
+Mattermost jusqu'à cette date ; même filtre) : type **Webhook**, nom
+`Tchap o11y-production - Monitoring indexation Elasticsearch`, méthode `POST`, URL
+`https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/<id du salon o11y-production, encodé>/send/m.room.message`,
+en-têtes `Content-Type: application/json` et
+`Authorization: Bearer <jeton du bot Tchap>` (le bot des
+[Workflows Tchap](workflows/tchap/README.md) ; secret : ne pas le versionner).
+
+> **Pourquoi `POST` sans `txnId`** : AutoOps n'a ni variable unique par
+> événement ni variable dans l'URL, il ne peut pas produire le `txnId` de
+> l'envoi normalisé (`PUT …/{txnId}`). La route `POST` sans `txnId` est
+> ancienne, hors norme Matrix, mais acceptée par Synapse (le serveur de Tchap).
+> Concession : un envoi rejoué après une coupure réseau peut doubler le message.
+> Si une montée de version de Tchap supprimait cette route, les notifications
+> cesseraient : garder une notification AutoOps **par email** vers l'équipe en
+> secours.
+
+**Body du webhook Tchap** : `${DESCRIPTION}` est omis, identique à
+`${MESSAGE}` sur le premier événement réel (le rajouter si un événement montre
+une différence). Dans le HTML, les `<br />` de `${MESSAGE}` s'affichent comme des
+retours à la ligne.
+```json
+{
+  "msgtype": "m.text",
+  "body": "🚨 AutoOps — ${TITLE} (${SEVERITY}, ${STATUS}) — ${RESOURCE_NAME}\n${MESSAGE}\nNœuds : ${AFFECTED_NODES} · Index : ${AFFECTED_INDICES}\nDébut : ${START_TIME} · Fin : ${END_TIME}\n${EVENT_LINK}",
+  "format": "org.matrix.custom.html",
+  "formatted_body": "<p>🚨 <strong>AutoOps — ${TITLE}</strong> (${SEVERITY}, ${STATUS}) — ${RESOURCE_NAME}</p><p>${MESSAGE}</p><p>Nœuds : ${AFFECTED_NODES} · Index : ${AFFECTED_INDICES}<br />Début : <code>${START_TIME}</code> · Fin : <code>${END_TIME}</code></p><p>À vérifier : <a href=\"${EVENT_LINK}\">l'événement dans AutoOps</a>, puis la backpressure Logstash dans le dashboard <a href=\"https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d\">[Pass Emploi] Supervision Stack d'Observabilité</a></p><p>Runbook : <a href=\"https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch\">Backpressure Elasticsearch</a></p>"
+}
+```
+Tester avec **Run to test** : le message doit arriver dans le salon, variables
+non remplies.
 
 ---
 

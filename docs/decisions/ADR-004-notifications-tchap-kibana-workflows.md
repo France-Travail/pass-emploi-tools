@@ -57,6 +57,27 @@ appeler Tchap. Détail : [`supervision/workflows/tchap/`](../observabilite/super
   pipeline doit écrire une ligne `message` toute faite.
 * Un envoi en échec ne fait pas échouer la règle : il faut une règle dédiée.
 
+### Alertes émises hors Kibana (AutoOps)
+
+Les alertes 11 (disque des nœuds) et 12 (saturation de l'indexation) viennent
+d'**AutoOps**, l'outil de supervision officiel d'Elastic Cloud, qui tourne en
+dehors de notre cluster. Elles postent directement dans Tchap, par un connecteur
+Webhook AutoOps en `POST` sur la route sans `txnId` : AutoOps n'a ni variable
+unique par événement, ni variable dans l'URL, ni moyen d'appeler un Workflow.
+
+* Elles ne passent **pas** par Elasticsearch et les Workflows : elles doivent
+  alerter justement quand le cluster va mal (un disque plein bloque l'écriture,
+  le document d'alerte ne serait jamais indexé).
+* Concession acceptée : un envoi rejoué après une coupure réseau peut doubler
+  le message ; AutoOps envoie peu d'événements (ouverture et clôture).
+* Risque : la route `POST` sans `txnId` est hors norme Matrix. Si Tchap la
+  supprimait, ces notifications cesseraient ; une notification AutoOps par
+  email reste en secours.
+* L'alerte 6 (webhook Scalingo des apps Logstash) n'est pas migrée : les règles
+  X1 et X3 des alertes externes couvrent les mêmes événements et notifient Tchap.
+
+Configuration : [alertes de la stack, alertes 11 et 12](../observabilite/supervision/alertes-stack-observabilite.md#alerte-11--disque-des-nœuds-elasticsearch-autoops).
+
 ## Avantages et Inconvénients des Solutions
 
 ### Passerelle slack2tchap
