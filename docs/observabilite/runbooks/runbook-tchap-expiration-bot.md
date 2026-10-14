@@ -10,7 +10,11 @@
 
 Le bot qui poste toutes nos alertes dans Tchap est un compte Tchap ordinaire :
 Tchap n'a pas de compte de service. Comme tout compte, il doit être renouvelé
-([CGU Tchap](https://tchap.numerique.gouv.fr/cgu)) :
+selon les [CGU Tchap](https://tchap.numerique.gouv.fr/cgu). Durées relevées dans
+les CGU le **2026-10-14** : les CGU peuvent changer, les relire à chaque
+renouvellement (étape 1) et corriger ce tableau, la règle et le pipeline de
+[`5-rules-tchap-expiration-bot.console`](../supervision/rules/5-rules-tchap-expiration-bot.console)
+si elles ont bougé.
 
 | Moment | Ce qui se passe |
 |---|---|
@@ -25,8 +29,12 @@ d'expiration rangée dans Elasticsearch n'a pas été repoussée.
 
 1. Ouvrir la boîte fonctionnelle du bot (`bot-pass-emploi@francetravail.fr`)
    et cliquer le lien de renouvellement de Tchap. Le compte est prolongé de
-   13 mois.
-2. Ranger la nouvelle date d'expiration (date du jour + 13 mois) :
+   13 mois (CGU du 2026-10-14).
+2. Relire la section sur le renouvellement des [CGU Tchap](https://tchap.numerique.gouv.fr/cgu) :
+   si la durée de prolongation (13 mois) ou le préavis du lien (60 jours avant
+   l'expiration) ont changé, adapter la date ci-dessous, le préavis du pipeline
+   `tchap-expiration-bot` (`minusDays(60)`) et le tableau ci-dessus.
+3. Ranger la nouvelle date d'expiration (date du jour + 13 mois) :
    ```
    PUT tchap-expiration-bot/_doc/bot?refresh=true
    {
@@ -34,7 +42,7 @@ d'expiration rangée dans Elasticsearch n'a pas été repoussée.
      "expire_le": "2027-11-14"
    }
    ```
-3. Vérifier : la règle passe en *Recovered* à sa prochaine exécution (ou tout
+4. Vérifier : la règle passe en *Recovered* à sa prochaine exécution (ou tout
    de suite avec *Run rule* dans Kibana → Rules). Le jeton du bot ne change pas,
    rien d'autre à faire.
 

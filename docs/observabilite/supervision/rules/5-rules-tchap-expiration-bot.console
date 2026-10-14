@@ -2,8 +2,9 @@
 # ../../runbooks/runbook-tchap-expiration-bot.md.
 #
 # Le compte du bot est un compte Tchap ordinaire : il expire s'il n'est pas
-# renouvelé (CGU : lien envoyé par email 11 mois après l'inscription ou le
-# dernier renouvellement, expiration 60 jours plus tard). Matrix ne donne pas
+# renouvelé (CGU du 2026-10-14 : lien envoyé par email 11 mois après
+# l'inscription ou le dernier renouvellement, expiration 60 jours plus tard ; à
+# revérifier à chaque renouvellement, cf. runbook). Matrix ne donne pas
 # cette date au titulaire du compte, et un bot expiré ne peut plus notifier :
 # on range la date dans Elasticsearch et on alerte dans les 60 jours qui
 # précèdent, tant que le bot fonctionne encore.
