@@ -260,6 +260,9 @@ caché) par une règle.
   `message` est la ligne de log brute, que les Workflows de salon listeraient
   telle quelle. À trancher en début de lot : Workflow de salon limité à
   `kibana.alert.reason`, ou champ de notification dédié.
+- Les alertes qui postent dans Mattermost **hors Kibana** : 6 (webhook
+  Scalingo de Logstash), 11 et 12 (AutoOps). Elles s'arrêtent aussi le
+  1er novembre ; leur voie vers Tchap reste à trouver.
 - La bascule des notifiers Scalingo directs et de `security-alerts.yml`
   (étapes 6 à 8 de la mise en service de `alertes-externes.md`).
 

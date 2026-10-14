@@ -7,6 +7,13 @@ dans [alertes-applicatives](alertes-applicatives.md). Hors alertes 6
 (webhook Scalingo), 11 et 12 (AutoOps), ce sont des **Kibana Rules** qui notifient via Mattermost
 (`#o11y-production`, `#o11y-staging`).
 
+> ⚠️ **Mattermost est décommissionné le 1er novembre 2026.** Les Kibana Rules
+> migrent vers Tchap par les [Workflows Tchap](workflows/tchap/README.md). Les
+> alertes 6, 11 et 12 postent directement dans Mattermost, hors Kibana : elles
+> ne sont pas couvertes par cette migration et s'arrêteront avec Mattermost.
+> Leur voie vers Tchap reste à trouver (connecteur de l'émetteur vers Tchap, ou
+> passage par Elasticsearch comme les [alertes externes](alertes-externes.md)).
+
 **Création** : les alertes 1 à 5 et 7 à 10 sont versionnées dans
 [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console),
 qui reprend les tableaux et bodies de cette page, à rejouer dans Dev Tools.
@@ -1351,6 +1358,14 @@ de mesures (réglage personnalisé), avant de toucher aux seuils.
 entrant que l'alerte 11 (secret : ne pas la versionner), méthode `POST`, en-tête
 `Content-Type: application/json`. Tester avec **Run to test** avant **Save** : les
 variables `${…}` arrivent non remplies au test, c'est normal.
+
+> **Constaté sur le premier événement réel** (management queue, 2026-10-14) :
+> toutes les variables sont remplies. AutoOps envoie un message à l'ouverture
+> (`OPENED`, `${END_TIME}` vaut alors `N/A`) puis un à la clôture
+> (`RESOLVED`). Les heures sont en UTC (`+0000`). `${MESSAGE}` contient des
+> `<br />` que Mattermost affiche tels quels, et il était identique à
+> `${DESCRIPTION}` sur cet événement. L'émoji 🚨 et la couleur sont fixes,
+> quelle que soit la sévérité (`LOW` ici) : seul le texte la donne.
 
 **Body du webhook** :
 ```json
