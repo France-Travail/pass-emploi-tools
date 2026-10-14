@@ -137,7 +137,8 @@ du repo). `@timestamp` est l'heure d'envoi par le workflow.
    (bot, 4 salons, connecteur, Workflows) **avant** les règles : elles
    référencent les Workflows de salon.
 5. **Règles** : rejouer [`rules/3-rules-alertes-externes.console`](rules/3-rules-alertes-externes.console),
-   puis [`rules/4-rules-tchap.console`](rules/4-rules-tchap.console).
+   puis [`rules/4-rules-tchap.console`](rules/4-rules-tchap.console) et
+   [`rules/5-rules-tchap-expiration-bot.console`](rules/5-rules-tchap-expiration-bot.console).
 6. **Test sans Scalingo** :
    ```bash
    curl -X POST "https://alertes-scalingo:<mdp>@<endpoint-es>/logs-alertes-scalingo-staging-default/_doc" \

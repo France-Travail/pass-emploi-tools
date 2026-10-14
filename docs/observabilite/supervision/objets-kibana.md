@@ -42,6 +42,7 @@ les logs à examiner.
 | [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console) | règles 1 à 5 et 7 à 9, cf. [alertes de la stack](alertes-stack-observabilite.md) |
 | [`rules/3-rules-alertes-externes.console`](rules/3-rules-alertes-externes.console) | règles X1 à X5, cf. [alertes externes](alertes-externes.md) ; ingest pipelines dans [`pipelines/`](pipelines/), accès des émetteurs dans [`security/`](security/) |
 | [`rules/4-rules-tchap.console`](rules/4-rules-tchap.console) | règle « Tchap - Envoi en échec », sans action |
+| [`rules/5-rules-tchap-expiration-bot.console`](rules/5-rules-tchap-expiration-bot.console) | règle « Tchap - Expiration du compte bot » et l'index de sa date, cf. [runbook](../runbooks/runbook-tchap-expiration-bot.md) |
 | [`workflows/tchap/`](workflows/tchap/README.md) | connecteur Tchap et Workflows de notification (tchap-client, un par salon) |
 
 Les rétentions (ILM, templates) sont dans [`stockage/`](../stockage/README.md#import--ordre-et-portée).

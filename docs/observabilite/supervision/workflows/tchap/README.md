@@ -16,6 +16,7 @@ Rule ──action .workflows──► tchap-<salon> ──workflow.execute──
 | [`tchap-client.console`](tchap-client.console) | le seul Workflow qui parle à Matrix |
 | [`tchap-monitoring-production.console`](tchap-monitoring-production.console), [`tchap-monitoring-staging.console`](tchap-monitoring-staging.console), [`tchap-o11y-production.console`](tchap-o11y-production.console), [`tchap-o11y-staging.console`](tchap-o11y-staging.console) | un Workflow par salon |
 | [`../../rules/4-rules-tchap.console`](../../rules/4-rules-tchap.console) | règle « Tchap - Envoi en échec » |
+| [`../../rules/5-rules-tchap-expiration-bot.console`](../../rules/5-rules-tchap-expiration-bot.console) | règle « Tchap - Expiration du compte bot », date d'expiration rangée dans Elasticsearch |
 
 ## Le message
 
@@ -97,7 +98,10 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
    { "inputs": { "salon": "<id du salon>", "texte": "test", "html": "<b>test</b>" } }
    ```
 7. **Règles** : brancher les règles (ci-dessous), puis rejouer
-   [`4-rules-tchap.console`](../../rules/4-rules-tchap.console).
+   [`4-rules-tchap.console`](../../rules/4-rules-tchap.console) et
+   [`5-rules-tchap-expiration-bot.console`](../../rules/5-rules-tchap-expiration-bot.console),
+   en remplaçant `<date-expiration>` par la date d'inscription du bot + 11 mois
+   + 60 jours.
 
 **Questions ouvertes**, à poser dans le salon Bots et Intégrations :
 - la durée de vie du jeton et des sessions inactives. Tchap délègue son
@@ -145,6 +149,8 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
 - Les Workflows exigent la licence **Enterprise**.
 - Le compte du bot **expire s'il n'est pas renouvelé** chaque année (lien reçu
   par email 11 mois après l'inscription) : toutes les notifications s'arrêtent.
+  La règle « Tchap - Expiration du compte bot » prévient 60 jours avant ;
+  procédure : [runbook](../../../runbooks/runbook-tchap-expiration-bot.md).
 - Un envoi en échec laisse la règle d'origine à « ok » : seule la règle
   « Tchap - Envoi en échec » le montre. L'erreur Matrix se lit dans l'exécution
   du Workflow (*Workflows → Executions*).

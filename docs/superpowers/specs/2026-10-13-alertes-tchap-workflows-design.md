@@ -248,7 +248,7 @@ caché) par une règle.
 | Risque                                                          | Conséquence                                                                           | Parade                                             |
 |-----------------------------------------------------------------|---------------------------------------------------------------------------------------|----------------------------------------------------|
 | ~~Salons Tchap forcément chiffrés~~ | Levé le 2026-10-13 : pas d'obligation de chiffrer un salon de bot (équipe Tchap) | Salons non chiffrés, contenus conformes aux CGU |
-| Compte du bot non renouvelé (CGU : lien à 11 mois, expiration 60 jours après) | Toutes les notifications Tchap s'arrêtent | Boîte fonctionnelle lue par l'équipe, date dans l'agenda |
+| Compte du bot non renouvelé (CGU : lien à 11 mois, expiration 60 jours après) | Toutes les notifications Tchap s'arrêtent | Boîte fonctionnelle lue par l'équipe ; règle « Tchap - Expiration du compte bot » (Critical, J-60, rappel quotidien) et [runbook](../../observabilite/runbooks/runbook-tchap-expiration-bot.md) |
 | Expiration des sessions inactives (Matrix Authentication Service, réglage inconnu) | Tous les envois en `401` | Question posée à Tchap ; règle de supervision |
 | Workflows récents (9.x), API susceptible d'évoluer              | Fichiers `.console` à adapter à une montée de version                                 | Tests de l'étape 3 rejoués après montée de version |
 

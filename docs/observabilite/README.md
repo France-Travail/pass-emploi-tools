@@ -42,6 +42,7 @@ Principes et import des templates ES : [stockage/README.md](stockage/README.md).
 | [runbooks/runbook-logstash.md](runbooks/runbook-logstash.md) | Diagnostiquer une panne de la chaîne de logs (5 scénarios + playbook) |
 | [runbooks/runbook-ilm.md](runbooks/runbook-ilm.md) | Corriger un index qui n'applique pas sa rétention ILM (alerte 10) |
 | [runbooks/runbook-disque-elasticsearch.md](runbooks/runbook-disque-elasticsearch.md) | Libérer de la place quand un nœud Elasticsearch se remplit (alerte 11) |
+| [runbooks/runbook-tchap-expiration-bot.md](runbooks/runbook-tchap-expiration-bot.md) | Renouveler le compte du bot Tchap avant qu'il n'expire, ou le rétablir |
 | [post-mortems/](post-mortems/) | Récits d'incidents : [5xx Logstash (06/2026)](post-mortems/postmortem-2026-06-logstash-5xx.md), [blackout logs (07/2026)](post-mortems/postmortem-2026-07-blackout-logs.md), [agent UNENROLLED (09/2026)](post-mortems/postmortem-2026-09-unenrolled-elastic-agent.md) |
 
 ## Décisions d'architecture
