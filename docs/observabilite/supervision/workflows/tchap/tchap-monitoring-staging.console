@@ -1,9 +1,9 @@
 # Workflow du salon Tchap monitoring-staging : à choisir dans l'action
 # .workflows d'une règle pour y envoyer ses alertes. Spécification : README.md.
 #
-# ID du salon : à substituer à <id-salon-monitoring-staging> au moment de
-# l'import (Tchap → paramètres du salon → Avancé). Ne parle pas à Matrix :
-# construit le message et appelle tchap-client.
+# ID du salon : Tchap → paramètres du salon → Avancé. Ce n'est pas un secret :
+# le salon est privé, sur invitation. Ne parle pas à Matrix : construit le
+# message et appelle tchap-client.
 # La boucle doit être une étape « type: foreach » : une propriété foreach:
 # posée sur l'étape workflow.execute est ignorée sans erreur.
 # Mise à jour : PUT kbn:/api/workflows/workflow/tchap-monitoring-staging avec {"yaml": …}.
@@ -17,7 +17,7 @@ enabled: true
 triggers:
   - type: alert
 consts:
-  salon: "<id-salon-monitoring-staging>"
+  salon: "!ZfOFaCZYUWPLIxrYsx:agent.dinum.tchap.gouv.fr"
 steps:
   - name: chaque-alerte
     type: foreach

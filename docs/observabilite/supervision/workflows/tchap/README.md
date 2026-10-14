@@ -109,7 +109,7 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
    reporter dans le document d'expiration (étape 7).
 5. **Kibana**, dans Dev Tools : rejouer `connecteur-tchap.console` en
    remplaçant `<jeton-du-bot>`, puis `tchap-client.console`, puis les 4
-   `tchap-<salon>.console` en remplaçant `<id-salon-…>`.
+   `tchap-<salon>.console` tels quels (ils portent l'ID de leur salon).
 6. **Test** : poster dans chaque salon depuis Dev Tools.
    ```
    POST kbn:/api/workflows/workflow/tchap-client/run
@@ -164,7 +164,8 @@ Intégrations (l'équipe beta.gouv n'a pas la réponse, 2026-10-14) :
 1. Créer le salon dans Tchap, y inviter le bot, le faire rejoindre (`curl …/join`
    de la mise en service).
 2. Copier un `tchap-<salon>.console` en remplaçant le nom du salon partout,
-   l'importer en substituant `<id-salon-…>`.
+   et son ID (Tchap → paramètres du salon → Avancé) dans `consts.salon`, puis
+   l'importer.
 
 ## Pièges
 

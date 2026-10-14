@@ -1327,7 +1327,8 @@ version).
 **Connecteur Tchap** (à créer avant le 1er novembre 2026, en plus du connecteur
 Mattermost jusqu'à cette date ; même filtre) : type **Webhook**, nom
 `Tchap o11y-production - Monitoring disque et santé Elasticsearch`, méthode `POST`, URL
-`https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/<id du salon o11y-production, encodé>/send/m.room.message`,
+`https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/%21GcUrxqTFizBjxwmsBO%3Aagent.dinum.tchap.gouv.fr/send/m.room.message`
+(ID du salon `o11y-production`, encodé),
 en-têtes `Content-Type: application/json` et
 `Authorization: Bearer <jeton du bot Tchap>` (le bot des
 [Workflows Tchap](workflows/tchap/README.md) ; secret : ne pas le versionner).
@@ -1429,7 +1430,8 @@ variables `${…}` arrivent non remplies au test, c'est normal.
 **Connecteur Tchap** (à créer avant le 1er novembre 2026, en plus du connecteur
 Mattermost jusqu'à cette date ; même filtre) : type **Webhook**, nom
 `Tchap o11y-production - Monitoring indexation Elasticsearch`, méthode `POST`, URL
-`https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/<id du salon o11y-production, encodé>/send/m.room.message`,
+`https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/%21GcUrxqTFizBjxwmsBO%3Aagent.dinum.tchap.gouv.fr/send/m.room.message`
+(ID du salon `o11y-production`, encodé),
 en-têtes `Content-Type: application/json` et
 `Authorization: Bearer <jeton du bot Tchap>` (le bot des
 [Workflows Tchap](workflows/tchap/README.md) ; secret : ne pas le versionner).
