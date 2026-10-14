@@ -20,10 +20,14 @@ URL fixe : il ne peut pas produire ce `txnId`.
 * Pas de brique intermédiaire à héberger et à maintenir chez nous.
 * La règle choisit son salon, comme elle choisissait son canal Mattermost.
 * Migrer les autres règles avant le 1er novembre sans écrire de code par règle.
+* Suivre la [documentation technique Tchap sur les bots](https://aide.tchap.beta.gouv.fr/fr/article/documentation-technique-bot-et-integrations-tchap-1z3dfx/) :
+  le bot est un compte utilisateur ordinaire, et il faut réutiliser son jeton
+  plutôt que se reconnecter à chaque appel.
 
 ## Solutions Étudiées
 
 * Passerelle slack2tchap (beta.gouv), hébergée chez nous
+* Bot webhook `numerique-gouv/tchap-bot-webhook`, cité par la documentation Tchap, hébergé chez nous
 * Service n8n mutualisé de l'incubateur beta.gouv
 * Connecteur Webhook Kibana en `POST` sur l'ancienne route sans `txnId`
 * Watcher Elasticsearch (`PUT` avec `{{ctx.id}}`)
@@ -56,6 +60,8 @@ appeler Tchap. Détail : [`supervision/workflows/tchap/`](../observabilite/super
 * Les champs des documents n'arrivent pas appariés au Workflow : chaque
   pipeline doit écrire une ligne `message` toute faite.
 * Un envoi en échec ne fait pas échouer la règle : il faut une règle dédiée.
+* Le compte du bot doit être renouvelé chaque année (CGU Tchap), depuis une
+  boîte fonctionnelle de l'équipe, sinon toutes les notifications s'arrêtent.
 
 ### Alertes émises hors Kibana (AutoOps)
 
@@ -90,6 +96,17 @@ salon Tchap, avec les identifiants du bot chiffrés dans l'URL du webhook.
 * Mauvais, car c'est une application à héberger, mettre à jour et superviser.
 * Mauvais, car elle ne protège pas mieux des doublons : un nouveau `txnId` à
   chaque requête reçue.
+* Mauvais, car en mode stateless elle se reconnecte à chaque alerte, ce que la
+  documentation Tchap déconseille (une session créée par appel).
+
+### Bot webhook `numerique-gouv/tchap-bot-webhook`
+
+[`numerique-gouv/tchap-bot-webhook`](https://github.com/numerique-gouv/tchap-bot-webhook) :
+application Node (matrix-bot-sdk) avec une base PostgreSQL, qui reçoit des
+webhooks de monitoring et les poste dans un salon non chiffré.
+
+* Bien, car citée par la documentation Tchap, envoi conforme (`PUT` avec `txnId`).
+* Mauvais, car une application et une base à héberger et à maintenir.
 
 ### Service n8n mutualisé beta.gouv
 

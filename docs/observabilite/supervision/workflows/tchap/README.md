@@ -53,26 +53,59 @@ et ne poste rien.
 
 ## Mise en service
 
-1. **Tchap** : créer le compte bot sur une boîte fonctionnelle de l'équipe, puis
-   les salons `monitoring-production`, `monitoring-staging`, `o11y-production`
-   et `o11y-staging`, sans chiffrement si Tchap le permet. Y inviter le bot,
-   puis récupérer son jeton et le faire rejoindre chaque salon :
+Référence : la [documentation technique Tchap sur les bots et intégrations](https://aide.tchap.beta.gouv.fr/fr/article/documentation-technique-bot-et-integrations-tchap-1z3dfx/),
+et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/room/#BotsetIntgrationsTchapU2tHdMEN80D:agent.dinum.tchap.gouv.fr).
+
+1. **Compte bot** : Tchap n'a pas de compte de service, le bot est un compte
+   utilisateur ordinaire, créé à la main dans Tchap web. Email recommandé par
+   Tchap : préfixé par `bot-`, ici une **boîte fonctionnelle lue par l'équipe**
+   (`bot-pass-emploi@francetravail.fr`, par exemple), parce que le compte doit
+   être **renouvelé chaque année** : 11 mois après l'inscription, Tchap envoie
+   un lien de renouvellement à cette adresse ; sans clic, le compte expire
+   60 jours plus tard et **toutes** les notifications Tchap s'arrêtent.
+   Noter la date de renouvellement dans l'agenda de l'équipe.
+2. **Serveur du bot** : Tchap répartit les comptes sur plusieurs serveurs selon
+   le domaine de l'email. Le vérifier avant tout :
+   ```bash
+   curl -s "https://matrix.agent.tchap.gouv.fr/_matrix/identity/api/v1/info?medium=email&address=bot-pass-emploi@francetravail.fr"
+   # {"hs": "agent.tchap.gouv.fr"} → https://matrix.agent.tchap.gouv.fr
+   ```
+   `francetravail.fr` donne `agent.tchap.gouv.fr`, l'URL utilisée dans cette
+   doc. Pour un autre domaine (`beta.gouv.fr` → `agent.dinum.tchap.gouv.fr`),
+   remplacer l'URL partout : connecteur, `curl` ci-dessous, connecteurs AutoOps
+   des [alertes 11 et 12](../../alertes-stack-observabilite.md#alerte-11--disque-des-nœuds-elasticsearch-autoops).
+3. **Salons** : `monitoring-production`, `monitoring-staging`, `o11y-production`
+   et `o11y-staging`, **non chiffrés** (Tchap n'impose pas le chiffrement d'un
+   salon de bot, réponse de l'équipe Tchap du 2026-10-13 ; les messages
+   respectent les [CGU](https://tchap.numerique.gouv.fr/cgu) : pas de donnée
+   sensible ni classifiée). Y inviter le bot.
+4. **Jeton** : se connecter **une seule fois** et réutiliser le jeton.
+   Tchap le recommande : se reconnecter à chaque appel crée des dizaines de
+   sessions. Puis faire rejoindre chaque salon au bot :
    ```bash
    curl -s -X POST https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/login -H 'Content-Type: application/json' \
      -d '{"type":"m.login.password","identifier":{"type":"m.id.user","user":"<identifiant du bot>"},"password":"<mot de passe>"}'
    curl -s -X POST "https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/<id du salon encodé>/join" -H "Authorization: Bearer <jeton>"
    ```
    Ranger le jeton dans le coffre de l'équipe.
-2. **Kibana**, dans Dev Tools : rejouer `connecteur-tchap.console` en
+5. **Kibana**, dans Dev Tools : rejouer `connecteur-tchap.console` en
    remplaçant `<jeton-du-bot>`, puis `tchap-client.console`, puis les 4
    `tchap-<salon>.console` en remplaçant `<id-salon-…>`.
-3. **Test** : poster dans chaque salon depuis Dev Tools.
+6. **Test** : poster dans chaque salon depuis Dev Tools.
    ```
    POST kbn:/api/workflows/workflow/tchap-client/run
    { "inputs": { "salon": "<id du salon>", "texte": "test", "html": "<b>test</b>" } }
    ```
-4. **Règles** : brancher les règles (ci-dessous), puis rejouer
+7. **Règles** : brancher les règles (ci-dessous), puis rejouer
    [`4-rules-tchap.console`](../../rules/4-rules-tchap.console).
+
+**Questions ouvertes**, à poser dans le salon Bots et Intégrations :
+- la durée de vie du jeton et des sessions inactives. Tchap délègue son
+  authentification au Matrix Authentication Service (`auth.agent.tchap.gouv.fr`),
+  où elles se règlent côté serveur ; la connexion par mot de passe reste
+  acceptée. Un bot qui alerte rarement pourrait voir sa session expirer ;
+- l'acceptation durable du `POST …/send/m.room.message` sans `txnId`, dont
+  dépendent les alertes AutoOps.
 
 ## Brancher une règle
 
@@ -110,6 +143,8 @@ et ne poste rien.
 - `kibana.alert.url` est déjà absolue (Kibana a un `server.publicBaseUrl`) : ne
   pas la préfixer.
 - Les Workflows exigent la licence **Enterprise**.
+- Le compte du bot **expire s'il n'est pas renouvelé** chaque année (lien reçu
+  par email 11 mois après l'inscription) : toutes les notifications s'arrêtent.
 - Un envoi en échec laisse la règle d'origine à « ok » : seule la règle
   « Tchap - Envoi en échec » le montre. L'erreur Matrix se lit dans l'exécution
   du Workflow (*Workflows → Executions*).

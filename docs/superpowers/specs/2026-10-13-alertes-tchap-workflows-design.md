@@ -247,8 +247,9 @@ caché) par une règle.
 
 | Risque                                                          | Conséquence                                                                           | Parade                                             |
 |-----------------------------------------------------------------|---------------------------------------------------------------------------------------|----------------------------------------------------|
-| Expiration du jeton ou désactivation du bot par Tchap (inconnu) | Tous les envois en `401`                                                              | Règle de supervision, consultée par la routine     |
-| Salons Tchap forcément chiffrés                                 | Messages en clair dans un salon chiffré : acceptés par Synapse, affichage non vérifié | Vérifier l'affichage à l'étape 1                   |
+| ~~Salons Tchap forcément chiffrés~~ | Levé le 2026-10-13 : pas d'obligation de chiffrer un salon de bot (équipe Tchap) | Salons non chiffrés, contenus conformes aux CGU |
+| Compte du bot non renouvelé (CGU : lien à 11 mois, expiration 60 jours après) | Toutes les notifications Tchap s'arrêtent | Boîte fonctionnelle lue par l'équipe, date dans l'agenda |
+| Expiration des sessions inactives (Matrix Authentication Service, réglage inconnu) | Tous les envois en `401` | Question posée à Tchap ; règle de supervision |
 | Workflows récents (9.x), API susceptible d'évoluer              | Fichiers `.console` à adapter à une montée de version                                 | Tests de l'étape 3 rejoués après montée de version |
 
 ## 8. Hors périmètre
