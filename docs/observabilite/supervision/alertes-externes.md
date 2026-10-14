@@ -41,6 +41,7 @@ transformation en champs ECS se fait dans un **ingest pipeline**.
 | [`pipelines/ingest-alertes-github-default.console`](pipelines/ingest-alertes-github-default.console) | transformation des alertes Dependabot |
 | [`security/acces-alertes-externes.console`](security/acces-alertes-externes.console) | rôle et utilisateur Scalingo, API Key GitHub |
 | [`rules/3-rules-alertes-externes.console`](rules/3-rules-alertes-externes.console) | règles X1 à X5 |
+| [`discovers/alertes-externes/`](discovers/alertes-externes/) | sessions Discover des liens « À vérifier » de X1 à X5 (cf. [objets Kibana](objets-kibana.md#sessions-discover)) |
 | [`workflows/tchap/`](workflows/tchap/README.md) | notifications Tchap : connecteur, tchap-client, Workflows de salon |
 
 ## Récapitulatif des règles
@@ -133,13 +134,17 @@ du repo). `@timestamp` est l'heure d'envoi par le workflow.
 3. **Accès** : rejouer [`security/acces-alertes-externes.console`](security/acces-alertes-externes.console)
    en remplaçant `<mot-de-passe-généré>` par un mot de passe alphanumérique,
    rangé dans le coffre de l'équipe. Copier le champ `encoded` de l'API Key.
-4. **Tchap** : suivre la [mise en service des Workflows Tchap](workflows/tchap/README.md#mise-en-service)
+4. **Sessions Discover** : importer les 4 `.ndjson` de
+   [`discovers/alertes-externes/`](discovers/alertes-externes/) (cf.
+   [importer](objets-kibana.md#importer)), **avant** les règles : leurs liens
+   « À vérifier » pointent vers ces sessions par leur id.
+5. **Tchap** : suivre la [mise en service des Workflows Tchap](workflows/tchap/README.md#mise-en-service)
    (bot, 4 salons, connecteur, Workflows) **avant** les règles : elles
    référencent les Workflows de salon.
-5. **Règles** : rejouer [`rules/3-rules-alertes-externes.console`](rules/3-rules-alertes-externes.console),
+6. **Règles** : rejouer [`rules/3-rules-alertes-externes.console`](rules/3-rules-alertes-externes.console),
    puis [`rules/4-rules-tchap.console`](rules/4-rules-tchap.console) et
    [`rules/5-rules-tchap-expiration-bot.console`](rules/5-rules-tchap-expiration-bot.console).
-6. **Test sans Scalingo** :
+7. **Test sans Scalingo** :
    ```bash
    curl -X POST "https://alertes-scalingo:<mdp>@<endpoint-es>/logs-alertes-scalingo-staging-default/_doc" \
      -H 'Content-Type: application/json' \
@@ -149,18 +154,18 @@ du repo). `@timestamp` est l'heure d'envoi par le workflow.
    Sous 5 min, X3 poste dans `#o11y-staging` et dans le salon Tchap
    `monitoring-staging`. L'endpoint Elasticsearch est
    indiqué sur la page du déploiement Elastic Cloud.
-7. **Scalingo** : sur une app non critique d'abord (`pass-emploi-logstash-perf`),
+8. **Scalingo** : sur une app non critique d'abord (`pass-emploi-logstash-perf`),
    **Settings → Notifications → Add notification**, type **Webhook**, URL
    `https://alertes-scalingo:<mdp>@<endpoint-es>/logs-alertes-scalingo-<env>-default/_doc`
    (`<env>` = suffixe de l'app),
    événements `app_crashed_repeated`, `app_restarted`, `app_stopped` et les
    alertes de métriques. Redémarrer l'app et vérifier X3. Puis étendre aux apps de
    prod.
-8. **GitHub Actions** : ajouter à `security-alerts.yml` un envoi par CVE vers
+9. **GitHub Actions** : ajouter à `security-alerts.yml` un envoi par CVE vers
    `logs-alertes-github-default` (header `Authorization: ApiKey <encoded>`,
    secret `ELASTIC_ALERTES_GITHUB_API_KEY`), en gardant l'envoi Mattermost
    actuel pendant la période de test. *Pas encore fait.*
-9. **Bascule** : une fois X1 à X4 constatés en réel, supprimer les notifiers
+10. **Bascule** : une fois X1 à X4 constatés en réel, supprimer les notifiers
    Scalingo vers Mattermost et l'envoi direct de `security-alerts.yml`, puis
    mettre à jour l'[alerte 6](alertes-stack-observabilite.md#alerte-6--restart-du-conteneur-logstash-scalingo-webhook).
    Le 1er novembre 2026, retirer les actions Mattermost de X1 à X5.

@@ -79,7 +79,7 @@ POST kbn:/api/alerting/rule/1b97f0e0-870f-498d-8dd7-1c2f9aeba665
       "fields": [
         { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
         { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "À vérifier", "value": "Les logs de l'app dans Kibana au moment de l'événement, puis son onglet Activity dans le dashboard Scalingo" },
+        { "title": "À vérifier", "value": "Le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglet « Crashs, redémarrages et arrêts » : l'événement, sa raison et son auteur ; puis les logs de l'app au même moment et son onglet Activity dans le dashboard Scalingo" },
         { "title": "Documents", "value": "[Ouvrir dans Discover]({{context.link}})" }
       ]
     }
@@ -172,7 +172,7 @@ POST kbn:/api/alerting/rule/c16f2ab5-6103-4f69-bdc3-b4a10a38deb0
       "fields": [
         { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
         { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "À vérifier", "value": "Les métriques de l'app dans le dashboard Scalingo (onglet Metrics) et ses derniers déploiements" },
+        { "title": "À vérifier", "value": "Le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglet « Seuils de ressource » : la métrique, sa valeur et son seuil par app ; puis les métriques de l'app dans le dashboard Scalingo (onglet Metrics) et ses derniers déploiements" },
         { "title": "Documents", "value": "[Ouvrir dans Discover]({{context.link}})" }
       ]
     }
@@ -265,7 +265,7 @@ POST kbn:/api/alerting/rule/07c9c5d7-e8fe-4964-ac8d-684b1c4c39b8
       "fields": [
         { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
         { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "À vérifier", "value": "Les logs de l'app dans Kibana au moment de l'événement, puis son onglet Activity dans le dashboard Scalingo" },
+        { "title": "À vérifier", "value": "Le Discover [[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/33bed466-9d68-4789-a723-aeea34e6cd93), onglets « Crashs, redémarrages et arrêts » et « Seuils de ressource » ; puis les logs de l'app au même moment et son onglet Activity dans le dashboard Scalingo" },
         { "title": "Documents", "value": "[Ouvrir dans Discover]({{context.link}})" }
       ]
     }
@@ -359,7 +359,7 @@ POST kbn:/api/alerting/rule/67846c2c-45d1-45be-89f5-ce9a340240a0
       "fields": [
         { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
         { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "À vérifier", "value": "Les alertes Dependabot de chaque repo cité (lien Voir), à traiter selon leur sévérité" },
+        { "title": "À vérifier", "value": "Le Discover [[Pass Emploi] Alertes externes - CVE Dependabot](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/ece3e409-0679-4bcb-a675-ae7dfb092c19), liste les CVE ouvertes par repo avec leur score ; puis l'alerte Dependabot de chacune (lien Voir), à traiter selon sa sévérité" },
         { "title": "Documents", "value": "[Ouvrir dans Discover]({{context.link}})" }
       ]
     }
@@ -456,7 +456,7 @@ POST kbn:/api/alerting/rule/ae398f47-0ed9-427e-a090-cf774acc7d16
       "fields": [
         { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
         { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "À vérifier", "value": "Le payload d'origine (document.source) dans le failure store, puis adapter le pipeline alertes-externes et le rejouer en _simulate" },
+        { "title": "À vérifier", "value": "Le Discover [[Pass Emploi] Alertes externes - Rejets (failure store)](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/861dbdf4-5086-498b-aff6-4d9d68ceb1f4), `error.type` et `error.message` donnent le motif du rejet ; puis le payload d'origine (`document.source`) pour adapter le pipeline et le rejouer en _simulate" },
         { "title": "Documents", "value": "[Ouvrir dans Discover]({{context.link}})" }
       ]
     }
