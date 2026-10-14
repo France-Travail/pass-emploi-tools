@@ -61,12 +61,23 @@ appeler Tchap. Détail : [`supervision/workflows/tchap/`](../observabilite/super
 
 ### Passerelle slack2tchap
 
+[`betagouv/slack2tchap`](https://github.com/betagouv/slack2tchap) : passerelle
+Python qui reçoit des webhooks au format Slack/Mattermost et les poste dans un
+salon Tchap, avec les identifiants du bot chiffrés dans l'URL du webhook.
+
 * Bien, car elle accepte le format Slack actuel des messages.
 * Mauvais, car c'est une application à héberger, mettre à jour et superviser.
 * Mauvais, car elle ne protège pas mieux des doublons : un nouveau `txnId` à
   chaque requête reçue.
 
 ### Service n8n mutualisé beta.gouv
+
+Instance n8n hébergée par l'incubateur (`n8n.incubateur.net`), avec une seule
+URL de webhook pour toutes les équipes. Chaque équipe déclare son salon et ses
+sources par une PR sur
+[`betagouv/n8n-configs/tchap-webhooks.yaml`](https://github.com/betagouv/n8n-configs/blob/main/tchap-webhooks.yaml)
+(dépôt non public : accès réservé aux membres de l'organisation `betagouv`),
+puis invite le bot `tchap-bot@beta.gouv.fr` dans le salon.
 
 * Bien, car rien à héberger.
 * Mauvais, car un service tiers, sans engagement, et un routage par PR sur un
@@ -101,3 +112,5 @@ appeler Tchap. Détail : [`supervision/workflows/tchap/`](../observabilite/super
 
 * Spécification : [`docs/superpowers/specs/2026-10-13-alertes-tchap-workflows-design.md`](../superpowers/specs/2026-10-13-alertes-tchap-workflows-design.md)
 * [Alertes externes](../observabilite/supervision/alertes-externes.md)
+* [slack2tchap](https://github.com/betagouv/slack2tchap)
+* [Configuration n8n des webhooks Tchap de beta.gouv](https://github.com/betagouv/n8n-configs/blob/main/tchap-webhooks.yaml) (dépôt non public)
