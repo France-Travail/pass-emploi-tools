@@ -79,13 +79,34 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
    remplacer l'URL partout : connecteur, `curl` ci-dessous, connecteurs AutoOps
    des [alertes 11 et 12](../../alertes-stack-observabilite.md#alerte-11--disque-des-nœuds-elasticsearch-autoops).
 3. **Salons** : `monitoring-production`, `monitoring-staging`, `o11y-production`
-   et `o11y-staging`, **non chiffrés** (Tchap n'impose pas le chiffrement d'un
-   salon de bot, réponse de l'équipe Tchap du 2026-10-13 ; les messages
-   respectent les [CGU](https://tchap.numerique.gouv.fr/cgu) : pas de donnée
-   sensible ni classifiée). Y inviter le bot.
+   et `o11y-staging`, **privés et non chiffrés**.
+   - **Non chiffrés** : le bot ne sait pas chiffrer. Tchap n'impose pas le
+     chiffrement d'un salon de bot (équipe beta.gouv, Julien Bouquillon,
+     2026-10-13), les messages respectent les
+     [CGU](https://tchap.numerique.gouv.fr/cgu) : pas de donnée sensible ni
+     classifiée.
+   - **Privés**, sur invitation, pas en forum public : les messages listent nos
+     CVE encore ouvertes, nos apps et nos erreurs d'infrastructure, à ne pas
+     exposer à tous les agents de Tchap.
+
+   Si l'interface de Tchap ne propose pas de salon privé sans chiffrement,
+   faire d'abord l'étape 4 (jeton), puis laisser le bot créer chaque salon par
+   l'API et y inviter l'équipe :
+   ```bash
+   curl -s -X POST https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/createRoom \
+     -H "Authorization: Bearer <jeton>" -H 'Content-Type: application/json' \
+     -d '{"name":"o11y-production","preset":"private_chat","visibility":"private"}'
+   ```
+   Sans état de chiffrement à la création, le salon reste en clair. Vérifier
+   dans Tchap qu'il apparaît bien non chiffré : si Tchap impose le chiffrement,
+   le bot poste quand même en clair (Synapse l'accepte), avec un avertissement
+   « non chiffré » probable sur chaque message.
+
+   Créé dans l'interface, inviter le bot dans le salon ; créé par l'API, le bot
+   en est déjà membre.
 4. **Jeton** : se connecter **une seule fois** et réutiliser le jeton.
    Tchap le recommande : se reconnecter à chaque appel crée des dizaines de
-   sessions. Puis faire rejoindre chaque salon au bot :
+   sessions. Puis faire rejoindre au bot chaque salon où il a été invité :
    ```bash
    curl -s -X POST https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/login -H 'Content-Type: application/json' \
      -d '{"type":"m.login.password","identifier":{"type":"m.id.thirdparty","medium":"email","address":"bot-pass-emploi@francetravail.fr"},"password":"<mot de passe>"}'
