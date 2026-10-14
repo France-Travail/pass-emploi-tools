@@ -34,11 +34,13 @@ d'expiration rangée dans Elasticsearch n'a pas été repoussée.
    si la durée de prolongation (13 mois) ou le préavis du lien (60 jours avant
    l'expiration) ont changé, adapter la date ci-dessous, le préavis du pipeline
    `tchap-expiration-bot` (`minusDays(60)`) et le tableau ci-dessus.
-3. Ranger la nouvelle date d'expiration (date du jour + 13 mois) :
+3. Ranger la nouvelle date d'expiration (date du jour + 13 mois), avec
+   l'identifiant Matrix du bot déjà présent dans le document
+   (`GET tchap-expiration-bot/_doc/bot`) :
    ```
    PUT tchap-expiration-bot/_doc/bot?refresh=true
    {
-     "compte": "@bot-pass-emploi:agent.tchap.gouv.fr",
+     "compte": "<identifiant du bot, inchangé>",
      "expire_le": "2027-11-14"
    }
    ```

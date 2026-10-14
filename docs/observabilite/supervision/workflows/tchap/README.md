@@ -88,10 +88,13 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
    sessions. Puis faire rejoindre chaque salon au bot :
    ```bash
    curl -s -X POST https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/login -H 'Content-Type: application/json' \
-     -d '{"type":"m.login.password","identifier":{"type":"m.id.user","user":"<identifiant du bot>"},"password":"<mot de passe>"}'
+     -d '{"type":"m.login.password","identifier":{"type":"m.id.thirdparty","medium":"email","address":"bot-pass-emploi@francetravail.fr"},"password":"<mot de passe>"}'
    curl -s -X POST "https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/<id du salon encodé>/join" -H "Authorization: Bearer <jeton>"
    ```
-   Ranger le jeton dans le coffre de l'équipe.
+   La connexion se fait par l'email du bot. La réponse donne le jeton
+   (`access_token`), à ranger dans le coffre de l'équipe, et l'identifiant
+   Matrix du bot (`user_id`, attribué par Tchap à partir de l'email), à
+   reporter dans le document d'expiration (étape 7).
 5. **Kibana**, dans Dev Tools : rejouer `connecteur-tchap.console` en
    remplaçant `<jeton-du-bot>`, puis `tchap-client.console`, puis les 4
    `tchap-<salon>.console` en remplaçant `<id-salon-…>`.
@@ -103,8 +106,8 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
 7. **Règles** : brancher les règles (ci-dessous), puis rejouer
    [`4-rules-tchap.console`](../../rules/4-rules-tchap.console) et
    [`5-rules-tchap-expiration-bot.console`](../../rules/5-rules-tchap-expiration-bot.console),
-   en remplaçant `<date-expiration>` par la date d'inscription du bot + 11 mois
-   + 60 jours.
+   en remplaçant `<identifiant-du-bot>` par le `user_id` de l'étape 4 et
+   `<date-expiration>` par la date d'inscription du bot + 11 mois + 60 jours.
 
 **Questions ouvertes**, à poser à l'équipe Tchap dans le salon Bots et
 Intégrations (l'équipe beta.gouv n'a pas la réponse, 2026-10-14) :

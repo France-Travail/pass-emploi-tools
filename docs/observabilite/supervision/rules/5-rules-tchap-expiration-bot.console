@@ -46,11 +46,12 @@ PUT tchap-expiration-bot
 }
 
 # Date d'expiration du compte : à la création, date d'inscription + 11 mois +
-# 60 jours ; après chaque renouvellement, la nouvelle date affichée par Tchap
-# (cf. runbook). Un seul document, toujours l'id « bot ».
+# 60 jours ; après chaque renouvellement, date du renouvellement + 13 mois
+# (cf. runbook). <identifiant-du-bot> : le user_id renvoyé par le login du bot.
+# Un seul document, toujours l'id « bot ».
 PUT tchap-expiration-bot/_doc/bot?refresh=true
 {
-  "compte": "@bot-pass-emploi:agent.tchap.gouv.fr",
+  "compte": "<identifiant-du-bot>",
   "expire_le": "<date-expiration>"
 }
 
