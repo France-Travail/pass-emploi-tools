@@ -95,18 +95,28 @@ POST kbn:/api/alerting/rule/1b97f0e0-870f-498d-8dd7-1c2f9aeba665
       "color": "#d00000",
       "text": "{{#context.hits}}• `{{_source.service.name}}` : `{{_source.event.action}}`{{#_source.event.reason}} ({{_source.event.reason}}){{/_source.event.reason}}{{#_source.labels.scope}} sur `{{_source.labels.scope}}`{{/_source.labels.scope}}{{#_source.user.name}}, par {{_source.user.name}}{{/_source.user.name}}\n{{/context.hits}}",
       "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "À vérifier", "value": "1. Le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglet « Crashs, redémarrages et arrêts » : l'événement, sa raison et son auteur" },
-        { "title": "", "value": "2. L'impact au même moment : pour `pass-emploi-api`, le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73) et le dashboard [[Pass Emploi] SLO de PROD](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14) ; pour une app Logstash, les Discover [[Pass Emploi] Logs de Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/97e2d85f-7bd2-49df-86b3-2ffc290bbe69) et [[Pass Emploi] Logs de PROD - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17) (logs non indexés) et le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)" },
-        { "title": "", "value": "3. L'onglet Activity de l'app dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)" },
-        { "title": "Dashboards", "value": "[[Pass Emploi] SLO de PROD](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)" },
-        { "title": "", "value": "[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)" },
-        { "title": "", "value": "[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)" },
-        { "title": "Discover sessions", "value": "[[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87)" },
-        { "title": "", "value": "[[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)" },
-        { "title": "", "value": "[[Pass Emploi] Logs de Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/97e2d85f-7bd2-49df-86b3-2ffc290bbe69)" },
-        { "title": "", "value": "[[Pass Emploi] Logs de PROD - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17)" }
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglet « Crashs, redémarrages et arrêts » : l'événement, sa raison et son auteur\n2. L'impact au même moment : pour `pass-emploi-api`, le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73) et le dashboard [[Pass Emploi] SLO de PROD](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14) ; pour une app Logstash, les Discover [[Pass Emploi] Logs de Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/97e2d85f-7bd2-49df-86b3-2ffc290bbe69) et [[Pass Emploi] Logs de PROD - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17) (logs non indexés) et le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n3. L'onglet Activity de l'app dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Pass Emploi] SLO de PROD](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87)\n[[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n[[Pass Emploi] Logs de Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/97e2d85f-7bd2-49df-86b3-2ffc290bbe69)\n[[Pass Emploi] Logs de PROD - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17)"
+        }
       ]
     }
   ]
@@ -209,18 +219,28 @@ POST kbn:/api/alerting/rule/c16f2ab5-6103-4f69-bdc3-b4a10a38deb0
       "color": "#ffa500",
       "text": "{{#context.hits}}• `{{_source.service.name}}` : {{_source.labels.metric}} à {{_source.labels.value_text}} (seuil {{_source.labels.limit_text}}){{#_source.service.node.name}} sur `{{_source.service.node.name}}`{{/_source.service.node.name}}\n{{/context.hits}}",
       "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "À vérifier", "value": "1. Le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglet « Seuils de ressource » : la métrique, sa valeur et son seuil par app" },
-        { "title": "", "value": "2. L'impact au même moment : pour `pass-emploi-api`, le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73) et le dashboard [[Pass Emploi] SLO de PROD](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14) ; pour une app Logstash, les Discover [[Pass Emploi] Logs de Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/97e2d85f-7bd2-49df-86b3-2ffc290bbe69) et [[Pass Emploi] Logs de PROD - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17) (logs non indexés) et le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)" },
-        { "title": "", "value": "3. Les métriques de l'app (onglet Metrics) et ses derniers déploiements dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)" },
-        { "title": "Dashboards", "value": "[[Pass Emploi] SLO de PROD](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)" },
-        { "title": "", "value": "[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)" },
-        { "title": "", "value": "[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)" },
-        { "title": "Discover sessions", "value": "[[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87)" },
-        { "title": "", "value": "[[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)" },
-        { "title": "", "value": "[[Pass Emploi] Logs de Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/97e2d85f-7bd2-49df-86b3-2ffc290bbe69)" },
-        { "title": "", "value": "[[Pass Emploi] Logs de PROD - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17)" }
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglet « Seuils de ressource » : la métrique, sa valeur et son seuil par app\n2. L'impact au même moment : pour `pass-emploi-api`, le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73) et le dashboard [[Pass Emploi] SLO de PROD](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14) ; pour une app Logstash, les Discover [[Pass Emploi] Logs de Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/97e2d85f-7bd2-49df-86b3-2ffc290bbe69) et [[Pass Emploi] Logs de PROD - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17) (logs non indexés) et le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n3. Les métriques de l'app (onglet Metrics) et ses derniers déploiements dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Pass Emploi] SLO de PROD](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87)\n[[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n[[Pass Emploi] Logs de Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/97e2d85f-7bd2-49df-86b3-2ffc290bbe69)\n[[Pass Emploi] Logs de PROD - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17)"
+        }
       ]
     }
   ]
@@ -320,16 +340,28 @@ POST kbn:/api/alerting/rule/07c9c5d7-e8fe-4964-ac8d-684b1c4c39b8
       "color": "#ffa500",
       "text": "{{#context.hits}}• `{{_source.service.name}}` ({{_source.service.environment}}) : `{{_source.event.action}}`{{#_source.event.reason}} ({{_source.event.reason}}){{/_source.event.reason}}{{#_source.labels.metric}} {{_source.labels.metric}} à {{_source.labels.value_text}}{{/_source.labels.metric}}\n{{/context.hits}}",
       "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "À vérifier", "value": "1. Le Discover [[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/33bed466-9d68-4789-a723-aeea34e6cd93), onglets « Crashs, redémarrages et arrêts » et « Seuils de ressource »" },
-        { "title": "", "value": "2. L'impact au même moment pour une app Logstash : les Discover [[Pass Emploi] Logs Hors-Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/e5bec6b4-0ae3-47b1-8bb5-2e9bf77493a4) et [[Pass Emploi] Logs Hors-Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/716175ed-b2a0-4fe1-8f9d-1892d04dbe92) (logs non indexés) et le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)" },
-        { "title": "", "value": "3. L'onglet Activity de l'app dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)" },
-        { "title": "Dashboards", "value": "[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)" },
-        { "title": "", "value": "[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)" },
-        { "title": "Discover sessions", "value": "[[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/33bed466-9d68-4789-a723-aeea34e6cd93)" },
-        { "title": "", "value": "[[Pass Emploi] Logs Hors-Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/e5bec6b4-0ae3-47b1-8bb5-2e9bf77493a4)" },
-        { "title": "", "value": "[[Pass Emploi] Logs Hors-Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/716175ed-b2a0-4fe1-8f9d-1892d04dbe92)" }
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Le Discover [[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/33bed466-9d68-4789-a723-aeea34e6cd93), onglets « Crashs, redémarrages et arrêts » et « Seuils de ressource »\n2. L'impact au même moment pour une app Logstash : les Discover [[Pass Emploi] Logs Hors-Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/e5bec6b4-0ae3-47b1-8bb5-2e9bf77493a4) et [[Pass Emploi] Logs Hors-Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/716175ed-b2a0-4fe1-8f9d-1892d04dbe92) (logs non indexés) et le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n3. L'onglet Activity de l'app dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/33bed466-9d68-4789-a723-aeea34e6cd93)\n[[Pass Emploi] Logs Hors-Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/e5bec6b4-0ae3-47b1-8bb5-2e9bf77493a4)\n[[Pass Emploi] Logs Hors-Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/716175ed-b2a0-4fe1-8f9d-1892d04dbe92)"
+        }
       ]
     }
   ]
@@ -425,11 +457,24 @@ POST kbn:/api/alerting/rule/67846c2c-45d1-45be-89f5-ce9a340240a0
       "color": "#d00000",
       "text": "{{#context.hits}}• `{{_source.service.name}}` : **{{_source.vulnerability.id}}** — {{_source.package.name}} ({{_source.vulnerability.severity}}) : {{_source.vulnerability.description}} — [Voir]({{_source.vulnerability.reference}})\n{{/context.hits}}",
       "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "À vérifier", "value": "1. Le Discover [[Pass Emploi] Alertes externes - CVE Dependabot](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/ece3e409-0679-4bcb-a675-ae7dfb092c19), liste les CVE ouvertes par repo avec leur score" },
-        { "title": "", "value": "2. L'alerte Dependabot de chaque CVE (lien Voir), à traiter selon sa sévérité" },
-        { "title": "Discover sessions", "value": "[[Pass Emploi] Alertes externes - CVE Dependabot](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/ece3e409-0679-4bcb-a675-ae7dfb092c19)" }
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Le Discover [[Pass Emploi] Alertes externes - CVE Dependabot](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/ece3e409-0679-4bcb-a675-ae7dfb092c19), liste les CVE ouvertes par repo avec leur score\n2. L'alerte Dependabot de chaque CVE (lien Voir), à traiter selon sa sévérité"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Alertes externes - CVE Dependabot](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/ece3e409-0679-4bcb-a675-ae7dfb092c19)"
+        }
       ]
     }
   ]
@@ -528,11 +573,24 @@ POST kbn:/api/alerting/rule/ae398f47-0ed9-427e-a090-cf774acc7d16
       "color": "#ffa500",
       "text": "{{#context.hits}}• `{{_source.error.type}}` : {{_source.error.message}}\n{{/context.hits}}",
       "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "À vérifier", "value": "1. Le Discover [[Pass Emploi] Alertes externes - Rejets (failure store)](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/861dbdf4-5086-498b-aff6-4d9d68ceb1f4) : `error.type` et `error.message` donnent le motif du rejet" },
-        { "title": "", "value": "2. Le payload d'origine (`document.source`) : adapter le pipeline, puis le rejouer en `_simulate`" },
-        { "title": "Discover sessions", "value": "[[Pass Emploi] Alertes externes - Rejets (failure store)](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/861dbdf4-5086-498b-aff6-4d9d68ceb1f4)" }
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Le Discover [[Pass Emploi] Alertes externes - Rejets (failure store)](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/861dbdf4-5086-498b-aff6-4d9d68ceb1f4) : `error.type` et `error.message` donnent le motif du rejet\n2. Le payload d'origine (`document.source`) : adapter le pipeline, puis le rejouer en `_simulate`"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Alertes externes - Rejets (failure store)](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/861dbdf4-5086-498b-aff6-4d9d68ceb1f4)"
+        }
       ]
     }
   ]
