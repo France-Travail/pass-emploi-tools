@@ -76,7 +76,8 @@ PUT _component_template/logs-router@mappings
         "@timestamp": { "type": "date" },
         "service": { "properties": {
           "name": { "type": "keyword" },
-          "node": { "properties": { "name": { "type": "keyword" } } }
+          "node": { "properties": { "name": { "type": "keyword" } } },
+          "environment": { "type": "keyword" }
         } },
         "client": { "properties": { "ip": { "type": "ip" } } },
         "http": { "properties": {
