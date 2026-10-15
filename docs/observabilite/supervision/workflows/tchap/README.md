@@ -27,13 +27,16 @@ tags, ses alertes) :
 🚨 Scalingo - Prod - Crash, redémarrage ou arrêt d'une app (2)
 • pass-emploi-api-prod : app_crashed (oom) sur web, par scalingo-platform
 • pass-emploi-web-prod : app_restarted, par alice
-Ouvrir dans Discover · Voir la règle
+Voir la règle : vérifications, dashboards et Discover sessions dans son Investigation guide
 ```
 
 - **Sévérité** : tag `critical` (🚨) ou `warning` (⚠️) de la règle.
 - **Lignes** : le champ `message` des documents trouvés, écrit par l'ingest
   pipeline ; à défaut, la raison de l'alerte (`kibana.alert.reason`).
-- **Liens** : Discover (`kibana.alert.url`) et la page de la règle.
+- **Lien** : la page de la règle, dont l'onglet *Investigation guide* liste les
+  vérifications, les dashboards et les Discover sessions. Pas de lien vers un
+  Discover non enregistré (`kibana.alert.url`) : seules des sessions
+  versionnées sont citées.
 
 Le Workflow ne reçoit pas les documents trouvés par la règle (`context.hits`) :
 ils sont fusionnés champ par champ dans le document d'alerte, sans lien entre
@@ -171,8 +174,6 @@ Intégrations (l'équipe beta.gouv n'a pas la réponse, 2026-10-14) :
 
 - La boucle sur les alertes est une **étape** `type: foreach` ; une propriété
   `foreach:` posée sur `workflow.execute` est ignorée sans erreur.
-- `kibana.alert.url` est déjà absolue (Kibana a un `server.publicBaseUrl`) : ne
-  pas la préfixer.
 - Les Workflows exigent la licence **Enterprise**.
 - Le compte du bot **expire s'il n'est pas renouvelé** chaque année (lien reçu
   par email 11 mois après l'inscription) : toutes les notifications s'arrêtent.
