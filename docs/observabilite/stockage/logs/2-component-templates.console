@@ -28,6 +28,7 @@ PUT _component_template/pass-emploi-logs@mappings
           } }
         } },
         "http": { "properties": {
+          "route": { "type": "keyword", "ignore_above": 1024 },
           "response": { "properties": {
             "www_authenticate": { "type": "keyword", "ignore_above": 1024 },
             "retry_after":      { "type": "keyword", "ignore_above": 1024 }
@@ -55,7 +56,7 @@ PUT _component_template/pass-emploi-logs@mappings
     }
   },
   "_meta": { "description": "Champs ECS custom CEJ, communs app + router", "managed_by": "pass-emploi-tools" },
-  "version": 2
+  "version": 3
 }
 
 # logs@custom, point d'ancrage global d'Elastic, laissé vide (cf. ci-dessus).
