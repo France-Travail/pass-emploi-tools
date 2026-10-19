@@ -31,7 +31,7 @@
 | D4 | **Une règle Scalingo par périmètre et par environnement**, qui liste tous les événements de ses apps (crash, arrêt, seuil, déploiement, variable…) | Un notifier Mattermost actuel est déjà un flux unique par app ; une règle par type d'événement serait inmaintenable |
 | D5 | **Le pipeline classe chaque événement** : `labels.categorie` (`incident` ou `infra`) et un émoji en tête de `message`, à partir d'**une seule table** | La gravité se lit par ligne dans une règle unique ; sortir l'infra des salons de monitoring plus tard ne touche que des requêtes (§6) |
 | D6 | **Aucune régression** : tout ce que l'équipe reçoit aujourd'hui dans Mattermost arrive dans Tchap | Demande de l'utilisateur |
-| D7 | **Jobs : les logs ECS remplacent les envois Mattermost du code**, puis des règles les publient | Plus d'appel Mattermost dans l'api ; même contenu qu'aujourd'hui |
+| D7 | **Jobs : version dégradée** à partir des logs existants (règle sur les échecs, dashboard des exécutions) ; la parité complète est une suite (§10) | Décision de l'utilisateur : pas de code applicatif dans ce chantier |
 | D8 | **Ordre : réorganisation d'abord**, puis migration vers Tchap | Choix de l'utilisateur |
 | D9 | **Les étapes d'investigation de toutes les règles sont revues** (« À vérifier », « Dashboards », « Discover sessions », Investigation guide) selon les principes du §7 | Les étapes actuelles font divaguer l'analyse : branches hors périmètre, sessions Discover qui ne montrent pas l'erreur d'origine |
 
@@ -47,7 +47,7 @@
 | 6  | Alertes de métriques Scalingo (seuils RAM/CPU) : logstash-prod (2), logstash-perf (1) | via les notifiers des lignes 3 et 5 | **6a**, **6b** (catégorie `incident`) | 🔲 §4 |
 | 7  | `security-alerts.yml` (GitHub Actions, workflow réutilisable des repos api, web, connect, app) | `#monitoring-production` | **V1** | 🔲 §4 |
 | 8  | AutoOps : alertes 11 (disque) et 12 (indexation) | `#o11y-production` | connecteur AutoOps en `POST` direct vers le salon Tchap `o11y-production` (ADR-004) | 🔲 attend le bot |
-| 9  | `SuiviJobService` (pass-emploi-api) : résultat de chaque job notifiable (succès compris), stack d'erreur, rapport quotidien des CRONs | `MATTERMOST_JOBS_WEBHOOK_URL` | logs ECS + règles applicatives (§5) | 🔲 §5 |
+| 9  | `SuiviJobService` (pass-emploi-api) : résultat de chaque job notifiable (succès compris), stack d'erreur, rapport quotidien des CRONs | `MATTERMOST_JOBS_WEBHOOK_URL` | version dégradée : règle A5 + dashboard (§5) ; envoi Mattermost conservé | 🔲 §5 |
 | 10 | *(nouveau)* failure store des événements externes | — | **14** (stack) | 🔲 §4 |
 | —  | Notifier « Dashboard Pass Emploi » sur `api-prod` → `pass-emploi-dashboard.osc-secnum-fr1.scalingo.io` (app absente du compte, HTTP 503, citée par aucun repo) | **pas Mattermost** | hors périmètre : à supprimer après confirmation de l'équipe | ❓ |
 
@@ -126,30 +126,24 @@ arrêts », « Seuils de ressource ») à deux onglets par catégorie
 sessions d'impact déjà versionnées (5xx, DLQ, erreurs de traitement) ne sont
 citées que si elles passent la revue du §7.
 
-## 5. Jobs (`SuiviJobService`, pass-emploi-api)
+## 5. Jobs (`SuiviJobService`, pass-emploi-api) : version dégradée
 
-> **À valider** : l'utilisateur a demandé de s'appuyer sur les logs existants ;
-> ils ne suffisent pas pour atteindre la parité (ci-dessous). La proposition
-> ajoute deux logs ECS dans l'api.
+**Décision du 2026-10-19 : version dégradée**, à partir des seuls logs existants,
+sans modifier le code de l'api.
 
 Aujourd'hui, `SuiviJobService` poste dans Mattermost : le résultat de chaque job
 notifiable (`estNotifiable` : tout échec, et les succès hors liste
 d'exclusion), sa stack d'erreur, et un rapport quotidien (exécutions attendues
-et réelles, erreurs, échecs par CRON, job `MONITORER_JOBS`). Les logs ECS
-actuels (`job_completed`, `job_crashed`) n'ont **ni le `resultat` détaillé, ni
-`nbErreurs`, ni les exécutions attendues**.
+et réelles, erreurs, échecs par CRON, job `MONITORER_JOBS`).
 
-- Dans l'api, chaque `envoyerMessageMattermost` est remplacé par un log ECS au
-  niveau info, selon les [conventions](../../observabilite/format/logs/conventions.md) :
-  `event.action: job_result_recorded` (type, succès, `nbErreurs`, durée,
-  `resultat` aplati sous `labels.*`, erreur via `toEcsError`) et
-  `event.action: jobs_report_computed` (une entrée par CRON : attendues,
-  réelles, erreurs, échecs).
-- Deux règles applicatives lisent `logs-prod-default` et publient ces logs dans
-  `monitoring-production` : **A5** (résultat d'un job, avec `incident` si échec
-  et `infra` sinon, même table que D5) et **A6** (rapport quotidien).
-- `MATTERMOST_JOBS_WEBHOOK_URL` et l'appel HTTP disparaissent du code et de la
-  configuration Scalingo de l'api.
+| Notification actuelle | Version dégradée (logs existants) | Perdu |
+|---|---|---|
+| Résultat d'un job en échec, avec sa stack | **A5** : règle sur `event.action: job_completed and event.outcome: failure`, avec l'erreur de `job_crashed` | le `resultat` détaillé et `nbErreurs` |
+| Résultat d'un job réussi | — | tout (pas de log du résultat métier) |
+| Rapport quotidien des CRONs | **dashboard** des exécutions par `labels.job_type` (`job_completed` : nombre, échecs, durée) | le nombre d'exécutions attendues, donc « a-t-il tourné le nombre de fois prévu » |
+
+Les notifications Mattermost des jobs **restent actives** tant que la version
+dégradée n'est pas validée ; leur retrait du code est une suite (§10).
 
 ## 6. Sortir l'infra des salons de monitoring (évolution prévue)
 
@@ -187,7 +181,7 @@ incidents** pour ça : `eb348ed9-3bc2-4204-a5c2-c31465731c74`, **non versionné
 5. **Les sessions Discover existantes restent citées**, après le dashboard :
    elles donnent la liste exhaustive des documents (décision du 2026-10-19).
 
-**Revue** : toutes les règles (S1 à S3, A1 à A6, V1, 1 à 14, Tchap) passent
+**Revue** : toutes les règles (S1 à S3, A1 à A5, V1, 1 à 14, Tchap) passent
 par ces principes. Pour chacune : la question de chaque étape, les objets
 cités, ce qui est retiré. Les dashboards de diagnostic de l'équipe sont **versionnés**
 (`supervision/dashboards/dashboard-diagnostic-erreurs.ndjson`, mis aux
@@ -210,12 +204,31 @@ conventions le 2026-10-19) et cités **en plus** des sessions existantes :
 | 2 | Mise à jour en prod : `PUT` des 5 règles, création de 6b, pipeline, sessions | 1 |
 | 3 | Notifiers Elasticsearch sur toutes les apps de §3 (même sélection que Mattermost) ; vérification en réel par catégorie | 2 |
 | 4 | `security-alerts.yml` : envoi vers Elasticsearch en plus de Mattermost ; secret dans les 4 repos | 2 |
-| 5 | Jobs : logs ECS dans l'api, règles A5 et A6 | — (parallèle) |
+| 5 | Jobs, version dégradée : règle A5 et dashboard des exécutions | — (parallèle) |
 | 6 | Bot Tchap (boîte `bot-pass-emploi@francetravail.fr`, compte, jeton), test du `POST` sans `txnId` | boîte mail |
 | 7 | Branchement Tchap : connecteur, `tchap-client`, Workflows de salon, actions `.workflows` sur **toutes** les règles (lignes 1, 2 de §3 et §4), connecteurs AutoOps | 6 |
-| 8 | **1er novembre** : retrait des actions Mattermost des règles, des connecteurs `Mattermost-*` de Kibana, des notifiers Scalingo vers Mattermost, de l'envoi Mattermost de `security-alerts.yml`, des connecteurs Mattermost d'AutoOps | 7 |
+| 8 | **Bascule, app par app et règle par règle** : une fois la parité constatée (même contenu dans Kibana/Tchap que dans Mattermost), **désactiver** (jamais supprimer) le notifier Scalingo `Mattermost*` correspondant, puis retirer l'action Mattermost de la règle | 7 |
+| 9 | **1er novembre** : les actions et connecteurs Mattermost restants de Kibana, l'envoi Mattermost de `security-alerts.yml` et les connecteurs Mattermost d'AutoOps sont retirés ; les notifiers Scalingo `Mattermost*` restent désactivés | 8 |
 
-## 9. Risques et points ouverts
+## 9. Règles de la période de migration (jusqu'au 1er novembre)
+
+- **Aucune alerte n'est supprimée** tant que la parité n'est pas constatée :
+  les anciennes sources (notifiers Scalingo `Mattermost*`, actions Mattermost)
+  continuent pendant que les nouvelles règles sont validées, quitte à doubler
+  les messages pendant quelques jours.
+- **Les notifiers Scalingo `Mattermost*` sont désactivés, jamais supprimés**
+  (retour arrière possible).
+- **Connecteurs Kibana manquants** (canal Mattermost de staging pour A4b…) :
+  créés pour la période de transition, retirés au 1er novembre.
+
+## 10. Suites à reporter en tickets (Notion)
+
+- [ ] Jobs : parité complète des notifications (`resultat` détaillé,
+      `nbErreurs`, exécutions attendues par CRON) via des logs ECS dans l'api,
+      puis retrait de `envoyerMessageMattermost` et de
+      `MATTERMOST_JOBS_WEBHOOK_URL`.
+
+## 11. Risques et points ouverts
 
 - **Bot Tchap non disponible à temps** (étape 6) : les étapes 1 à 5 restent
   utiles (tout est dans Kibana) ; sans Tchap au 1er novembre, les alertes ne
