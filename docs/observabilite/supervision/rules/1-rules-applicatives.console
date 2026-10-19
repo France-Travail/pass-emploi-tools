@@ -9,6 +9,17 @@
 # A4a / A4b : événements Scalingo des apps applicatives, #monitoring-production /
 # Mattermost-monitoring-staging ; Tchap via les Workflows de salon.
 #
+# Messages Mattermost : une section (« À vérifier », « Dashboards », « Discover
+# sessions ») = un champ, un élément par ligne. Un vrai retour à la ligne est
+# interdit dans une chaîne JSON : chaque ligne finit par `\n{{!` et la suivante
+# commence par `}}`. Ce commentaire Mustache disparaît au rendu des actions de
+# règle, pas lors d'un _execute direct du connecteur (le message montre alors
+# `{{!`).
+#
+# artifacts : l'Investigation guide et les Related dashboards (onglets de la
+# règle). L'API publique ne les renvoie pas dans ses réponses : les vérifier
+# dans l'interface.
+#
 # S2, S3 — SLO burn rate. Seuls Critical (slo.burnRate.alert) et High notifient.
 #
 # maxBurnRateThreshold = 1 / (1 - objectif) : burn rate à 100 % d'échecs.

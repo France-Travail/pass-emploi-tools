@@ -300,7 +300,7 @@ Des `_ignored` indiquent un dépassement de `total_fields.limit` → prévoir un
 
 | Signal                                  | Source                | Description                                           |
 |-----------------------------------------|-----------------------| ----------------------------------------------------- |
-| Alerte webhook Scalingo                 | Scalingo → Mattermost | `app_crashed_repeated` avec `reason: OOM` ou `reason: SIGKILL` |
+| Alerte Kibana 6a                        | notifier Scalingo → `logs-alertes-scalingo-prod-default` | ligne 🚨 `app_crashed…` ou ⚠️ `app_restarted` avec sa raison (OOM, SIGKILL…) |
 | Silence dans `logs-prod-default`        | Alerte Kibana 3a      | `Is below or equals 0` sur 5 min                      |
 | Silence dans `logs-router-prod-default` | Alerte Kibana 3b      | `Is below or equals 0` sur 5 min                      |
 | Absence de métriques Fleet              | Kibana Fleet → Agents | Agent Elastic Agent passe en `offline`                |
@@ -365,7 +365,7 @@ http.response.status_code: (429 OR 499) AND service.environment: "prod"
 
 - [drain-scalingo.md — Quarantaine](../collecte/logs/drain-scalingo.md)
 - [postmortem-2026-07-blackout-logs.md — §3 Mode B](../post-mortems/postmortem-2026-07-blackout-logs.md)
-- [supervision/alertes-stack-observabilite.md — Alerte 6 (webhook Scalingo)](../supervision/alertes-stack-observabilite.md#alerte-6--restart-du-conteneur-logstash-scalingo-webhook)
+- [supervision/alertes-stack-observabilite.md — Alerte 6 (événements Scalingo de la stack)](../supervision/alertes-stack-observabilite.md#alerte-6--événements-scalingo-des-apps-de-la-stack)
 
 ---
 

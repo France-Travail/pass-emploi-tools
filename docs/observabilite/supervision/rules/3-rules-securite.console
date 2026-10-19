@@ -4,6 +4,17 @@
 # ../discovers/evenements-externes/. PUT met à jour une règle existante ; sur un
 # cluster vide, la créer avec POST kbn:/api/alerting/rule/<id> et le même corps
 # plus "rule_type_id": ".es-query" et "consumer": "alerts".
+#
+# Messages Mattermost : une section (« À vérifier », « Dashboards », « Discover
+# sessions ») = un champ, un élément par ligne. Un vrai retour à la ligne est
+# interdit dans une chaîne JSON : chaque ligne finit par `\n{{!` et la suivante
+# commence par `}}`. Ce commentaire Mustache disparaît au rendu des actions de
+# règle, pas lors d'un _execute direct du connecteur (le message montre alors
+# `{{!`).
+#
+# artifacts : l'Investigation guide et les Related dashboards (onglets de la
+# règle). L'API publique ne les renvoie pas dans ses réponses : les vérifier
+# dans l'interface.
 
 # V1 — CVE high/critical encore ouvertes, à chaque passage de security-alerts.yml (Critical)
 PUT kbn:/api/alerting/rule/67846c2c-45d1-45be-89f5-ce9a340240a0

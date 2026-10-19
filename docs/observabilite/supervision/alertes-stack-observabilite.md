@@ -747,7 +747,7 @@ throttle. Scalingo n'envoie `app_crashed` qu'aux 2ᵉ, 5ᵉ et 12ᵉ crashs, et
 **À vérifier** :
 1. Le Discover **[Pass Emploi] Alertes externes de Prod - Événements Scalingo**,
    onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur.
-2. Pour un incident, l'impact sur l'ingestion : le dashboard **[Pass Emploi]
+2. Pour un incident sur une app Logstash, l'impact sur l'ingestion : le dashboard **[Pass Emploi]
    Supervision Stack d'Observabilité**, puis les Discover **[Pass Emploi] Logs de
    Prod - DLQ Logstash Process** et **[Pass Emploi] Logs de PROD - Erreurs de
    traitement Logstash Process** (logs non indexés).
