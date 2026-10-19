@@ -7,13 +7,16 @@ on:
         description: 'Nom du repo pour le message Mattermost'
         required: true
         type: string
+      elastic-url:
+        description: 'Endpoint Elasticsearch (variable ELASTIC_URL du repo) ; vide = pas d envoi'
+        required: false
+        type: string
+        default: ''
     secrets:
       DEPENDABOT_ALERTS_READER:
         required: true
       MATTERMOST_WEBHOOK_URL:
         required: true
-      ELASTIC_URL:
-        required: false
       ELASTIC_ALERTES_GITHUB_API_KEY:
         required: false
 
@@ -25,7 +28,7 @@ jobs:
       contents: read
       security-events: read
     env:
-      ELASTIC_ACTIF: ${{ secrets.ELASTIC_ALERTES_GITHUB_API_KEY != '' && secrets.ELASTIC_URL != '' }}
+      ELASTIC_ACTIF: ${{ secrets.ELASTIC_ALERTES_GITHUB_API_KEY != '' && inputs.elastic-url != '' }}
 
     steps:
       - name: Fetch Dependabot alerts (high/critical)
@@ -122,5 +125,5 @@ jobs:
 
           echo "✅ $(echo "$response" | jq '.items | length') CVE(s) envoyée(s)"
         env:
-          ELASTIC_URL: ${{ secrets.ELASTIC_URL }}
+          ELASTIC_URL: ${{ inputs.elastic-url }}
           ELASTIC_ALERTES_GITHUB_API_KEY: ${{ secrets.ELASTIC_ALERTES_GITHUB_API_KEY }}
