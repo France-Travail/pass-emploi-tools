@@ -296,9 +296,14 @@ rattachée : rien de plus que l'existant.
 | web-staging, keycloak-staging | Elastic monitoring staging | `app_deployed` |
 | connect-staging | Elastic | tous |
 
-Écart de parité : `app_alert_triggered` (alertes de métriques Scalingo) n'existe
-pas en `webhook` ; ces alertes passent par leur propre liste de notifiers
-(config des alertes de l'app), non modifiée.
+`app_alert_triggered` (alertes de métriques Scalingo) n'existe pas en
+`webhook` : sans conséquence, api-prod, connect-prod et metabase-prod n'ont
+aucune alerte de métriques configurée (`scalingo alerts` vide, vérifié le
+2026-10-19). Si l'on en crée une, la rattacher au notifier Elastic de l'app.
+
+**2026-10-19 : gravité alignée sur X1 à X3 déployée** (§13) : `PUT` du pipeline
+`ingest-alertes-scalingo` (10 `_simulate` conformes) et de A4a, A4b, 6a, 6b,
+sans Tchap.
 
 ## 11. Suites à reporter en tickets (Notion)
 
