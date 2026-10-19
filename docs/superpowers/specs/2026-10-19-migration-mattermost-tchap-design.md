@@ -33,6 +33,7 @@
 | D6 | **Aucune régression** : tout ce que l'équipe reçoit aujourd'hui dans Mattermost arrive dans Tchap | Demande de l'utilisateur |
 | D7 | **Jobs : les logs ECS remplacent les envois Mattermost du code**, puis des règles les publient | Plus d'appel Mattermost dans l'api ; même contenu qu'aujourd'hui |
 | D8 | **Ordre : réorganisation d'abord**, puis migration vers Tchap | Choix de l'utilisateur |
+| D9 | **Les étapes d'investigation de toutes les règles sont revues** (« À vérifier », « Dashboards », « Discover sessions », Investigation guide) selon les principes du §7 | Les étapes actuelles font divaguer l'analyse : branches hors périmètre, sessions Discover qui ne montrent pas l'erreur d'origine |
 
 ## 3. Inventaire de ce qui poste dans Mattermost (relevé le 2026-10-19)
 
@@ -122,8 +123,8 @@ Les 4 sessions existantes sont reprises. Les sessions « Événements Scalingo �
 (prod, hors prod) passent de deux onglets par type (« Crashs, redémarrages et
 arrêts », « Seuils de ressource ») à deux onglets par catégorie
 (« Incidents », « Infra ») et sont citées par A4a/A4b comme par 6a/6b. Les
-sessions d'impact déjà versionnées (5xx, DLQ, erreurs de traitement) sont
-citées par la seule famille qu'elles concernent.
+sessions d'impact déjà versionnées (5xx, DLQ, erreurs de traitement) ne sont
+citées que si elles passent la revue du §7.
 
 ## 5. Jobs (`SuiviJobService`, pass-emploi-api)
 
@@ -162,11 +163,43 @@ salons `infra-{env}` :
 
 Aucun changement de pipeline ni de données ; réversible.
 
-## 7. Étapes jusqu'au 1er novembre
+## 7. Étapes d'investigation : principes et revue
+
+Constat de l'équipe : les sessions Discover citées par les alertes sur les
+erreurs 5xx ou par partenaire ne permettent pas de remonter, en un coup d'œil,
+à l'erreur d'origine. Elle a créé un **dashboard d'investigation des
+incidents** pour ça : `eb348ed9-3bc2-4204-a5c2-c31465731c74`, **non versionné
+à ce jour**.
+
+**Principes**, appliqués à chaque règle :
+1. **Une étape répond à une question de diagnostic**, dans l'ordre où on la
+   pose : qu'est-ce qui s'est passé (le fait) → pourquoi (l'erreur d'origine)
+   → qu'est-ce que ça touche (l'impact). Trois étapes au plus.
+2. **Une étape ne parle que du périmètre de la règle.** Pas de branche « pour
+   une app d'une autre famille », pas de vérification « au cas où ».
+3. **Le dashboard d'investigation d'abord** pour remonter à l'erreur d'origine
+   d'un incident applicatif (5xx, partenaires, authentification) ; une session
+   Discover seulement pour la liste exhaustive des documents, en dernier.
+4. **Chaque lien cité est versionné** (dashboards et sessions dans
+   `supervision/`), titré par son origine (`[Pass Emploi]`, `[Scalingo]`…), et
+   repris à l'identique dans « Dashboards », « Discover sessions »,
+   l'Investigation guide et Related dashboards.
+5. **Une session Discover qui n'aide pas à conclure est retirée** des
+   alertes ; elle peut rester versionnée si un runbook s'en sert.
+
+**Revue** : toutes les règles (S1 à S3, A1 à A6, V1, 1 à 14, Tchap) passent
+par ces principes. Pour chacune : la question de chaque étape, les objets
+cités, ce qui est retiré. Le dashboard `eb348ed9…` est d'abord **exporté et
+versionné** (`supervision/dashboards/`, cf. [objets Kibana](../../observabilite/supervision/objets-kibana.md)),
+puis cité par A1, A2, A3 et A4a (impact applicatif) à la place des sessions
+« Erreurs serveur 5xx » et « Failure partenaires ».
+
+## 8. Étapes jusqu'au 1er novembre
 
 | # | Étape | Dépend de |
 |---|-------|-----------|
-| 1 | **Réorganisation** : collecte dans `collecte/evenements-externes/`, `alertes-securite.md`, A4a/A4b, 6a/6b, V1, 14 avec IDs conservés, pipeline (catégorie, émoji), sessions par catégorie ; suppression de `alertes-externes.md` (contenu réparti) et de `3-rules-alertes-externes.console` | — |
+| 0 | Export et versionnement du dashboard d'investigation des incidents (`eb348ed9…`) | — |
+| 1 | **Réorganisation** : revue des étapes d'investigation (§7) de toutes les règles ; collecte dans `collecte/evenements-externes/`, `alertes-securite.md`, A4a/A4b, 6a/6b, V1, 14 avec IDs conservés, pipeline (catégorie, émoji), sessions par catégorie ; suppression de `alertes-externes.md` (contenu réparti) et de `3-rules-alertes-externes.console` | — |
 | 2 | Mise à jour en prod : `PUT` des 5 règles, création de 6b, pipeline, sessions | 1 |
 | 3 | Notifiers Elasticsearch sur toutes les apps de §3 (même sélection que Mattermost) ; vérification en réel par catégorie | 2 |
 | 4 | `security-alerts.yml` : envoi vers Elasticsearch en plus de Mattermost ; secret dans les 4 repos | 2 |
@@ -175,7 +208,7 @@ Aucun changement de pipeline ni de données ; réversible.
 | 7 | Branchement Tchap : connecteur, `tchap-client`, Workflows de salon, actions `.workflows` sur **toutes** les règles (lignes 1, 2 de §3 et §4), connecteurs AutoOps | 6 |
 | 8 | **1er novembre** : retrait des actions Mattermost des règles, des connecteurs `Mattermost-*` de Kibana, des notifiers Scalingo vers Mattermost, de l'envoi Mattermost de `security-alerts.yml`, des connecteurs Mattermost d'AutoOps | 7 |
 
-## 8. Risques et points ouverts
+## 9. Risques et points ouverts
 
 - **Bot Tchap non disponible à temps** (étape 6) : les étapes 1 à 5 restent
   utiles (tout est dans Kibana) ; sans Tchap au 1er novembre, les alertes ne
