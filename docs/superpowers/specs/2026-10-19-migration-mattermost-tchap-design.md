@@ -146,9 +146,10 @@ et réelles, erreurs, échecs par CRON, job `MONITORER_JOBS`).
 
 | Notification actuelle | Version dégradée (logs existants) | Perdu |
 |---|---|---|
-| Résultat d'un job en échec, avec sa stack | **A5** : règle sur `event.action: job_completed and event.outcome: failure`, avec l'erreur de `job_crashed` | le `resultat` détaillé et `nbErreurs` |
+| Résultat d'un job en échec, avec sa stack | **A5a / A5b** : règle sur `job_crashed` et `job_handler_not_found` (l'erreur y est ; `job_completed` en `failure` le double) | le `resultat` détaillé et `nbErreurs` |
+| Échec **rapporté** par le job (`succes: false`, sans exception) | — | tout : le worker logue `job_completed` en `success` dans ce cas (constaté dans `worker.service.db.ts` le 2026-10-19) |
 | Résultat d'un job réussi | — | tout (pas de log du résultat métier) |
-| Rapport quotidien des CRONs | **dashboard** des exécutions par `labels.job_type` (`job_completed` : nombre, échecs, durée) | le nombre d'exécutions attendues, donc « a-t-il tourné le nombre de fois prévu » |
+| Rapport quotidien des CRONs | onglet « Exécutions » des sessions **[Pass Emploi] Logs de Prod / Hors-Prod - Jobs** (`job_completed` par `labels.job_type` : statut, durée), au lieu d'un dashboard | le nombre d'exécutions attendues, donc « a-t-il tourné le nombre de fois prévu » |
 
 Les notifications Mattermost des jobs **restent actives** tant que la version
 dégradée n'est pas validée ; leur retrait du code est une suite (§10).
@@ -212,7 +213,7 @@ conventions le 2026-10-19) et cités **en plus** des sessions existantes :
 | 2 | ✅ (2026-10-19, sans Tchap, cf. §10) Mise à jour en prod : `PUT` des 5 règles, création de 6b, pipeline, sessions ; `PUT` des Workflows de salon là où ils existent (filtre du bagotement, §13) | 1 |
 | 3 | ✅ (2026-10-19, cf. §10 ; parité à vérifier en réel) Notifiers Elasticsearch sur toutes les apps de §3 (même sélection que Mattermost) ; vérification en réel par catégorie | 2 |
 | 4 | ✅ (2026-10-19, testé sur api ; fusion des 3 branches en attente, cf. §10) `security-alerts.yml` : envoi vers Elasticsearch en plus de Mattermost ; secret dans les 4 repos | 2 |
-| 5 | Jobs, version dégradée : règle A5 et dashboard des exécutions | — (parallèle) |
+| 5 | ✅ (repo, 2026-10-19 ; en prod : connecteurs, sessions, A5a / A5b à créer) Jobs, version dégradée : règle A5 et dashboard des exécutions | — (parallèle) |
 | 6 | Bot Tchap (boîte `bot-pass-emploi@francetravail.fr`, compte, jeton), test du `POST` sans `txnId` | boîte mail |
 | 7 | Branchement Tchap : connecteur, `tchap-client`, Workflows de salon, actions `.workflows` sur **toutes** les règles (lignes 1, 2 de §3 et §4), connecteurs AutoOps | 6 |
 | 8 | **Bascule, app par app et règle par règle** : une fois la parité constatée (même contenu dans Kibana/Tchap que dans Mattermost), **désactiver** (jamais supprimer) le notifier Scalingo `Mattermost*` correspondant, puis retirer l'action Mattermost de la règle | 7 |
@@ -327,9 +328,17 @@ pipeline `ingest-alertes-github-default` (`labels.dependabot_url`) et de V1
       (§10) : décider si elles sont à reprendre (versionnées, avec action) ou
       à supprimer.
 - [ ] Jobs : parité complète des notifications (`resultat` détaillé,
-      `nbErreurs`, exécutions attendues par CRON) via des logs ECS dans l'api,
-      puis retrait de `envoyerMessageMattermost` et de
-      `MATTERMOST_JOBS_WEBHOOK_URL`.
+      `nbErreurs`, échecs rapportés `succes: false`, exécutions attendues par
+      CRON), puis retrait de `envoyerMessageMattermost` et de
+      `MATTERMOST_JOBS_WEBHOOK_URL`. Deux voies : des logs ECS dans l'api, ou,
+      sans toucher l'api, un filtre Logstash `process` qui décode le corps des
+      `external_api_call` de `SuiviJobService` : il contient déjà le message
+      Mattermost complet (`http.request.body.content`, constaté le 2026-10-19).
+- [ ] Jobs dans Tchap : salons `jobs-production` / `jobs-staging`, Workflows de
+      salon, action `.workflows` sur A5a / A5b. Les logs `job_crashed` n'ont pas
+      de `message` de notification (leur `message` est le log brut) : le
+      Workflow doit construire la ligne depuis `labels.job_type` et
+      `error.message`, ou un champ dédié posé en amont.
 
 ## 12. Risques et points ouverts
 

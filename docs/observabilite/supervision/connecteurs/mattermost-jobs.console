@@ -1,0 +1,33 @@
+# Connecteurs Kibana des canaux Mattermost des jobs, utilisés par A5a / A5b
+# (../rules/1-rules-applicatives.console). Spécification : ../alertes-applicatives.md.
+#
+# Les autres connecteurs Mattermost existent déjà dans Kibana et ne sont pas
+# versionnés. Remplacer <url-du-webhook-…> par la valeur de
+# MATTERMOST_JOBS_WEBHOOK_URL de pass-emploi-api-prod / -staging (même canal que
+# les notifications de SuiviJobService). L'URL contient le jeton du webhook : ne
+# pas la versionner. À supprimer avec Mattermost, le 1er novembre 2026.
+POST kbn:/api/actions/connector/cd0b8285-1b69-4e3a-9c7c-6d35b42e7115
+{
+  "name": "Mattermost-jobs-production",
+  "connector_type_id": ".webhook",
+  "config": {
+    "url": "<url-du-webhook-jobs-production>",
+    "method": "post",
+    "hasAuth": false,
+    "headers": { "Content-Type": "application/json" }
+  },
+  "secrets": {}
+}
+
+POST kbn:/api/actions/connector/3f71e705-99b5-4b37-ab14-932e28bc29b4
+{
+  "name": "Mattermost-jobs-staging",
+  "connector_type_id": ".webhook",
+  "config": {
+    "url": "<url-du-webhook-jobs-staging>",
+    "method": "post",
+    "hasAuth": false,
+    "headers": { "Content-Type": "application/json" }
+  },
+  "secrets": {}
+}

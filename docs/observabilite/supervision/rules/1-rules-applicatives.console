@@ -4,10 +4,12 @@
 # À rejouer dans Dev Tools, après ../slo/1-slos.console. PUT met à jour une règle
 # existante ; sur un cluster vide, la créer avec POST kbn:/api/alerting/rule/<id>
 # et le même corps plus "rule_type_id" et "consumer" (slo.rules.burnRate / slo pour
-# S2 et S3, .es-query / alerts pour A1 à A3, A4a et A4b).
+# S2 et S3, .es-query / alerts pour A1 à A3, A4a, A4b, A5a et A5b).
 #
 # A4a / A4b : événements Scalingo des apps applicatives, #monitoring-production /
 # Mattermost-monitoring-staging ; Tchap via les Workflows de salon.
+# A5a / A5b : jobs en échec, Mattermost-jobs-production / -staging
+# (../connecteurs/mattermost-jobs.console, à créer avant) ; pas encore de salon Tchap.
 #
 # Messages Mattermost : une section (« À vérifier », « Dashboards », « Discover
 # sessions ») = un champ, un élément par ligne. Un vrai retour à la ligne est
@@ -984,6 +986,199 @@ PUT kbn:/api/alerting/rule/07c9c5d7-e8fe-4964-ac8d-684b1c4c39b8
             "recovered": false
           }
         }
+      }
+    }
+  ]
+}
+
+# A5a — Jobs en échec, prod (version dégradée : un job qui plante ou introuvable ; un job
+# qui rapporte un échec sans planter n'est pas vu, cf. ../alertes-applicatives.md)
+PUT kbn:/api/alerting/rule/a03feacb-ddf8-4e04-af82-48f77b07a86e
+{
+  "name": "API - Prod - Jobs en échec",
+  "tags": [
+    "prod",
+    "applicatif",
+    "jobs"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nUn job de l'api de prod a planté (`job_crashed`) ou n'a pas de handler (`job_handler_not_found`).\n\n## À vérifier\n\n1. Le Discover [[Pass Emploi] Logs de Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c0d38bba-66ef-4b68-8a10-4d786f6a9f4a), onglet « Jobs en échec » : le job, son erreur et sa stack\n2. L'onglet « Exécutions » de [[Pass Emploi] Logs de Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c0d38bba-66ef-4b68-8a10-4d786f6a9f4a) : le job échoue-t-il à chaque exécution, ou a-t-il réussi depuis ?\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c0d38bba-66ef-4b68-8a10-4d786f6a9f4a)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-applicatives.md)\n"
+    }
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "service.name : \"pass-emploi-api\" and event.action : (\"job_crashed\" or \"job_handler_not_found\")",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "0208fbaf-2541-4ba2-b405-af62cebd9de7",
+        "title": "logs-prod-default,logs-router-prod-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Logs apps prod",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 20,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": true,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "cd0b8285-1b69-4e3a-9c7c-6d35b42e7115",
+      "params": {
+        "body": """{
+  "text": "**Jobs en échec — prod** ({{context.value}})",
+  "attachments": [
+    {
+      "color": "#808080",
+      "text": "{{#context.hits}}❌ `{{_source.labels.job_type}}` : {{_source.event.action}} — {{_source.error.message}}\n{{/context.hits}}",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Le Discover [[Pass Emploi] Logs de Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c0d38bba-66ef-4b68-8a10-4d786f6a9f4a), onglet « Jobs en échec » : le job, son erreur et sa stack\n{{!
+                  }}2. L'onglet « Exécutions » de [[Pass Emploi] Logs de Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c0d38bba-66ef-4b68-8a10-4d786f6a9f4a) : le job échoue-t-il à chaque exécution, ou a-t-il réussi depuis ?"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Logs de Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c0d38bba-66ef-4b68-8a10-4d786f6a9f4a)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActiveAlert",
+        "throttle": null
+      }
+    }
+  ]
+}
+
+# A5b — Jobs en échec, staging / perf (même version dégradée que A5a)
+PUT kbn:/api/alerting/rule/9dbcb316-60cd-481e-8717-33ffe0275e7d
+{
+  "name": "API - Hors-Prod - Jobs en échec",
+  "tags": [
+    "hors-prod",
+    "applicatif",
+    "jobs"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nUn job de l'api de staging ou de perf a planté (`job_crashed`) ou n'a pas de handler (`job_handler_not_found`).\n\n## À vérifier\n\n1. Le Discover [[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740), onglet « Jobs en échec » : le job, son environnement, son erreur et sa stack\n2. L'onglet « Exécutions » de [[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740) : le job échoue-t-il à chaque exécution, ou a-t-il réussi depuis ?\n\n## Discover sessions\n\n- [[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-applicatives.md)\n"
+    }
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "service.name : \"pass-emploi-api\" and event.action : (\"job_crashed\" or \"job_handler_not_found\")",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "9ef69e58-9ad1-43e4-87e1-cf1a68e38c09",
+        "title": "logs-staging-default,logs-perf-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Logs apps hors prod",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 10,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 20,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": true,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "3f71e705-99b5-4b37-ab14-932e28bc29b4",
+      "params": {
+        "body": """{
+  "text": "**Jobs en échec — hors prod** ({{context.value}})",
+  "attachments": [
+    {
+      "color": "#808080",
+      "text": "{{#context.hits}}❌ `{{_source.labels.job_type}}` ({{_source.service.environment}}) : {{_source.event.action}} — {{_source.error.message}}\n{{/context.hits}}",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Le Discover [[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740), onglet « Jobs en échec » : le job, son environnement, son erreur et sa stack\n{{!
+                  }}2. L'onglet « Exécutions » de [[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740) : le job échoue-t-il à chaque exécution, ou a-t-il réussi depuis ?"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActiveAlert",
+        "throttle": null
       }
     }
   ]

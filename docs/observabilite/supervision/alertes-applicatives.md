@@ -1,7 +1,7 @@
 # Alertes applicatives
 
 Les alertes sur des pannes **visibles des utilisateurs et impactantes pour le
-métier**, en trois couches :
+métier**, en quatre couches :
 
 - **alertes SLO** (S1 à S3) — la promesse de [sli-slo](sli-slo.md) est-elle
   menacée ? Déduites des SLO Kibana ;
@@ -9,7 +9,8 @@ métier**, en trois couches :
   5xx qui s'accumulent, une vague de refus d'authentification ;
 - **événements Scalingo** (A4a, A4b) — ce qui arrive aux apps : crash, arrêt,
   redémarrage, seuil de ressource, mais aussi déploiements et opérations
-  d'infra.
+  d'infra ;
+- **jobs** (A5a, A5b) — un job de l'api a planté.
 
 Elles s'appuient sur les logs ECS (`event.action` / `event.outcome`, cf.
 [format/logs/conventions](../format/logs/conventions.md)). Les pannes de la
@@ -18,7 +19,8 @@ chaîne de télémétrie elle-même sont dans
 aveugle (alerte 3 « silence »), ces alertes-ci ne peuvent pas se déclencher.
 
 Toutes notifient via Mattermost (`#monitoring-production`), sauf A4b
-(`Mattermost-monitoring-staging`) ; A4a et A4b notifient aussi Tchap
+(`Mattermost-monitoring-staging`) et A5a / A5b (canaux des jobs,
+`jobs-production` / `jobs-staging`) ; A4a et A4b notifient aussi Tchap
 (`monitoring-production`, `monitoring-staging`, cf. [workflows/tchap](workflows/tchap/README.md)).
 
 ## Récapitulatif
@@ -33,6 +35,8 @@ Toutes notifient via Mattermost (`#monitoring-production`), sauf A4b
 | A3 | Pic d'auth refusées        | `logs-prod-default` | `auth_failed` > 3 × même heure sur 7 j, ≥ 20 / 10 min | 5 min     | 1h       | 🚨 Critical |
 | A4a | Événements Scalingo — prod | `logs-alertes-scalingo-prod-default` | tout événement d'une app hors stack d'observabilité | 1 min | — | par ligne : 🚨 / ⚠️ / ℹ️ |
 | A4b | Événements Scalingo — staging, perf | `logs-alertes-scalingo-{staging,perf}-default` | idem A4a, canal staging | 5 min | — | par ligne : ⚠️ / ℹ️ |
+| A5a | Jobs en échec — prod | `logs-prod-default` | `job_crashed`, `job_handler_not_found` | 1 min | — | ❌ par ligne |
+| A5b | Jobs en échec — staging, perf | `logs-{staging,perf}-default` | idem A5a, canal jobs-staging | 5 min | — | ❌ par ligne |
 
 > **Prod uniquement** (sauf A4b) : en staging, ces signaux reflètent les tests
 > en cours, pas une panne. A4b garde le fil d'activité Scalingo de staging et de
@@ -396,3 +400,56 @@ copier un Workflow de salon en `tchap-infra-{env}.console`, puis, pour A4a, A4b
 (et 6a, 6b), ajouter `and labels.categorie : "incident"` à la requête et
 dupliquer la règle avec `labels.categorie : "infra"` vers `tchap-infra-{env}`.
 Aucun changement de pipeline ni de données ; réversible.
+
+## Jobs — un job de l'api a échoué
+
+Des **Elasticsearch query rules (KQL)** sur les logs de l'api
+(`logs-<env>-default`) : `job_crashed` (le handler a levé une exception) et
+`job_handler_not_found`, posés par le worker. Elles notifient les canaux
+Mattermost des jobs (`jobs-production`, `jobs-staging`), où `SuiviJobService`
+poste aujourd'hui le résultat des jobs ; une ligne par échec :
+`❌ <job> : job_crashed — <message d'erreur>`. Pas encore de salon Tchap des
+jobs : pas d'action Tchap.
+
+**Version dégradée** (décision du 2026-10-19) : uniquement à partir des logs
+existants, sans modifier l'api. Ce que les notifications de `SuiviJobService`
+donnent et que A5a / A5b ne donnent pas :
+
+| Notification actuelle | A5a / A5b | Perdu |
+|---|---|---|
+| Échec d'un job qui plante, avec sa stack | une ligne par `job_crashed`, la stack dans la session | le `resultat` détaillé et `nbErreurs` |
+| Échec **rapporté** par le job (`succes: false`, sans exception) | — | tout : le worker logue alors `job_completed` en `success` |
+| Résultat d'un job réussi | — | tout (pas de log du résultat métier) |
+| Rapport quotidien des CRONs | onglet « Exécutions » des sessions : `job_completed` par `labels.job_type`, statut et durée | le nombre d'exécutions attendues (« a-t-il tourné le nombre de fois prévu ? ») |
+
+Les notifications de `SuiviJobService` **restent actives** tant que la parité
+n'est pas jugée suffisante.
+
+**Création** : créer les connecteurs de
+[`connecteurs/mattermost-jobs.console`](connecteurs/mattermost-jobs.console),
+importer les sessions de [`discovers/applicatives/`](discovers/applicatives/)
+(`discover-session-*-jobs.ndjson`), puis rejouer les blocs A5a / A5b de
+[`rules/1-rules-applicatives.console`](rules/1-rules-applicatives.console)
+(`POST` : ce sont de nouvelles règles).
+
+### A5a — Jobs en échec, prod
+
+| Paramètre               | Valeur |
+|-------------------------|--------|
+| **Rule name**           | `API - Prod - Jobs en échec` |
+| **Type**                | Elasticsearch query rule (KQL), data view `logs-prod-default,logs-router-prod-default` |
+| **Requête**             | `service.name : "pass-emploi-api" and event.action : ("job_crashed" or "job_handler_not_found")` |
+| **Fenêtre / fréquence** | 5 min / 1 min |
+| **Actions**             | Mattermost-jobs-production |
+
+**À vérifier** :
+1. Le Discover **[Pass Emploi] Logs de Prod - Jobs**, onglet « Jobs en échec » :
+   le job, son erreur et sa stack.
+2. Son onglet « Exécutions » : le job échoue-t-il à chaque exécution, ou a-t-il
+   réussi depuis ?
+
+### A5b — Jobs en échec, staging / perf
+
+Comme A5a, sur `logs-staging-default,logs-perf-default`, toutes les 5 min
+(fenêtre de 10 min), vers Mattermost-jobs-staging ; la ligne donne
+l'environnement. Session : **[Pass Emploi] Logs Hors-Prod - Jobs**.
