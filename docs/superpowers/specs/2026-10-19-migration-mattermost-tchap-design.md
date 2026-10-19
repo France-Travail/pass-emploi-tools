@@ -210,7 +210,7 @@ conventions le 2026-10-19) et cités **en plus** des sessions existantes :
 | 0 | ✅ Dashboards de diagnostic versionnés et mis aux conventions ; **réimport en prod** (écrasement des conflits) | — |
 | 1 | ✅ (Plan 1, 2026-10-19, sauf la revue §7 des autres règles : Plan 2) **Réorganisation** : revue des étapes d'investigation (§7) de toutes les règles ; collecte dans `collecte/evenements-externes/`, `alertes-securite.md`, A4a/A4b, 6a/6b, V1, 14 avec IDs conservés, pipeline (catégorie, émoji), sessions par catégorie ; suppression de `alertes-externes.md` (contenu réparti) et de `3-rules-alertes-externes.console` | — |
 | 2 | ✅ (2026-10-19, sans Tchap, cf. §10) Mise à jour en prod : `PUT` des 5 règles, création de 6b, pipeline, sessions ; `PUT` des Workflows de salon là où ils existent (filtre du bagotement, §13) | 1 |
-| 3 | Notifiers Elasticsearch sur toutes les apps de §3 (même sélection que Mattermost) ; vérification en réel par catégorie | 2 |
+| 3 | ✅ (2026-10-19, cf. §10 ; parité à vérifier en réel) Notifiers Elasticsearch sur toutes les apps de §3 (même sélection que Mattermost) ; vérification en réel par catégorie | 2 |
 | 4 | `security-alerts.yml` : envoi vers Elasticsearch en plus de Mattermost ; secret dans les 4 repos | 2 |
 | 5 | Jobs, version dégradée : règle A5 et dashboard des exécutions | — (parallèle) |
 | 6 | Bot Tchap (boîte `bot-pass-emploi@francetravail.fr`, compte, jeton), test du `POST` sans `txnId` | boîte mail |
@@ -279,6 +279,26 @@ partaient au failure store (2 rejets signalés par la règle 14). Pipeline
 pipelines de la collecte. Contre-test réel : variable ajoutée / retirée et
 scaling web 0 → 1 → 0 → 4 événements indexés (2 au format Slack, 2 au format
 brut), aucun rejet, 6b notifiée.
+
+**2026-10-19 : notifiers Scalingo vers Elasticsearch** (étape 3 de §8). Un
+notifier `webhook` par app qui a un notifier `Mattermost*` actif, même nom au
+préfixe près, même sélection ; les `Mattermost*` restent actifs (doublon accepté,
+à désactiver ensemble si l'équipe RUN est gênée). Aucune alerte de métriques
+rattachée : rien de plus que l'existant.
+
+| App | Notifier | Événements |
+|---|---|---|
+| api-prod, connect-prod, metabase-prod | Elastic monitoring production | ceux du `Mattermost*` (type `slack`) sauf 5 indisponibles en `webhook` : `app_alert_triggered`, `app_region_migration_started`, `project_created`, `project_deleted`, `project_edited` |
+| web-prod | Elastic monitoring production | tous |
+| logstash-prod, logstash-process-prod, heartbeat-prod | Elastic monitoring o11y production | `app_crashed_repeated`, `app_restarted`, `app_stopped` (heartbeat aligné sur Logstash, à la demande de l'équipe) |
+| logstash-perf (mis à jour, n'envoie plus tout), logstash-process-perf | Elastic monitoring o11y staging | `app_crashed_repeated`, `app_restarted` |
+| api-staging | Elastic monitoring staging | `app_crashed`, `app_crashed_repeated`, `app_deployed`, `app_restarted`, `app_stopped` |
+| web-staging, keycloak-staging | Elastic monitoring staging | `app_deployed` |
+| connect-staging | Elastic | tous |
+
+Écart de parité : `app_alert_triggered` (alertes de métriques Scalingo) n'existe
+pas en `webhook` ; ces alertes passent par leur propre liste de notifiers
+(config des alertes de l'app), non modifiée.
 
 ## 11. Suites à reporter en tickets (Notion)
 
