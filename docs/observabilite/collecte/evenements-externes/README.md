@@ -42,6 +42,7 @@ transformation en champs ECS se fait dans un **ingest pipeline**.
 |---|---|
 | [`stockage/logs/`](../../stockage/logs/README.md) `2-component-templates.console`, `3-index-templates.console` | mapping et templates des 4 data streams (logsdb, `default_pipeline`, failure store), création à l'avance des data streams ; rétention : les briques `logs-<env>-retention-custom` existantes |
 | [`pipelines/ingest-alertes-scalingo.console`](pipelines/ingest-alertes-scalingo.console) | transformation commune des événements Scalingo, et ses `_simulate` sur les captures réelles |
+| [`pipelines/ingest-alertes-scalingo-format-slack.console`](pipelines/ingest-alertes-scalingo-format-slack.console) | remet au format habituel un événement envoyé au format Slack (cf. [Scalingo](#scalingo)) |
 | [`pipelines/ingest-alertes-scalingo-<env>-default.console`](pipelines/) | pipeline par défaut de chaque data stream Scalingo : vérifie l'enveloppe et l'environnement, puis appelle le pipeline commun |
 | [`pipelines/ingest-alertes-github-default.console`](pipelines/ingest-alertes-github-default.console) | transformation des alertes Dependabot |
 | [`security/acces-alertes-externes.console`](security/acces-alertes-externes.console) | rôle et utilisateur Scalingo, API Key GitHub |
@@ -80,6 +81,16 @@ de forme selon `type`.
 | `repeated_crash`                | `app_crashed_repeatedly`                                                           | `failure`             | `event.reason`                                                                                      |
 | `stop` / `start` / `deployment` | `app_stopped` / `app_started` / `app_deployed`                                     | —                     |                                                                                                     |
 | autre                           | `scalingo_<type>`                                                                  | —                     | indexé quand même, visible dans Discover                                                            |
+
+**Deux formats.** Le même notifier webhook envoie certains événements au format
+Slack, celui qu'il poste dans Mattermost : constaté le 2026-10-19 pour les
+modifications de variables (`{username: "Scalingo", attachments: [{title:
+"[<app>] Variables bulk edited", fields, footer: "By <auteur>", ts}]}`), alors
+que les redémarrages, scalings et alertes arrivent au format ci-dessus.
+`ingest-alertes-scalingo-format-slack` les remet dans l'enveloppe habituelle :
+`type` = le libellé en snake_case (`scalingo_variables_bulk_edited`, classé
+`infra`), `labels.details` = les champs (noms des variables, jamais leurs
+valeurs). Exemple : `ℹ️ pass-emploi-logstash-perf : scalingo_variables_bulk_edited (New vars : TEST_NOTIFIER_ELASTIC), par alexandre.tingaud-octo`.
 
 ✅ = capturé. Les autres noms de `type` viennent du catalogue Scalingo, **à
 confirmer à la première occurrence réelle** : `labels.scalingo_type` garde la
@@ -132,6 +143,7 @@ du repo). `@timestamp` est l'heure d'envoi par le workflow.
    de leur failure store** qui suit les templates : sans elle, les règles
    tombent en erreur tant qu'aucun document n'est arrivé.
 2. **Pipelines** : rejouer [`pipelines/ingest-alertes-scalingo.console`](pipelines/ingest-alertes-scalingo.console)
+   et [`pipelines/ingest-alertes-scalingo-format-slack.console`](pipelines/ingest-alertes-scalingo-format-slack.console)
    en premier, puis les trois `ingest-alertes-scalingo-<env>-default.console` et
    `ingest-alertes-github-default.console`. Les `_simulate` en fin de fichier
    doivent donner les résultats annoncés en commentaire.
@@ -176,6 +188,10 @@ Pendant la migration vers Tchap, les notifiers `Mattermost*` sont
 ## Points ouverts
 
 - **Noms des `type` de crash et de déploiement** : non capturés (cf. [Scalingo](#scalingo)).
+- **Événements au format Slack** : seules les variables sont constatées. Un
+  autre type dans ce format passe par le même pipeline et sort en ℹ️
+  `scalingo_<libellé>` ; un format encore différent part au failure store
+  (règle 14).
 - **Identifiants dans l'URL du notifier** : visibles de tous les collaborateurs
   de l'app Scalingo. Acceptable parce que l'utilisateur ne peut qu'ajouter des
   documents aux 3 data streams Scalingo (`create_doc` + `auto_configure`). Pour

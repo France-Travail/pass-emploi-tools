@@ -133,6 +133,9 @@ PUT _ingest/pipeline/ingest-alertes-scalingo
           if (data.scope instanceof List) {
             labels.scope = String.join(',', data.scope);
           }
+          if (data.details instanceof String && !data.details.isEmpty()) {
+            labels.details = data.details;
+          }
           ctx.labels = labels;
         """
       }
@@ -162,6 +165,9 @@ PUT _ingest/pipeline/ingest-alertes-scalingo
             }
             if (ctx.event.reason != null) {
               line.append(' (').append(ctx.event.reason).append(')');
+            }
+            if (labels.details != null) {
+              line.append(' (').append(labels.details).append(')');
             }
             if (labels.scope != null) {
               line.append(' sur ').append(labels.scope);

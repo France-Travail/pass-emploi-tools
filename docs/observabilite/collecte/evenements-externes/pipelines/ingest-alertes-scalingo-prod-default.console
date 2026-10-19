@@ -1,5 +1,6 @@
 # Pipeline par défaut de logs-alertes-scalingo-prod-default. Spécification :
-# ../README.md. À rejouer après ingest-alertes-scalingo.console.
+# ../README.md. À rejouer après ingest-alertes-scalingo.console et
+# ingest-alertes-scalingo-format-slack.console.
 #
 # Vérifie que le document est bien un événement Scalingo d'une app de prod, puis
 # délègue la transformation au pipeline commun. Un document rejeté part dans le
@@ -9,6 +10,12 @@ PUT _ingest/pipeline/ingest-alertes-scalingo-prod-default
 {
   "description": "Notifiers Scalingo des apps de prod → ECS",
   "processors": [
+    {
+      "pipeline": {
+        "if": "ctx.app_name == null && ctx.attachments instanceof List && !ctx.attachments.isEmpty()",
+        "name": "ingest-alertes-scalingo-format-slack"
+      }
+    },
     {
       "fail": {
         "if": "ctx.app_name == null || ctx.type == null || ctx.type_data == null",
