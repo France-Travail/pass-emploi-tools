@@ -317,6 +317,10 @@ pass-emploi-api : 4 CVE indexées, aucun rejet, V1 notifiée (1 action, 0
 erreur). Reste : relecture et fusion des 3 branches dans `develop`, puis
 réépinglage sur `master` après fusion de pass-emploi-tools.
 
+**2026-10-19 : V1, lien vers les alertes Dependabot du repo** : `PUT` du
+pipeline `ingest-alertes-github-default` (`labels.dependabot_url`) et de V1
+(sans Tchap) ; guide à 3 liens fixes, message à un lien par CVE.
+
 ## 11. Suites à reporter en tickets (Notion)
 
 - [ ] Règles SLO « Burn Rate » non versionnées désactivées le 2026-10-19
