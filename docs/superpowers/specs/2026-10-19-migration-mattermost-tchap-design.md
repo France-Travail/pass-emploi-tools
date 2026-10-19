@@ -48,6 +48,8 @@
 | 7  | `security-alerts.yml` (GitHub Actions, workflow réutilisable des repos api, web, connect, app) | `#monitoring-production` | **V1** | 🔲 §4 |
 | 8  | AutoOps : alertes 11 (disque) et 12 (indexation) | `#o11y-production` | connecteur AutoOps en `POST` direct vers le salon Tchap `o11y-production` (ADR-004) | 🔲 attend le bot |
 | 9  | `SuiviJobService` (pass-emploi-api) : résultat de chaque job notifiable (succès compris), stack d'erreur, rapport quotidien des CRONs | `MATTERMOST_JOBS_WEBHOOK_URL` | version dégradée : règle A5 + dashboard (§5) ; envoi Mattermost conservé | 🔲 §5 |
+| 11 | Kibana Rules **non versionnées**, actives, vers `Mattermost-monitoring-production` : APM (7 : error count front/auth/back, Connect threshold, Connect transactions failed, failed transaction rate auth/back), Uptime (4 : Check TLS, statut connect/back/web prod) | `#monitoring-production` | versionnées puis migrées comme les autres (format, Investigation guide, action Tchap) | 🔲 §7 |
+| 12 | Kibana Rules **non versionnées** « 🏠 / 🔌 » (créées le 2026-08-24), vivantes : 🏠 API - erreurs DB, 🔌 Partenaires - 429 rate-limit, - 5xx, - Timeouts | `#monitoring-production` | versionnées dans les alertes applicatives (A6 à A9), migrées | 🔲 §7 |
 | 10 | *(nouveau)* failure store des événements externes | — | **14** (stack) | 🔲 §4 |
 | —  | Notifier « Dashboard Pass Emploi » sur `api-prod` → `pass-emploi-dashboard.osc-secnum-fr1.scalingo.io` (app absente du compte, HTTP 503, citée par aucun repo) | **pas Mattermost** | hors périmètre : à supprimer après confirmation de l'équipe | ❓ |
 
@@ -226,14 +228,40 @@ conventions le 2026-10-19) et cités **en plus** des sessions existantes :
   dans Kibana, connecteurs Webhook Tchap dans AutoOps) ; les connecteurs
   Mattermost existent déjà.
 
-## 10. Suites à reporter en tickets (Notion)
+## 10. Journal des actions en prod
 
+**2026-10-19 : 11 règles désactivées** (aucune supprimée). Pour revenir en
+arrière : `POST kbn:/api/alerting/rule/<id>/_enable`.
+
+| Motif | Règle | ID |
+|---|---|---|
+| Wordpress : canal Mattermost sans abonné | Wordpress Status(Simple status alert) | `dbb84a10-987b-11ec-9757-c9700cd1bb4e` |
+| Wordpress : canal Mattermost sans abonné | Wordpress Status(Simple status alert) | `d852ff00-987b-11ec-9757-c9700cd1bb4e` |
+| SLO non versionnée, sans action | Réussite par user journey (perf) Burn Rate rule | `9a77c7bb-1b78-4804-b640-afd3482f2589` |
+| morte : 0 document en 30 j, champ absent du mapping | 🏠 API - exceptions non gérées | `9413c659-479b-4dab-bc63-a65ea82f1773` |
+| SLO non versionnée, sans action | Poc SLO avec user_journey (latence) Burn Rate rule | `3b5aebe6-9f51-4e65-a3ba-c538385a73b8` |
+| Wordpress : canal Mattermost sans abonné | Wordpress Status(Simple status alert) | `d442f500-987b-11ec-9757-c9700cd1bb4e` |
+| SLO non versionnée, sans action | Rapidité par user journey (prod) Burn Rate rule | `af2c642b-0571-4836-93b5-234892deae30` |
+| SLO non versionnée, sans action | Réussite par user journey (prod) Burn Rate rule | `7e6e6779-9f39-4dbc-862c-f49153e9f7de` |
+| morte : 0 document en 30 j, champ absent du mapping | 🏠 API - 5xx servis | `f0a7a4c0-6b0b-49bb-8d94-51475e8028f5` |
+| SLO non versionnée, sans action | [Copy] Réussite par user journey (staging) Burn Rate rule | `4984db21-d13b-4dc8-9465-6d50292dd724` |
+| SLO non versionnée, sans action | Rapidité par user journey (perf) Burn Rate rule | `233e7d24-4d8d-4679-808a-140facd94fcc` |
+
+Hors migration, sans changement : les 10 règles « [Elastic Agent] … » de
+l'intégration Elastic (déjà désactivées ; on n'y touche pas), et le connecteur
+`Mattermost-monitoring-wordpress`, sans règle active.
+
+## 11. Suites à reporter en tickets (Notion)
+
+- [ ] Règles SLO « Burn Rate » non versionnées désactivées le 2026-10-19
+      (§10) : décider si elles sont à reprendre (versionnées, avec action) ou
+      à supprimer.
 - [ ] Jobs : parité complète des notifications (`resultat` détaillé,
       `nbErreurs`, exécutions attendues par CRON) via des logs ECS dans l'api,
       puis retrait de `envoyerMessageMattermost` et de
       `MATTERMOST_JOBS_WEBHOOK_URL`.
 
-## 11. Risques et points ouverts
+## 12. Risques et points ouverts
 
 - **Bot Tchap non disponible à temps** (étape 6) : les étapes 1 à 5 restent
   utiles (tout est dans Kibana) ; sans Tchap au 1er novembre, les alertes ne
