@@ -271,6 +271,15 @@ même commit. Le notifier « Elastic monitoring o11y staging » de
 tous dans `#o11y-staging` jusqu'à sa remise à la sélection du notifier
 `Mattermost*` (étape 3).
 
+**2026-10-19 : format Slack des événements de variables.** Un test sur
+`pass-emploi-logstash-perf` (variable ajoutée puis retirée, conteneurs à 0) a
+montré que le notifier webhook envoie ces événements au format Slack : ils
+partaient au failure store (2 rejets signalés par la règle 14). Pipeline
+`ingest-alertes-scalingo-format-slack` ajouté et déployé avec les 4 autres
+pipelines de la collecte. Contre-test réel : variable ajoutée / retirée et
+scaling web 0 → 1 → 0 → 4 événements indexés (2 au format Slack, 2 au format
+brut), aucun rejet, 6b notifiée.
+
 ## 11. Suites à reporter en tickets (Notion)
 
 - [ ] Règles SLO « Burn Rate » non versionnées désactivées le 2026-10-19
