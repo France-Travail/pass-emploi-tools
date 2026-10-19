@@ -3,8 +3,9 @@
 Ce qu'on regarde **régulièrement**, sans attendre une alerte : l'activité métier
 et la santé technique. Pour une question ponctuelle sur un incident, voir
 [runbooks/investigation-incident](runbooks/investigation-incident.md) ; pour ce
-qui réveille quelqu'un, [alertes applicatives](supervision/alertes-applicatives.md) et
-[alertes de la stack d'observabilité](supervision/alertes-stack-observabilite.md) ; pour les
+qui réveille quelqu'un, [alertes applicatives](supervision/alertes-applicatives.md),
+[alertes de la stack d'observabilité](supervision/alertes-stack-observabilite.md) et
+[alertes de sécurité](supervision/alertes-securite.md) ; pour les
 promesses tenues ou non, [supervision/sli-slo](supervision/sli-slo.md).
 
 ## Pré-requis

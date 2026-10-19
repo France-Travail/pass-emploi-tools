@@ -1,6 +1,7 @@
 # Réorganisation des alertes par périmètre et migration Mattermost → Tchap — design
 
-> **Statut : proposé le 2026-10-19, en relecture.** Fait suite à
+> **Statut : validé le 2026-10-19 ; Plan 1 (réorganisation) implémenté le
+> 2026-10-19** ([plan](../plans/2026-10-19-plan-1-reorganisation-par-perimetre.md), écarts en §13). Fait suite à
 > [`2026-10-13-alertes-tchap-workflows-design.md`](2026-10-13-alertes-tchap-workflows-design.md)
 > (Workflows Tchap, livrés) et le complète : tout ce qui poste dans Mattermost
 > doit arriver dans Tchap avant le **décommissionnement de Mattermost, le
@@ -206,8 +207,8 @@ conventions le 2026-10-19) et cités **en plus** des sessions existantes :
 | # | Étape | Dépend de |
 |---|-------|-----------|
 | 0 | ✅ Dashboards de diagnostic versionnés et mis aux conventions ; **réimport en prod** (écrasement des conflits) | — |
-| 1 | **Réorganisation** : revue des étapes d'investigation (§7) de toutes les règles ; collecte dans `collecte/evenements-externes/`, `alertes-securite.md`, A4a/A4b, 6a/6b, V1, 14 avec IDs conservés, pipeline (catégorie, émoji), sessions par catégorie ; suppression de `alertes-externes.md` (contenu réparti) et de `3-rules-alertes-externes.console` | — |
-| 2 | Mise à jour en prod : `PUT` des 5 règles, création de 6b, pipeline, sessions | 1 |
+| 1 | ✅ (Plan 1, 2026-10-19, sauf la revue §7 des autres règles : Plan 2) **Réorganisation** : revue des étapes d'investigation (§7) de toutes les règles ; collecte dans `collecte/evenements-externes/`, `alertes-securite.md`, A4a/A4b, 6a/6b, V1, 14 avec IDs conservés, pipeline (catégorie, émoji), sessions par catégorie ; suppression de `alertes-externes.md` (contenu réparti) et de `3-rules-alertes-externes.console` | — |
+| 2 | Mise à jour en prod : `PUT` des 5 règles, création de 6b, pipeline, sessions ; `PUT` des Workflows de salon là où ils existent (filtre du bagotement, §13) | 1 |
 | 3 | Notifiers Elasticsearch sur toutes les apps de §3 (même sélection que Mattermost) ; vérification en réel par catégorie | 2 |
 | 4 | `security-alerts.yml` : envoi vers Elasticsearch en plus de Mattermost ; secret dans les 4 repos | 2 |
 | 5 | Jobs, version dégradée : règle A5 et dashboard des exécutions | — (parallèle) |
@@ -274,3 +275,19 @@ l'intégration Elastic (déjà désactivées ; on n'y touche pas), et le connect
   `labels.scalingo_type` garde la valeur brute.
 - **Heartbeat** : rangé dans la stack (6a) ; aucune autre règle de la stack ne
   le couvre aujourd'hui.
+
+## 13. Écarts du Plan 1
+
+- **Workflows de salon : alertes qui bagotent** (trouvé en test le
+  2026-10-19). Une règle dont l'alerte change souvent d'état (*flapping*) la
+  garde « active », à 0 document, pendant plusieurs exécutions après son
+  rétablissement (`pending_recovered_count` > 0). L'action `.workflows` la
+  transmet quand même (le connecteur Mattermost, non) : chaque exécution
+  postait un message Tchap vide « (0) ». Les 4 Workflows de salon filtrent
+  désormais ces alertes dans leur `foreach`. `ongoing: false` a été écarté : il
+  perdrait les vrais événements arrivés pendant le bagotement (vérifié : un
+  événement remet `pending_recovered_count` à 0 et passe). Concerne toutes les
+  règles branchées sur Tchap, pas seulement celles du Plan 1.
+- **Collecte** : les en-têtes des `.console` déplacés, `2-component-templates`,
+  `objets-kibana.md` et ADR-004 ont aussi été mis à jour (le plan ne listait
+  qu'une partie des références).

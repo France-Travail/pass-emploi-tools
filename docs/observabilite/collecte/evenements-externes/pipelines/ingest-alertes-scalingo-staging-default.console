@@ -3,7 +3,7 @@
 #
 # Vérifie que le document est bien un événement Scalingo d'une app de staging, puis
 # délègue la transformation au pipeline commun. Un document rejeté part dans le
-# failure store du data stream (règle X5) : un notifier mal configuré (mauvais
+# failure store du data stream (règle 14) : un notifier mal configuré (mauvais
 # data stream dans son URL) se voit au lieu de polluer les alertes d'un autre env.
 PUT _ingest/pipeline/ingest-alertes-scalingo-staging-default
 {

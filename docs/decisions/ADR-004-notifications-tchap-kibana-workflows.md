@@ -79,8 +79,9 @@ unique par événement, ni variable dans l'URL, ni moyen d'appeler un Workflow.
 * Risque : la route `POST` sans `txnId` est hors norme Matrix. Si Tchap la
   supprimait, ces notifications cesseraient ; une notification AutoOps par
   email reste en secours.
-* L'alerte 6 (webhook Scalingo des apps Logstash) n'est pas migrée : les règles
-  X1 et X3 des alertes externes couvrent les mêmes événements et notifient Tchap.
+* L'alerte 6 (webhook Scalingo des apps Logstash) n'est pas migrée telle
+  quelle : elle devient les Kibana Rules 6a / 6b, sur les événements Scalingo
+  collectés dans Elasticsearch, qui notifient Tchap par les Workflows.
 
 Configuration : [alertes de la stack, alertes 11 et 12](../observabilite/supervision/alertes-stack-observabilite.md#alerte-11--disque-des-nœuds-elasticsearch-autoops).
 

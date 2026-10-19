@@ -135,7 +135,7 @@ PUT _index_template/logs-apm.error@template-custom
 # émetteurs n'ont pas à passer ?pipeline=, qu'un notifier Scalingo ne sait pas
 # poser. Failure store : un payload rejeté par le pipeline y est conservé au
 # lieu d'être perdu ; l'émetteur reçoit 201 dans les deux cas
-# (règle X5, ../../supervision/rules/3-rules-alertes-externes.console).
+# (règle 14, ../../supervision/rules/2-rules-stack-observabilite.console).
 PUT _index_template/logs-alertes-scalingo-prod@template-custom
 {
   "index_patterns": ["logs-alertes-scalingo-prod-default"],
@@ -197,10 +197,10 @@ PUT _index_template/logs-alertes-github@template-custom
 }
 
 # Création à l'avance des 4 data streams et de leur failure store, à rejouer
-# juste après leurs templates. Les règles X1 à X5 et leurs sessions Discover
+# juste après leurs templates. Les règles A4a, A4b, 6a, 6b, 14, V1 et leurs sessions Discover
 # partagent des data views : tant qu'aucun document n'est arrivé, ces data
 # views ne trouvent aucun champ et les règles tombent en erreur (« Data view …
-# no longer contains a time field »). Le failure store, lu par X5, n'est créé
+# no longer contains a time field »). Le failure store, lu par la règle 14, n'est créé
 # qu'au premier rejet : son rollover le crée vide. Rejouer est sans effet sur
 # les data streams existants (resource_already_exists_exception) et crée un
 # nouvel index de failure store vide, sans dommage.

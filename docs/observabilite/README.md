@@ -34,8 +34,9 @@ Principes et import des templates ES : [stockage/README.md](stockage/README.md).
 |---|---|
 | [routine-surveillance.md](routine-surveillance.md) | Ce qu'on regarde régulièrement : reporting métier, santé tech, dashboards |
 | [supervision/sli-slo.md](supervision/sli-slo.md) | Les promesses de service (I1-I5, seuil commun) et leurs requêtes |
-| [supervision/alertes-applicatives.md](supervision/alertes-applicatives.md) | Alertes sur les pannes visibles des utilisateurs (partenaires, 5xx, auth) |
-| [supervision/alertes-stack-observabilite.md](supervision/alertes-stack-observabilite.md) | Alertes sur notre infra de télémétrie (Logstash, Redis, agents Fleet) |
+| [supervision/alertes-applicatives.md](supervision/alertes-applicatives.md) | Alertes sur les pannes visibles des utilisateurs (partenaires, 5xx, auth, événements Scalingo des apps) |
+| [supervision/alertes-stack-observabilite.md](supervision/alertes-stack-observabilite.md) | Alertes sur notre infra de télémétrie (Logstash, Redis, agents Fleet, événements Scalingo de la stack) |
+| [supervision/alertes-securite.md](supervision/alertes-securite.md) | Alertes sur les vulnérabilités des dépendances (CVE Dependabot) |
 | [collecte/evenements-externes/README.md](collecte/evenements-externes/README.md) | Collecte des événements émis hors Elastic (notifiers Scalingo, CVE Dependabot) |
 | [supervision/objets-kibana.md](supervision/objets-kibana.md) | Inventaire des dashboards, sessions Discover, SLO et règles versionnés, et comment les importer |
 | [runbooks/investigation-incident.md](runbooks/investigation-incident.md) | Enquêter sur un incident applicatif (KQL par `user.id`, `trace.id`…) |
