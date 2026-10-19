@@ -60,8 +60,9 @@ Points à confirmer avant implémentation :
   notifiers Elasticsearch reprennent **exactement** la sélection de chaque
   notifier Mattermost, après vérification dans le dashboard.
 - **Connecteur Kibana du canal Mattermost de staging** (action Mattermost de
-  A4b pendant la transition) : il existe dans Kibana mais n'est référencé par
-  aucune règle versionnée ; son ID est à relever dans Kibana.
+  A4b pendant la transition) : ✅ `Mattermost-monitoring-staging`
+  (`4cb10f00-22d9-4cf0-bda1-e288c4abb339`), vérifié en prod le 2026-10-19 (nom,
+  type `.webhook`, URL du webhook du canal staging).
 
 ## 4. Règles issues des événements Scalingo et GitHub
 
