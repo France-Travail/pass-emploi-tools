@@ -56,10 +56,9 @@ Points à confirmer avant implémentation :
   liste 41 à 45, l'utilisateur en voit au plus 5 dans le dashboard. Les
   notifiers Elasticsearch reprennent **exactement** la sélection de chaque
   notifier Mattermost, après vérification dans le dashboard.
-- **Connecteur Kibana vers le canal Mattermost staging** de A4b : seuls
-  `Mattermost-monitoring-production`, `-o11y-production` et `-o11y-staging`
-  existent dans Kibana. À créer pour la période de transition, ou A4b poste
-  dans `#o11y-staging` jusqu'au 1er novembre.
+- **Connecteur Kibana du canal Mattermost de staging** (action Mattermost de
+  A4b pendant la transition) : il existe dans Kibana mais n'est référencé par
+  aucune règle versionnée ; son ID est à relever dans Kibana.
 
 ## 4. Règles issues des événements Scalingo et GitHub
 
@@ -109,10 +108,15 @@ première capture réelle** de leur payload, comme pour les types de crash.
 
 ### 4.3 Notifiers Scalingo vers Elasticsearch
 
-Pour chaque app qui a aujourd'hui un notifier Mattermost (§3, lignes 3 à 6) :
+Pour chaque app qui a aujourd'hui un notifier `Mattermost*` (§3, lignes 3 à 6) :
 un notifier webhook vers `logs-alertes-scalingo-<env>-default` (utilisateur
 `alertes-scalingo`), avec **la même sélection d'événements** que le notifier
-Mattermost. Les alertes de métriques Scalingo de Logstash sont rattachées à ce
+Mattermost, et **le même nom au préfixe près** (`Mattermost monitoring
+production` → `Elastic monitoring production`, `Mattermost monitoring o11y
+staging` → `Elastic monitoring o11y staging`…). Une app qui a deux notifiers
+`Mattermost*` (logstash-prod, heartbeat-prod) n'a qu'**un** notifier Elastic,
+`Elastic monitoring o11y production`, avec l'union de leurs événements : deux
+notifiers écriraient deux fois les événements communs. Les alertes de métriques Scalingo de Logstash sont rattachées à ce
 notifier. Le notifier de test de `pass-emploi-logstash-perf` (« Elastic
 monitoring o11y staging », actuellement en *Send all events*) est ramené à la
 sélection de son notifier Mattermost.
@@ -218,8 +222,9 @@ conventions le 2026-10-19) et cités **en plus** des sessions existantes :
   les messages pendant quelques jours.
 - **Les notifiers Scalingo `Mattermost*` sont désactivés, jamais supprimés**
   (retour arrière possible).
-- **Connecteurs Kibana manquants** (canal Mattermost de staging pour A4b…) :
-  créés pour la période de transition, retirés au 1er novembre.
+- **Seuls les connecteurs Tchap sont à créer** (connecteur `.http` « Tchap »
+  dans Kibana, connecteurs Webhook Tchap dans AutoOps) ; les connecteurs
+  Mattermost existent déjà.
 
 ## 10. Suites à reporter en tickets (Notion)
 
