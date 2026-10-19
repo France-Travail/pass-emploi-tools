@@ -35,16 +35,16 @@ notification.
 | **Requête**             | `vulnerability.severity : ("high" or "critical")` |
 | **Fenêtre / fréquence** | 10 min / 5 min |
 | **Actions**             | Mattermost-monitoring-production ; Tchap via le Workflow `tchap-monitoring-production` |
-| **Related dashboards**  | — |
+| **Dashboards**          | les pages d'alertes Dependabot des 3 repos (liens externes, hors Related dashboards) |
 
 **À vérifier** :
 1. Le Discover **[Pass Emploi] Alertes externes - CVE Dependabot** : les CVE
    ouvertes par repo, avec leur score.
 2. Les alertes Dependabot du repo concerné, à traiter selon leur sévérité :
    [[GitHub] Alertes Dependabot - pass-emploi-api](https://github.com/France-Travail/pass-emploi-api/security/dependabot),
-   [- pass-emploi-web](https://github.com/France-Travail/pass-emploi-web/security/dependabot),
-   [- pass-emploi-connect](https://github.com/France-Travail/pass-emploi-connect/security/dependabot).
-   Chaque ligne du message renvoie aussi à son alerte (lien « Voir »).
+   [[GitHub] Alertes Dependabot - pass-emploi-web](https://github.com/France-Travail/pass-emploi-web/security/dependabot),
+   [[GitHub] Alertes Dependabot - pass-emploi-connect](https://github.com/France-Travail/pass-emploi-connect/security/dependabot).
+   Dans le message, chaque CVE renvoie en plus à sa propre alerte.
 
 > **Pendant la migration** : `security-alerts.yml` garde son envoi direct vers
 > Mattermost tant que son envoi vers Elasticsearch n'est pas en place (cf.
