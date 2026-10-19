@@ -139,7 +139,10 @@ PUT _ingest/pipeline/ingest-alertes-scalingo
     },
     {
       "script": {
-        "description": "message : la ligne de notification de l'événement, en texte brut",
+        "description": "message et labels.categorie : la ligne de notification de l'événement et sa catégorie (incident ou infra), en texte brut",
+        "params": {
+          "critiques": ["app_crashed", "app_crashed_repeatedly", "app_stopped"]
+        },
         "source": """
           Map labels = ctx.labels;
           StringBuilder line = new StringBuilder(ctx.scalingo.app_name).append(' : ');
@@ -167,7 +170,16 @@ PUT _ingest/pipeline/ingest-alertes-scalingo
               line.append(', par ').append(ctx.user.name);
             }
           }
-          ctx.message = line.toString();
+          String action = ctx.event.action;
+          boolean redemarrageSubi = action == 'app_restarted' && ctx.event.reason != 'user_restart';
+          String emoji = 'ℹ️';
+          if (params.critiques.contains(action)) {
+            emoji = '🚨';
+          } else if (action == 'resource_threshold_exceeded' || redemarrageSubi) {
+            emoji = '⚠️';
+          }
+          labels.categorie = emoji == 'ℹ️' ? 'infra' : 'incident';
+          ctx.message = emoji + ' ' + line.toString();
         """
       }
     }
@@ -182,13 +194,13 @@ PUT _ingest/pipeline/ingest-alertes-scalingo
 # alert → event.kind: alert, event.action: resource_threshold_exceeded,
 #   event.outcome: failure, service.name: pass-emploi-logstash,
 #   service.environment: perf, service.node.name: web-1, labels.metric: RAM,
-#   message: "pass-emploi-logstash-perf : RAM à 96.96 % (seuil ≥ 90.0 %) sur web-1"
+#   labels.categorie: incident, message: "⚠️ pass-emploi-logstash-perf : RAM à 96.96 % (seuil ≥ 90.0 %) sur web-1"
 # scale → event.action: app_scaled, labels.formation: "web=0:L worker=0:L",
 #   labels.formation_before: "web=1:L worker=0:L", labels.scaled_to_zero: "true",
-#   message: "pass-emploi-logstash-perf : app_scaled web=1:L worker=0:L → web=0:L worker=0:L, par prenom.nom"
+#   labels.categorie: infra, message: "ℹ️ pass-emploi-logstash-perf : app_scaled web=1:L worker=0:L → web=0:L worker=0:L, par prenom.nom"
 # restart → event.action: app_restarted, event.reason: user_restart,
 #   labels.scope: web, pas d'event.outcome (redémarrage volontaire),
-#   message: "pass-emploi-logstash-perf : app_restarted (user_restart) sur web, par prenom.nom"
+#   labels.categorie: infra, message: "ℹ️ pass-emploi-logstash-perf : app_restarted (user_restart) sur web, par prenom.nom"
 POST _ingest/pipeline/ingest-alertes-scalingo/_simulate
 {
   "docs": [
@@ -200,17 +212,23 @@ POST _ingest/pipeline/ingest-alertes-scalingo/_simulate
 
 # crash (forme supposée, non capturée) → event.action: app_crashed,
 #   event.outcome: failure, service.environment: prod,
-#   message: "pass-emploi-api-prod : app_crashed (oom) sur web, par scalingo-platform"
+#   labels.categorie: incident, message: "🚨 pass-emploi-api-prod : app_crashed (oom) sur web, par scalingo-platform"
 # type inconnu, sans auteur → event.action: scalingo_<type>, indexé quand même,
-#   message: "pass-emploi-api-staging : scalingo_new_variable"
-# alerte levée → message: "pass-emploi-api-prod : RAM revenue à 45.00 % (seuil ≥ 90.0 %) sur web-1"
-# alerte incomplète → message: "pass-emploi-api-prod : CPU (seuil inconnu)", jamais "null"
+#   labels.categorie: infra, message: "ℹ️ pass-emploi-api-staging : scalingo_new_variable"
+# alerte levée → labels.categorie: infra, message: "ℹ️ pass-emploi-api-prod : RAM revenue à 45.00 % (seuil ≥ 90.0 %) sur web-1"
+# alerte incomplète → labels.categorie: incident, message: "⚠️ pass-emploi-api-prod : CPU (seuil inconnu)", jamais "null"
+# redémarrage par la plateforme → labels.categorie: incident,
+#   message: "⚠️ pass-emploi-logstash-prod : app_restarted (crash) sur web, par scalingo-platform"
+# déploiement → labels.categorie: infra,
+#   message: "ℹ️ pass-emploi-web-staging : app_deployed, par prenom.nom"
 POST _ingest/pipeline/ingest-alertes-scalingo/_simulate
 {
   "docs": [
     { "_source": {"id":"test-crash","created_at":"2026-10-12T08:00:00.000Z","type":"crash","app_id":"test","app_name":"pass-emploi-api-prod","user":{"username":"scalingo-platform","email":"deploy@scalingo.com"},"type_data":{"scope":["web"],"reason":"oom"}} },
     { "_source": {"id":"test-inconnu","created_at":"2026-10-12T08:00:00.000Z","type":"new_variable","app_id":"test","app_name":"pass-emploi-api-staging","type_data":{"name":"LOG_LEVEL"}} },
     { "_source": {"id":"test-retour","created_at":"2026-10-12T08:00:00.000Z","type":"alert","app_id":"test","app_name":"pass-emploi-api-prod","user":{"username":"scalingo-platform"},"type_data":{"sender_name":"web-1","metric":"RAM","limit_text":"≥ 90.0 %","value_text":"45.00 %","activated":false}} },
-    { "_source": {"id":"test-incomplet","created_at":"2026-10-12T08:00:00.000Z","type":"alert","app_id":"test","app_name":"pass-emploi-api-prod","type_data":{"metric":"CPU","activated":true}} }
+    { "_source": {"id":"test-incomplet","created_at":"2026-10-12T08:00:00.000Z","type":"alert","app_id":"test","app_name":"pass-emploi-api-prod","type_data":{"metric":"CPU","activated":true}} },
+    { "_source": {"id":"test-redemarrage-plateforme","created_at":"2026-10-19T08:00:00.000Z","type":"restart","app_id":"test","app_name":"pass-emploi-logstash-prod","user":{"username":"scalingo-platform"},"type_data":{"scope":["web"],"reason":"crash"}} },
+    { "_source": {"id":"test-deploiement","created_at":"2026-10-19T08:00:00.000Z","type":"deployment","app_id":"test","app_name":"pass-emploi-web-staging","user":{"username":"prenom.nom"},"type_data":{}} }
   ]
 }
