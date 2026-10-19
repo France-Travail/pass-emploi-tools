@@ -338,7 +338,10 @@ de pass-emploi-api-staging remplacée par le webhook du canal `jobs-staging`
 **[Pass Emploi] Logs Hors-Prod - Jobs** et A5b (`POST`) créés : active, `ok`.
 À vérifier : les envois de `SuiviJobService` en staging passent de 503 à 200
 (`external_api_call`, `log.logger` SuiviJobService), au plus tard au crash
-nocturne de `CHARGER_EVENEMENTS_ANALYTICS`.
+nocturne de `CHARGER_EVENEMENTS_ANALYTICS`. Même jour : celle de
+pass-emploi-api-perf (mauvais copier-coller à la création de la perf, il n'y a
+pas de canal `jobs-perf`) pointe aussi vers `jobs-staging` ; conteneurs à 0,
+prise en compte au prochain démarrage de la perf.
 
 ## 11. Suites à reporter en tickets (Notion)
 
@@ -355,8 +358,6 @@ nocturne de `CHARGER_EVENEMENTS_ANALYTICS`.
 - [ ] Notifier « Dashboard Pass Emploi » d'api-prod : vise l'app absente
       `pass-emploi-dashboard` (la variable jobs de staging, qui la visait
       aussi, est corrigée le 2026-10-19) ; à retirer.
-- [ ] `MATTERMOST_JOBS_WEBHOOK_URL` de pass-emploi-api-perf : vise un webhook
-      Mattermost distinct de prod et de `jobs-staging`, canal à identifier.
 - [ ] Jobs dans Tchap : salons `jobs-production` / `jobs-staging`, Workflows de
       salon, action `.workflows` sur A5a / A5b. Les logs `job_crashed` n'ont pas
       de `message` de notification (leur `message` est le log brut) : le
