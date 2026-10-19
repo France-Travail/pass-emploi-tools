@@ -1,5 +1,5 @@
 # Pipeline par défaut de logs-alertes-scalingo-prod-default. Spécification :
-# ../alertes-externes.md. À rejouer après ingest-alertes-scalingo.console.
+# ../README.md. À rejouer après ingest-alertes-scalingo.console.
 #
 # Vérifie que le document est bien un événement Scalingo d'une app de prod, puis
 # délègue la transformation au pipeline commun. Un document rejeté part dans le
