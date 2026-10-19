@@ -186,7 +186,16 @@ du repo). `@timestamp` est l'heure d'envoi par le workflow.
    gardant l'envoi Mattermost actuel pendant la migration.
 
 Pendant la migration vers Tchap, les notifiers `Mattermost*` sont
-**désactivés, jamais supprimés**, une fois la parité constatée.
+**désactivés, jamais supprimés**, une fois la parité constatée :
+[`verifier-parite.py`](verifier-parite.py) compare, app par app, l'historique
+Scalingo (`scalingo timeline`, limité aux événements sélectionnés dans le
+notifier Elastic) aux documents reçus depuis une date, et liste le failure
+store. Lecture seule ; code de sortie non nul au moindre écart.
+
+```bash
+set -a; . ~/.config/pass-emploi/elastic-claude.env; set +a   # ES_URL, ES_API_KEY
+python3 -I verifier-parite.py --depuis 2026-10-19T17:00:00Z
+```
 
 ## Points ouverts
 
