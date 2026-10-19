@@ -1,12 +1,15 @@
 # Alertes applicatives
 
 Les alertes sur des pannes **visibles des utilisateurs et impactantes pour le
-métier**, en deux couches :
+métier**, en trois couches :
 
 - **alertes SLO** (S1 à S3) — la promesse de [sli-slo](sli-slo.md) est-elle
   menacée ? Déduites des SLO Kibana ;
 - **alertes de diagnostic** (A1 à A3) — pourquoi : un partenaire qui tombe, des
-  5xx qui s'accumulent, une vague de refus d'authentification.
+  5xx qui s'accumulent, une vague de refus d'authentification ;
+- **événements Scalingo** (A4a, A4b) — ce qui arrive aux apps : crash, arrêt,
+  redémarrage subi, seuil de ressource, mais aussi déploiements et opérations
+  d'infra.
 
 Elles s'appuient sur les logs ECS (`event.action` / `event.outcome`, cf.
 [format/logs/conventions](../format/logs/conventions.md)). Les pannes de la
@@ -14,7 +17,9 @@ chaîne de télémétrie elle-même sont dans
 [alertes-stack-observabilite](alertes-stack-observabilite.md) : si elle est
 aveugle (alerte 3 « silence »), ces alertes-ci ne peuvent pas se déclencher.
 
-Toutes notifient via Mattermost (`#monitoring-production`).
+Toutes notifient via Mattermost (`#monitoring-production`), sauf A4b
+(`Mattermost-monitoring-staging`) ; A4a et A4b notifient aussi Tchap
+(`monitoring-production`, `monitoring-staging`, cf. [workflows/tchap](workflows/tchap/README.md)).
 
 ## Récapitulatif
 
@@ -26,9 +31,12 @@ Toutes notifient via Mattermost (`#monitoring-production`).
 | A1 | Pic d'échecs partenaire    | `logs-prod-default` | `external_api_call` `failure` > 25 / 5 min par client | 1 min     | 1h       | ⚠️Warning  |
 | A2 | Erreurs serveur 5xx        | `logs-prod-default` | requêtes api en 5xx > 5 / 5 min                       | 1 min     | 1h       | 🚨 Critical |
 | A3 | Pic d'auth refusées        | `logs-prod-default` | `auth_failed` > 3 × même heure sur 7 j, ≥ 20 / 10 min | 5 min     | 1h       | 🚨 Critical |
+| A4a | Événements Scalingo — prod | `logs-alertes-scalingo-prod-default` | tout événement d'une app hors stack d'observabilité | 1 min | — | ⚠️Warning |
+| A4b | Événements Scalingo — staging, perf | `logs-alertes-scalingo-{staging,perf}-default` | idem A4a, canal staging | 5 min | — | ⚠️Warning |
 
-> **Prod uniquement** : en staging, ces signaux reflètent les tests en cours, pas
-> une panne.
+> **Prod uniquement** (sauf A4b) : en staging, ces signaux reflètent les tests
+> en cours, pas une panne. A4b garde le fil d'activité Scalingo de staging et de
+> perf, déjà publié dans le canal staging.
 >
 > **Seuils à calibrer** (A1 à A3) : ceux ci-dessous reprennent les intentions de départ
 > (5 échecs/min, 1 erreur 5xx/min, 3 × la normale), pas une mesure. Avant
@@ -309,3 +317,78 @@ FROM logs-prod-default
   ]
 }
 ```
+
+## Événements Scalingo — ce qui arrive aux apps
+
+Des **Elasticsearch query rules (KQL)** sur les événements des notifiers
+Scalingo, collectés dans `logs-alertes-scalingo-<env>-default` (cf.
+[collecte des événements externes](../collecte/evenements-externes/README.md)).
+Elles remplacent le fil d'activité que les notifiers `Mattermost*` publiaient
+directement : **une règle par environnement**, qui liste chaque événement sur
+une ligne, préfixée de sa gravité :
+
+| Ligne | Événements |
+|---|---|
+| 🚨 incident | `app_crashed`, `app_crashed_repeatedly`, `app_stopped` |
+| ⚠️ incident | `resource_threshold_exceeded`, `app_restarted` dont la raison n'est pas `user_restart` |
+| ℹ️ infra | tout le reste : redémarrage volontaire, déploiement, scaling, retour sous le seuil… |
+
+Exemple : `🚨 pass-emploi-api-prod : app_crashed (oom) sur web, par scalingo-platform`.
+
+Les apps de la stack d'observabilité (`pass-emploi-logstash`,
+`pass-emploi-logstash-process`, `pass-emploi-elastic-agent`,
+`pass-emploi-heartbeat`, quel que soit l'environnement) sont exclues : leurs
+événements vont aux règles 6a / 6b des
+[alertes de la stack](alertes-stack-observabilite.md). Une nouvelle app est
+couverte d'office, sans toucher aux règles.
+
+Chaque exécution ne compte que les documents arrivés depuis la précédente
+(`excludeHitsFromPreviousRun`) : un événement = une notification, sans
+throttle.
+
+**Création** : rejouer [`rules/1-rules-applicatives.console`](rules/1-rules-applicatives.console),
+après les sessions Discover de [`discovers/evenements-externes/`](discovers/evenements-externes/).
+
+### A4a — Événements Scalingo des apps applicatives, prod (Warning)
+
+| Paramètre               | Valeur |
+|-------------------------|--------|
+| **Rule name**           | `Scalingo - Prod - Événements des apps applicatives` |
+| **Type**                | Elasticsearch query rule (KQL), data view `logs-alertes-scalingo-prod-default` |
+| **Requête**             | `not service.name : ("pass-emploi-logstash" or "pass-emploi-logstash-process" or "pass-emploi-elastic-agent" or "pass-emploi-heartbeat")` |
+| **Fenêtre / fréquence** | 5 min / 1 min |
+| **Actions**             | Mattermost-monitoring-production ; Tchap via le Workflow `tchap-monitoring-production` |
+| **Related dashboards**  | [Pass Emploi] Diagnostic d'erreurs - Entrée |
+
+**À vérifier** :
+1. Le Discover **[Pass Emploi] Alertes externes de Prod - Événements Scalingo**,
+   onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur.
+2. Pour un incident, l'impact sur les utilisateurs : le dashboard
+   **[Pass Emploi] Diagnostic d'erreurs - Entrée**, puis le Discover
+   **[Pass Emploi] Logs de Prod - Erreurs serveur 5xx**.
+3. L'activité de l'app (onglet Activity) dans le **[Scalingo] Dashboard des apps**.
+
+### A4b — Événements Scalingo des apps applicatives, staging / perf (Warning)
+
+| Paramètre               | Valeur |
+|-------------------------|--------|
+| **Rule name**           | `Scalingo - Hors-Prod - Événements des apps applicatives` |
+| **Type**                | Elasticsearch query rule (KQL), data view `logs-alertes-scalingo-staging-default,logs-alertes-scalingo-perf-default` |
+| **Requête**             | celle d'A4a |
+| **Fenêtre / fréquence** | 10 min / 5 min |
+| **Actions**             | Mattermost-monitoring-staging ; Tchap via le Workflow `tchap-monitoring-staging` |
+| **Related dashboards**  | — |
+
+**À vérifier** :
+1. Le Discover **[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo**,
+   onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur.
+2. L'activité de l'app (onglet Activity) dans le **[Scalingo] Dashboard des apps**.
+
+### Sortir l'infra des salons de monitoring
+
+Si l'équipe veut isoler les lignes ℹ️ (déploiements…) dans des salons
+`infra-{env}` : créer les salons Tchap `infra-production` et `infra-staging`,
+copier un Workflow de salon en `tchap-infra-{env}.console`, puis, pour A4a, A4b
+(et 6a, 6b), ajouter `and labels.categorie : "incident"` à la requête et
+dupliquer la règle avec `labels.categorie : "infra"` vers `tchap-infra-{env}`.
+Aucun changement de pipeline ni de données ; réversible.
