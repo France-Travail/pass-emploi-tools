@@ -8,7 +8,7 @@ métier**, en trois couches :
 - **alertes de diagnostic** (A1 à A3) — pourquoi : un partenaire qui tombe, des
   5xx qui s'accumulent, une vague de refus d'authentification ;
 - **événements Scalingo** (A4a, A4b) — ce qui arrive aux apps : crash, arrêt,
-  redémarrage subi, seuil de ressource, mais aussi déploiements et opérations
+  redémarrage, seuil de ressource, mais aussi déploiements et opérations
   d'infra.
 
 Elles s'appuient sur les logs ECS (`event.action` / `event.outcome`, cf.
@@ -31,8 +31,8 @@ Toutes notifient via Mattermost (`#monitoring-production`), sauf A4b
 | A1 | Pic d'échecs partenaire    | `logs-prod-default` | `external_api_call` `failure` > 25 / 5 min par client | 1 min     | 1h       | ⚠️Warning  |
 | A2 | Erreurs serveur 5xx        | `logs-prod-default` | requêtes api en 5xx > 5 / 5 min                       | 1 min     | 1h       | 🚨 Critical |
 | A3 | Pic d'auth refusées        | `logs-prod-default` | `auth_failed` > 3 × même heure sur 7 j, ≥ 20 / 10 min | 5 min     | 1h       | 🚨 Critical |
-| A4a | Événements Scalingo — prod | `logs-alertes-scalingo-prod-default` | tout événement d'une app hors stack d'observabilité | 1 min | — | ⚠️Warning |
-| A4b | Événements Scalingo — staging, perf | `logs-alertes-scalingo-{staging,perf}-default` | idem A4a, canal staging | 5 min | — | ⚠️Warning |
+| A4a | Événements Scalingo — prod | `logs-alertes-scalingo-prod-default` | tout événement d'une app hors stack d'observabilité | 1 min | — | par ligne : 🚨 / ⚠️ / ℹ️ |
+| A4b | Événements Scalingo — staging, perf | `logs-alertes-scalingo-{staging,perf}-default` | idem A4a, canal staging | 5 min | — | par ligne : ⚠️ / ℹ️ |
 
 > **Prod uniquement** (sauf A4b) : en staging, ces signaux reflètent les tests
 > en cours, pas une panne. A4b garde le fil d'activité Scalingo de staging et de
@@ -327,11 +327,15 @@ Elles remplacent le fil d'activité que les notifiers `Mattermost*` publiaient
 directement : **une règle par environnement**, qui liste chaque événement sur
 une ligne, préfixée de sa gravité :
 
-| Ligne | Événements |
-|---|---|
-| 🚨 incident | `app_crashed`, `app_crashed_repeatedly`, `app_stopped` |
-| ⚠️ incident | `resource_threshold_exceeded`, `app_restarted` dont la raison n'est pas `user_restart` |
-| ℹ️ infra | tout le reste : redémarrage volontaire, déploiement, scaling, retour sous le seuil… |
+| Ligne en prod | Ligne en staging / perf | Événements |
+|---|---|---|
+| 🚨 incident | ⚠️ incident | crash, crash répété, redémarrage (quelle que soit la raison), arrêt |
+| ⚠️ incident | ⚠️ incident | seuil de ressource dépassé |
+| ℹ️ infra | ℹ️ infra | tout le reste, par défaut : déploiement, scaling, variables, retour sous le seuil… |
+
+Les niveaux reprennent ceux des anciennes règles X1 à X3. Le titre du message
+ne porte pas de gravité : un même message peut lister des lignes de niveaux
+différents.
 
 Exemple : `🚨 pass-emploi-api-prod : app_crashed (oom) sur web, par scalingo-platform`.
 
@@ -349,7 +353,7 @@ throttle.
 **Création** : rejouer [`rules/1-rules-applicatives.console`](rules/1-rules-applicatives.console),
 après les sessions Discover de [`discovers/evenements-externes/`](discovers/evenements-externes/).
 
-### A4a — Événements Scalingo des apps applicatives, prod (Warning)
+### A4a — Événements Scalingo des apps applicatives, prod
 
 | Paramètre               | Valeur |
 |-------------------------|--------|
@@ -368,7 +372,7 @@ après les sessions Discover de [`discovers/evenements-externes/`](discovers/eve
    **[Pass Emploi] Logs de Prod - Erreurs serveur 5xx**.
 3. L'activité de l'app (onglet Activity) dans le **[Scalingo] Dashboard des apps**.
 
-### A4b — Événements Scalingo des apps applicatives, staging / perf (Warning)
+### A4b — Événements Scalingo des apps applicatives, staging / perf
 
 | Paramètre               | Valeur |
 |-------------------------|--------|

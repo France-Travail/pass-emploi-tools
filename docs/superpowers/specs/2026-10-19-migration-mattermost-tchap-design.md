@@ -339,3 +339,10 @@ pas en `webhook` ; ces alertes passent par leur propre liste de notifiers
 - **Collecte** : les en-têtes des `.console` déplacés, `2-component-templates`,
   `objets-kibana.md` et ADR-004 ont aussi été mis à jour (le plan ne listait
   qu'une partie des références).
+- **Gravité des événements Scalingo** (décision de l'équipe, 2026-10-19) :
+  ℹ️ par défaut ; seuls gardent leur niveau les événements que notifiaient les
+  anciennes X1 à X3 : en prod, 🚨 crash, crash répété, redémarrage (même
+  volontaire) et arrêt, ⚠️ seuil dépassé ; en staging / perf, ⚠️ pour tous
+  ceux-là. Remplace la règle « redémarrage volontaire = ℹ️ » de D5. Le titre des
+  messages A4a, A4b, 6a, 6b ne porte plus de gravité (ni émoji, ni tag
+  `warning`) : elle est sur chaque ligne.

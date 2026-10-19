@@ -101,11 +101,14 @@ et est classé `infra` : l'ajouter à la table `actions` du pipeline
 **Catégorie et émoji** : le pipeline classe chaque événement dans
 `labels.categorie` et préfixe `message` d'un émoji, depuis une seule table :
 
-| `labels.categorie` | Événements | Émoji |
-|---|---|---|
-| `incident` | `app_crashed`, `app_crashed_repeatedly`, `app_stopped` | 🚨 |
-| `incident` | `resource_threshold_exceeded`, `app_restarted` dont `event.reason` n'est pas `user_restart` | ⚠️ |
-| `infra` | tout le reste : `app_restarted` volontaire, `app_deployed`, `app_scaled`, `resource_threshold_recovered`, `scalingo_<type>` | ℹ️ |
+| `labels.categorie` | Événements | Émoji en prod | Émoji en staging / perf |
+|---|---|---|---|
+| `incident` | `app_crashed`, `app_crashed_repeatedly`, `app_restarted` (quelle que soit la raison), `app_stopped` | 🚨 | ⚠️ |
+| `incident` | `resource_threshold_exceeded` | ⚠️ | ⚠️ |
+| `infra` | tout le reste, par défaut : `app_deployed`, `app_scaled`, variables, `resource_threshold_recovered`, `scalingo_<type>` | ℹ️ | ℹ️ |
+
+Les niveaux reprennent ceux des anciennes règles X1 (🚨 en prod), X2 et X3 (⚠️) ;
+tout événement qu'elles ne notifiaient pas est en ℹ️.
 
 Exemple : `🚨 pass-emploi-api-prod : app_crashed (oom) sur web, par scalingo-platform`.
 Les règles filtrent `labels.categorie` si l'on veut un jour sortir l'infra des

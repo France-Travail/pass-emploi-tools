@@ -42,8 +42,8 @@ qui reprend les tableaux et bodies de cette page, à rejouer dans Dev Tools.
 | 4b | Backpressure ingest — staging/perf            | `metrics-logstash.pipeline-default`             | `Min` `≥ 1` / 15 min, par nœud                           | 5 min      | 6h       | ⚠️Warning  |
 | 5a | Heap JVM élevé — prod                         | `metrics-logstash.node-default`                 | `Min` `≥ 90` / 15 min, par nœud                          | 2 min      | 6h       | 🚨 Critical |
 | 5b | Heap JVM élevé — staging/perf                 | `metrics-logstash.node-default`                 | `Min` `≥ 90` / 15 min, par nœud                          | 5 min      | 6h       | ⚠️Warning  |
-| 6a | Événements Scalingo des apps de la stack — prod | `logs-alertes-scalingo-prod-default`          | tout événement d'une app de la stack                     | 1 min      | —        | ⚠️Warning  |
-| 6b | Événements Scalingo des apps de la stack — staging/perf | `logs-alertes-scalingo-staging/perf-default` | tout événement d'une app de la stack               | 5 min      | —        | ⚠️Warning  |
+| 6a | Événements Scalingo des apps de la stack — prod | `logs-alertes-scalingo-prod-default`          | tout événement d'une app de la stack                     | 1 min      | —        | par ligne 🚨/⚠️/ℹ️ |
+| 6b | Événements Scalingo des apps de la stack — staging/perf | `logs-alertes-scalingo-staging/perf-default` | tout événement d'une app de la stack               | 5 min      | —        | par ligne ⚠️/ℹ️ |
 | 7a | Backlog Redis `logstash:ingest` — prod        | `metrics-redis.key-default`                     | `Min` `Is above 1 000` / 15 min                          | 2 min      | 6h       | 🚨 Critical |
 | 7b | Backlog Redis `logstash:ingest` — staging/perf| `metrics-redis.key-default`                     | `Min` `Is above 1 000` / 15 min                          | 5 min      | 6h       | ⚠️Warning  |
 | 8a | Elastic Agent en défaut — prod                | status_change + `metrics-elastic_agent.*beat-*` | offline/unenrolled/unhealthy ou > 25 err. output / 5 min | 1 min      | 6h       | 🚨 Critical |
@@ -715,7 +715,7 @@ ici : c'est l'[alerte 9](#alerte-9--mémoire-du-conteneur-logstash-oom-kill-scal
 **Objectif** : savoir ce qui arrive aux apps de la stack d'observabilité
 (`pass-emploi-logstash`, `pass-emploi-logstash-process`,
 `pass-emploi-elastic-agent`, `pass-emploi-heartbeat`) : crash, arrêt,
-redémarrage subi (OOM-kill…), seuil de ressource, mais aussi déploiements et
+redémarrage (OOM-kill…), seuil de ressource, mais aussi déploiements et
 opérations d'infra.
 
 Des **Elasticsearch query rules (KQL)** sur les événements des notifiers
@@ -723,8 +723,9 @@ Scalingo, collectés dans `logs-alertes-scalingo-<env>-default` (cf.
 [collecte des événements externes](../collecte/evenements-externes/README.md),
 dont la [mise en service](../collecte/evenements-externes/README.md#mise-en-service)
 des notifiers). Une règle par environnement, qui liste chaque événement sur une
-ligne, préfixée de sa gravité : 🚨 crash ou arrêt, ⚠️ seuil dépassé ou
-redémarrage subi (`event.reason` autre que `user_restart`), ℹ️ le reste. Les
+ligne, préfixée de sa gravité (niveaux des anciennes X1 à X3) : en prod, 🚨
+crash, redémarrage ou arrêt, ⚠️ seuil dépassé ; en staging / perf, ⚠️ pour
+les deux ; ℹ️ le reste. Les
 apps applicatives vont aux règles A4a / A4b des
 [alertes applicatives](alertes-applicatives.md#événements-scalingo--ce-qui-arrive-aux-apps).
 
@@ -733,7 +734,7 @@ Chaque exécution ne compte que les documents arrivés depuis la précédente
 throttle. Scalingo n'envoie `app_crashed` qu'aux 2ᵉ, 5ᵉ et 12ᵉ crashs, et
 `app_crashed_repeatedly` à chaque crash : le notifier doit sélectionner les deux.
 
-### 6a — Événements Scalingo des apps de la stack, prod (Warning)
+### 6a — Événements Scalingo des apps de la stack, prod
 
 | Paramètre               | Valeur |
 |-------------------------|--------|
@@ -754,7 +755,7 @@ throttle. Scalingo n'envoie `app_crashed` qu'aux 2ᵉ, 5ᵉ et 12ᵉ crashs, et
 3. Les métriques (onglet Metrics) et l'activité (onglet Activity) de l'app dans
    le **[Scalingo] Dashboard des apps**.
 
-### 6b — Événements Scalingo des apps de la stack, staging / perf (Warning)
+### 6b — Événements Scalingo des apps de la stack, staging / perf
 
 | Paramètre               | Valeur |
 |-------------------------|--------|

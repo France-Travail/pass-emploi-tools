@@ -1024,12 +1024,11 @@ PUT kbn:/api/alerting/rule/9f9c07f9-07a9-40a3-a882-4a701e81b83c
   ]
 }
 
-# 6a — Événements Scalingo des apps de la stack, prod (Warning)
+# 6a — Événements Scalingo des apps de la stack, prod (gravité par ligne)
 PUT kbn:/api/alerting/rule/c16f2ab5-6103-4f69-bdc3-b4a10a38deb0
 {
   "name": "Scalingo - Prod - Événements des apps de la stack",
   "tags": [
-    "warning",
     "prod",
     "o11y",
     "scalingo"
@@ -1087,10 +1086,10 @@ PUT kbn:/api/alerting/rule/c16f2ab5-6103-4f69-bdc3-b4a10a38deb0
       "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
       "params": {
         "body": """{
-  "text": "⚠️ **Événements Scalingo des apps de la stack, prod** ({{context.value}})",
+  "text": "**Événements Scalingo des apps de la stack, prod** ({{context.value}})",
   "attachments": [
     {
-      "color": "#ffa500",
+      "color": "#808080",
       "text": "{{#context.hits}}{{_source.message}}\n{{/context.hits}}",
       "fields": [
         {
@@ -1149,14 +1148,13 @@ PUT kbn:/api/alerting/rule/c16f2ab5-6103-4f69-bdc3-b4a10a38deb0
   ]
 }
 
-# 6b — Événements Scalingo des apps de la stack, staging / perf (Warning)
+# 6b — Événements Scalingo des apps de la stack, staging / perf (gravité par ligne)
 # Nouvelle règle : absente de la prod avant le 2026-10-19, la créer avec POST
 # (même corps plus "rule_type_id": ".es-query" et "consumer": "alerts").
 PUT kbn:/api/alerting/rule/5d1f7c2a-9b3e-4f6a-8c1d-2e7b4a9f0c63
 {
   "name": "Scalingo - Hors-Prod - Événements des apps de la stack",
   "tags": [
-    "warning",
     "hors-prod",
     "o11y",
     "scalingo"
@@ -1214,10 +1212,10 @@ PUT kbn:/api/alerting/rule/5d1f7c2a-9b3e-4f6a-8c1d-2e7b4a9f0c63
       "id": "c4a313b3-aa42-4e07-8196-c007625ce8af",
       "params": {
         "body": """{
-  "text": "⚠️ **Événements Scalingo des apps de la stack, hors prod** ({{context.value}})",
+  "text": "**Événements Scalingo des apps de la stack, hors prod** ({{context.value}})",
   "attachments": [
     {
-      "color": "#ffa500",
+      "color": "#808080",
       "text": "{{#context.hits}}{{_source.message}}\n{{/context.hits}}",
       "fields": [
         {
