@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       elastic-url:
-        description: 'Endpoint Elasticsearch (variable ELASTIC_URL du repo) ; vide = pas d envoi'
+        description: "Endpoint Elasticsearch (variable ELASTIC_URL du repo) ; vide = pas d'envoi"
         required: false
         type: string
         default: ''
