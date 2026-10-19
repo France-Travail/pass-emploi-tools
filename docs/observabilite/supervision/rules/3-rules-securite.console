@@ -27,7 +27,7 @@ PUT kbn:/api/alerting/rule/67846c2c-45d1-45be-89f5-ce9a340240a0
   ],
   "artifacts": {
     "investigation_guide": {
-      "blob": "## Ce que signale l'alerte\n\nUne CVE high ou critical est encore ouverte sur un repo (alertes Dependabot envoyées par `security-alerts.yml`).\n\n## À vérifier\n\n1. Le Discover [[Pass Emploi] Alertes externes - CVE Dependabot](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/ece3e409-0679-4bcb-a675-ae7dfb092c19), liste les CVE ouvertes par repo avec leur score\n2. L'alerte Dependabot de chaque CVE (lien Voir), à traiter selon sa sévérité\n\n## Discover sessions\n\n- [[Pass Emploi] Alertes externes - CVE Dependabot](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/ece3e409-0679-4bcb-a675-ae7dfb092c19)\n\n## Documentation\n\n[Alertes de sécurité](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-securite.md)\n"
+      "blob": "## Ce que signale l'alerte\n\nUne CVE high ou critical est encore ouverte sur un repo (alertes Dependabot envoyées par `security-alerts.yml`).\n\n## À vérifier\n\n1. Le Discover [[Pass Emploi] Alertes externes - CVE Dependabot](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/ece3e409-0679-4bcb-a675-ae7dfb092c19), liste les CVE ouvertes par repo avec leur score\n2. Les alertes Dependabot du repo concerné, à traiter selon leur sévérité : [[GitHub] Alertes Dependabot - pass-emploi-api](https://github.com/France-Travail/pass-emploi-api/security/dependabot), [[GitHub] Alertes Dependabot - pass-emploi-web](https://github.com/France-Travail/pass-emploi-web/security/dependabot), [[GitHub] Alertes Dependabot - pass-emploi-connect](https://github.com/France-Travail/pass-emploi-connect/security/dependabot)\n\n## Dashboards\n\n- [[GitHub] Alertes Dependabot - pass-emploi-api](https://github.com/France-Travail/pass-emploi-api/security/dependabot)\n- [[GitHub] Alertes Dependabot - pass-emploi-web](https://github.com/France-Travail/pass-emploi-web/security/dependabot)\n- [[GitHub] Alertes Dependabot - pass-emploi-connect](https://github.com/France-Travail/pass-emploi-connect/security/dependabot)\n\n## Discover sessions\n\n- [[Pass Emploi] Alertes externes - CVE Dependabot](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/ece3e409-0679-4bcb-a675-ae7dfb092c19)\n\n## Documentation\n\n[Alertes de sécurité](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-securite.md)\n"
     }
   },
   "schedule": {
@@ -92,7 +92,13 @@ PUT kbn:/api/alerting/rule/67846c2c-45d1-45be-89f5-ce9a340240a0
         {
           "title": "À vérifier",
           "value": "1. Le Discover [[Pass Emploi] Alertes externes - CVE Dependabot](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/ece3e409-0679-4bcb-a675-ae7dfb092c19), liste les CVE ouvertes par repo avec leur score\n{{!
-                  }}2. L'alerte Dependabot de chaque CVE (lien Voir), à traiter selon sa sévérité"
+                  }}2. Les alertes Dependabot du repo concerné, à traiter selon leur sévérité : [[GitHub] Alertes Dependabot - pass-emploi-api](https://github.com/France-Travail/pass-emploi-api/security/dependabot), [[GitHub] Alertes Dependabot - pass-emploi-web](https://github.com/France-Travail/pass-emploi-web/security/dependabot), [[GitHub] Alertes Dependabot - pass-emploi-connect](https://github.com/France-Travail/pass-emploi-connect/security/dependabot)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[GitHub] Alertes Dependabot - pass-emploi-api](https://github.com/France-Travail/pass-emploi-api/security/dependabot)\n{{!
+                  }}[[GitHub] Alertes Dependabot - pass-emploi-web](https://github.com/France-Travail/pass-emploi-web/security/dependabot)\n{{!
+                  }}[[GitHub] Alertes Dependabot - pass-emploi-connect](https://github.com/France-Travail/pass-emploi-connect/security/dependabot)"
         },
         {
           "title": "Discover sessions",
@@ -126,4 +132,3 @@ PUT kbn:/api/alerting/rule/67846c2c-45d1-45be-89f5-ce9a340240a0
     }
   ]
 }
-

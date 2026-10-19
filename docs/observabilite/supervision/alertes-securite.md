@@ -40,7 +40,11 @@ notification.
 **À vérifier** :
 1. Le Discover **[Pass Emploi] Alertes externes - CVE Dependabot** : les CVE
    ouvertes par repo, avec leur score.
-2. L'alerte Dependabot de chaque CVE (lien Voir), à traiter selon sa sévérité.
+2. Les alertes Dependabot du repo concerné, à traiter selon leur sévérité :
+   [[GitHub] Alertes Dependabot - pass-emploi-api](https://github.com/France-Travail/pass-emploi-api/security/dependabot),
+   [- pass-emploi-web](https://github.com/France-Travail/pass-emploi-web/security/dependabot),
+   [- pass-emploi-connect](https://github.com/France-Travail/pass-emploi-connect/security/dependabot).
+   Chaque ligne du message renvoie aussi à son alerte (lien « Voir »).
 
 > **Pendant la migration** : `security-alerts.yml` garde son envoi direct vers
 > Mattermost tant que son envoi vers Elasticsearch n'est pas en place (cf.
