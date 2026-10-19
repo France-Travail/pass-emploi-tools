@@ -3,22 +3,19 @@
 Les alertes sur **notre infra de télémétrie** (Logstash, Redis, agents Fleet, Elasticsearch) :
 elles signalent que la chaîne de logs et de métriques est en panne ou aveugle,
 pas que les utilisateurs sont touchés. Les pannes visibles des utilisateurs sont
-dans [alertes-applicatives](alertes-applicatives.md). Hors alertes 6
-(webhook Scalingo), 11 et 12 (AutoOps), ce sont des **Kibana Rules** qui notifient via Mattermost
+dans [alertes-applicatives](alertes-applicatives.md). Hors alertes 11 et 12
+(AutoOps), ce sont des **Kibana Rules** qui notifient via Mattermost
 (`#o11y-production`, `#o11y-staging`).
 
 > ⚠️ **Mattermost est décommissionné le 1er novembre 2026.** Les Kibana Rules
 > migrent vers Tchap par les [Workflows Tchap](workflows/tchap/README.md). Les
-> alertes émises hors Kibana suivent une autre voie
-> ([ADR-004](../../decisions/ADR-004-notifications-tchap-kibana-workflows.md#alertes-émises-hors-kibana-autoops)) :
-> - **11 et 12 (AutoOps)** postent directement dans Tchap, par un connecteur
->   Webhook AutoOps en `POST` (cf. leur section). Elles ne passent surtout pas
->   par Elasticsearch : elles doivent alerter quand le cluster va mal ;
-> - **6 (webhook Scalingo)** est retirée à la bascule : les règles X1 et X3 des
->   [alertes externes](alertes-externes.md) couvrent les mêmes événements et
->   notifient Tchap.
+> alertes émises hors Kibana, **11 et 12 (AutoOps)**, postent directement dans
+> Tchap, par un connecteur Webhook AutoOps en `POST` (cf. leur section,
+> [ADR-004](../../decisions/ADR-004-notifications-tchap-kibana-workflows.md#alertes-émises-hors-kibana-autoops)).
+> Elles ne passent surtout pas par Elasticsearch : elles doivent alerter quand le
+> cluster va mal.
 
-**Création** : les alertes 1 à 5 et 7 à 10 sont versionnées dans
+**Création** : les alertes 1 à 10 et 14 sont versionnées dans
 [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console),
 qui reprend les tableaux et bodies de cette page, à rejouer dans Dev Tools.
 
@@ -45,7 +42,8 @@ qui reprend les tableaux et bodies de cette page, à rejouer dans Dev Tools.
 | 4b | Backpressure ingest — staging/perf            | `metrics-logstash.pipeline-default`             | `Min` `≥ 1` / 15 min, par nœud                           | 5 min      | 6h       | ⚠️Warning  |
 | 5a | Heap JVM élevé — prod                         | `metrics-logstash.node-default`                 | `Min` `≥ 90` / 15 min, par nœud                          | 2 min      | 6h       | 🚨 Critical |
 | 5b | Heap JVM élevé — staging/perf                 | `metrics-logstash.node-default`                 | `Min` `≥ 90` / 15 min, par nœud                          | 5 min      | 6h       | ⚠️Warning  |
-| 6  | Restart conteneur                             | Scalingo webhook                                | `app_crashed_repeated/app_restarted`                     | —          | —        | 🚨 Critical |
+| 6a | Événements Scalingo des apps de la stack — prod | `logs-alertes-scalingo-prod-default`          | tout événement d'une app de la stack                     | 1 min      | —        | ⚠️Warning  |
+| 6b | Événements Scalingo des apps de la stack — staging/perf | `logs-alertes-scalingo-staging/perf-default` | tout événement d'une app de la stack               | 5 min      | —        | ⚠️Warning  |
 | 7a | Backlog Redis `logstash:ingest` — prod        | `metrics-redis.key-default`                     | `Min` `Is above 1 000` / 15 min                          | 2 min      | 6h       | 🚨 Critical |
 | 7b | Backlog Redis `logstash:ingest` — staging/perf| `metrics-redis.key-default`                     | `Min` `Is above 1 000` / 15 min                          | 5 min      | 6h       | ⚠️Warning  |
 | 8a | Elastic Agent en défaut — prod                | status_change + `metrics-elastic_agent.*beat-*` | offline/unenrolled/unhealthy ou > 25 err. output / 5 min | 1 min      | 6h       | 🚨 Critical |
@@ -55,6 +53,7 @@ qui reprend les tableaux et bodies de cette page, à rejouer dans Dev Tools.
 | 10 | ILM en échec ou policy sans suppression       | historique ILM (`ilm-history-7`)                | étape en échec ou policy par défaut / 24 h               | 1 h        | 1 / jour, 9 h 30 | ⚠️Warning  |
 | 11 | Disque des nœuds Elasticsearch                | AutoOps (Elastic Cloud)                         | préavis 75 %, paliers 85 / 90 / 95 %, cluster red       | —          | —        | 🚨 Critical |
 | 12 | Saturation de l'indexation Elasticsearch      | AutoOps (Elastic Cloud)                         | management queue ou index queue haute                    | —          | —        | 🚨 Critical |
+| 14 | Événement externe rejeté                      | les 4 `logs-alertes-*`, sélecteur `::failures`  | tout document / 10 min                                   | 5 min      | —        | ⚠️Warning  |
 
 ---
 
@@ -711,35 +710,64 @@ ici : c'est l'[alerte 9](#alerte-9--mémoire-du-conteneur-logstash-oom-kill-scal
 
 ---
 
-## Alerte 6 — Restart du conteneur Logstash (Scalingo webhook)
+## Alerte 6 — Événements Scalingo des apps de la stack
 
-**Objectif** : être alerté d'un restart du conteneur Logstash (OOM-kill ou crash).
+**Objectif** : savoir ce qui arrive aux apps de la stack d'observabilité
+(`pass-emploi-logstash`, `pass-emploi-logstash-process`,
+`pass-emploi-elastic-agent`, `pass-emploi-heartbeat`) : crash, arrêt,
+redémarrage subi (OOM-kill…), seuil de ressource, mais aussi déploiements et
+opérations d'infra.
 
-**Configuration dans le dashboard Scalingo** (hors repo — action manuelle) :
+Des **Elasticsearch query rules (KQL)** sur les événements des notifiers
+Scalingo, collectés dans `logs-alertes-scalingo-<env>-default` (cf.
+[collecte des événements externes](../collecte/evenements-externes/README.md),
+dont la [mise en service](../collecte/evenements-externes/README.md#mise-en-service)
+des notifiers). Une règle par environnement, qui liste chaque événement sur une
+ligne, préfixée de sa gravité : 🚨 crash ou arrêt, ⚠️ seuil dépassé ou
+redémarrage subi (`event.reason` autre que `user_restart`), ℹ️ le reste. Les
+apps applicatives vont aux règles A4a / A4b des
+[alertes applicatives](alertes-applicatives.md#événements-scalingo--ce-qui-arrive-aux-apps).
 
-Répéter l'opération pour chaque app Logstash :
+Chaque exécution ne compte que les documents arrivés depuis la précédente
+(`excludeHitsFromPreviousRun`) : un événement = une notification, sans
+throttle. Scalingo n'envoie `app_crashed` qu'aux 2ᵉ, 5ᵉ et 12ᵉ crashs, et
+`app_crashed_repeatedly` à chaque crash : le notifier doit sélectionner les deux.
 
-| App Scalingo                           | Canal Mattermost   |
-| -------------------------------------- | ------------------ |
-| `pass-emploi-logstash-prod`            | `#o11y-production` |
-| `pass-emploi-logstash-process-prod`    | `#o11y-production` |
-| `pass-emploi-logstash-staging`         | `#o11y-staging`    |
-| `pass-emploi-logstash-process-staging` | `#o11y-staging`    |
-| `pass-emploi-logstash-perf`            | `#o11y-staging`    |
-| `pass-emploi-logstash-process-perf`    | `#o11y-staging`    |
+### 6a — Événements Scalingo des apps de la stack, prod (Warning)
 
-Pour chaque app :
+| Paramètre               | Valeur |
+|-------------------------|--------|
+| **Rule name**           | `Scalingo - Prod - Événements des apps de la stack` |
+| **Type**                | Elasticsearch query rule (KQL), data view `logs-alertes-scalingo-prod-default` |
+| **Requête**             | `service.name : ("pass-emploi-logstash" or "pass-emploi-logstash-process" or "pass-emploi-elastic-agent" or "pass-emploi-heartbeat")` |
+| **Fenêtre / fréquence** | 5 min / 1 min |
+| **Actions**             | Mattermost-o11y-production ; Tchap via le Workflow `tchap-o11y-production` |
+| **Related dashboards**  | [Pass Emploi] Supervision Stack d'Observabilité |
 
-1. Aller sur l'app dans le dashboard Scalingo.
-2. **Settings → Notifications → Add notification**.
-3. Choisir le type **Webhook**.
-4. Événements à surveiller : `app_restarted`, `app_crashed_repeated`, `app_stopped`.
-   Pas `app_crashed` : Scalingo ne l'envoie qu'aux 2ᵉ, 5ᵉ et 12ᵉ crashs ;
-   `app_crashed_repeated` part à chaque crash.
-5. URL du webhook : URL du webhook entrant Mattermost du canal correspondant.
+**À vérifier** :
+1. Le Discover **[Pass Emploi] Alertes externes de Prod - Événements Scalingo**,
+   onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur.
+2. Pour un incident, l'impact sur l'ingestion : le dashboard **[Pass Emploi]
+   Supervision Stack d'Observabilité**, puis les Discover **[Pass Emploi] Logs de
+   Prod - DLQ Logstash Process** et **[Pass Emploi] Logs de PROD - Erreurs de
+   traitement Logstash Process** (logs non indexés).
+3. Les métriques (onglet Metrics) et l'activité (onglet Activity) de l'app dans
+   le **[Scalingo] Dashboard des apps**.
 
-> **Note** : le throttle ne s'applique pas aux webhooks Scalingo — chaque événement
-> `app_crashed_repeated` / `app_restarted` est une notification unitaire envoyée par Scalingo.
+### 6b — Événements Scalingo des apps de la stack, staging / perf (Warning)
+
+| Paramètre               | Valeur |
+|-------------------------|--------|
+| **Rule name**           | `Scalingo - Hors-Prod - Événements des apps de la stack` |
+| **Type**                | Elasticsearch query rule (KQL), data view `logs-alertes-scalingo-staging-default,logs-alertes-scalingo-perf-default` |
+| **Requête**             | celle de 6a |
+| **Fenêtre / fréquence** | 10 min / 5 min |
+| **Actions**             | Mattermost-o11y-staging ; Tchap via le Workflow `tchap-o11y-staging` |
+| **Related dashboards**  | [Pass Emploi] Supervision Stack d'Observabilité |
+
+**À vérifier** : comme 6a, avec le Discover **[Pass Emploi] Alertes externes
+Hors-Prod - Événements Scalingo** et les Discover **Logs Hors-Prod** de Logstash
+Process.
 
 **Payload Scalingo** (capture réelle d'un redémarrage, 2026-09-23) :
 ```json
@@ -754,14 +782,9 @@ Pour chaque app :
 }
 ```
 
-> **En cours de remplacement** : ces notifiers seront redirigés vers Kibana, où
-> les règles X1 et X3 prennent le relais, avec l'historique des événements, cf.
-> [alertes externes](alertes-externes.md). Ils seront supprimés au plus tard le
-> 1er novembre 2026, avec Mattermost : X1 et X3 notifient Tchap.
-
 > **Alternative** : utiliser l'alerte 3 (absence de logs) comme proxy indirect du
 > crash — un crash Logstash se traduit immédiatement par un silence dans
-> `logs-prod-default`. Les deux alertes sont complémentaires : le webhook Scalingo
+> `logs-prod-default`. Les deux alertes sont complémentaires : l'alerte 6
 > donne la **cause** (OOM), l'alerte 3 donne l'**effet** (silence logs).
 
 ---
@@ -1461,6 +1484,37 @@ Tester avec **Run to test** : le message doit arriver dans le salon, variables
 non remplies.
 
 ---
+
+---
+
+## Alerte 14 — Événement externe rejeté
+
+**Objectif** : ne pas perdre en silence une notification Scalingo ou GitHub.
+Un document rejeté par son ingest pipeline (ou par Elasticsearch) part au
+failure store de son data stream, et son émetteur reçoit **quand même un
+succès** : sans cette règle, un changement de format chez Scalingo ou GitHub,
+ou un notifier qui vise le mauvais environnement, passerait inaperçu, et
+l'alerte que portait le document ne serait pas levée.
+
+### 14 — Événement externe rejeté (Warning)
+
+| Paramètre               | Valeur |
+|-------------------------|--------|
+| **Rule name**           | `Événements externes - Payload rejeté (failure store)` |
+| **Type**                | Elasticsearch query rule (KQL), data view sur les 4 `logs-alertes-*-default::failures` (`allowHidden`) |
+| **Requête**             | aucune : tout document |
+| **Fenêtre / fréquence** | 10 min / 5 min |
+| **Actions**             | Mattermost-o11y-production ; Tchap via le Workflow `tchap-o11y-production` |
+| **Related dashboards**  | — |
+
+Une ligne par rejet : `error.type` et `error.message`.
+
+**À vérifier** :
+1. Le Discover **[Pass Emploi] Alertes externes - Rejets (failure store)** :
+   `error.type` et `error.message` donnent le motif du rejet.
+2. Le payload d'origine (`document.source`) : adapter le pipeline (cf.
+   [collecte](../collecte/evenements-externes/README.md#champs-ecs-produits)),
+   puis le rejouer en `_simulate`.
 
 ---
 
