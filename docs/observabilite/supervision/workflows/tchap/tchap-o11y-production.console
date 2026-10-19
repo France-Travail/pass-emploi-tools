@@ -6,6 +6,9 @@
 # message et appelle tchap-client.
 # La boucle doit être une étape « type: foreach » : une propriété foreach:
 # posée sur l'étape workflow.execute est ignorée sans erreur.
+# Elle écarte les alertes en attente de rétablissement (pending_recovered_count
+# > 0) : une alerte qui bagote (flapping) reste « active », à 0 document, pendant
+# plusieurs exécutions, et l'action .workflows la transmet quand même.
 # Mise à jour : PUT kbn:/api/workflows/workflow/tchap-o11y-production avec {"yaml": …}.
 POST kbn:/api/workflows/workflow
 {
@@ -21,7 +24,7 @@ consts:
 steps:
   - name: chaque-alerte
     type: foreach
-    foreach: "{{ event.alerts | json }}"
+    foreach: "{{ event.alerts | where_exp: 'a', 'a.kibana.alert.pending_recovered_count == blank or a.kibana.alert.pending_recovered_count == 0' | json }}"
     steps:
       - name: notifier
         type: workflow.execute

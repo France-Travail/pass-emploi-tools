@@ -152,7 +152,10 @@ Intégrations (l'équipe beta.gouv n'a pas la réponse, 2026-10-14) :
    ```
    `ongoing: true` : une alerte reste active tant que des événements arrivent,
    chacun doit être notifié. `recovered: false` : pas de message à la fin de
-   l'alerte.
+   l'alerte. Une alerte qui bagote (*flapping*) reste « active », à 0 document,
+   pendant quelques exécutions après son rétablissement : le Workflow de salon
+   l'écarte (`pending_recovered_count` > 0), sans quoi chaque exécution posterait
+   un message vide.
 3. Si les documents de la règle ont un champ `message`, ce sont eux qui font
    les lignes ; sinon, la raison de l'alerte. **Attention** : dans les logs
    applicatifs (`logs-<env>-default`), `message` est la ligne de log brute, pas
@@ -175,6 +178,10 @@ Intégrations (l'équipe beta.gouv n'a pas la réponse, 2026-10-14) :
 - La boucle sur les alertes est une **étape** `type: foreach` ; une propriété
   `foreach:` posée sur `workflow.execute` est ignorée sans erreur.
 - Les Workflows exigent la licence **Enterprise**.
+- L'action `.workflows` transmet aussi les alertes **en attente de
+  rétablissement** d'une règle qui bagote (*flapping*, constaté en test le
+  2026-10-19) ; le connecteur Mattermost, non. D'où le filtre `where_exp` du
+  `foreach` des Workflows de salon : ne pas le retirer.
 - Le compte du bot **expire s'il n'est pas renouvelé** chaque année (lien reçu
   par email 11 mois après l'inscription) : toutes les notifications s'arrêtent.
   La règle « Tchap - Expiration du compte bot » prévient 60 jours avant ;
