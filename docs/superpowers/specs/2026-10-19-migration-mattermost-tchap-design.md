@@ -211,7 +211,7 @@ conventions le 2026-10-19) et cités **en plus** des sessions existantes :
 | 1 | ✅ (Plan 1, 2026-10-19, sauf la revue §7 des autres règles : Plan 2) **Réorganisation** : revue des étapes d'investigation (§7) de toutes les règles ; collecte dans `collecte/evenements-externes/`, `alertes-securite.md`, A4a/A4b, 6a/6b, V1, 14 avec IDs conservés, pipeline (catégorie, émoji), sessions par catégorie ; suppression de `alertes-externes.md` (contenu réparti) et de `3-rules-alertes-externes.console` | — |
 | 2 | ✅ (2026-10-19, sans Tchap, cf. §10) Mise à jour en prod : `PUT` des 5 règles, création de 6b, pipeline, sessions ; `PUT` des Workflows de salon là où ils existent (filtre du bagotement, §13) | 1 |
 | 3 | ✅ (2026-10-19, cf. §10 ; parité à vérifier en réel) Notifiers Elasticsearch sur toutes les apps de §3 (même sélection que Mattermost) ; vérification en réel par catégorie | 2 |
-| 4 | `security-alerts.yml` : envoi vers Elasticsearch en plus de Mattermost ; secret dans les 4 repos | 2 |
+| 4 | ✅ (2026-10-19, testé sur api ; fusion des 3 branches en attente, cf. §10) `security-alerts.yml` : envoi vers Elasticsearch en plus de Mattermost ; secret dans les 4 repos | 2 |
 | 5 | Jobs, version dégradée : règle A5 et dashboard des exécutions | — (parallèle) |
 | 6 | Bot Tchap (boîte `bot-pass-emploi@francetravail.fr`, compte, jeton), test du `POST` sans `txnId` | boîte mail |
 | 7 | Branchement Tchap : connecteur, `tchap-client`, Workflows de salon, actions `.workflows` sur **toutes** les règles (lignes 1, 2 de §3 et §4), connecteurs AutoOps | 6 |
@@ -304,6 +304,18 @@ aucune alerte de métriques configurée (`scalingo alerts` vide, vérifié le
 **2026-10-19 : gravité alignée sur X1 à X3 déployée** (§13) : `PUT` du pipeline
 `ingest-alertes-scalingo` (10 `_simulate` conformes) et de A4a, A4b, 6a, 6b,
 sans Tchap.
+
+**2026-10-19 : `security-alerts.yml` vers Elasticsearch** (étape 4 de §8).
+Workflow réutilisable : étape `_bulk` vers `logs-alertes-github-default` après
+l'envoi Mattermost, active si l'appelant passe `elastic-url` (variable
+`ELASTIC_URL`) et le secret `ELASTIC_ALERTES_GITHUB_API_KEY` (posés dans les 3
+repos appelants : api, web, connect ; l'app mobile n'appelle pas ce workflow).
+Appelants : branches `ci/security-alerts-elasticsearch`, épinglées sur le
+commit `2fe40247` de la branche pass-emploi-tools (pas encore fusionnée, en
+attente de relecture), avec `workflow_dispatch`. Test réel sur
+pass-emploi-api : 4 CVE indexées, aucun rejet, V1 notifiée (1 action, 0
+erreur). Reste : relecture et fusion des 3 branches dans `develop`, puis
+réépinglage sur `master` après fusion de pass-emploi-tools.
 
 ## 11. Suites à reporter en tickets (Notion)
 
