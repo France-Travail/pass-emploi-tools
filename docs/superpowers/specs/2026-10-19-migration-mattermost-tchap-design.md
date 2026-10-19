@@ -213,7 +213,7 @@ conventions le 2026-10-19) et cités **en plus** des sessions existantes :
 | 2 | ✅ (2026-10-19, sans Tchap, cf. §10) Mise à jour en prod : `PUT` des 5 règles, création de 6b, pipeline, sessions ; `PUT` des Workflows de salon là où ils existent (filtre du bagotement, §13) | 1 |
 | 3 | ✅ (2026-10-19, cf. §10 ; parité à vérifier en réel) Notifiers Elasticsearch sur toutes les apps de §3 (même sélection que Mattermost) ; vérification en réel par catégorie | 2 |
 | 4 | ✅ (2026-10-19, testé sur api ; fusion des 3 branches en attente, cf. §10) `security-alerts.yml` : envoi vers Elasticsearch en plus de Mattermost ; secret dans les 4 repos | 2 |
-| 5 | ✅ (repo, 2026-10-19 ; en prod : connecteurs, sessions, A5a / A5b à créer) Jobs, version dégradée : règle A5 et dashboard des exécutions | — (parallèle) |
+| 5 | ✅ (2026-10-19, A5a / A5b en prod, cf. §10) Jobs, version dégradée : règle A5 et dashboard des exécutions | — (parallèle) |
 | 6 | Bot Tchap (boîte `bot-pass-emploi@francetravail.fr`, compte, jeton), test du `POST` sans `txnId` | boîte mail |
 | 7 | Branchement Tchap : connecteur, `tchap-client`, Workflows de salon, actions `.workflows` sur **toutes** les règles (lignes 1, 2 de §3 et §4), connecteurs AutoOps | 6 |
 | 8 | **Bascule, app par app et règle par règle** : une fois la parité constatée (même contenu dans Kibana/Tchap que dans Mattermost), **désactiver** (jamais supprimer) le notifier Scalingo `Mattermost*` correspondant, puis retirer l'action Mattermost de la règle | 7 |
@@ -331,6 +331,15 @@ Jobs**, A5a (`POST`) : active, `ok`. **Staging non créé** : la variable
 envois des 7 derniers jours ont échoué, le canal `jobs-staging` ne reçoit donc
 rien de l'api de staging.
 
+**2026-10-19, 20:19 UTC : jobs, staging corrigé.** `MATTERMOST_JOBS_WEBHOOK_URL`
+de pass-emploi-api-staging remplacée par le webhook du canal `jobs-staging`
+(fourni par l'équipe), redémarrage du seul conteneur `worker` (le `web` n'a pas
+été touché). Connecteur `Mattermost-jobs-staging` (`3f71e705…`), session
+**[Pass Emploi] Logs Hors-Prod - Jobs** et A5b (`POST`) créés : active, `ok`.
+À vérifier : les envois de `SuiviJobService` en staging passent de 503 à 200
+(`external_api_call`, `log.logger` SuiviJobService), au plus tard au crash
+nocturne de `CHARGER_EVENEMENTS_ANALYTICS`.
+
 ## 11. Suites à reporter en tickets (Notion)
 
 - [ ] Règles SLO « Burn Rate » non versionnées désactivées le 2026-10-19
@@ -343,10 +352,11 @@ rien de l'api de staging.
       sans toucher l'api, un filtre Logstash `process` qui décode le corps des
       `external_api_call` de `SuiviJobService` : il contient déjà le message
       Mattermost complet (`http.request.body.content`, constaté le 2026-10-19).
-- [ ] `MATTERMOST_JOBS_WEBHOOK_URL` de pass-emploi-api-staging vise une app
-      Scalingo absente (`pass-emploi-dashboard`, 503 depuis au moins le
-      2026-10-12) : la corriger ou la retirer, comme le notifier « Dashboard
-      Pass Emploi » d'api-prod.
+- [ ] Notifier « Dashboard Pass Emploi » d'api-prod : vise l'app absente
+      `pass-emploi-dashboard` (la variable jobs de staging, qui la visait
+      aussi, est corrigée le 2026-10-19) ; à retirer.
+- [ ] `MATTERMOST_JOBS_WEBHOOK_URL` de pass-emploi-api-perf : vise un webhook
+      Mattermost distinct de prod et de `jobs-staging`, canal à identifier.
 - [ ] Jobs dans Tchap : salons `jobs-production` / `jobs-staging`, Workflows de
       salon, action `.workflows` sur A5a / A5b. Les logs `job_crashed` n'ont pas
       de `message` de notification (leur `message` est le log brut) : le
