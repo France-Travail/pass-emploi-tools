@@ -209,7 +209,7 @@ conventions le 2026-10-19) et cités **en plus** des sessions existantes :
 |---|-------|-----------|
 | 0 | ✅ Dashboards de diagnostic versionnés et mis aux conventions ; **réimport en prod** (écrasement des conflits) | — |
 | 1 | ✅ (Plan 1, 2026-10-19, sauf la revue §7 des autres règles : Plan 2) **Réorganisation** : revue des étapes d'investigation (§7) de toutes les règles ; collecte dans `collecte/evenements-externes/`, `alertes-securite.md`, A4a/A4b, 6a/6b, V1, 14 avec IDs conservés, pipeline (catégorie, émoji), sessions par catégorie ; suppression de `alertes-externes.md` (contenu réparti) et de `3-rules-alertes-externes.console` | — |
-| 2 | Mise à jour en prod : `PUT` des 5 règles, création de 6b, pipeline, sessions ; `PUT` des Workflows de salon là où ils existent (filtre du bagotement, §13) | 1 |
+| 2 | ✅ (2026-10-19, sans Tchap, cf. §10) Mise à jour en prod : `PUT` des 5 règles, création de 6b, pipeline, sessions ; `PUT` des Workflows de salon là où ils existent (filtre du bagotement, §13) | 1 |
 | 3 | Notifiers Elasticsearch sur toutes les apps de §3 (même sélection que Mattermost) ; vérification en réel par catégorie | 2 |
 | 4 | `security-alerts.yml` : envoi vers Elasticsearch en plus de Mattermost ; secret dans les 4 repos | 2 |
 | 5 | Jobs, version dégradée : règle A5 et dashboard des exécutions | — (parallèle) |
@@ -252,6 +252,24 @@ arrière : `POST kbn:/api/alerting/rule/<id>/_enable`.
 Hors migration, sans changement : les 10 règles « [Elastic Agent] … » de
 l'intégration Elastic (déjà désactivées ; on n'y touche pas), et le connecteur
 `Mattermost-monitoring-wordpress`, sans règle active.
+
+**2026-10-19 : réorganisation déployée** (étape 2 de §8, sans Tchap : ni
+Workflows ni connecteur Tchap n'existent encore en prod, l'action `.workflows`
+est retirée des corps au rejeu ; elle viendra avec l'étape 7).
+
+| Objet | Action | Résultat |
+|---|---|---|
+| Pipeline `ingest-alertes-scalingo` | `PUT` (catégorie, émoji) | 9 `_simulate` conformes |
+| Sessions `bb62451a…` (prod), `33bed466…` (hors prod) | import avec écrasement | onglets « Incidents » / « Infra » |
+| A4a `1b97f0e0…` (ex-X1), A4b `07c9c5d7…` (ex-X3), 6a `c16f2ab5…` (ex-X2), 14 `ae398f47…` (ex-X5), V1 `67846c2c…` (ex-X4) | `PUT` | actives, `ok` |
+| 6b `5d1f7c2a…` | `POST` (création) | active, `ok` |
+
+Retour arrière : rejouer en `PUT` les blocs de `rules/3-rules-alertes-externes.console`
+au commit `f1757ec` (mêmes IDs) et supprimer 6b ; réimporter les sessions de ce
+même commit. Le notifier « Elastic monitoring o11y staging » de
+`pass-emploi-logstash-perf` envoie encore tous les événements : 6b les poste
+tous dans `#o11y-staging` jusqu'à sa remise à la sélection du notifier
+`Mattermost*` (étape 3).
 
 ## 11. Suites à reporter en tickets (Notion)
 
