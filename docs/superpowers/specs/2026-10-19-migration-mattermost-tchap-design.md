@@ -184,21 +184,28 @@ incidents** pour ça : `eb348ed9-3bc2-4204-a5c2-c31465731c74`, **non versionné
    `supervision/`), titré par son origine (`[Pass Emploi]`, `[Scalingo]`…), et
    repris à l'identique dans « Dashboards », « Discover sessions »,
    l'Investigation guide et Related dashboards.
-5. **Une session Discover qui n'aide pas à conclure est retirée** des
-   alertes ; elle peut rester versionnée si un runbook s'en sert.
+5. **Les sessions Discover existantes restent citées**, après le dashboard :
+   elles donnent la liste exhaustive des documents (décision du 2026-10-19).
 
 **Revue** : toutes les règles (S1 à S3, A1 à A6, V1, 1 à 14, Tchap) passent
 par ces principes. Pour chacune : la question de chaque étape, les objets
-cités, ce qui est retiré. Le dashboard `eb348ed9…` est d'abord **exporté et
-versionné** (`supervision/dashboards/`, cf. [objets Kibana](../../observabilite/supervision/objets-kibana.md)),
-puis cité par A1, A2, A3 et A4a (impact applicatif) à la place des sessions
-« Erreurs serveur 5xx » et « Failure partenaires ».
+cités, ce qui est retiré. Les dashboards de diagnostic de l'équipe sont **versionnés**
+(`supervision/dashboards/dashboard-diagnostic-erreurs.ndjson`, mis aux
+conventions le 2026-10-19) et cités **en plus** des sessions existantes :
+
+| Alerte | Dashboard cité en premier |
+|---|---|
+| A2 Erreurs serveur 5xx | [Pass Emploi] Diagnostic d'erreurs - Entrée, puis - Apps |
+| A1 Pic d'échecs partenaire | [Pass Emploi] Diagnostic d'erreurs - Apps |
+| A3 Pic d'authentifications refusées | [Pass Emploi] Diagnostic d'erreurs - Robots / scan |
+| S1 à S3 (SLO) | [Pass Emploi] Diagnostic d'erreurs - Entrée |
+| A4a Événements Scalingo prod | [Pass Emploi] Diagnostic d'erreurs - Entrée |
 
 ## 8. Étapes jusqu'au 1er novembre
 
 | # | Étape | Dépend de |
 |---|-------|-----------|
-| 0 | Export et versionnement du dashboard d'investigation des incidents (`eb348ed9…`) | — |
+| 0 | ✅ Dashboards de diagnostic versionnés et mis aux conventions ; **réimport en prod** (écrasement des conflits) | — |
 | 1 | **Réorganisation** : revue des étapes d'investigation (§7) de toutes les règles ; collecte dans `collecte/evenements-externes/`, `alertes-securite.md`, A4a/A4b, 6a/6b, V1, 14 avec IDs conservés, pipeline (catégorie, émoji), sessions par catégorie ; suppression de `alertes-externes.md` (contenu réparti) et de `3-rules-alertes-externes.console` | — |
 | 2 | Mise à jour en prod : `PUT` des 5 règles, création de 6b, pipeline, sessions | 1 |
 | 3 | Notifiers Elasticsearch sur toutes les apps de §3 (même sélection que Mattermost) ; vérification en réel par catégorie | 2 |
