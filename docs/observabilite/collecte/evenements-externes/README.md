@@ -180,10 +180,16 @@ du repo). `@timestamp` est l'heure d'envoi par le workflow.
    événements : deux notifiers écriraient deux fois les événements communs.
    Rattacher aussi les alertes de métriques Scalingo de l'app à ce notifier.
    Commencer par une app non critique (`pass-emploi-logstash-perf`).
-8. **GitHub Actions** : ajouter à `security-alerts.yml` un envoi par CVE vers
-   `logs-alertes-github-default` (header `Authorization: ApiKey <encoded>`,
-   secret `ELASTIC_ALERTES_GITHUB_API_KEY` dans chaque repo appelant), en
-   gardant l'envoi Mattermost actuel pendant la migration.
+8. **GitHub Actions** : [`security-alerts.yml`](../../../../.github/workflows/security-alerts.yml)
+   envoie les CVE vers `logs-alertes-github-default` (un `_bulk`, une CVE par
+   document, plus `repository`) quand le repo appelant lui passe deux secrets,
+   optionnels : `ELASTIC_URL` (endpoint Elasticsearch) et
+   `ELASTIC_ALERTES_GITHUB_API_KEY` (champ `encoded` de l'API Key de l'étape 3).
+   Sans eux, seul l'envoi Mattermost part, comme avant. Repos appelants :
+   `pass-emploi-api`, `pass-emploi-web`, `pass-emploi-connect` ; dans chacun,
+   créer les deux secrets puis, dans son `security-alerts.yml`, épingler le
+   nouveau commit et transmettre les deux secrets. Un rejet par Elasticsearch
+   fait échouer l'étape, après l'envoi Mattermost.
 
 Pendant la migration vers Tchap, les notifiers `Mattermost*` sont
 **désactivés, jamais supprimés**, une fois la parité constatée :

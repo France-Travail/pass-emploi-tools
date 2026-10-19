@@ -12,6 +12,10 @@ on:
         required: true
       MATTERMOST_WEBHOOK_URL:
         required: true
+      ELASTIC_URL:
+        required: false
+      ELASTIC_ALERTES_GITHUB_API_KEY:
+        required: false
 
 jobs:
   check-cves:
@@ -20,6 +24,8 @@ jobs:
     permissions:
       contents: read
       security-events: read
+    env:
+      ELASTIC_ACTIF: ${{ secrets.ELASTIC_ALERTES_GITHUB_API_KEY != '' && secrets.ELASTIC_URL != '' }}
 
     steps:
       - name: Fetch Dependabot alerts (high/critical)
@@ -90,3 +96,31 @@ jobs:
           echo "✅ Alerte envoyée"
         env:
           MATTERMOST_WEBHOOK_URL: ${{ secrets.MATTERMOST_WEBHOOK_URL }}
+
+      - name: Send alerts to Elasticsearch
+        if: steps.fetch-alerts.outputs.has_alerts == 'true' && env.ELASTIC_ACTIF == 'true'
+        run: |
+          echo "📤 Envoi des CVEs à Elasticsearch..."
+
+          repo_name="${{ inputs.repo-name }}"
+          if [ -z "$repo_name" ]; then
+            repo_name="${{ github.event.repository.name }}"
+          fi
+
+          jq -c --arg repo "$repo_name" '.[] | {"create": {}}, (. + {"repository": $repo})' /tmp/alerts.json > /tmp/alerts.ndjson
+
+          response=$(curl -sS --fail-with-body -X POST "${ELASTIC_URL%/}/logs-alertes-github-default/_bulk" \
+            -H "Authorization: ApiKey $ELASTIC_ALERTES_GITHUB_API_KEY" \
+            -H 'Content-Type: application/x-ndjson' \
+            --data-binary @/tmp/alerts.ndjson)
+
+          if [ "$(echo "$response" | jq '.errors')" != "false" ]; then
+            echo "❌ Rejet par Elasticsearch :"
+            echo "$response" | jq -c '[.items[].create | select(.error) | .error.reason]'
+            exit 1
+          fi
+
+          echo "✅ $(echo "$response" | jq '.items | length') CVE(s) envoyée(s)"
+        env:
+          ELASTIC_URL: ${{ secrets.ELASTIC_URL }}
+          ELASTIC_ALERTES_GITHUB_API_KEY: ${{ secrets.ELASTIC_ALERTES_GITHUB_API_KEY }}
