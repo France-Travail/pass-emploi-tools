@@ -322,6 +322,15 @@ réépinglage sur `master` après fusion de pass-emploi-tools.
 pipeline `ingest-alertes-github-default` (`labels.dependabot_url`) et de V1
 (sans Tchap) ; guide à 3 liens fixes, message à un lien par CVE.
 
+**2026-10-19 : jobs, prod** (étape 5) : connecteur `Mattermost-jobs-production`
+(`cd0b8285…`, URL lue dans `MATTERMOST_JOBS_WEBHOOK_URL` de
+pass-emploi-api-prod, jamais affichée), session **[Pass Emploi] Logs de Prod -
+Jobs**, A5a (`POST`) : active, `ok`. **Staging non créé** : la variable
+`MATTERMOST_JOBS_WEBHOOK_URL` de pass-emploi-api-staging vise
+`pass-emploi-dashboard.osc-secnum-fr1.scalingo.io` (app absente, 503) ; ses 109
+envois des 7 derniers jours ont échoué, le canal `jobs-staging` ne reçoit donc
+rien de l'api de staging.
+
 ## 11. Suites à reporter en tickets (Notion)
 
 - [ ] Règles SLO « Burn Rate » non versionnées désactivées le 2026-10-19
@@ -334,6 +343,10 @@ pipeline `ingest-alertes-github-default` (`labels.dependabot_url`) et de V1
       sans toucher l'api, un filtre Logstash `process` qui décode le corps des
       `external_api_call` de `SuiviJobService` : il contient déjà le message
       Mattermost complet (`http.request.body.content`, constaté le 2026-10-19).
+- [ ] `MATTERMOST_JOBS_WEBHOOK_URL` de pass-emploi-api-staging vise une app
+      Scalingo absente (`pass-emploi-dashboard`, 503 depuis au moins le
+      2026-10-12) : la corriger ou la retirer, comme le notifier « Dashboard
+      Pass Emploi » d'api-prod.
 - [ ] Jobs dans Tchap : salons `jobs-production` / `jobs-staging`, Workflows de
       salon, action `.workflows` sur A5a / A5b. Les logs `job_crashed` n'ont pas
       de `message` de notification (leur `message` est le log brut) : le
