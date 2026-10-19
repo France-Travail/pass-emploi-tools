@@ -23,7 +23,8 @@ dans Dev Tools, après les sessions Discover de
 
 `security-alerts.yml` renvoie **à chaque passage** toutes les CVE encore
 ouvertes : V1 les notifie donc à chaque passage, une ligne par CVE (repo, CVE,
-paquet, sévérité, résumé, lien vers l'alerte Dependabot), comme le faisait
+paquet, sévérité, résumé, lien vers l'alerte Dependabot ; le nom du repo mène à
+la page de ses alertes, `labels.dependabot_url` posé par le pipeline), comme le faisait
 l'envoi direct vers Mattermost. Chaque exécution ne compte que les documents
 arrivés depuis la précédente (`excludeHitsFromPreviousRun`) : un passage = une
 notification.
@@ -44,7 +45,9 @@ notification.
    [[GitHub] Alertes Dependabot - pass-emploi-api](https://github.com/France-Travail/pass-emploi-api/security/dependabot),
    [[GitHub] Alertes Dependabot - pass-emploi-web](https://github.com/France-Travail/pass-emploi-web/security/dependabot),
    [[GitHub] Alertes Dependabot - pass-emploi-connect](https://github.com/France-Travail/pass-emploi-connect/security/dependabot).
-   Dans le message, chaque CVE renvoie en plus à sa propre alerte.
+   Dans le message, ces 3 liens fixes sont remplacés par celui du repo de chaque
+   CVE, sur son nom : une règle ne sait pas choisir les liens selon les CVE
+   qu'elle liste ; l'Investigation guide, qui ne voit pas les CVE, garde les 3.
 
 > **Pendant la migration** : `security-alerts.yml` garde son envoi direct vers
 > Mattermost tant que son envoi vers Elasticsearch n'est pas en place (cf.

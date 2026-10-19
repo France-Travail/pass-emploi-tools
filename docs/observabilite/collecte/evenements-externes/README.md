@@ -135,6 +135,7 @@ du repo). `@timestamp` est l'heure d'envoi par le workflow.
 | `vulnerability.id`                                                    | `security_advisory.cve_id`, à défaut `ghsa_id`            |
 | `vulnerability.severity`, `.description`, `.reference`, `.score.base` | `severity`, `summary`, `html_url`, score CVSS v3          |
 | `package.name`, `labels.ecosystem`, `labels.ghsa_id`                  | `dependency.package.*`, `ghsa_id`                         |
+| `labels.dependabot_url`                                               | page des alertes du repo, déduite de `html_url`           |
 
 ## Mise en service
 

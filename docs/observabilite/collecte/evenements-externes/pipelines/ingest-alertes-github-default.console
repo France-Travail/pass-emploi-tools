@@ -73,14 +73,21 @@ PUT _ingest/pipeline/ingest-alertes-github-default
           }
           ctx.vulnerability = vulnerability;
 
+          Map labels = ['ghsa_id': advisory.ghsa_id];
           if (alert.dependency instanceof Map && alert.dependency.package instanceof Map) {
             ctx['package'] = ['name': alert.dependency.package.name];
-            ctx.labels = ['ecosystem': alert.dependency.package.ecosystem, 'ghsa_id': advisory.ghsa_id];
+            labels.ecosystem = alert.dependency.package.ecosystem;
           }
+          String page = alert.html_url instanceof String ? alert.html_url : '';
+          int fin = page.indexOf('/security/dependabot');
+          labels.dependabot_url = fin > 0
+            ? page.substring(0, fin) + '/security/dependabot'
+            : 'https://github.com/France-Travail/' + repository + '/security/dependabot';
+          ctx.labels = labels;
 
           String paquet = ctx['package'] instanceof Map ? ' — ' + ctx['package'].name : '';
           ctx.message = repository + ' : ' + vulnerability.id + paquet + ' (' + vulnerability.severity + ') : '
-            + vulnerability.description + ' — ' + vulnerability.reference;
+            + vulnerability.description + ' — ' + vulnerability.reference + ' — alertes du repo : ' + labels.dependabot_url;
         """
       }
     }
@@ -93,9 +100,10 @@ PUT _ingest/pipeline/ingest-alertes-github-default
 # Dependabot (alerte fictive, schéma de l'API REST) → event.provider: github,
 #   service.name: pass-emploi-api, vulnerability.id: CVE-2026-00000,
 #   vulnerability.severity: high, package.name: axios,
-#   message: "pass-emploi-api : CVE-2026-00000 — axios (high) : Exemple de vulnérabilité — https://github.com/France-Travail/pass-emploi-api/security/dependabot/42"
+#   labels.dependabot_url: https://github.com/France-Travail/pass-emploi-api/security/dependabot,
+#   message: "pass-emploi-api : CVE-2026-00000 — axios (high) : Exemple de vulnérabilité — https://github.com/France-Travail/pass-emploi-api/security/dependabot/42 — alertes du repo : https://github.com/France-Travail/pass-emploi-api/security/dependabot"
 # sans dependency.package → message sans le nom du paquet :
-#   "pass-emploi-web : GHSA-yyyy-yyyy-yyyy (critical) : Résumé <avec> & \"guillemets\" — https://github.com/France-Travail/pass-emploi-web/security/dependabot/7"
+#   "pass-emploi-web : GHSA-yyyy-yyyy-yyyy (critical) : Résumé <avec> & \"guillemets\" — https://github.com/France-Travail/pass-emploi-web/security/dependabot/7 — alertes du repo : https://github.com/France-Travail/pass-emploi-web/security/dependabot"
 # payload sans security_advisory → erreur (failure store en réel)
 POST _ingest/pipeline/ingest-alertes-github-default/_simulate
 {

@@ -77,7 +77,7 @@ PUT kbn:/api/alerting/rule/67846c2c-45d1-45be-89f5-ce9a340240a0
   "attachments": [
     {
       "color": "#d00000",
-      "text": "{{#context.hits}}• `{{_source.service.name}}` : **{{_source.vulnerability.id}}** — {{_source.package.name}} ({{_source.vulnerability.severity}}) : {{_source.vulnerability.description}} — [Voir]({{_source.vulnerability.reference}})\n{{/context.hits}}",
+      "text": "{{#context.hits}}• [{{_source.service.name}}]({{_source.labels.dependabot_url}}) : **{{_source.vulnerability.id}}** — {{_source.package.name}} ({{_source.vulnerability.severity}}) : {{_source.vulnerability.description}} — [Voir]({{_source.vulnerability.reference}})\n{{/context.hits}}",
       "fields": [
         {
           "title": "Règle",
@@ -92,13 +92,7 @@ PUT kbn:/api/alerting/rule/67846c2c-45d1-45be-89f5-ce9a340240a0
         {
           "title": "À vérifier",
           "value": "1. Le Discover [[Pass Emploi] Alertes externes - CVE Dependabot](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/ece3e409-0679-4bcb-a675-ae7dfb092c19), liste les CVE ouvertes par repo avec leur score\n{{!
-                  }}2. Les alertes Dependabot du repo concerné, à traiter selon leur sévérité : [[GitHub] Alertes Dependabot - pass-emploi-api](https://github.com/France-Travail/pass-emploi-api/security/dependabot), [[GitHub] Alertes Dependabot - pass-emploi-web](https://github.com/France-Travail/pass-emploi-web/security/dependabot), [[GitHub] Alertes Dependabot - pass-emploi-connect](https://github.com/France-Travail/pass-emploi-connect/security/dependabot)"
-        },
-        {
-          "title": "Dashboards",
-          "value": "[[GitHub] Alertes Dependabot - pass-emploi-api](https://github.com/France-Travail/pass-emploi-api/security/dependabot)\n{{!
-                  }}[[GitHub] Alertes Dependabot - pass-emploi-web](https://github.com/France-Travail/pass-emploi-web/security/dependabot)\n{{!
-                  }}[[GitHub] Alertes Dependabot - pass-emploi-connect](https://github.com/France-Travail/pass-emploi-connect/security/dependabot)"
+                  }}2. Les alertes Dependabot du repo concerné (lien sur le nom du repo de chaque CVE), à traiter selon leur sévérité"
         },
         {
           "title": "Discover sessions",
