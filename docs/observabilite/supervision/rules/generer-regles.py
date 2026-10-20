@@ -23,11 +23,14 @@ SESSIONS = {
     'trp': ('[Pass Emploi] Logs de Prod - Erreurs de traitement Logstash Process', 'f10de9e3-0fdd-4761-9d44-bacc96504e17'),
     'dlqh': ('[Pass Emploi] Logs Hors-Prod - DLQ Logstash Process', 'e5bec6b4-0ae3-47b1-8bb5-2e9bf77493a4'),
     'trh': ('[Pass Emploi] Logs Hors-Prod - Erreurs de traitement Logstash Process', '716175ed-b2a0-4fe1-8f9d-1892d04dbe92'),
+    'auth': ("[Pass Emploi] Logs de Prod - Erreurs d'authentification", '1c0dfc0f-0534-4031-81c6-cee0d1c55de8'),
+    'part': ('[Pass Emploi] Logs de Prod - Échecs partenaires', 'a28897ac-ecb1-4b4f-b413-0340c7241293'),
     'jobp': ('[Pass Emploi] Logs de Prod - Jobs', 'c0d38bba-66ef-4b68-8a10-4d786f6a9f4a'),
     'jobh': ('[Pass Emploi] Logs Hors-Prod - Jobs', '16da36f4-a88e-4c01-b34f-e361a5292740'),
 }
 DASHBOARDS = {
     'entree': ("[Pass Emploi] Diagnostic d'erreurs - Entrée", KB + 'eb348ed9-3bc2-4204-a5c2-c31465731c74', 'eb348ed9-3bc2-4204-a5c2-c31465731c74'),
+    'apps': ("[Pass Emploi] Diagnostic d'erreurs - Apps", KB + '014dae91-507a-44de-b782-72e5eddbab74', '014dae91-507a-44de-b782-72e5eddbab74'),
     'stack': ("[Pass Emploi] Supervision Stack d'Observabilité", KB + 'fd40a516-c323-4e5e-91e5-1328b8b1a78d', 'fd40a516-c323-4e5e-91e5-1328b8b1a78d'),
     'scalingo': ('[Scalingo] Dashboard des apps', 'https://dashboard.scalingo.com/apps', None),
     'dep-api': ('[GitHub] Alertes Dependabot - pass-emploi-api', 'https://github.com/France-Travail/pass-emploi-api/security/dependabot', None),
@@ -51,7 +54,22 @@ DOC_COLLECTE = f'[Collecte des événements externes]({GH}collecte/evenements-ex
 JOBS_KQL = 'service.name : "pass-emploi-api" and event.action : ("job_crashed" or "job_handler_not_found")'
 JOBS_LIGNES = '{{#context.hits}}❌ `{{_source.labels.job_type}}` : {{_source.event.action}} — {{_source.error.message}}\\n{{/context.hits}}'
 
+RUNBOOK_APPLICATIF = ('Runbook', [f'[Investiguer un incident applicatif]({GH}runbooks/investigation-incident.md)'])
+
 REGLES = {
+    'A3': dict(id='ad326ad3-aea7-4ef8-be28-31008c4aebce', commentaire='# A3 — Pic d\'authentifications refusées (Critical)',
+        name="API - Prod - Pic d'auth refusées", tags=['prod', 'applicatif'], interval='5m', fenetre=8, unite='d',
+        esql='FROM logs-prod-default\n| WHERE event.action == "auth_failed"\n| EVAL recent = @timestamp >= NOW() - 10 minutes,\n       meme_heure = @timestamp < NOW() - 1 day\n                AND DATE_EXTRACT("HOUR_OF_DAY", @timestamp) == DATE_EXTRACT("HOUR_OF_DAY", NOW())\n| STATS refus = COUNT(*) WHERE recent, historique = COUNT(*) WHERE meme_heure\n| EVAL reference = ROUND(historique / 42.0, 1)\n| WHERE refus >= 20 AND refus > 3 * reference',
+        mm='12e46700-6e45-11ec-9757-c9700cd1bb4e', couleur='#d00000', emoji='🚨',
+        titre="Pic d'authentifications refusées — prod", suite='plus de 3 × la normale sur 10 min : IDP ou Keycloak probablement en cause.',
+        lignes='{{#context.hits}}{{_source.refus}} refus en 10 min, contre {{_source.reference}} d\'habitude à cette heure\\n{{/context.hits}}',
+        tchap="{0} refus en 10 min, contre {2} d'habitude à cette heure",
+        intro="Pic d'authentifications refusées — prod — plus de 3 × la normale sur 10 min : IDP ou Keycloak probablement en cause.",
+        steps=[f"1. Quel mode de connexion est touché, et pourquoi : le Discover {s('auth')}, onglet *Field statistics* (répartition par fournisseur d'identité et par motif)",
+               f"2. Si un seul fournisseur d'identité concentre les refus (France Travail Connect, Milo…) : sa disponibilité dans le dashboard {d('entree')}",
+               f"3. Si tous les modes sont touchés : Keycloak ou pass-emploi-connect, dans le dashboard {d('apps')}"],
+        sessions=['auth'], dashboards=['entree', 'apps'], extra=[RUNBOOK_APPLICATIF],
+        doc=('Alertes applicatives', 'supervision/alertes-applicatives.md')),
     'A5a': dict(id='a03feacb-ddf8-4e04-af82-48f77b07a86e', commentaire="# A5a — Jobs en échec, prod (version dégradée : un job qui plante ou introuvable ; un job\n# qui rapporte un échec sans planter n'est pas vu, cf. ../alertes-applicatives.md)",
         name='API - Prod - Jobs en échec', tags=['prod', 'applicatif', 'jobs'],
         dv='logs-prod', kql=JOBS_KQL, interval='1m', fenetre=5, mm='cd0b8285-1b69-4e3a-9c7c-6d35b42e7115', couleur='#808080', emoji='',
@@ -158,7 +176,8 @@ def body(r):
     emoji = r.get('emoji', '⚠️')
     prefixe = emoji + ' ' if emoji else ''
     compte = '' if 'esql' in r else ' ({{context.value}})'
-    return ('{\n  "text": ' + json.dumps(f"{prefixe}**{r['titre']}**{compte}", ensure_ascii=False) + ',\n'
+    suite = ' — ' + r['suite'] if r.get('suite') else ''
+    return ('{\n  "text": ' + json.dumps(f"{prefixe}**{r['titre']}**{compte}{suite}", ensure_ascii=False) + ',\n'
             '  "attachments": [\n    {\n      "color": "' + r['couleur'] + '",\n'
             '      "text": "' + r['lignes'] + '",\n      "fields": [\n' + ',\n'.join(champs) + '\n      ]\n    }\n  ]\n}')
 
@@ -201,18 +220,19 @@ def bloc(nom):
 def bloc_esql(nom, r, artifacts):
     """Une seule alerte par règle (groupBy all) : son identité reste stable pendant un incident,
     le throttle Mattermost et le message Tchap à l'apparition s'appliquent. Le Workflow
-    tchap-alerte-<code> relance la requête, ses lignes n'étant pas transmises par l'action."""
+    tchap-alerte-<code en minuscules> relance la requête, ses lignes n'étant pas transmises par l'action."""
     regle = {
         'name': r['name'], 'tags': r['tags'], 'artifacts': artifacts, 'schedule': {'interval': r['interval']},
         'params': {
-            'searchType': 'esqlQuery', 'esqlQuery': {'esql': r['esql']}, 'timeField': '@timestamp',
+            'searchType': 'esqlQuery', 'esqlQuery': {'esql': '@@ESQL@@'}, 'timeField': '@timestamp',
             'timeWindowSize': r['fenetre'], 'timeWindowUnit': r.get('unite', 'm'),
             'threshold': [0], 'thresholdComparator': '>', 'size': 100, 'groupBy': 'all'},
         'actions': [
             {'group': 'query matched', 'id': r['mm'], 'params': {'body': '@@BODY@@'}, 'frequency': {'summary': False, 'notify_when': 'onThrottleInterval', 'throttle': '1h'}},
-            {'id': 'system-connector-.workflows', 'params': {'subAction': 'run', 'subActionParams': {'workflowId': 'tchap-alerte-' + nom, 'summaryMode': True, 'alertStates': {'new': True, 'ongoing': False, 'recovered': False}}}}],
+            {'id': 'system-connector-.workflows', 'params': {'subAction': 'run', 'subActionParams': {'workflowId': 'tchap-alerte-' + nom.lower(), 'summaryMode': True, 'alertStates': {'new': True, 'ongoing': False, 'recovered': False}}}}],
     }
     texte = json.dumps(regle, ensure_ascii=False, indent=2).replace('"@@BODY@@"', '"""' + body(r) + '"""')
+    texte = texte.replace('"@@ESQL@@"', '"""' + r['esql'] + '"""')
     return r['commentaire'] + '\nPUT kbn:/api/alerting/rule/' + r['id'] + '\n' + texte + '\n'
 
 

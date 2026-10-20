@@ -183,7 +183,7 @@ def pages_dependabot(en_html):
 ORDRE_LIENS = ['Dashboards', 'Discover sessions']
 
 
-def message(regle, en_html):
+def message(regle, en_html, lignes_esql=None):
     """Titre en couleur, date, détail, explications ; puis toutes les sections de liens,
     et la règle en dernier."""
     mm = [a for a in regle['actions'] if a['id'] != 'system-connector-.workflows'][0]
@@ -207,8 +207,8 @@ def message(regle, en_html):
     if en_html:
         couleur = piece.get('color', '#808080')
         tete = '<p><font data-mx-color=\\"' + couleur + '\\" color=\\"' + couleur + '\\">' + titre.replace('"', '\\"') + '</font></p>'
-        return prefixe + tete + date + lignes(True) + milieu + fin
-    return prefixe + titre.replace('"', '\\"') + date + lignes(False) + milieu + fin
+        return prefixe + tete + date + (lignes_esql or lignes(True)) + milieu + fin
+    return prefixe + titre.replace('"', '\\"') + date + (lignes_esql or lignes(False)) + milieu + fin
 
 
 def gabarit(salon):
@@ -252,6 +252,7 @@ steps:
 
 def main():
     par_salon = {s: [] for s in SALONS}
+    esql = []
     for nom in sorted(os.listdir(REGLES)):
         if not nom.endswith('.console'):
             continue
@@ -260,8 +261,11 @@ def main():
             mattermost = [a for a in regle.get('actions', []) if a['id'] != 'system-connector-.workflows']
             if not w or not mattermost:
                 continue
-            salon = w[0]['params']['subActionParams']['workflowId'].removeprefix('tchap-')
-            par_salon[salon].append((rid, regle))
+            cible = w[0]['params']['subActionParams']['workflowId']
+            if cible.startswith('tchap-alerte-'):
+                esql.append((cible.removeprefix('tchap-alerte-'), rid, regle, mattermost[0]['id']))
+                continue
+            par_salon[cible.removeprefix('tchap-')].append((rid, regle))
     for salon, regles in par_salon.items():
         cas_t = ''.join("{% when '" + rid + "' %}" + message(r, False) for rid, r in regles)
         cas_h = ''.join("{% when '" + rid + "' %}" + message(r, True) for rid, r in regles)
@@ -272,6 +276,11 @@ def main():
         sortie = gabarit(salon).replace('@@TEXTE@@', texte).replace('@@HTML@@', corps)
         open(os.path.join(ICI, f'tchap-{salon}.console'), 'w').write(sortie)
         print(f'tchap-{salon}.console : {len(regles)} règle(s), {len(sortie) // 1024} Ko')
+    definitions = {k.lower(): v for k, v in definitions_regles().items()} if esql else {}
+    for code, rid, regle, connecteur in esql:
+        salon = CONNECTEUR_SALON[connecteur]
+        open(os.path.join(ICI, f'tchap-alerte-{code}.console'), 'w').write(workflow_esql(code, regle, definitions[code]['tchap'], SALONS[salon]))
+        print(f'tchap-alerte-{code}.console : salon {salon}')
     jobs = jobs_suivis()
     for env, salon, index in [('prod', 'jobs-production', 'logs-prod-default'), ('staging', 'jobs-staging', 'logs-staging-default')]:
         open(os.path.join(ICI, f'rapport-jobs-{env}.console'), 'w').write(rapport(env, salon, index, jobs))
@@ -416,6 +425,77 @@ steps:
         salon: "{{{{ consts.salon }}}}"
         texte: "{texte}"
         html: "{html}"
+"""
+}}
+'''
+
+
+CONNECTEUR_SALON = {
+    '12e46700-6e45-11ec-9757-c9700cd1bb4e': 'monitoring-production', '4cb10f00-22d9-4cf0-bda1-e288c4abb339': 'monitoring-staging',
+    'd2812573-52bf-4b48-9e54-a79a8b5b227d': 'o11y-production', 'c4a313b3-aa42-4e07-8196-c007625ce8af': 'o11y-staging',
+    'cd0b8285-1b69-4e3a-9c7c-6d35b42e7115': 'jobs-production', '3f71e705-99b5-4b37-ab14-932e28bc29b4': 'jobs-staging',
+}
+VIDE = "Plus d'erreur au moment de l'envoi : l'incident s'est peut-être résorbé."
+
+
+def definitions_regles():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('generer_regles', os.path.join(REGLES, 'generer-regles.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.REGLES
+
+
+def lignes_resultat(gabarit, en_html):
+    """Une ligne par ligne du résultat ES|QL ; {0}, {1}… désignent ses colonnes."""
+    e = ' | escape' if en_html else ''
+    ligne = re.sub(r'\{(\d+)\}', lambda m: '{{ v[' + m.group(1) + ']' + EGAL + e + ' }}', gabarit)
+    if en_html:
+        ligne = markdown(ligne, True)
+        return '<ul>{% for v in steps.requete.output.values %}<li>' + ligne + '</li>{% else %}<li>' + html.escape(VIDE, quote=False) + '</li>{% endfor %}</ul>'
+    return '{% for v in steps.requete.output.values %}\\n• ' + markdown(ligne, False) + '{% else %}\\n• ' + VIDE + '{% endfor %}'
+
+
+def requete_esql(regle):
+    p = regle['params']
+    secondes = p['timeWindowSize'] * UNITES[p['timeWindowUnit']]
+    morceaux = [m.strip() for m in p['esqlQuery']['esql'].split('\n') if m.strip()]
+    filtre = f'| WHERE @timestamp >= NOW() - {secondes // 60} minutes'
+    return ' '.join(morceaux[:1] + [filtre] + morceaux[1:]).replace('\\', '\\\\').replace('"', '\\"')
+
+
+def workflow_esql(code, regle, gabarit, salon_id):
+    texte = message(regle, False, lignes_resultat(gabarit, False)).replace('foreach.item', 'event.alerts[0]')
+    corps = message(regle, True, lignes_resultat(gabarit, True)).replace('foreach.item', 'event.alerts[0]')
+    return f'''# Workflow Tchap de la règle {code} ({regle['name']}), généré par generer-workflows.py
+# depuis ../../rules/ : ne pas modifier à la main. Spécification : README.md.
+#
+# La règle ES|QL est en groupBy all : son action .workflows ne transmet pas les lignes du
+# résultat, le Workflow relance donc la requête sur la fenêtre de la règle.
+POST kbn:/api/workflows/workflow
+{{
+  "id": "tchap-alerte-{code}",
+  "yaml": """
+name: Tchap - alerte {code}
+description: {json.dumps(regle['name'], ensure_ascii=False)}
+enabled: true
+triggers:
+  - type: alert
+consts:
+  salon: "{salon_id}"
+steps:
+  - name: requete
+    type: elasticsearch.esql.query
+    with:
+      query: "{requete_esql(regle)}"
+  - name: notifier
+    type: workflow.execute
+    with:
+      workflow-id: tchap-client
+      inputs:
+        salon: "{{{{ consts.salon }}}}"
+        texte: "{texte}"
+        html: "{corps}"
 """
 }}
 '''
