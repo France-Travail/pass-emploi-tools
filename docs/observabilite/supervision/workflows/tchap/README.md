@@ -206,7 +206,9 @@ Intégrations (l'équipe beta.gouv n'a pas la réponse, 2026-10-14) :
 5. **Règle Uptime** (A10 à A12) : `recovered: true`, et un second message
    Mattermost dans le groupe `recovered` ; le Workflow de salon envoie celui-ci
    pour une alerte rétablie (« ✅ … de nouveau joignable », « Rétablie à »). Les
-   variables `{{state.X}}` deviennent `kibana.alert.state.X`.
+   variables `{{state.X}}` deviennent `kibana.alert.state.X`. A13 (TLS, une
+   exécution par jour) n'a pas de rétablissement mais garde `ongoing: true` :
+   un rappel par jour et par certificat, comme dans Mattermost.
 
 ## Ajouter un salon
 
@@ -233,6 +235,10 @@ Intégrations (l'équipe beta.gouv n'a pas la réponse, 2026-10-14) :
   ligne de résultat : si elles changent (un compteur qui bouge), c'est une
   nouvelle alerte, donc un nouveau message à chaque exécution. D'où
   `groupBy: all` et un Workflow par règle ES|QL.
+- Un incident qui oscille autour du seuil d'une règle ES|QL donne un message à
+  chaque retour au-dessus, tant que Kibana ne l'a pas vu bagoter (4 changements
+  d'état) : 1 ou 2 messages de plus en début d'incident, dans Mattermost comme
+  dans Tchap.
 - La boucle sur les alertes est une **étape** `type: foreach` ; une propriété
   `foreach:` posée sur `workflow.execute` est ignorée sans erreur.
 - Les Workflows exigent la licence **Enterprise**.

@@ -84,7 +84,7 @@ def liquide(modele, en_html):
     for m in morceaux:
         v = re.fullmatch(r'\{\{\s*([^}]+?)\s*\}\}', m)
         if not v:
-            fixe = m.replace('=', '＝')
+            fixe = m.replace('\\', '\\\\').replace('=', '＝')
             sortie.append(html.escape(fixe, quote=False) if en_html else fixe)
         elif v.group(1) in VARIABLES:
             sortie.append(VARIABLES[v.group(1)].replace('ECHAP', ' | escape' if en_html else ''))
@@ -303,7 +303,7 @@ def main():
     definitions = {k.lower(): v for k, v in definitions_regles().items()} if esql else {}
     for code, rid, regle, connecteur in esql:
         salon = CONNECTEUR_SALON[connecteur]
-        open(os.path.join(ICI, f'tchap-alerte-{code}.console'), 'w').write(workflow_esql(code, regle, definitions[code]['tchap'], SALONS[salon]))
+        open(os.path.join(ICI, f'tchap-alerte-{code}.console'), 'w').write(workflow_esql(code, regle, definitions[code]['tchap'], SALONS[salon], definitions[code].get('vide', VIDE)))
         print(f'tchap-alerte-{code}.console : salon {salon}')
     jobs = jobs_suivis()
     for env, salon, index in [('prod', 'jobs-production', 'logs-prod-default'), ('staging', 'jobs-staging', 'logs-staging-default')]:
@@ -470,14 +470,14 @@ def definitions_regles():
     return module.REGLES
 
 
-def lignes_resultat(gabarit, en_html):
+def lignes_resultat(gabarit, en_html, vide=VIDE):
     """Une ligne par ligne du résultat ES|QL ; {0}, {1}… désignent ses colonnes."""
     e = ' | escape' if en_html else ''
     ligne = re.sub(r'\{(\d+)\}', lambda m: '{{ v[' + m.group(1) + ']' + EGAL + e + ' }}', gabarit)
     if en_html:
         ligne = markdown(ligne, True)
-        return '<ul>{% for v in steps.requete.output.values %}<li>' + ligne + '</li>{% else %}<li>' + html.escape(VIDE, quote=False) + '</li>{% endfor %}</ul>'
-    return '{% for v in steps.requete.output.values %}\\n• ' + markdown(ligne, False) + '{% else %}\\n• ' + VIDE + '{% endfor %}'
+        return '<ul>{% for v in steps.requete.output.values %}<li>' + ligne + '</li>{% else %}<li>' + html.escape(vide, quote=False) + '</li>{% endfor %}</ul>'
+    return '{% for v in steps.requete.output.values %}\\n• ' + markdown(ligne, False) + '{% else %}\\n• ' + vide + '{% endfor %}'
 
 
 def requete_esql(regle):
@@ -486,19 +486,21 @@ def requete_esql(regle):
     morceaux = [m.strip() for m in p['esqlQuery']['esql'].split('\n') if m.strip()]
     # Fenêtre de la règle au moment où l'alerte est partie : relue avec NOW(), quelques
     # secondes plus tard, elle peut repasser sous le seuil.
-    debut = 'TO_DATETIME("{{ event.alerts[0].kibana.alert.start }}")'
+    debut = 'TO_DATETIME("{{ foreach.item.kibana.alert.start }}")'
+    assert morceaux[0].startswith('FROM ') and '|' not in morceaux[0], 'le FROM doit tenir sur la première ligne : ' + morceaux[0]
     filtre = f'| WHERE @timestamp >= {debut} - {secondes // 60} minutes AND @timestamp <= {debut}'
     return ' '.join(morceaux[:1] + [filtre] + morceaux[1:]).replace('\\', '\\\\').replace('"', '\\"')
 
 
-def workflow_esql(code, regle, gabarit, salon_id):
-    texte = message(regle, False, lignes_resultat(gabarit, False)).replace('foreach.item', 'event.alerts[0]')
-    corps = message(regle, True, lignes_resultat(gabarit, True)).replace('foreach.item', 'event.alerts[0]')
+def workflow_esql(code, regle, gabarit, salon_id, vide=VIDE):
+    texte = message(regle, False, lignes_resultat(gabarit, False, vide))
+    corps = message(regle, True, lignes_resultat(gabarit, True, vide))
     return f'''# Workflow Tchap de la règle {code} ({regle['name']}), généré par generer-workflows.py
 # depuis ../../rules/ : ne pas modifier à la main. Spécification : README.md.
 #
 # La règle ES|QL est en groupBy all : son action .workflows ne transmet pas les lignes du
-# résultat, le Workflow relance donc la requête sur la fenêtre de la règle.
+# résultat, le Workflow relance donc la requête sur la fenêtre de la règle. Le foreach
+# écarte, comme les Workflows de salon, une alerte en attente de rétablissement.
 POST kbn:/api/workflows/workflow
 {{
   "id": "tchap-alerte-{code}",
@@ -511,18 +513,22 @@ triggers:
 consts:
   salon: "{salon_id}"
 steps:
-  - name: requete
-    type: elasticsearch.esql.query
-    with:
-      query: "{requete_esql(regle)}"
-  - name: notifier
-    type: workflow.execute
-    with:
-      workflow-id: tchap-client
-      inputs:
-        salon: "{{{{ consts.salon }}}}"
-        texte: "{texte}"
-        html: "{corps}"
+  - name: chaque-alerte
+    type: foreach
+    foreach: "{{{{ event.alerts | where_exp: 'a', 'a.kibana.alert.pending_recovered_count == blank or a.kibana.alert.pending_recovered_count == 0' | json }}}}"
+    steps:
+      - name: requete
+        type: elasticsearch.esql.query
+        with:
+          query: "{requete_esql(regle)}"
+      - name: notifier
+        type: workflow.execute
+        with:
+          workflow-id: tchap-client
+          inputs:
+            salon: "{{{{ consts.salon }}}}"
+            texte: "{texte}"
+            html: "{corps}"
 """
 }}
 '''

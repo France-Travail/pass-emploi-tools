@@ -1,27 +1,32 @@
 # Alertes applicatives
 
 Les alertes sur des pannes **visibles des utilisateurs et impactantes pour le
-métier**, en quatre couches :
+métier**, en cinq couches :
 
 - **alertes SLO** (S1 à S3) — la promesse de [sli-slo](sli-slo.md) est-elle
   menacée ? Déduites des SLO Kibana ;
-- **alertes de diagnostic** (A1 à A3) — pourquoi : un partenaire qui tombe, des
-  5xx qui s'accumulent, une vague de refus d'authentification ;
+- **alertes de diagnostic** (A1 à A3, A6, A7) — pourquoi : un partenaire qui
+  tombe, des 5xx qui s'accumulent, une vague de refus d'authentification, la
+  base de données en erreur, le front en erreur ;
+- **disponibilité** (A10 à A13) — les services répondent-ils, leurs
+  certificats sont-ils valides ? Règles Uptime sur les moniteurs Heartbeat ;
 - **événements Scalingo** (A4a, A4b) — ce qui arrive aux apps : crash, arrêt,
   redémarrage, seuil de ressource, mais aussi déploiements et opérations
   d'infra ;
 - **jobs** (A5a, A5b) — un job de l'api a planté.
 
 Elles s'appuient sur les logs ECS (`event.action` / `event.outcome`, cf.
-[format/logs/conventions](../format/logs/conventions.md)). Les pannes de la
+[format/logs/conventions](../format/logs/conventions.md)), sur l'APM (A2, A7,
+cf. [données APM](#données-apm)) et sur Heartbeat (A10 à A13). Les pannes de la
 chaîne de télémétrie elle-même sont dans
 [alertes-stack-observabilite](alertes-stack-observabilite.md) : si elle est
 aveugle (alerte 3 « silence »), ces alertes-ci ne peuvent pas se déclencher.
 
 Toutes notifient via Mattermost (`#monitoring-production`), sauf A4b
 (`Mattermost-monitoring-staging`) et A5a / A5b (canaux des jobs,
-`jobs-production` / `jobs-staging`) ; A4a et A4b notifient aussi Tchap
-(`monitoring-production`, `monitoring-staging`, cf. [workflows/tchap](workflows/tchap/README.md)).
+`jobs-production` / `jobs-staging`). Toutes notifient aussi Tchap, dans le
+salon qui correspond à leur canal (cf. [workflows/tchap](workflows/tchap/README.md)) :
+l'action Tchap est déployée avec le compte du bot.
 
 ## Récapitulatif
 
@@ -48,14 +53,15 @@ Toutes notifient via Mattermost (`#monitoring-production`), sauf A4b
 > en cours, pas une panne. A4b garde le fil d'activité Scalingo de staging et de
 > perf, déjà publié dans le canal staging.
 >
-> **Seuils à calibrer** (A1 à A3) : ceux ci-dessous reprennent les intentions de départ
-> (5 échecs/min, 1 erreur 5xx/min, 3 × la normale), pas une mesure. Avant
-> d'activer une règle, lancer sa requête de calibrage dans Discover (mode
-> ES|QL) et placer le seuil au-dessus du `max` observé sur 7 jours.
+> **Seuils** : A1, A2, A6 et A7 sont calibrés sur l'historique (le 2026-10-20,
+> requête de calibrage dans chaque section) ; A3 compare à la même heure des
+> 7 jours précédents. Pour changer un seuil, relancer la requête de calibrage
+> dans Discover (mode ES|QL) et compter les heures où il aurait sonné.
 >
-> **Dashboard applicatif** : seules les alertes SLO renvoient vers
-> **[Pass Emploi] SLO de Prod** (cf. [routine de surveillance](../routine-surveillance.md#promesses-utilisateurs-slo)) ;
-> les alertes de diagnostic renvoient vers Discover et le [runbook d'investigation](../runbooks/investigation-incident.md).
+> **Dashboards** : les alertes SLO renvoient vers **[Pass Emploi] SLO de Prod**
+> (cf. [routine de surveillance](../routine-surveillance.md#promesses-utilisateurs-slo)) ;
+> les alertes de diagnostic vers les dashboards **[Pass Emploi] Diagnostic
+> d'erreurs**, puis leur session Discover et le [runbook d'investigation](../runbooks/investigation-incident.md).
 
 ## Alertes SLO — la promesse est menacée
 
@@ -308,6 +314,11 @@ FROM logs-prod-default
 | WHERE erreurs > 20
 | EVAL types = MV_CONCAT(types, ", "), exemples = MV_CONCAT(MV_SLICE(exemples, 0, 1), " / ")
 ```
+
+Les messages d'erreur partent tels quels (2 au plus, 120 caractères) : sur
+30 jours, ce sont des messages de connexion (`sorry, too many clients
+already`, `Operation timeout`) et des noms de contraintes, sans valeur de
+donnée.
 
 **Calibrage** (2026-10-20, 30 jours, par tranche de 5 min) : max = 345, 3
 tranches au-dessus de 20 (3 heures distinctes), toutes de vrais incidents de

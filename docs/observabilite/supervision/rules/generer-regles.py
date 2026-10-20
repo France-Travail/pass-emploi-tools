@@ -34,6 +34,7 @@ DASHBOARDS = {
     'apps': ("[Pass Emploi] Diagnostic d'erreurs - Apps", KB + '014dae91-507a-44de-b782-72e5eddbab74', '014dae91-507a-44de-b782-72e5eddbab74'),
     'stack': ("[Pass Emploi] Supervision Stack d'Observabilité", KB + 'fd40a516-c323-4e5e-91e5-1328b8b1a78d', 'fd40a516-c323-4e5e-91e5-1328b8b1a78d'),
     'scalingo': ('[Scalingo] Dashboard des apps', 'https://dashboard.scalingo.com/apps', None),
+    'robots': ("[Pass Emploi] Diagnostic d'erreurs - Robots / scan", KB + '2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6', '2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6'),
     'apm-web': ('[APM] Erreurs de rum-pass-emploi-web-prod', 'https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/apm/services/rum-pass-emploi-web-prod/errors', None),
     'dep-api': ('[GitHub] Alertes Dependabot - pass-emploi-api', 'https://github.com/France-Travail/pass-emploi-api/security/dependabot', None),
     'dep-web': ('[GitHub] Alertes Dependabot - pass-emploi-web', 'https://github.com/France-Travail/pass-emploi-web/security/dependabot', None),
@@ -67,10 +68,10 @@ REGLES = {
         lignes='{{#context.hits}}`{{_source.partenaire}}` : {{_source.echecs}} échecs ({{_source.types}})\\n{{/context.hits}}',
         tchap='`{1}` : {0} échecs ({2})',
         intro="Plus de 100 appels de l'api vers un même partenaire ont échoué en 5 min (5xx, 429, 4xx ou timeout / réseau), d'après les logs `external_api_call`. Nos propres services et les statistiques ne sont pas comptés.",
-        steps=[f"1. Quel partenaire, et quelles erreurs : les lignes ci-dessus (domaine, nombre et types d'échecs), puis le Discover {s('part')}, onglet du partenaire",
+        steps=[f"1. Quel partenaire, et quelles erreurs : les lignes ci-dessus (domaine, nombre et types d'échecs), puis les échecs par app dans le temps dans le dashboard {d('apps')}",
                f"2. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard {d('entree')}",
-               "3. Si la panne vient du partenaire : le prévenir (contacts ci-dessous) et suivre le retour à la normale dans le même Discover"],
-        sessions=['part'], dashboards=['entree'],
+               f"3. Le détail des appels en échec : le Discover {s('part')}, onglet du partenaire ; si la panne vient du partenaire, le prévenir (contacts ci-dessous)"],
+        sessions=['part'], dashboards=['apps', 'entree'],
         extra=[('Contacts partenaires', ['[Partenariats (Notion), qui prévenir chez le partenaire en panne](https://app.notion.com/p/Partenariats-2077bd17c27a812a8700e489fe8ca506)']), RUNBOOK_APPLICATIF],
         doc=('Alertes applicatives', 'supervision/alertes-applicatives.md')),
     'A2': dict(id='98e0103a-f809-48f2-8343-d1269213dce4', commentaire='# A2 — Erreurs serveur 5xx (Critical)',
@@ -93,11 +94,12 @@ REGLES = {
         titre="Pic d'authentifications refusées — prod", suite='plus de 3 × la normale sur 10 min : IDP ou Keycloak probablement en cause.',
         lignes='{{#context.hits}}{{_source.refus}} refus en 10 min, contre {{_source.reference}} d\'habitude à cette heure\\n{{/context.hits}}',
         tchap="{0} refus en 10 min, contre {2} d'habitude à cette heure",
+        vide="Plus de pic de refus à la relecture : il est peut-être en train de se résorber.",
         intro="Pic d'authentifications refusées — prod — plus de 3 × la normale sur 10 min : IDP ou Keycloak probablement en cause.",
-        steps=[f"1. Quel mode de connexion est touché, et pourquoi : le Discover {s('auth')}, onglet *Field statistics* (répartition par fournisseur d'identité et par motif)",
-               f"2. Si un seul fournisseur d'identité concentre les refus (France Travail Connect, Milo…) : sa disponibilité dans le dashboard {d('entree')}",
-               f"3. Si tous les modes sont touchés : Keycloak ou pass-emploi-connect, dans le dashboard {d('apps')}"],
-        sessions=['auth'], dashboards=['entree', 'apps'], extra=[RUNBOOK_APPLICATIF],
+        steps=[f"1. Un robot ou un scan en cause (volume anormal, codes hors 4xx) : le dashboard {d('robots')}",
+               f"2. Si un seul fournisseur d'identité concentre les refus (France Travail Connect, Milo…) : sa disponibilité dans le dashboard {d('entree')} ; si tous les modes sont touchés : Keycloak ou pass-emploi-connect, dans le dashboard {d('apps')}",
+               f"3. La liste des refus, par fournisseur d'identité et par motif : le Discover {s('auth')}, onglet *Field statistics*"],
+        sessions=['auth'], dashboards=['robots', 'entree', 'apps'], extra=[RUNBOOK_APPLICATIF],
         doc=('Alertes applicatives', 'supervision/alertes-applicatives.md')),
     'A6': dict(id='c9164880-1829-4847-acb1-5a70433ecbb8', commentaire='# A6 — Erreurs base de données (Critical). Remplace « 🏠 API - erreurs DB ».\n# Nouvelle règle : absente de la prod avant le 2026-10-20, la créer avec POST\n# (même corps plus "rule_type_id": ".es-query" et "consumer": "alerts").',
         name='API - Prod - Erreurs base de données', tags=['prod', 'applicatif'], interval='1m', fenetre=5,
@@ -107,9 +109,9 @@ REGLES = {
         lignes='{{#context.hits}}`{{_source.service}}` : {{_source.erreurs}} erreurs ({{_source.types}}) — {{_source.exemples}}\\n{{/context.hits}}',
         tchap='`{1}` : {0} erreurs ({2}) — {3}',
         intro="Plus de 20 erreurs de base de données (`error.type` Sequelize*) en 5 min dans les logs de prod : connexion perdue, pool de connexions saturé, contrainte violée.",
-        steps=[f"1. Le type et le message de l'erreur : les lignes ci-dessus, puis le Discover {s('bdd')}, onglet « error.type : Sequelize* »",
-               f"2. L'état de la base PostgreSQL de `pass-emploi-api-prod` (connexions, mémoire, CPU) : son addon dans le dashboard {d('scalingo')}",
-               f"3. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard {d('entree')}"],
+        steps=[f"1. L'état de la base PostgreSQL de `pass-emploi-api-prod` (connexions, mémoire, CPU) : son addon dans le dashboard {d('scalingo')}",
+               f"2. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard {d('entree')}",
+               f"3. Le type et le message de chaque erreur : le Discover {s('bdd')}, onglet « error.type : Sequelize* »"],
         sessions=['bdd'], dashboards=['scalingo', 'entree'], extra=[RUNBOOK_APPLICATIF],
         doc=('Alertes applicatives', 'supervision/alertes-applicatives.md')),
     'A7': dict(id='52c66a2a-2ee1-4de2-bc5c-642a96395405', commentaire='# A7 — Erreurs du front (Warning). Remplace les 7 règles APM des services disparus.\n# Nouvelle règle : absente de la prod avant le 2026-10-20, la créer avec POST\n# (même corps plus "rule_type_id": ".es-query" et "consumer": "alerts").',
@@ -379,7 +381,8 @@ def emplacement(lignes, nom):
         return None
     put = lignes.index(put_)
     debut = put
-    while debut > 0 and lignes[debut - 1].startswith('#'):
+    commentaire = len(REGLES[nom]['commentaire'].split('\n'))
+    while debut > 0 and put - debut < commentaire and lignes[debut - 1].startswith('#'):
         debut -= 1
     return debut, lignes.index('}', put)
 

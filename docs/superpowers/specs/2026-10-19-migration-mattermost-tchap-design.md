@@ -456,4 +456,10 @@ supprimées) : les 7 règles APM (`2fdcb950…`, `7168ce70…`, `eaf59860…`,
 - **Générateur de règles** : `--verifier` sans code vérifie toutes les règles
   (il ne vérifiait rien), un bloc est retrouvé par sa ligne `PUT`, le guide
   d'investigation reprend les champs annexes (contacts partenaires, runbook).
+- **Ordre des étapes** (principe 3 du §7) : A1 ouvre d'abord [Pass Emploi]
+  Diagnostic d'erreurs - Apps, A3 - Robots / scan, A6 le dashboard Scalingo ;
+  leur session Discover passe en dernière étape.
+- **Relance des règles ES|QL** sur la fenêtre qui précède le début de l'alerte
+  (pas sur `NOW()`), avec le filtre des alertes en attente de rétablissement des
+  Workflows de salon.
 
