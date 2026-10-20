@@ -34,6 +34,7 @@ DASHBOARDS = {
     'apps': ("[Pass Emploi] Diagnostic d'erreurs - Apps", KB + '014dae91-507a-44de-b782-72e5eddbab74', '014dae91-507a-44de-b782-72e5eddbab74'),
     'stack': ("[Pass Emploi] Supervision Stack d'Observabilité", KB + 'fd40a516-c323-4e5e-91e5-1328b8b1a78d', 'fd40a516-c323-4e5e-91e5-1328b8b1a78d'),
     'scalingo': ('[Scalingo] Dashboard des apps', 'https://dashboard.scalingo.com/apps', None),
+    'apm-web': ('[APM] Erreurs de rum-pass-emploi-web-prod', 'https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/apm/services/rum-pass-emploi-web-prod/errors', None),
     'dep-api': ('[GitHub] Alertes Dependabot - pass-emploi-api', 'https://github.com/France-Travail/pass-emploi-api/security/dependabot', None),
     'dep-web': ('[GitHub] Alertes Dependabot - pass-emploi-web', 'https://github.com/France-Travail/pass-emploi-web/security/dependabot', None),
     'dep-connect': ('[GitHub] Alertes Dependabot - pass-emploi-connect', 'https://github.com/France-Travail/pass-emploi-connect/security/dependabot', None),
@@ -110,6 +111,19 @@ REGLES = {
                f"2. L'état de la base PostgreSQL de `pass-emploi-api-prod` (connexions, mémoire, CPU) : son addon dans le dashboard {d('scalingo')}",
                f"3. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard {d('entree')}"],
         sessions=['bdd'], dashboards=['scalingo', 'entree'], extra=[RUNBOOK_APPLICATIF],
+        doc=('Alertes applicatives', 'supervision/alertes-applicatives.md')),
+    'A7': dict(id='52c66a2a-2ee1-4de2-bc5c-642a96395405', commentaire='# A7 — Erreurs du front (Warning). Remplace les 7 règles APM des services disparus.\n# Nouvelle règle : absente de la prod avant le 2026-10-20, la créer avec POST\n# (même corps plus "rule_type_id": ".es-query" et "consumer": "alerts").',
+        name='Web - Prod - Erreurs du front', tags=['prod', 'applicatif'], interval='1m', fenetre=5,
+        esql='FROM logs-apm.error-*\n| WHERE service.name == "rum-pass-emploi-web-prod"\n| EVAL erreur = SUBSTRING(error.grouping_name, 1, 120)\n| STATS erreurs = COUNT(*) BY erreur\n| INLINE STATS total = SUM(erreurs)\n| WHERE total > 200\n| SORT erreurs DESC\n| LIMIT 5',
+        mm='12e46700-6e45-11ec-9757-c9700cd1bb4e', couleur='#f2c744', emoji='⚠️',
+        titre='Erreurs du front — prod', suite="plus de 200 erreurs JavaScript en 5 min dans l'app web conseiller.",
+        lignes='{{#context.hits}}{{_source.erreur}} : {{_source.erreurs}}\\n{{/context.hits}}',
+        tchap='{1} : {0}',
+        intro="Plus de 200 erreurs JavaScript en 5 min dans l'app web conseiller de prod, d'après le RUM de l'APM (`rum-pass-emploi-web-prod`) ; les 5 plus fréquentes sont listées.",
+        steps=[f"1. Les erreurs les plus fréquentes : les lignes ci-dessus, puis l'écran, le navigateur et la pile dans {d('apm-web')}",
+               f"2. Si ce sont des appels à l'api en échec (« Failed to fetch », « Internal server error ») : les erreurs de l'api au même moment dans le dashboard {d('entree')}",
+               f"3. Un déploiement récent du web : l'activité de `pass-emploi-web-prod` dans le dashboard {d('scalingo')}"],
+        sessions=[], dashboards=['apm-web', 'entree', 'scalingo'], extra=[RUNBOOK_APPLICATIF],
         doc=('Alertes applicatives', 'supervision/alertes-applicatives.md')),
     'A5a': dict(id='a03feacb-ddf8-4e04-af82-48f77b07a86e', commentaire="# A5a — Jobs en échec, prod (version dégradée : un job qui plante ou introuvable ; un job\n# qui rapporte un échec sans planter n'est pas vu, cf. ../alertes-applicatives.md)",
         name='API - Prod - Jobs en échec', tags=['prod', 'applicatif', 'jobs'],
@@ -211,7 +225,8 @@ def body(r):
     dash = [d(k) for k in r.get('dashboards_message', r['dashboards'])]
     if dash:
         champs.append(champ('Dashboards', dash))
-    champs.append(champ('Discover sessions', [s(k) for k in r['sessions']]))
+    if r['sessions']:
+        champs.append(champ('Discover sessions', [s(k) for k in r['sessions']]))
     for titre, valeurs in r.get('extra', []):
         champs.append(champ(titre, valeurs))
     emoji = r.get('emoji', '⚠️')
@@ -227,7 +242,8 @@ def guide(r):
     md = "## Ce que signale l'alerte\n\n" + r['intro'] + "\n\n## À vérifier\n\n" + '\n'.join(r['steps'])
     if dash:
         md += "\n\n## Dashboards\n\n" + '\n'.join('- ' + x for x in dash)
-    md += "\n\n## Discover sessions\n\n" + '\n'.join('- ' + s(k) for k in r['sessions'])
+    if r['sessions']:
+        md += "\n\n## Discover sessions\n\n" + '\n'.join('- ' + s(k) for k in r['sessions'])
     for titre, valeurs in r.get('extra', []):
         md += f"\n\n## {titre}\n\n" + '\n'.join('- ' + v for v in valeurs)
     md += f"\n\n## Documentation\n\n[{r['doc'][0]}]({GH}{r['doc'][1]})\n"

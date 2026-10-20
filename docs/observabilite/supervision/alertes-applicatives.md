@@ -38,6 +38,7 @@ Toutes notifient via Mattermost (`#monitoring-production`), sauf A4b
 | A5a | Jobs en échec — prod | `logs-prod-default` | `job_crashed`, `job_handler_not_found` | 1 min | — | ❌ par ligne |
 | A5b | Jobs en échec — staging, perf | `logs-{staging,perf}-default` | idem A5a, canal jobs-staging | 5 min | — | ❌ par ligne |
 | A6 | Erreurs base de données | `logs-prod-default` | `error.type` Sequelize* > 20 / 5 min | 1 min | 1h | 🚨 Critical |
+| A7 | Erreurs du front | APM `logs-apm.error-*` | erreurs JavaScript de `rum-pass-emploi-web-prod` > 200 / 5 min | 1 min | 1h | ⚠️Warning |
 
 > **Prod uniquement** (sauf A4b) : en staging, ces signaux reflètent les tests
 > en cours, pas une panne. A4b garde le fil d'activité Scalingo de staging et de
@@ -312,6 +313,53 @@ FROM logs-prod-default
 | WHERE @timestamp >= NOW() - 30 days AND error.type LIKE "Sequelize*"
 | STATS n = COUNT(*) BY service.name, tranche = BUCKET(@timestamp, 5 minutes)
 | STATS p99 = PERCENTILE(n, 99), max = MAX(n), au_dessus = COUNT(*) WHERE n > 20 BY service.name
+```
+
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/1-rules-applicatives.console`](rules/1-rules-applicatives.console), qui fait foi ; son Investigation guide reprend les mêmes étapes. La règle est **nouvelle** : la créer avec `POST` (cf. l'en-tête de son bloc).
+
+### A7 — Erreurs du front (Warning)
+
+Compte les erreurs JavaScript de l'app web conseiller remontées par le RUM de
+l'APM (`logs-apm.error-*`, service `rum-pass-emploi-web-prod`), par
+`error.grouping_name`. Remplace les 7 anciennes règles APM, toutes mortes :
+elles visaient des services qui n'émettent plus (`pa-back-prod`,
+`pa-auth-prod`, `pass-emploi-connect`, `rum-pa-front-prod`), aucune alerte en
+30 jours.
+
+| Paramètre               | Valeur                                                                                                             |
+|-------------------------|--------------------------------------------------------------------------------------------------------------------|
+| **Rule name**           | `Web - Prod - Erreurs du front`                                                                                    |
+| **Type**                | Elasticsearch query rule (ES\|QL), `groupBy: all`                                                                 |
+| **Requête ES\|QL**      | voir ci-dessous — l'alerte part dès qu'elle renvoie une ligne (les 5 erreurs les plus fréquentes)                  |
+| **Fenêtre**             | 5 min                                                                                                              |
+| **Fréquence**           | 1 min                                                                                                              |
+| **Sévérité**            | Warning                                                                                                            |
+| **Throttle**            | `On custom action intervals` / `Run every 1 hour` / `Run when: Query matched` (onglet Actions → Settings)          |
+| **Action**              | Connecteur Kibana **Mattermost-monitoring-production**, et Workflow `tchap-alerte-a7` — messages dans le bloc de la règle |
+| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook d'investigation](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md) |
+
+**Requête ES|QL** :
+```
+FROM logs-apm.error-*
+| WHERE service.name == "rum-pass-emploi-web-prod"
+| EVAL erreur = SUBSTRING(error.grouping_name, 1, 120)
+| STATS erreurs = COUNT(*) BY erreur
+| INLINE STATS total = SUM(erreurs)
+| WHERE total > 200
+| SORT erreurs DESC
+| LIMIT 5
+```
+
+**Calibrage** (2026-10-20, 30 jours, par tranche de 5 min) : p99 = 173,
+max = 1 502, 29 tranches au-dessus de 200, réparties sur 8 heures de 5 jours.
+Les erreurs les plus fréquentes sont des appels à l'api en échec (« Failed to
+fetch », « Internal server error ») et des refus de droits.
+```
+FROM logs-apm.error-*
+| WHERE @timestamp >= NOW() - 30 days AND service.name == "rum-pass-emploi-web-prod"
+| STATS n = COUNT(*) BY tranche = BUCKET(@timestamp, 5 minutes)
+| STATS p99 = PERCENTILE(n, 99), max = MAX(n), au_dessus = COUNT(*) WHERE n > 200
 ```
 
 **Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/1-rules-applicatives.console`](rules/1-rules-applicatives.console), qui fait foi ; son Investigation guide reprend les mêmes étapes. La règle est **nouvelle** : la créer avec `POST` (cf. l'en-tête de son bloc).
