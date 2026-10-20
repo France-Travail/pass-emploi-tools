@@ -89,18 +89,31 @@ def liquide(modele, en_html):
 LIEN = r'\[([^\]]*(?:\[[^\]]*\][^\]]*)?)\]\(((?:https?://|\{\{)(?:[^)\s{]|\{\{[^}]*\}\})*)\)'
 
 
-# Les sessions Discover s'ouvrent d'une heure avant le début de l'alerte à 15 min après.
-# Période encodée : la détection des liens de Tchap exclut la parenthèse finale d'une URL.
+# Les dashboards et sessions Kibana s'ouvrent sur la fenêtre de la règle (1 h au moins,
+# 7 jours au plus) avant le début de l'alerte, jusqu'à 15 min après. Période encodée :
+# la détection des liens de Tchap exclut la parenthèse finale d'une URL.
 PERIODE = "?_g=%28time%3A%28from%3A%27{{ t0 }}%27%2Cto%3A%27{{ t1 }}%27%29%29"
-FENETRE = ("{% assign t0 = " + ALERTE + ".start | date: '%s' | minus: 3600 | date: '%Y-%m-%dT%H:%M:%SZ' %}"
-           "{% assign t1 = " + ALERTE + ".start | date: '%s' | plus: 900 | date: '%Y-%m-%dT%H:%M:%SZ' %}")
+UNITES = {'s': 1, 'm': 60, 'h': 3600, 'd': 86400}
+
+
+def fenetre(regle):
+    p = regle.get('params', {})
+    if 'timeWindowSize' in p:
+        secondes = p['timeWindowSize'] * UNITES[p['timeWindowUnit']]
+    elif p.get('windows'):
+        secondes = max(w['longWindow']['value'] * UNITES[w['longWindow']['unit']] for w in p['windows'])
+    else:
+        secondes = 3600
+    secondes = min(max(secondes, 3600), 7 * 86400)
+    return ("{% assign t0 = " + ALERTE + ".start | date: '%s' | minus: " + str(secondes) + " | date: '%Y-%m-%dT%H:%M:%SZ' %}"
+            "{% assign t1 = " + ALERTE + ".start | date: '%s' | plus: 900 | date: '%Y-%m-%dT%H:%M:%SZ' %}")
 
 
 def markdown(texte, en_html, gras=False):
     """Aucun lien HTML : le pare-feu de Tchap rejette un message à plusieurs liens, ou
     à un lien et une couleur (constaté le 2026-10-20). Le nom en gras (gras=True) ou
     « nom - URL brute », que Tchap rend cliquable."""
-    texte = re.sub(r'(discover#/view/[0-9a-f-]+)\)', r"\1" + PERIODE + ")", texte)
+    texte = re.sub(r'((?:discover|dashboards)#/view/[0-9a-z_-]+)\)', r"\1" + PERIODE + ")", texte)
     if en_html:
         texte = re.sub(LIEN, r'<strong>\1</strong>' if gras else r'\1 - \2', texte)
         texte = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', texte)
@@ -190,7 +203,7 @@ def message(regle, en_html):
                  ('\\nRègle :\\n{{ event.rule.name' + EGAL + ' }} - {{ event.ruleUrl }}')
     milieu = ''.join(section(f['title'], f['value'], en_html, gras=True) for f in explications)
     fin = ''.join(section(n, '\n'.join(liens[n]), en_html) for n in noms) + pages_dependabot(en_html) + regle_lien
-    prefixe = FENETRE + (BURN_RATE if 'context.longWindow' in mm['params']['body'] or 'context.shortWindow' in mm['params']['body'] else '')
+    prefixe = fenetre(regle) + (BURN_RATE if 'context.longWindow' in mm['params']['body'] or 'context.shortWindow' in mm['params']['body'] else '')
     if en_html:
         couleur = piece.get('color', '#808080')
         tete = '<p><font data-mx-color=\\"' + couleur + '\\" color=\\"' + couleur + '\\">' + titre.replace('"', '\\"') + '</font></p>'
