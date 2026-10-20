@@ -37,7 +37,10 @@ def scalingo(region, app, *args):
 
 
 def selection(region, app):
-    for line in scalingo(region, app, 'notifiers').splitlines():
+    sortie = scalingo(region, app, 'notifiers')
+    if not sortie:
+        return 'injoignable'
+    for line in sortie.splitlines():
         m = re.match(r'│ (no-[0-9a-f-]+) │ webhook +│ Elastic[^│]*│ (\w+) +│ (\w+)', line)
         if m:
             if m.group(3) == 'true':
@@ -95,6 +98,10 @@ def main():
             if args.app and app not in args.app:
                 continue
             choix = selection(region, app)
+            if choix == 'injoignable':
+                print(f'== {app} : Scalingo injoignable (relancer avec --app {app})')
+                ecarts += 1
+                continue
             if choix is None:
                 print(f'== {app} : pas de notifier Elastic')
                 ecarts += 1
