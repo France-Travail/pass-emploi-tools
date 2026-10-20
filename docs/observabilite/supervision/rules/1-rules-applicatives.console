@@ -935,7 +935,7 @@ PUT kbn:/api/alerting/rule/00f15660-40ba-4fb1-a59d-6345ce07c360
   ]
 }
 
-# A1 — Pic d'échecs partenaire (Warning)
+# A1 — Pic d'échecs partenaire (Warning). Remplace aussi les 3 règles « 🔌 Partenaires » (5xx, timeouts, 429).
 PUT kbn:/api/alerting/rule/1b751543-4233-4857-8fe6-8141a7c2d040
 {
   "name": "API - Prod - Pic d'échecs partenaire",
@@ -945,7 +945,7 @@ PUT kbn:/api/alerting/rule/1b751543-4233-4857-8fe6-8141a7c2d040
   ],
   "artifacts": {
     "investigation_guide": {
-      "blob": "## Ce que signale l'alerte\n\nPic d'échecs partenaire — prod — un client partenaire dépasse 25 échecs en 5 min.\n\n## À vérifier\n\n1. Quel partenaire, et quelles erreurs : le « Détail » ci-dessus (client, nombre d'échecs), puis le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293), onglet du partenaire\n2. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n3. Si la panne vient du partenaire : le prévenir (contacts ci-dessous) et suivre le retour à la normale dans le même Discover\n\n## Dashboards\n\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n\n## Documentation\n\n- [Partenariats (Notion)](https://app.notion.com/p/Partenariats-2077bd17c27a812a8700e489fe8ca506) : qui prévenir chez le partenaire en panne\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n"
+      "blob": "## Ce que signale l'alerte\n\nPlus de 50 appels de l'api vers un même partenaire ont échoué en 5 min (5xx, 429, 4xx ou timeout / réseau), d'après les logs `external_api_call`. Nos propres services et les statistiques ne sont pas comptés.\n\n## À vérifier\n\n1. Quel partenaire, et quelles erreurs : les lignes ci-dessus (domaine, nombre et types d'échecs), puis le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293), onglet du partenaire\n2. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n3. Si la panne vient du partenaire : le prévenir (contacts ci-dessous) et suivre le retour à la normale dans le même Discover\n\n## Dashboards\n\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n\n## Contacts partenaires\n\n- [Partenariats (Notion)](https://app.notion.com/p/Partenariats-2077bd17c27a812a8700e489fe8ca506) : qui prévenir chez le partenaire en panne\n\n## Runbook\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-applicatives.md)\n"
     },
     "dashboards": [
       {
@@ -960,11 +960,13 @@ PUT kbn:/api/alerting/rule/1b751543-4233-4857-8fe6-8141a7c2d040
     "searchType": "esqlQuery",
     "esqlQuery": {
       "esql": """FROM logs-prod-default
-| WHERE event.action == "external_api_call" AND event.outcome == "failure"
-| STATS echecs = COUNT(*), dont_crash = COUNT(*) WHERE log.level == "error",
-        statuts = VALUES(http.response.status_code)
-  BY log.logger
-| WHERE echecs > 25"""
+| WHERE event.action == "external_api_call" AND event.outcome == "failure" AND url.domain IS NOT NULL
+| WHERE NOT url.domain LIKE "*pass-emploi.beta.gouv.fr" AND url.domain != "stats.beta.gouv.fr"
+| EVAL type = CASE(http.response.status_code == 429, "429", http.response.status_code >= 500, "5xx", http.response.status_code >= 400, "4xx", "timeout / réseau")
+| STATS echecs = COUNT(*), types = VALUES(type) BY partenaire = url.domain
+| WHERE echecs > 50
+| EVAL types = MV_CONCAT(types, ", ")
+| SORT echecs DESC"""
     },
     "timeField": "@timestamp",
     "timeWindowSize": 5,
@@ -974,11 +976,7 @@ PUT kbn:/api/alerting/rule/1b751543-4233-4857-8fe6-8141a7c2d040
     ],
     "thresholdComparator": ">",
     "size": 100,
-    "aggType": "count",
-    "groupBy": "row",
-    "termSize": 5,
-    "sourceFields": [],
-    "excludeHitsFromPreviousRun": false
+    "groupBy": "all"
   },
   "actions": [
     {
@@ -986,10 +984,11 @@ PUT kbn:/api/alerting/rule/1b751543-4233-4857-8fe6-8141a7c2d040
       "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
       "params": {
         "body": """{
-  "text": "⚠️ **Pic d'échecs partenaire — prod** — un client partenaire dépasse 25 échecs en 5 min.",
+  "text": "⚠️ **Pic d'échecs partenaire — prod** — plus de 50 appels en échec vers un partenaire en 5 min.",
   "attachments": [
     {
       "color": "#f2c744",
+      "text": "{{#context.hits}}`{{_source.partenaire}}` : {{_source.echecs}} échecs ({{_source.types}})\n{{/context.hits}}",
       "fields": [
         {
           "title": "Règle",
@@ -1002,12 +1001,10 @@ PUT kbn:/api/alerting/rule/1b751543-4233-4857-8fe6-8141a7c2d040
           "short": true
         },
         {
-          "title": "Détail",
-          "value": "{{context.message}}"
-        },
-        {
           "title": "À vérifier",
-          "value": "1. Quel partenaire, et quelles erreurs : le « Détail » ci-dessus (client, nombre d'échecs), puis le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293), onglet du partenaire\n2. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n3. Si la panne vient du partenaire : le prévenir (contacts ci-dessous) et suivre le retour à la normale dans le même Discover"
+          "value": "1. Quel partenaire, et quelles erreurs : les lignes ci-dessus (domaine, nombre et types d'échecs), puis le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293), onglet du partenaire\n{{!
+                  }}2. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n{{!
+                  }}3. Si la panne vient du partenaire : le prévenir (contacts ci-dessous) et suivre le retour à la normale dans le même Discover"
         },
         {
           "title": "Dashboards",
@@ -1041,9 +1038,13 @@ PUT kbn:/api/alerting/rule/1b751543-4233-4857-8fe6-8141a7c2d040
       "params": {
         "subAction": "run",
         "subActionParams": {
-          "workflowId": "tchap-monitoring-production",
+          "workflowId": "tchap-alerte-a1",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }
@@ -1060,7 +1061,7 @@ PUT kbn:/api/alerting/rule/98e0103a-f809-48f2-8343-d1269213dce4
   ],
   "artifacts": {
     "investigation_guide": {
-      "blob": "## Ce que signale l'alerte\n\nPlus de 50 requêtes de l'api ou de connect ont répondu en erreur serveur (5xx) en 5 min, d'après l'APM, par template d'URL.\n\n## À vérifier\n\n1. Quelles routes sont touchées : les lignes ci-dessus (template d'URL et nombre d'erreurs), puis le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n2. Si un partenaire est en cause (timeout, erreur d'API) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n3. Le motif d'une requête en erreur et son `trace.id` : le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n\n## Dashboards\n\n- [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n- [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-applicatives.md)\n"
+      "blob": "## Ce que signale l'alerte\n\nPlus de 50 requêtes de l'api ou de connect ont répondu en erreur serveur (5xx) en 5 min, d'après l'APM, par template d'URL.\n\n## À vérifier\n\n1. Quelles routes sont touchées : les lignes ci-dessus (template d'URL et nombre d'erreurs), puis le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n2. Si un partenaire est en cause (timeout, erreur d'API) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n3. Le motif d'une requête en erreur et son `trace.id` : le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n\n## Dashboards\n\n- [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n- [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n\n## Runbook\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-applicatives.md)\n"
     },
     "dashboards": [
       {
@@ -1176,7 +1177,7 @@ PUT kbn:/api/alerting/rule/ad326ad3-aea7-4ef8-be28-31008c4aebce
   ],
   "artifacts": {
     "investigation_guide": {
-      "blob": "## Ce que signale l'alerte\n\nPic d'authentifications refusées — prod — plus de 3 × la normale sur 10 min : IDP ou Keycloak probablement en cause.\n\n## À vérifier\n\n1. Quel mode de connexion est touché, et pourquoi : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8), onglet *Field statistics* (répartition par fournisseur d'identité et par motif)\n2. Si un seul fournisseur d'identité concentre les refus (France Travail Connect, Milo…) : sa disponibilité dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n3. Si tous les modes sont touchés : Keycloak ou pass-emploi-connect, dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n\n## Dashboards\n\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n- [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-applicatives.md)\n"
+      "blob": "## Ce que signale l'alerte\n\nPic d'authentifications refusées — prod — plus de 3 × la normale sur 10 min : IDP ou Keycloak probablement en cause.\n\n## À vérifier\n\n1. Quel mode de connexion est touché, et pourquoi : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8), onglet *Field statistics* (répartition par fournisseur d'identité et par motif)\n2. Si un seul fournisseur d'identité concentre les refus (France Travail Connect, Milo…) : sa disponibilité dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n3. Si tous les modes sont touchés : Keycloak ou pass-emploi-connect, dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n\n## Dashboards\n\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n- [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n\n## Runbook\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-applicatives.md)\n"
     },
     "dashboards": [
       {

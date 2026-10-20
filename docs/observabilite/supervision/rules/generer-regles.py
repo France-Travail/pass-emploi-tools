@@ -57,6 +57,20 @@ JOBS_LIGNES = '{{#context.hits}}❌ `{{_source.labels.job_type}}` : {{_source.ev
 RUNBOOK_APPLICATIF = ('Runbook', [f'[Investiguer un incident applicatif]({GH}runbooks/investigation-incident.md)'])
 
 REGLES = {
+    'A1': dict(id='1b751543-4233-4857-8fe6-8141a7c2d040', commentaire="# A1 — Pic d'échecs partenaire (Warning). Remplace aussi les 3 règles « 🔌 Partenaires » (5xx, timeouts, 429).",
+        name="API - Prod - Pic d'échecs partenaire", tags=['prod', 'applicatif'], interval='1m', fenetre=5,
+        esql='FROM logs-prod-default\n| WHERE event.action == "external_api_call" AND event.outcome == "failure" AND url.domain IS NOT NULL\n| WHERE NOT url.domain LIKE "*pass-emploi.beta.gouv.fr" AND url.domain != "stats.beta.gouv.fr"\n| EVAL type = CASE(http.response.status_code == 429, "429", http.response.status_code >= 500, "5xx", http.response.status_code >= 400, "4xx", "timeout / réseau")\n| STATS echecs = COUNT(*), types = VALUES(type) BY partenaire = url.domain\n| WHERE echecs > 50\n| EVAL types = MV_CONCAT(types, ", ")\n| SORT echecs DESC',
+        mm='12e46700-6e45-11ec-9757-c9700cd1bb4e', couleur='#f2c744', emoji='⚠️',
+        titre="Pic d'échecs partenaire — prod", suite='plus de 50 appels en échec vers un partenaire en 5 min.',
+        lignes='{{#context.hits}}`{{_source.partenaire}}` : {{_source.echecs}} échecs ({{_source.types}})\\n{{/context.hits}}',
+        tchap='`{1}` : {0} échecs ({2})',
+        intro="Plus de 50 appels de l'api vers un même partenaire ont échoué en 5 min (5xx, 429, 4xx ou timeout / réseau), d'après les logs `external_api_call`. Nos propres services et les statistiques ne sont pas comptés.",
+        steps=[f"1. Quel partenaire, et quelles erreurs : les lignes ci-dessus (domaine, nombre et types d'échecs), puis le Discover {s('part')}, onglet du partenaire",
+               f"2. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard {d('entree')}",
+               "3. Si la panne vient du partenaire : le prévenir (contacts ci-dessous) et suivre le retour à la normale dans le même Discover"],
+        sessions=['part'], dashboards=['entree'],
+        extra=[('Contacts partenaires', ['[Partenariats (Notion)](https://app.notion.com/p/Partenariats-2077bd17c27a812a8700e489fe8ca506) : qui prévenir chez le partenaire en panne']), RUNBOOK_APPLICATIF],
+        doc=('Alertes applicatives', 'supervision/alertes-applicatives.md')),
     'A2': dict(id='98e0103a-f809-48f2-8343-d1269213dce4', commentaire='# A2 — Erreurs serveur 5xx (Critical)',
         name='API - Prod - Erreurs 5xx', tags=['prod', 'applicatif'], interval='1m', fenetre=5,
         esql='FROM metrics-apm.transaction.1m-*\n| WHERE service.name IN ("pass-emploi-api-prod", "pass-emploi-connect-prod") AND transaction.result == "HTTP 5xx"\n| STATS erreurs = COUNT(transaction.duration.summary) BY service = service.name, template = transaction.name\n| INLINE STATS total = SUM(erreurs)\n| WHERE total > 50\n| SORT erreurs DESC\n| LIMIT 10',
@@ -200,6 +214,8 @@ def guide(r):
     if dash:
         md += "\n\n## Dashboards\n\n" + '\n'.join('- ' + x for x in dash)
     md += "\n\n## Discover sessions\n\n" + '\n'.join('- ' + s(k) for k in r['sessions'])
+    for titre, valeurs in r.get('extra', []):
+        md += f"\n\n## {titre}\n\n" + '\n'.join('- ' + v for v in valeurs)
     md += f"\n\n## Documentation\n\n[{r['doc'][0]}]({GH}{r['doc'][1]})\n"
     return md
 
@@ -258,18 +274,20 @@ def fichier(nom):
 
 
 def emplacement(lignes, nom):
-    """Lignes [début, fin] du bloc : de sa première ligne de commentaire à l'accolade fermante."""
-    premiere = REGLES[nom]['commentaire'].split('\n')[0]
-    debut = lignes.index(premiere) if premiere in lignes else None
-    if debut is None:
+    """Lignes [début, fin] du bloc : des commentaires qui précèdent son PUT à l'accolade fermante."""
+    put_ = 'PUT kbn:/api/alerting/rule/' + REGLES[nom]['id']
+    if put_ not in lignes:
         return None
-    put = next(i for i in range(debut, len(lignes)) if lignes[i].startswith('PUT kbn:/api/alerting/rule/'))
+    put = lignes.index(put_)
+    debut = put
+    while debut > 0 and lignes[debut - 1].startswith('#'):
+        debut -= 1
     return debut, lignes.index('}', put)
 
 
 def main(args):
     mode = args[0] if args and args[0] in ('--verifier', '--ecrire') else None
-    codes = args[1:] if mode else args
+    codes = (args[1:] if mode else args) or (list(REGLES) if mode == '--verifier' else [])
     ecarts = 0
     for nom in codes:
         genere = bloc(nom).rstrip('\n').split('\n')

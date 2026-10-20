@@ -30,7 +30,7 @@ Toutes notifient via Mattermost (`#monitoring-production`), sauf A4b
 | S1 | SLO disponibilité api      | SLO Kibana          | burn rate ≥ 6 par parcours critique                   | 1 min     | —        | 🚨 Critical |
 | S2 | SLO latence api            | SLO Kibana          | burn rate ≥ 6 par parcours critique                   | 1 min     | —        | 🚨 Critical |
 | S3 | SLO réussite login         | SLO Kibana          | burn rate ≥ 6 par mode d'authentification             | 1 min     | —        | 🚨 Critical |
-| A1 | Pic d'échecs partenaire    | `logs-prod-default` | `external_api_call` `failure` > 25 / 5 min par client | 1 min     | 1h       | ⚠️Warning  |
+| A1 | Pic d'échecs partenaire    | `logs-prod-default` | `external_api_call` `failure` > 50 / 5 min par domaine (5xx, 429, 4xx, timeout) | 1 min     | 1h       | ⚠️Warning  |
 | A2 | Erreurs serveur 5xx        | APM `metrics-apm.transaction.1m-*` | requêtes api + connect en 5xx > 50 / 5 min, par template | 1 min     | 1h       | 🚨 Critical |
 | A3 | Pic d'auth refusées        | `logs-prod-default` | `auth_failed` > 3 × même heure sur 7 j, ≥ 20 / 10 min | 5 min     | 1h       | 🚨 Critical |
 | A4a | Événements Scalingo — prod | `logs-alertes-scalingo-prod-default` | tout événement d'une app hors stack d'observabilité | 1 min | — | par ligne : 🚨 / ⚠️ / ℹ️ |
@@ -122,41 +122,59 @@ dans Dev Tools, comme les alertes SLO.
 
 ### A1 — Pic d'échecs partenaire (Warning)
 
-`external_api_call` en `failure` compte les 4xx (échecs gérés, `log.level: info`)
-comme les 5xx et pannes de transport (`error`) : un 401 isolé n'est pas un
-problème, un volume soutenu l'est (cf. [conventions](../format/logs/conventions.md#doctrine--choisir-le-level-test-dactionabilité)).
-La colonne `dont_crash` sépare les deux dans le message.
+Compte les appels sortants de l'api en échec (`external_api_call` en
+`failure`), **par domaine** du partenaire (`url.domain`), et classe chaque
+échec : `5xx`, `429`, `4xx` ou `timeout / réseau` (pas de code HTTP). Nos
+propres services (`*.pass-emploi.beta.gouv.fr`) et les statistiques
+(`stats.beta.gouv.fr`) ne comptent pas. A1 remplace aussi les 3 anciennes
+règles « 🔌 Partenaires » (5xx, timeouts, 429) : 643 alertes à elles quatre en
+30 jours au 2026-10-20.
+
+**Pourquoi les logs et pas l'APM** : l'agent APM n'enregistre pas le span d'un
+appel qui part en timeout (constaté le 2026-10-20 : 27 590 timeouts Milo en
+21 jours dans les logs, aucun span en échec sans code HTTP dans les traces), et
+les traces sont échantillonnées (14 630 erreurs 500 France Travail dans les
+logs en 30 jours, 1 401 dans les traces en 21 jours). Les logs donnent déjà le
+domaine, le code et le message.
 
 | Paramètre               | Valeur                                                                                                             |
 |-------------------------|--------------------------------------------------------------------------------------------------------------------|
 | **Rule name**           | `API - Prod - Pic d'échecs partenaire`                                                                             |
-| **Type**                | Elasticsearch query rule (ES\|QL)                                                                                  |
-| **Requête ES\|QL**      | voir ci-dessous — l'alerte part dès qu'elle renvoie au moins une ligne (une par client partenaire)                 |
+| **Type**                | Elasticsearch query rule (ES\|QL), `groupBy: all` : une seule alerte tant que l'incident dure                     |
+| **Requête ES\|QL**      | voir ci-dessous — l'alerte part dès qu'elle renvoie une ligne (une par partenaire)                                 |
 | **Fenêtre**             | 5 min                                                                                                              |
 | **Fréquence**           | 1 min                                                                                                              |
 | **Sévérité**            | Warning                                                                                                            |
 | **Throttle**            | `On custom action intervals` / `Run every 1 hour` / `Run when: Query matched` (onglet Actions → Settings)          |
-| **Action**              | Connecteur Kibana **Mattermost-monitoring-production** — message dans le bloc de la règle                                      |
+| **Action**              | Connecteur Kibana **Mattermost-monitoring-production**, et Workflow `tchap-alerte-a1` (relance la requête, poste dans le salon monitoring-production) — messages dans le bloc de la règle |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
-| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook d'investigation](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md) |
+| **Investigation guide** | dans la règle (mêmes étapes que le message, contacts partenaires) ; runbook : [runbook d'investigation](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md) |
 
 **Requête ES|QL** :
 ```
 FROM logs-prod-default
-| WHERE event.action == "external_api_call" AND event.outcome == "failure"
-| STATS echecs = COUNT(*), dont_crash = COUNT(*) WHERE log.level == "error",
-        statuts = VALUES(http.response.status_code)
-  BY log.logger
-| WHERE echecs > 25
+| WHERE event.action == "external_api_call" AND event.outcome == "failure" AND url.domain IS NOT NULL
+| WHERE NOT url.domain LIKE "*pass-emploi.beta.gouv.fr" AND url.domain != "stats.beta.gouv.fr"
+| EVAL type = CASE(http.response.status_code == 429, "429", http.response.status_code >= 500, "5xx", http.response.status_code >= 400, "4xx", "timeout / réseau")
+| STATS echecs = COUNT(*), types = VALUES(type) BY partenaire = url.domain
+| WHERE echecs > 50
+| EVAL types = MV_CONCAT(types, ", ")
+| SORT echecs DESC
 ```
 
-**Calibrage** (7 jours, par tranche de 5 min) :
+**Calibrage** (2026-10-20, 30 jours, par tranche de 5 min) : Milo p99 = 85,
+max = 3 352 (le 2026-10-08 à 13 h 20, timeouts et 429) ; France Travail
+p99 = 209, max = 852 (des 500 et des timeouts chroniques). Au-dessus de 50 :
+Milo 49 heures sur 21 jours, France Travail 32 heures sur 13 jours, donc au plus
+81 messages en 30 jours avec le rappel toutes les heures. Les autres
+partenaires ne dépassent jamais 18.
 ```
 FROM logs-prod-default
-| WHERE @timestamp >= NOW() - 7 days
-    AND event.action == "external_api_call" AND event.outcome == "failure"
-| STATS n = COUNT(*) BY log.logger, tranche = BUCKET(@timestamp, 5 minutes)
-| STATS p99 = PERCENTILE(n, 99), max = MAX(n) BY log.logger
+| WHERE @timestamp >= NOW() - 30 days
+    AND event.action == "external_api_call" AND event.outcome == "failure" AND url.domain IS NOT NULL
+    AND NOT url.domain LIKE "*pass-emploi.beta.gouv.fr" AND url.domain != "stats.beta.gouv.fr"
+| STATS n = COUNT(*) BY partenaire = url.domain, tranche = BUCKET(@timestamp, 5 minutes)
+| STATS p99 = PERCENTILE(n, 99), max = MAX(n), au_dessus = COUNT(*) WHERE n > 50 BY partenaire
 | SORT max DESC
 ```
 
