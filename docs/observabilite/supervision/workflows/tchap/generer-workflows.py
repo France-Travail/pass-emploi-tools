@@ -45,9 +45,16 @@ BURN_RATE = ("{% assign r = " + ALERTE + ".reason | split: ' is ' %}{% assign ld
              "{% assign lb = r[1] | split: ' ' | first | plus: 0 %}{% assign sd = r[1] | split: ' ' | last %}"
              "{% assign sb = r[2] | split: ' ' | first | plus: 0 %}{% assign s = " + ALERTE + ".reason | split: 'above ' %}"
              "{% assign seuil = s[1] | split: ' ' | first %}")
-# Résumé d'un certificat (règle TLS), toujours en anglais : « expires on Nov 14, 2026  in 25 days. ».
-TLS_RESUME = ("{% assign etat = " + ALERTE + ".state %}{% if etat.status == 'expiring' %}{% assign morceaux = etat.summary | remove_first: 'expires on ' | split: ' in ' %}"
-              "expire le {{ morceaux[0] | strip | date: '%d/%m/%Y' }}, dans {{ morceaux[1] | remove: 'days.' | remove: 'day.' | strip }} jours"
+# Résumé d'un certificat (règle TLS), en anglais et en durée relative de moment.js :
+# « expires on Nov 14, 2026  in 25 days. », « … in a month. », « … in 21 hours. ».
+# Seule la date est gardée ; les jours sont recalculés (date contre date, arrondie
+# pour les changements d'heure).
+TLS_RESUME = ("{% assign etat = " + ALERTE + ".state %}{% if etat.status == 'expiring' %}"
+              "{% assign le = etat.summary | remove_first: 'expires on ' | split: ' in ' | first | strip %}"
+              "{% assign fin = le | date: '%s' | plus: 0 %}{% assign jour = 'now' | date: '%b %d, %Y' | date: '%s' | plus: 0 %}"
+              "{% assign n = fin | minus: jour | plus: 43200 | divided_by: 86400 | floor %}{% assign date_fr = le | date: '%d/%m/%Y' %}"
+              "{% if n <= 0 %}expire aujourd'hui, le {{ date_fr }}{% elsif n == 1 %}expire demain, le {{ date_fr }}"
+              "{% else %}expire le {{ date_fr }}, dans {{ n }} jours{% endif %}"
               "{% else %}{{ etat.summary" + EGAL + "ECHAP }}{% endif %}")
 JOURS = r'\{\{#EvalMath\}\}\s*round\(30 / \{\{context\.longWindow\.burnRate\}\}, 1\)\s*\{\{/EvalMath\}\}'
 VIA_RAISON = set()
@@ -452,7 +459,7 @@ CONNECTEUR_SALON = {
     'd2812573-52bf-4b48-9e54-a79a8b5b227d': 'o11y-production', 'c4a313b3-aa42-4e07-8196-c007625ce8af': 'o11y-staging',
     'cd0b8285-1b69-4e3a-9c7c-6d35b42e7115': 'jobs-production', '3f71e705-99b5-4b37-ab14-932e28bc29b4': 'jobs-staging',
 }
-VIDE = "Plus d'erreur au moment de l'envoi : l'incident s'est peut-être résorbé."
+VIDE = "Sous le seuil à la relecture : l'incident est peut-être en train de se résorber."
 
 
 def definitions_regles():
@@ -477,7 +484,10 @@ def requete_esql(regle):
     p = regle['params']
     secondes = p['timeWindowSize'] * UNITES[p['timeWindowUnit']]
     morceaux = [m.strip() for m in p['esqlQuery']['esql'].split('\n') if m.strip()]
-    filtre = f'| WHERE @timestamp >= NOW() - {secondes // 60} minutes'
+    # Fenêtre de la règle au moment où l'alerte est partie : relue avec NOW(), quelques
+    # secondes plus tard, elle peut repasser sous le seuil.
+    debut = 'TO_DATETIME("{{ event.alerts[0].kibana.alert.start }}")'
+    filtre = f'| WHERE @timestamp >= {debut} - {secondes // 60} minutes AND @timestamp <= {debut}'
     return ' '.join(morceaux[:1] + [filtre] + morceaux[1:]).replace('\\', '\\\\').replace('"', '\\"')
 
 

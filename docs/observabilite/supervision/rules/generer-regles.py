@@ -71,7 +71,7 @@ REGLES = {
                f"2. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard {d('entree')}",
                "3. Si la panne vient du partenaire : le prévenir (contacts ci-dessous) et suivre le retour à la normale dans le même Discover"],
         sessions=['part'], dashboards=['entree'],
-        extra=[('Contacts partenaires', ['[Partenariats (Notion)](https://app.notion.com/p/Partenariats-2077bd17c27a812a8700e489fe8ca506) : qui prévenir chez le partenaire en panne']), RUNBOOK_APPLICATIF],
+        extra=[('Contacts partenaires', ['[Partenariats (Notion), qui prévenir chez le partenaire en panne](https://app.notion.com/p/Partenariats-2077bd17c27a812a8700e489fe8ca506)']), RUNBOOK_APPLICATIF],
         doc=('Alertes applicatives', 'supervision/alertes-applicatives.md')),
     'A2': dict(id='98e0103a-f809-48f2-8343-d1269213dce4', commentaire='# A2 — Erreurs serveur 5xx (Critical)',
         name='API - Prod - Erreurs 5xx', tags=['prod', 'applicatif'], interval='1m', fenetre=5,

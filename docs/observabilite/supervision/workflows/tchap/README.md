@@ -197,10 +197,12 @@ Intégrations (l'équipe beta.gouv n'a pas la réponse, 2026-10-14) :
    tant que la requête renvoie des lignes, donc un message à l'apparition (et un
    rappel par heure côté Mattermost). Le document d'alerte ne contient pas les
    lignes : son action `.workflows` vise son propre Workflow
-   `tchap-alerte-<code>`, qui relance la requête sur la fenêtre de la règle et
-   écrit une ligne par résultat avec le gabarit `tchap` de sa définition
-   (`../../rules/generer-regles.py`). Si l'incident s'est résorbé entre-temps,
-   le message le dit (« Plus d'erreur au moment de l'envoi… »).
+   `tchap-alerte-<code>`, qui relance la requête sur la fenêtre de la règle qui
+   précède le début de l'alerte (pas sur `NOW()` : quelques secondes plus tard,
+   un incident juste au-dessus du seuil repasserait dessous) et écrit une ligne
+   par résultat avec le gabarit `tchap` de sa définition
+   (`../../rules/generer-regles.py`). Sans ligne, le message le dit (« Sous le
+   seuil à la relecture… »).
 5. **Règle Uptime** (A10 à A12) : `recovered: true`, et un second message
    Mattermost dans le groupe `recovered` ; le Workflow de salon envoie celui-ci
    pour une alerte rétablie (« ✅ … de nouveau joignable », « Rétablie à »). Les
