@@ -363,6 +363,19 @@ du Plan 2 envoyés dans le vrai salon `monitoring-production` depuis la pile
 locale (compte de l'utilisateur, session fermée ensuite) : 8 sur 8 acceptés
 par le pare-feu, dont A2 et ses 4 liens Kibana avec période.
 
+**2026-10-20, 19:00 UTC : notifiers Scalingo `Mattermost*` désactivés** (étape 8,
+pour Mattermost : les règles A4a, A4b, 6a, 6b postent dans les mêmes canaux).
+Parité constatée avant par `verifier-parite.py` depuis le 2026-10-19 17:00 UTC :
+aucun événement manquant sur les 14 apps, aucun rejet. 14 notifiers actifs
+désactivés (api, web, connect, metabase, logstash, logstash-process, heartbeat ×2
+en prod ; logstash et logstash-process en perf ; keycloak, api, web, connect en
+staging), aucun supprimé ; 15 au total avec celui de logstash-prod déjà inactif.
+Les alertes de métriques Scalingo n'en dépendaient pas. Les 2 rejets du failure
+store (2026-10-19 16:23 UTC, alertes 14 de 16:24 et 16:29) étaient nos tests de
+variable au format Slack, avant le pipeline `ingest-alertes-scalingo-format-slack` :
+rejoués en `_simulate` le 2026-10-20, ils passent (ℹ️ `scalingo_variable_removed`,
+`scalingo_variables_bulk_edited`).
+
 ## 11. Suites à reporter en tickets (Notion)
 
 - [ ] Règles SLO « Burn Rate » non versionnées désactivées le 2026-10-19
@@ -390,6 +403,13 @@ par le pare-feu, dont A2 et ses 4 liens Kibana avec période.
       de `message` de notification (leur `message` est le log brut) : le
       Workflow doit construire la ligne depuis `labels.job_type` et
       `error.message`, ou un champ dédié posé en amont.
+
+- [ ] Alertes de métriques Scalingo de `pass-emploi-logstash-prod` (5xx ≥ 1
+      pendant 2 min, p95 ≥ 700 ms pendant 3 min) : rattachées au seul notifier
+      « Mattermost monitoring production » de l'app, désactivé avant le
+      2026-10-19 → elles ne préviennent personne. Celle de mémoire de
+      `pass-emploi-logstash-perf` n'a aucun notifier. Les rattacher au notifier
+      Elastic de l'app, ou les supprimer si les alertes 4 et 9 les couvrent.
 
 ## 12. Risques et points ouverts
 
