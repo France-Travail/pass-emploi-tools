@@ -14,7 +14,7 @@ Rule ──action .workflows──► tchap-<salon> ──workflow.execute──
 |---|---|
 | [`connecteur-tchap.console`](connecteur-tchap.console) | connecteur `.http` : URL de Tchap et jeton du bot |
 | [`tchap-client.console`](tchap-client.console) | le seul Workflow qui parle à Matrix |
-| [`tchap-monitoring-production.console`](tchap-monitoring-production.console), [`tchap-monitoring-staging.console`](tchap-monitoring-staging.console), [`tchap-o11y-production.console`](tchap-o11y-production.console), [`tchap-o11y-staging.console`](tchap-o11y-staging.console) | un Workflow par salon |
+| [`tchap-monitoring-production.console`](tchap-monitoring-production.console), [`tchap-monitoring-staging.console`](tchap-monitoring-staging.console), [`tchap-o11y-production.console`](tchap-o11y-production.console), [`tchap-o11y-staging.console`](tchap-o11y-staging.console), [`tchap-jobs-production.console`](tchap-jobs-production.console), [`tchap-jobs-staging.console`](tchap-jobs-staging.console) | un Workflow par salon, générés depuis un même gabarit : seuls le nom et l'ID du salon changent |
 | [`../../rules/4-rules-tchap.console`](../../rules/4-rules-tchap.console) | règle « Tchap - Envoi en échec » |
 | [`../../rules/5-rules-tchap-expiration-bot.console`](../../rules/5-rules-tchap-expiration-bot.console) | règle « Tchap - Expiration du compte bot », date d'expiration rangée dans Elasticsearch |
 
@@ -81,8 +81,9 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
    doc. Pour un autre domaine (`beta.gouv.fr` → `agent.dinum.tchap.gouv.fr`),
    remplacer l'URL partout : connecteur, `curl` ci-dessous, connecteurs AutoOps
    des [alertes 11 et 12](../../alertes-stack-observabilite.md#alerte-11--disque-des-nœuds-elasticsearch-autoops).
-3. **Salons** : `monitoring-production`, `monitoring-staging`, `o11y-production`
-   et `o11y-staging`, **privés et non chiffrés**.
+3. **Salons** : `monitoring-production`, `monitoring-staging`, `o11y-production`,
+   `o11y-staging`, `jobs-production` et `jobs-staging` (créés le 2026-10-19),
+   **privés et non chiffrés**.
    - **Non chiffrés** : le bot ne sait pas chiffrer. Tchap n'impose pas le
      chiffrement d'un salon de bot (équipe beta.gouv, Julien Bouquillon,
      2026-10-13), les messages respectent les
@@ -142,28 +143,43 @@ Intégrations (l'équipe beta.gouv n'a pas la réponse, 2026-10-14) :
 
 ## Brancher une règle
 
-1. Ajouter à la règle le tag `critical` ou `warning`.
-2. Ajouter l'action `.workflows` vers le Workflow du salon :
+1. Ajouter à la règle le tag `critical` ou `warning` si son titre doit porter
+   une gravité (🚨 / ⚠️). Les règles dont chaque ligne porte sa gravité
+   (événements Scalingo) n'en ont pas.
+2. Ajouter l'action `.workflows` vers le Workflow du salon, celui qui
+   correspond au canal Mattermost de la règle :
    ```json
    { "id": "system-connector-.workflows",
      "params": { "subAction": "run", "subActionParams": {
        "workflowId": "tchap-o11y-production", "summaryMode": true,
-       "alertStates": { "new": true, "ongoing": true, "recovered": false } } } }
+       "alertStates": { "new": true, "ongoing": false, "recovered": false } } } }
    ```
-   `ongoing: true` : une alerte reste active tant que des événements arrivent,
-   chacun doit être notifié. `recovered: false` : pas de message à la fin de
-   l'alerte. Une alerte qui bagote (*flapping*) reste « active », à 0 document,
-   pendant quelques exécutions après son rétablissement : le Workflow de salon
-   l'écarte (`pending_recovered_count` > 0), sans quoi chaque exécution posterait
-   un message vide.
-3. Si les documents de la règle ont un champ `message`, ce sont eux qui font
-   les lignes ; sinon, la raison de l'alerte. **Attention** : dans les logs
-   applicatifs (`logs-<env>-default`), `message` est la ligne de log brute, pas
-   une ligne de notification. Brancher tel quel une règle sur ces logs
-   listerait jusqu'à 20 lignes de log brutes (illisibles, peut-être
-   personnelles, et au-delà de 65 Ko l'envoi échoue). Pour ces règles, il faut
-   d'abord décider entre un Workflow de salon qui n'utilise que la raison de
-   l'alerte et un champ de notification dédié, distinct de `message`.
+   - `ongoing: false` pour une règle à seuil (DLQ, 5xx, SLO…) : un message
+     quand l'alerte apparaît, aucun tant qu'elle dure. L'action `.workflows`
+     **ignore toute fréquence** (`frequency`, throttle, créneau quotidien :
+     acceptée par l'API, effacée sans erreur, constaté le 2026-10-19) : les
+     relances toutes les 6 h et le bilan de 9 h 30 de Mattermost n'ont pas
+     d'équivalent dans Tchap ; l'alerte reste visible dans Kibana.
+   - `ongoing: true` pour une règle d'événements (`excludeHitsFromPreviousRun` :
+     Scalingo, CVE, jobs) : son alerte ne reste active que si de nouveaux
+     événements arrivent, chacun doit être notifié.
+   - `recovered: false` : pas de message à la fin de l'alerte. Une alerte qui
+     bagote (*flapping*) reste « active », à 0 document, quelques exécutions
+     après son rétablissement : le Workflow de salon l'écarte
+     (`pending_recovered_count` > 0), sans quoi chaque exécution posterait un
+     message vide.
+3. Les lignes du message dépendent des tags de la règle :
+
+   | Tag | Lignes | Règles |
+   |---|---|---|
+   | `tchap-lignes` | le champ `message` des documents, une ligne de notification posée par l'ingest pipeline | A4a, A4b, 6a, 6b, V1 |
+   | `jobs` | `❌ <job>` par `labels.job_type`, puis `Erreurs : …` (`error.message`, dédoublonnés : l'appariement job ↔ erreur est perdu dans le document d'alerte) | A5a, A5b |
+   | aucun | la raison de l'alerte (`kibana.alert.reason`) | toutes les autres |
+
+   **Ne pas mettre `tchap-lignes`** sur une règle qui lit les logs applicatifs
+   (`logs-<env>-default`) : leur `message` est la ligne de log brute, pas une
+   ligne de notification (illisible, peut-être personnelle, et au-delà de
+   65 Ko l'envoi échoue).
 
 ## Ajouter un salon
 
@@ -175,6 +191,9 @@ Intégrations (l'équipe beta.gouv n'a pas la réponse, 2026-10-14) :
 
 ## Pièges
 
+- Une règle ES|QL identifie son alerte par les valeurs de sa ligne de résultat :
+  si elles changent (nouvelles erreurs), c'est une nouvelle alerte, donc un
+  nouveau message, comme côté Mattermost.
 - La boucle sur les alertes est une **étape** `type: foreach` ; une propriété
   `foreach:` posée sur `workflow.execute` est ignorée sans erreur.
 - Les Workflows exigent la licence **Enterprise**.

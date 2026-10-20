@@ -400,3 +400,14 @@ prise en compte au prochain démarrage de la perf.
   ceux-là. Remplace la règle « redémarrage volontaire = ℹ️ » de D5. Le titre des
   messages A4a, A4b, 6a, 6b ne porte plus de gravité (ni émoji, ni tag
   `warning`) : elle est sur chaque ligne.
+- **Tchap sur toutes les règles versionnées** (2026-10-19, repo seulement,
+  déploiement avec le bot) : action `.workflows` ajoutée aux 27 règles qui n'en
+  avaient pas, salon déduit du canal Mattermost de la règle. L'action
+  `.workflows` ignore toute fréquence (throttle 6 h, bilan de 9 h 30) :
+  décision de l'équipe, `ongoing: false` pour les règles à seuil (un message à
+  l'apparition de l'alerte), `ongoing: true` gardé pour les règles d'événements
+  (Scalingo, CVE, jobs). AutoOps (11, 12) : connecteur Webhook `POST` direct,
+  avec ses propres fréquences. Les Workflows de salon choisissent les lignes
+  par tag de la règle : `tchap-lignes` (champ `message` posé par un pipeline),
+  `jobs` (`labels.job_type` et `error.message`), sinon la raison de l'alerte.
+  Salons `jobs-production` et `jobs-staging` créés, Workflows associés.

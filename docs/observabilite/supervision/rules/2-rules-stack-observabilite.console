@@ -92,6 +92,17 @@ PUT kbn:/api/alerting/rule/fe53ada2-2c8b-42eb-930c-bae4286b7893
         "notify_when": "onThrottleInterval",
         "throttle": "6h"
       }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
+      }
     }
   ]
 }
@@ -166,6 +177,17 @@ PUT kbn:/api/alerting/rule/b100ff40-7409-4859-ac44-755ad2401f03
         "summary": false,
         "notify_when": "onThrottleInterval",
         "throttle": "6h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-staging",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
       }
     }
   ]
@@ -259,6 +281,17 @@ PUT kbn:/api/alerting/rule/dd107070-c841-4580-9923-db2ef37c795d
           }
         }
       }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
+      }
     }
   ]
 }
@@ -332,6 +365,17 @@ PUT kbn:/api/alerting/rule/ede49ade-b4ee-4cbb-9dd2-28078e189f7b
         "summary": false,
         "notify_when": "onThrottleInterval",
         "throttle": "6h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-staging",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
       }
     }
   ]
@@ -431,6 +475,17 @@ PUT kbn:/api/alerting/rule/139c93c3-b744-4bd7-8274-bb88f77305c7
         "notify_when": "onActionGroupChange",
         "throttle": null
       }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
+      }
     }
   ]
 }
@@ -529,6 +584,17 @@ PUT kbn:/api/alerting/rule/6c2a2a83-9c40-4f40-af8d-911402932417
         "notify_when": "onActionGroupChange",
         "throttle": null
       }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
+      }
     }
   ]
 }
@@ -604,6 +670,17 @@ PUT kbn:/api/alerting/rule/32b686a2-659f-4b57-b583-e6aedaeea5f5
         "notify_when": "onThrottleInterval",
         "throttle": "6h"
       }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-staging",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
+      }
     }
   ]
 }
@@ -678,6 +755,17 @@ PUT kbn:/api/alerting/rule/f181937f-c75f-4232-bfa4-221997d1cfe1
         "summary": false,
         "notify_when": "onThrottleInterval",
         "throttle": "6h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-staging",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
       }
     }
   ]
@@ -783,6 +871,17 @@ PUT kbn:/api/alerting/rule/204d560c-b6a6-4b5c-b4af-8d1fa6ce345c
         "notify_when": "onActionGroupChange",
         "throttle": null
       }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
+      }
     }
   ]
 }
@@ -863,6 +962,17 @@ PUT kbn:/api/alerting/rule/da91356c-39dc-4033-bc47-83421974a049
         "notify_when": "onThrottleInterval",
         "throttle": "6h"
       }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-staging",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
+      }
     }
   ]
 }
@@ -942,6 +1052,17 @@ PUT kbn:/api/alerting/rule/f8ff266d-84dc-4673-b95c-c3d32bf2ff04
         "notify_when": "onThrottleInterval",
         "throttle": "6h"
       }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
+      }
     }
   ]
 }
@@ -1020,6 +1141,17 @@ PUT kbn:/api/alerting/rule/9f9c07f9-07a9-40a3-a882-4a701e81b83c
         "notify_when": "onThrottleInterval",
         "throttle": "6h"
       }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-staging",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
+      }
     }
   ]
 }
@@ -1031,7 +1163,8 @@ PUT kbn:/api/alerting/rule/c16f2ab5-6103-4f69-bdc3-b4a10a38deb0
   "tags": [
     "prod",
     "o11y",
-    "scalingo"
+    "scalingo",
+    "tchap-lignes"
   ],
   "artifacts": {
     "investigation_guide": {
@@ -1157,7 +1290,8 @@ PUT kbn:/api/alerting/rule/5d1f7c2a-9b3e-4f6a-8c1d-2e7b4a9f0c63
   "tags": [
     "hors-prod",
     "o11y",
-    "scalingo"
+    "scalingo",
+    "tchap-lignes"
   ],
   "artifacts": {
     "investigation_guide": {
@@ -1374,6 +1508,17 @@ PUT kbn:/api/alerting/rule/07a8ee68-4994-4d70-b9a5-3d47f08297a5
         "notify_when": "onActionGroupChange",
         "throttle": null
       }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
+      }
     }
   ]
 }
@@ -1453,6 +1598,17 @@ PUT kbn:/api/alerting/rule/720d949a-f73f-43e5-bc46-ff22c7b96cfb
         "notify_when": "onThrottleInterval",
         "throttle": "6h"
       }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-staging",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
+      }
     }
   ]
 }
@@ -1529,6 +1685,17 @@ PUT kbn:/api/alerting/rule/bbb9d642-f012-4747-8154-49162245a364
         "notify_when": "onThrottleInterval",
         "throttle": "6h"
       }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
+      }
     }
   ]
 }
@@ -1604,6 +1771,17 @@ PUT kbn:/api/alerting/rule/8d593176-8752-4369-a37f-6b42fa3890b2
         "summary": false,
         "notify_when": "onThrottleInterval",
         "throttle": "6h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-staging",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
       }
     }
   ]
@@ -1706,6 +1884,17 @@ PUT kbn:/api/alerting/rule/3c65ffd4-165f-4d0b-b820-24be398f19fd
         "notify_when": "onActionGroupChange",
         "throttle": null
       }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
+      }
     }
   ]
 }
@@ -1782,6 +1971,17 @@ PUT kbn:/api/alerting/rule/895bd492-e02f-4f18-b8e0-f453742c885f
         "summary": false,
         "notify_when": "onThrottleInterval",
         "throttle": "6h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-staging",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
       }
     }
   ]
@@ -1869,6 +2069,17 @@ PUT kbn:/api/alerting/rule/fb66693b-f17a-4cd0-baf5-113e7e153604
             "start": "09:30",
             "end": "10:30"
           }
+        }
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
         }
       }
     }

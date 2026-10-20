@@ -1,0 +1,38 @@
+# Workflow du salon Tchap jobs-production : à choisir dans l'action
+# .workflows d'une règle pour y envoyer ses alertes. Spécification : README.md.
+#
+# ID du salon : Tchap → paramètres du salon → Avancé. Ce n'est pas un secret :
+# le salon est privé, sur invitation. Ne parle pas à Matrix : construit le
+# message et appelle tchap-client.
+# La boucle doit être une étape « type: foreach » : une propriété foreach:
+# posée sur l'étape workflow.execute est ignorée sans erreur.
+# Elle écarte les alertes en attente de rétablissement (pending_recovered_count
+# > 0) : une alerte qui bagote (flapping) reste « active », à 0 document, pendant
+# plusieurs exécutions, et l'action .workflows la transmet quand même.
+# Mise à jour : PUT kbn:/api/workflows/workflow/tchap-jobs-production avec {"yaml": …}.
+POST kbn:/api/workflows/workflow
+{
+  "id": "tchap-jobs-production",
+  "yaml": """
+name: Tchap - jobs-production
+description: Envoie les alertes de la règle dans le salon Tchap jobs-production
+enabled: true
+triggers:
+  - type: alert
+consts:
+  salon: "!vZkZkmTRLjAJTdkonL:agent.dinum.tchap.gouv.fr"
+steps:
+  - name: chaque-alerte
+    type: foreach
+    foreach: "{{ event.alerts | where_exp: 'a', 'a.kibana.alert.pending_recovered_count == blank or a.kibana.alert.pending_recovered_count == 0' | json }}"
+    steps:
+      - name: notifier
+        type: workflow.execute
+        with:
+          workflow-id: tchap-client
+          inputs:
+            salon: "{{ consts.salon }}"
+            texte: "{% if event.rule.tags contains 'critical' %}🚨 {% elsif event.rule.tags contains 'warning' %}⚠️ {% endif %}{{ event.rule.name }}{% if foreach.item.kibana.alert.evaluation.value %} ({{ foreach.item.kibana.alert.evaluation.value }}){% endif %}{% if event.rule.tags contains 'tchap-lignes' and foreach.item.message %}{% for ligne in foreach.item.message %}\n• {{ ligne }}{% endfor %}{% elsif event.rule.tags contains 'jobs' and foreach.item.labels %}{% if foreach.item.labels.job_type %}{% assign jobs = foreach.item.labels.job_type %}{% else %}{% assign jobs = foreach.item.labels | map: 'job_type' | uniq %}{% endif %}{% for job in jobs %}\n• ❌ {{ job }}{% endfor %}{% if foreach.item.error.message %}\n• Erreurs :{% for m in foreach.item.error.message %} {{ m }}{% unless forloop.last %} ;{% endunless %}{% endfor %}{% endif %}{% else %}\n• {{ foreach.item.kibana.alert.reason }}{% endif %}\nVoir la règle : {{ event.ruleUrl }}"
+            html: "<p>{% if event.rule.tags contains 'critical' %}🚨 {% elsif event.rule.tags contains 'warning' %}⚠️ {% endif %}<strong>{{ event.rule.name | escape }}</strong>{% if foreach.item.kibana.alert.evaluation.value %} ({{ foreach.item.kibana.alert.evaluation.value }}){% endif %}</p><ul>{% if event.rule.tags contains 'tchap-lignes' and foreach.item.message %}{% for ligne in foreach.item.message %}<li>{{ ligne | escape }}</li>{% endfor %}{% elsif event.rule.tags contains 'jobs' and foreach.item.labels %}{% if foreach.item.labels.job_type %}{% assign jobs = foreach.item.labels.job_type %}{% else %}{% assign jobs = foreach.item.labels | map: 'job_type' | uniq %}{% endif %}{% for job in jobs %}<li>❌ {{ job | escape }}</li>{% endfor %}{% if foreach.item.error.message %}<li>Erreurs :{% for m in foreach.item.error.message %} {{ m | escape }}{% unless forloop.last %} ;{% endunless %}{% endfor %}</li>{% endif %}{% else %}<li>{{ foreach.item.kibana.alert.reason | escape }}</li>{% endif %}</ul><p><a href=\"{{ event.ruleUrl }}\">Voir la règle</a> : vérifications, dashboards et Discover sessions dans son Investigation guide</p>"
+"""
+}

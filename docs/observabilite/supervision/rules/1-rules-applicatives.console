@@ -9,7 +9,8 @@
 # A4a / A4b : événements Scalingo des apps applicatives, #monitoring-production /
 # Mattermost-monitoring-staging ; Tchap via les Workflows de salon.
 # A5a / A5b : jobs en échec, Mattermost-jobs-production / -staging
-# (../connecteurs/mattermost-jobs.console, à créer avant) ; pas encore de salon Tchap.
+# (../connecteurs/mattermost-jobs.console, à créer avant) ; Tchap jobs-production /
+# jobs-staging.
 #
 # Messages Mattermost : une section (« À vérifier », « Dashboards », « Discover
 # sessions ») = un champ, un élément par ligne. Un vrai retour à la ligne est
@@ -160,6 +161,17 @@ PUT kbn:/api/alerting/rule/e41ef1d8-efd8-449b-b2a5-6fff758c8939
         "notify_when": "onActionGroupChange",
         "throttle": null
       }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
+      }
     }
   ]
 }
@@ -292,6 +304,17 @@ PUT kbn:/api/alerting/rule/72914c41-01ed-4ce7-ae68-a1b5eb445773
         "summary": false,
         "notify_when": "onActionGroupChange",
         "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
       }
     }
   ]
@@ -426,6 +449,17 @@ PUT kbn:/api/alerting/rule/ca02fee2-9d18-46bd-b2b9-dd96d8a6d593
         "notify_when": "onActionGroupChange",
         "throttle": null
       }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
+      }
     }
   ]
 }
@@ -488,6 +522,17 @@ PUT kbn:/api/alerting/rule/8c760b1b-5859-410e-9a0d-829fb0499412
         "notify_when": "onActionGroupChange",
         "throttle": null
       }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
+      }
     }
   ]
 }
@@ -549,6 +594,17 @@ PUT kbn:/api/alerting/rule/00f15660-40ba-4fb1-a59d-6345ce07c360
         "summary": false,
         "notify_when": "onActionGroupChange",
         "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
       }
     }
   ]
@@ -616,6 +672,17 @@ PUT kbn:/api/alerting/rule/1b751543-4233-4857-8fe6-8141a7c2d040
         "notify_when": "onThrottleInterval",
         "throttle": "1h"
       }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
+      }
     }
   ]
 }
@@ -681,6 +748,17 @@ PUT kbn:/api/alerting/rule/98e0103a-f809-48f2-8343-d1269213dce4
         "summary": false,
         "notify_when": "onThrottleInterval",
         "throttle": "1h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
       }
     }
   ]
@@ -749,6 +827,17 @@ PUT kbn:/api/alerting/rule/ad326ad3-aea7-4ef8-be28-31008c4aebce
         "notify_when": "onThrottleInterval",
         "throttle": "1h"
       }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+        }
+      }
     }
   ]
 }
@@ -760,7 +849,8 @@ PUT kbn:/api/alerting/rule/1b97f0e0-870f-498d-8dd7-1c2f9aeba665
   "tags": [
     "prod",
     "applicatif",
-    "scalingo"
+    "scalingo",
+    "tchap-lignes"
   ],
   "artifacts": {
     "investigation_guide": {
@@ -883,7 +973,8 @@ PUT kbn:/api/alerting/rule/07c9c5d7-e8fe-4964-ac8d-684b1c4c39b8
   "tags": [
     "hors-prod",
     "applicatif",
-    "scalingo"
+    "scalingo",
+    "tchap-lignes"
   ],
   "artifacts": {
     "investigation_guide": {
@@ -1084,6 +1175,21 @@ PUT kbn:/api/alerting/rule/a03feacb-ddf8-4e04-af82-48f77b07a86e
         "notify_when": "onActiveAlert",
         "throttle": null
       }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-jobs-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
     }
   ]
 }
@@ -1179,6 +1285,21 @@ PUT kbn:/api/alerting/rule/9dbcb316-60cd-481e-8717-33ffe0275e7d
         "summary": false,
         "notify_when": "onActiveAlert",
         "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-jobs-staging",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
       }
     }
   ]

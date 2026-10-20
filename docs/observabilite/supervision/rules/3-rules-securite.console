@@ -23,7 +23,8 @@ PUT kbn:/api/alerting/rule/67846c2c-45d1-45be-89f5-ce9a340240a0
   "tags": [
     "critical",
     "prod",
-    "securite"
+    "securite",
+    "tchap-lignes"
   ],
   "artifacts": {
     "investigation_guide": {
