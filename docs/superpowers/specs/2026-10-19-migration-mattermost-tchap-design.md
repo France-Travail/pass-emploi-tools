@@ -356,6 +356,13 @@ supprimées) : les 7 règles APM (`2fdcb950…`, `7168ce70…`, `eaf59860…`,
 (`f87bff78…`, `0230add3…`, `14fbf32e…`) et « 🏠 API - erreurs DB »
 (`738fda9e…`). État d'avant sauvegardé hors du dépôt (GET des 20 règles).
 
+**2026-10-20, 17:35 UTC : A1, A3, A6 remis à jour en prod** (sans action
+Tchap) après la revue : dashboard de diagnostic avant la session Discover,
+référence d'A3 au format « 12,6 ». Les 3 en `ok`. Même jour, messages Tchap
+du Plan 2 envoyés dans le vrai salon `monitoring-production` depuis la pile
+locale (compte de l'utilisateur, session fermée ensuite) : 8 sur 8 acceptés
+par le pare-feu, dont A2 et ses 4 liens Kibana avec période.
+
 ## 11. Suites à reporter en tickets (Notion)
 
 - [ ] Règles SLO « Burn Rate » non versionnées désactivées le 2026-10-19
