@@ -83,6 +83,23 @@ Sur un cluster vide, l'en-tête de chaque fichier indique comment transformer le
 (A4a, A4b, 6a, 6b, 14, V1) supposent leur collecte en place : cf. sa
 [mise en service](../collecte/evenements-externes/README.md#mise-en-service).
 
+**Après un déploiement par l'API avec une clé API** (script, `curl` avec
+`Authorization: ApiKey …`, plutôt que Dev Tools avec sa session) : chaque règle
+créée ou modifiée tourne avec **cette clé**, sans clé à elle
+(`api_key_created_by_user: true`). Quand la clé expire, la règle échoue en
+`security_exception` à chaque exécution, et personne n'est prévenu (constaté le
+2026-10-20 : 8 règles muettes pendant 6 h). Juste après le déploiement, depuis
+une session Kibana : *Stack Management* → *Rules*, sélectionner toutes les
+règles, action **Update API keys**. Chaque règle reçoit une clé à elle, au nom
+de ce compte, sans expiration. Vérifier ensuite qu'aucune règle active ne
+tourne plus avec la clé de l'appelant :
+```
+GET kbn:/api/alerting/rules/_find?per_page=200&filter=alert.attributes.enabled:true
+```
+Dans la réponse, aucune règle ne doit avoir `"api_key_created_by_user": true`
+(le champ n'est pas filtrable). Une règle modifiée dans Dev Tools ou dans
+l'interface reçoit directement une clé à elle.
+
 ## Modifier un objet
 
 Modifier dans Kibana, puis réexporter par-dessus le fichier versionné :

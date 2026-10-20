@@ -4,6 +4,8 @@
 # À rejouer dans Dev Tools, après ../slo/1-slos.console. PUT met à jour une règle
 # existante ; sur un cluster vide, la créer avec POST kbn:/api/alerting/rule/<id>
 # et le même corps plus "rule_type_id" et "consumer" (slo.rules.burnRate / slo pour
+# Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
+# ../objets-kibana.md#slo-et-règles-console.
 # S2 et S3, .es-query / alerts pour A1 à A7, A4a, A4b, A5a et A5b,
 # xpack.uptime.alerts.monitorStatus / uptime pour A10 à A12,
 # xpack.uptime.alerts.tlsCertificate / uptime pour A13).

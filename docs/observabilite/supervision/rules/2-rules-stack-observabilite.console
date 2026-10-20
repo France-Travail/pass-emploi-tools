@@ -5,6 +5,8 @@
 # À rejouer dans Dev Tools. PUT met à jour une règle existante ; sur un cluster
 # vide, la créer avec POST kbn:/api/alerting/rule/<id> et le même corps plus
 # "rule_type_id": ".es-query" et "consumer": "alerts".
+# Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
+# ../objets-kibana.md#slo-et-règles-console.
 #
 # PUT ne change pas l'état activé / désactivé d'une règle. Les data views sont
 # embarquées dans la règle (searchConfiguration.index) : leur id ne renvoie à
