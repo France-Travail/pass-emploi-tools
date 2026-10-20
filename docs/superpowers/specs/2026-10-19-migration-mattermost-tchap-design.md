@@ -358,6 +358,13 @@ prise en compte au prochain démarrage de la perf.
 - [ ] Notifier « Dashboard Pass Emploi » d'api-prod : vise l'app absente
       `pass-emploi-dashboard` (la variable jobs de staging, qui la visait
       aussi, est corrigée le 2026-10-19) ; à retirer.
+- [ ] Rapport quotidien des jobs : la liste des CRON (type, expression,
+      description) est lue dans le code de pass-emploi-api (`listeCronJobs`,
+      `origin/develop`) par `workflows/tchap/generer-workflows.py`, puis figée
+      dans les Workflows `rapport-jobs-*` : un CRON ajouté, modifié ou supprimé
+      exige de relancer le générateur et de redéployer. Pour s'en passer :
+      l'api logue sa liste de CRON (au démarrage), et le rapport la lit dans
+      les logs.
 - [ ] Jobs dans Tchap : salons `jobs-production` / `jobs-staging`, Workflows de
       salon, action `.workflows` sur A5a / A5b. Les logs `job_crashed` n'ont pas
       de `message` de notification (leur `message` est le log brut) : le

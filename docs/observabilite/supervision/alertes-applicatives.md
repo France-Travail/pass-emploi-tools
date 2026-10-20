@@ -48,7 +48,7 @@ Toutes notifient via Mattermost (`#monitoring-production`), sauf A4b
 > ES|QL) et placer le seuil au-dessus du `max` observé sur 7 jours.
 >
 > **Dashboard applicatif** : seules les alertes SLO renvoient vers
-> **[Pass Emploi] SLO de PROD** (cf. [routine de surveillance](../routine-surveillance.md#promesses-utilisateurs-slo)) ;
+> **[Pass Emploi] SLO de Prod** (cf. [routine de surveillance](../routine-surveillance.md#promesses-utilisateurs-slo)) ;
 > les alertes de diagnostic renvoient vers Discover et le [runbook d'investigation](../runbooks/investigation-incident.md).
 
 ## Alertes SLO — la promesse est menacée
@@ -119,7 +119,7 @@ dans Dev Tools, après [`slo/1-slos.console`](slo/1-slos.console).
         { "title": "Burn rate (longue / courte)", "value": "{{context.longWindow.burnRate}} / {{context.shortWindow.burnRate}} (seuil {{context.burnRateThreshold}})", "short": true },
         { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
         { "title": "SLO", "value": "[Budget d'erreur et historique]({{context.viewInAppUrl}})" },
-        { "title": "Dashboard", "value": "[[Pass Emploi] SLO de PROD](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)" },
+        { "title": "Dashboard", "value": "[[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)" },
         { "title": "À vérifier", "value": "Alertes de diagnostic A1 à A3 en cours : partenaire en panne, 5xx, IDP" },
         { "title": "Runbook", "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)" }
       ]
@@ -421,6 +421,18 @@ donnent et que A5a / A5b ne donnent pas :
 | Échec **rapporté** par le job (`succes: false`, sans exception) | — | tout : le worker logue alors `job_completed` en `success` |
 | Résultat d'un job réussi | — | tout (pas de log du résultat métier) |
 | Rapport quotidien des CRONs | onglet « Exécutions » des sessions : `job_completed` par `labels.job_type`, statut et durée | le nombre d'exécutions attendues (« a-t-il tourné le nombre de fois prévu ? ») |
+
+**Rapport quotidien** : chaque jour à 9 h 30 (heure de Paris), un tableau de
+tous les jobs des 24 dernières heures, dans `jobs-production` et
+`jobs-staging` (Tchap seulement) : a-t-il tourné le nombre de fois prévu, sans
+échec, ses exécutions attendues et réelles, sa durée moyenne, sa description.
+Ce n'est pas une règle : une action Tchap ne sait pas viser une heure fixe,
+c'est un Workflow planifié
+([`rapport-jobs-prod.console`](workflows/tchap/rapport-jobs-prod.console)).
+Les exécutions attendues viennent des expressions cron de pass-emploi-api,
+lues par [`generer-workflows.py`](workflows/tchap/generer-workflows.py) : à
+relancer quand les CRON changent. Les jobs hors CRON qui ont tourné y figurent
+aussi, sans exécutions attendues. Seul manque `nbErreurs`, absent des logs.
 
 Les notifications de `SuiviJobService` **restent actives** tant que la parité
 n'est pas jugée suffisante.

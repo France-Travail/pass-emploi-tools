@@ -223,7 +223,7 @@ fait ce travail.
       "fields": [
         { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
         { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "À vérifier", "value": "Le Discover [[Pass Emploi] Logs de PROD - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17), `tags` et `message` désignent le traitement et le log en échec" },
+        { "title": "À vérifier", "value": "Le Discover [[Pass Emploi] Logs de Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17), `tags` et `message` désignent le traitement et le log en échec" },
         { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)" }
       ]
     }
@@ -750,7 +750,7 @@ throttle. Scalingo n'envoie `app_crashed` qu'aux 2ᵉ, 5ᵉ et 12ᵉ crashs, et
    onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur.
 2. Pour un incident sur une app Logstash, l'impact sur l'ingestion : le dashboard **[Pass Emploi]
    Supervision Stack d'Observabilité**, puis les Discover **[Pass Emploi] Logs de
-   Prod - DLQ Logstash Process** et **[Pass Emploi] Logs de PROD - Erreurs de
+   Prod - DLQ Logstash Process** et **[Pass Emploi] Logs de Prod - Erreurs de
    traitement Logstash Process** (logs non indexés).
 3. Les métriques (onglet Metrics) et l'activité (onglet Activity) de l'app dans
    le **[Scalingo] Dashboard des apps**.

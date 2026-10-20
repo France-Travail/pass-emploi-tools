@@ -14,34 +14,40 @@ Rule ──action .workflows──► tchap-<salon> ──workflow.execute──
 |---|---|
 | [`connecteur-tchap.console`](connecteur-tchap.console) | connecteur `.http` : URL de Tchap et jeton du bot |
 | [`tchap-client.console`](tchap-client.console) | le seul Workflow qui parle à Matrix |
-| [`tchap-monitoring-production.console`](tchap-monitoring-production.console), [`tchap-monitoring-staging.console`](tchap-monitoring-staging.console), [`tchap-o11y-production.console`](tchap-o11y-production.console), [`tchap-o11y-staging.console`](tchap-o11y-staging.console), [`tchap-jobs-production.console`](tchap-jobs-production.console), [`tchap-jobs-staging.console`](tchap-jobs-staging.console) | un Workflow par salon, générés depuis un même gabarit : seuls le nom et l'ID du salon changent |
+| [`tchap-monitoring-production.console`](tchap-monitoring-production.console), [`tchap-monitoring-staging.console`](tchap-monitoring-staging.console), [`tchap-o11y-production.console`](tchap-o11y-production.console), [`tchap-o11y-staging.console`](tchap-o11y-staging.console), [`tchap-jobs-production.console`](tchap-jobs-production.console), [`tchap-jobs-staging.console`](tchap-jobs-staging.console) | un Workflow par salon, **générés** : ne pas les modifier à la main |
+| [`rapport-jobs-prod.console`](rapport-jobs-prod.console), [`rapport-jobs-staging.console`](rapport-jobs-staging.console) | rapport quotidien des jobs de l'api, chaque jour à 9 h 30 (heure de Paris), **générés** |
+| [`generer-workflows.py`](generer-workflows.py) | génère les Workflows de salon depuis les règles de [`../../rules/`](../../rules/), et les rapports depuis la liste des CRON de `pass-emploi-api` (`origin/develop`) : `python3 -I generer-workflows.py` après toute modification d'une règle, d'un salon ou des CRON de l'api |
 | [`../../rules/4-rules-tchap.console`](../../rules/4-rules-tchap.console) | règle « Tchap - Envoi en échec » |
 | [`../../rules/5-rules-tchap-expiration-bot.console`](../../rules/5-rules-tchap-expiration-bot.console) | règle « Tchap - Expiration du compte bot », date d'expiration rangée dans Elasticsearch |
 
 ## Le message
 
-Générique, construit à partir de ce que la règle transmet (son id, son nom, ses
-tags, ses alertes) :
+Le message Tchap d'une règle reprend son **message Mattermost** (titre, couleur,
+champs), que `generer-workflows.py` traduit de Mustache en Liquid pour chaque
+règle de chaque salon. Ordre :
 
-```
-🚨 Scalingo - Prod - Crash, redémarrage ou arrêt d'une app (2)
-• pass-emploi-api-prod : app_crashed (oom) sur web, par scalingo-platform
-• pass-emploi-web-prod : app_restarted, par alice
-Voir la règle : vérifications, dashboards et Discover sessions dans son Investigation guide
-```
+1. le titre, en couleur (celle du message Mattermost), puis « Déclenchée à » ;
+2. les lignes de détail, selon les tags de la règle (cf. [brancher une règle](#brancher-une-règle)) ;
+   pour une règle ES|QL, ses colonnes de résultat (`kibana.alert.grouping`) ;
+3. les explications : « À vérifier », avec le nom des dashboards et des
+   sessions en gras ;
+4. les liens, en fin de message : Dashboards, Discover sessions, Runbook…,
+   « nom - URL brute » (Tchap rend l'URL cliquable), la règle en dernier. Les
+   sessions Discover s'ouvrent d'une heure avant le début de l'alerte à 15 min
+   après.
 
-- **Sévérité** : tag `critical` (🚨) ou `warning` (⚠️) de la règle.
-- **Lignes** : le champ `message` des documents trouvés, écrit par l'ingest
-  pipeline ; à défaut, la raison de l'alerte (`kibana.alert.reason`).
-- **Lien** : la page de la règle, dont l'onglet *Investigation guide* liste les
-  vérifications, les dashboards et les Discover sessions. Pas de lien vers un
-  Discover non enregistré (`kibana.alert.url`) : seules des sessions
-  versionnées sont citées.
+**Aucun lien HTML** (`<a>`) : le pare-feu devant Tchap rejette un message à
+plusieurs liens, ou à un lien et une couleur (cf. [pièges](#pièges)).
+
+Pour les SLO, la raison anglaise de Kibana (« The burn rate for the past 1h is
+18.5… ») est découpée pour écrire la phrase française du message (« Sur 1 h,
+… 18,5 fois plus vite que prévu… épuisée en 1,6 jours »).
 
 Le Workflow ne reçoit pas les documents trouvés par la règle (`context.hits`) :
 ils sont fusionnés champ par champ dans le document d'alerte, sans lien entre
 une app et son action, et `event.action` y est écrasé. D'où une ligne toute
-faite par document, dans un seul champ.
+faite par document, dans un seul champ (`message`), et pour les jobs un tableau
+`Job | Échecs` suivi des erreurs, sans appariement possible entre les deux.
 
 ## Contrat de `tchap-client`
 
@@ -104,13 +110,18 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
    sessions. Puis faire rejoindre au bot chaque salon où il a été invité :
    ```bash
    curl -s -X POST https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/login -H 'Content-Type: application/json' \
-     -d '{"type":"m.login.password","identifier":{"type":"m.id.thirdparty","medium":"email","address":"bot-pass-emploi@francetravail.fr"},"password":"<mot de passe>"}'
+     -d '{"type":"m.login.password","identifier":{"type":"m.id.user","user":"bot-pass-emploi-francetravail.fr"},"password":"<mot de passe>","initial_device_display_name":"Kibana alertes"}'
    curl -s -X POST "https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/<id du salon encodé>/join" -H "Authorization: Bearer <jeton>"
    ```
-   La connexion se fait par l'email du bot. La réponse donne le jeton
-   (`access_token`), à ranger dans le coffre de l'équipe, et l'identifiant
-   Matrix du bot (`user_id`, attribué par Tchap à partir de l'email), à
-   reporter dans le document d'expiration (étape 7).
+   La connexion se fait par l'**identifiant Matrix** du bot, pas par son email
+   (`m.id.thirdparty` est refusé : « Unsupported login identifier », constaté
+   le 2026-10-20). Tchap le dérive de l'email en remplaçant `@` par `-` :
+   `bot-pass-emploi-francetravail.fr`, à confirmer dans Tchap après
+   l'inscription. La réponse donne le jeton (`access_token`), à ranger dans le
+   coffre de l'équipe : il **n'expire pas** (ni `expires_in_ms` ni
+   `refresh_token`, constaté le 2026-10-20). Garder aussi `user_id`, à
+   reporter dans le document d'expiration (étape 7), et `device_id`, pour
+   révoquer la session.
 5. **Kibana**, dans Dev Tools : rejouer `connecteur-tchap.console` en
    remplaçant `<jeton-du-bot>`, puis `tchap-client.console`, puis les 4
    `tchap-<salon>.console` tels quels (ils portent l'ID de leur salon).
@@ -190,6 +201,17 @@ Intégrations (l'équipe beta.gouv n'a pas la réponse, 2026-10-14) :
    l'importer.
 
 ## Pièges
+
+- **Pare-feu devant Tchap** (constaté le 2026-10-20) : il rejette certains
+  messages par une page HTML 403, sans erreur Matrix, selon un score où des
+  éléments anodins s'additionnent : un `=` et un lien ; plusieurs liens HTML
+  `<a>` ; un lien `<a>` et une couleur. D'où des messages sans aucun lien
+  HTML, des URL brutes, et le `=` remplacé par `＝` dans le texte affiché. Les
+  couleurs (`<font data-mx-color>`) et les tableaux HTML passent. Un envoi
+  rejeté apparaît en échec dans l'exécution de `tchap-client`
+  (`ConnectorExecutionError … [403] Forbidden`) et dans la règle « Tchap -
+  Envoi en échec ». Ne pas chercher à contourner ce filtre : simplifier le
+  message.
 
 - Une règle ES|QL identifie son alerte par les valeurs de sa ligne de résultat :
   si elles changent (nouvelles erreurs), c'est une nouvelle alerte, donc un

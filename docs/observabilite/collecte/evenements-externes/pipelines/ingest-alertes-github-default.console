@@ -85,9 +85,10 @@ PUT _ingest/pipeline/ingest-alertes-github-default
             : 'https://github.com/France-Travail/' + repository + '/security/dependabot';
           ctx.labels = labels;
 
+
           String paquet = ctx['package'] instanceof Map ? ' — ' + ctx['package'].name : '';
           ctx.message = repository + ' : ' + vulnerability.id + paquet + ' (' + vulnerability.severity + ') : '
-            + vulnerability.description + ' — ' + vulnerability.reference + ' — alertes du repo : ' + labels.dependabot_url;
+            + vulnerability.description;
         """
       }
     }
@@ -101,9 +102,9 @@ PUT _ingest/pipeline/ingest-alertes-github-default
 #   service.name: pass-emploi-api, vulnerability.id: CVE-2026-00000,
 #   vulnerability.severity: high, package.name: axios,
 #   labels.dependabot_url: https://github.com/France-Travail/pass-emploi-api/security/dependabot,
-#   message: "pass-emploi-api : CVE-2026-00000 — axios (high) : Exemple de vulnérabilité — https://github.com/France-Travail/pass-emploi-api/security/dependabot/42 — alertes du repo : https://github.com/France-Travail/pass-emploi-api/security/dependabot"
+#   message: "pass-emploi-api : CVE-2026-00000 — axios (high) : Exemple de vulnérabilité"
 # sans dependency.package → message sans le nom du paquet :
-#   "pass-emploi-web : GHSA-yyyy-yyyy-yyyy (critical) : Résumé <avec> & \"guillemets\" — https://github.com/France-Travail/pass-emploi-web/security/dependabot/7 — alertes du repo : https://github.com/France-Travail/pass-emploi-web/security/dependabot"
+#   "pass-emploi-web : GHSA-yyyy-yyyy-yyyy (critical) : Résumé <avec> & \"guillemets\""
 # payload sans security_advisory → erreur (failure store en réel)
 POST _ingest/pipeline/ingest-alertes-github-default/_simulate
 {

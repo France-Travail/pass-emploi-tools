@@ -1,0 +1,101 @@
+# Rapport quotidien des jobs de pass-emploi-api (prod), chaque jour à 9 h 30
+# (heure de Paris), dans le salon Tchap jobs-production. Généré par generer-workflows.py
+# depuis la liste des CRON de pass-emploi-api (origin/develop) : ne pas modifier à
+# la main. Spécification : ../../alertes-applicatives.md.
+POST kbn:/api/workflows/workflow
+{
+  "id": "rapport-jobs-prod",
+  "yaml": """
+name: Rapport quotidien des jobs - prod
+description: Exécutions des jobs de pass-emploi-api sur 24 h, dans le salon Tchap jobs-production
+enabled: true
+triggers:
+  - type: scheduled
+    with:
+      rrule:
+        freq: DAILY
+        interval: 1
+        tzid: Europe/Paris
+        byhour: [9]
+        byminute: [30]
+consts:
+  salon: "!vZkZkmTRLjAJTdkonL:agent.dinum.tchap.gouv.fr"
+  jobs:
+    - type: NOTIFIER_ACTUALISATION
+      description: "Tous les 7 du mois à 8h."
+      jour: [7]
+      minute: 480
+    - type: SUIVRE_FILE_EVENEMENTS_MILO
+      description: "Toutes les 15 minutes."
+      attendues: 96
+    - type: RECUPERER_SITUATIONS_JEUNES_MILO
+      description: "Tous les jours à 22h."
+      attendues: 1
+    - type: UPDATE_CONTACTS_CONSEILLER_MAILING_LISTS
+      description: "Tous les jours à 1h."
+      attendues: 1
+    - type: NETTOYER_LES_PIECES_JOINTES
+      description: "Tous les jours à 2h."
+      attendues: 1
+    - type: NETTOYER_LES_JOBS
+      description: "Tous les jours à 4h. Supprime les jobs passés."
+      attendues: 1
+    - type: NETTOYER_LES_DONNEES
+      description: "Tous les jours à 5h. Supprime les archives, les logs et les évènements d'engagement hebdo."
+      attendues: 1
+    - type: PURGER_INVITES_INACTIFS
+      description: "Tous les jours à 6h. Purge les invités inactifs (ligne DB + identité connect)."
+      attendues: 1
+    - type: QUALIFIER_ACTIONS
+      description: "Tous les jours à 6h. Qualifie en NON SNP les actions EN COURS il y a plus de 4 mois."
+      attendues: 1
+    - type: MAIL_CONSEILLER_MESSAGES
+      description: "Du lundi au vendredi à 8h."
+      semaine: [1, 2, 3, 4, 5]
+      minute: 480
+    - type: NOUVELLES_OFFRES_EMPLOI
+      description: "Tous les jours à 9h."
+      attendues: 1
+    - type: NOTIFIER_RAPPEL_CREATION_ACTIONS_DEMARCHES
+      description: "Tous les jeudi à 10h."
+      semaine: [4]
+      minute: 600
+    - type: NOTIFIER_0_HEURES_DECLAREES
+      description: "Tous les lundi à 16h."
+      semaine: [1]
+      minute: 960
+    - type: NOUVELLES_OFFRES_SERVICE_CIVIQUE
+      description: "Tous les jours à 11h."
+      attendues: 1
+    - type: NOTIFIER_RENDEZVOUS_PE
+      description: "Toutes les 2 heures."
+      attendues: 12
+    - type: DUMP_ANALYTICS
+      description: "Tous les jours à 2h30. Dump de la DB vers analytics."
+      attendues: 1
+    - type: MAJ_REFERENTIEL_ROME
+      description: "Le 1er de chaque mois à 3h. Mise à jour du référentiel ROME."
+      jour: [1]
+      minute: 180
+    - type: MAJ_REFERENTIEL_AGENCES_FT
+      description: "Le 1er de chaque mois à 4h. Mise à jour du référentiel des agences France Travail."
+      jour: [1]
+      minute: 240
+    - type: MAJ_REFERENTIEL_PLAN_ACTION
+      description: "Tous les jours à 8h. Mise à jour du référentiel du plan d'action depuis Grist."
+      attendues: 1
+steps:
+  - name: requete
+    type: elasticsearch.esql.query
+    with:
+      query: "FROM logs-prod-default | WHERE @timestamp >= NOW() - 24 hours AND service.name == \"pass-emploi-api\" AND event.action == \"job_completed\" | STATS executions = COUNT(*), echecs = COUNT(*) WHERE event.outcome == \"failure\", duree_s = ROUND(AVG(event.duration) / 1000000000, 1) BY job = labels.job_type"
+  - name: envoyer
+    type: workflow.execute
+    with:
+      workflow-id: tchap-client
+      inputs:
+        salon: "{{ consts.salon }}"
+        texte: "ℹ️ Rapport quotidien des jobs — prod (24 dernières heures){% assign t = 'now' | date: '%s' | plus: 7200 %}{% assign aujourdhui_jour = t | date: '%-d' | plus: 0 %}{% assign aujourdhui_semaine = t | date: '%w' | plus: 0 %}{% assign th = t | minus: 86400 %}{% assign hier_jour = th | date: '%-d' | plus: 0 %}{% assign hier_semaine = th | date: '%w' | plus: 0 %}{% for j in consts.jobs %}{% assign ligne = nil %}{% for v in steps.requete.output.values %}{% if v[3] == j.type %}{% assign ligne = v %}{% endif %}{% endfor %}{% if ligne %}{% assign n = ligne[0] %}{% assign e = ligne[1] %}{% assign d = ligne[2] | append: ' s' %}{% else %}{% assign n = 0 %}{% assign e = 0 %}{% assign d = '—' %}{% endif %}{% assign att = j.attendues %}{% if j.jour %}{% if j.minute < 570 %}{% assign ref = aujourdhui_jour %}{% else %}{% assign ref = hier_jour %}{% endif %}{% if j.jour contains ref %}{% assign att = 1 %}{% else %}{% assign att = 0 %}{% endif %}{% endif %}{% if j.semaine %}{% if j.minute < 570 %}{% assign ref = aujourdhui_semaine %}{% else %}{% assign ref = hier_semaine %}{% endif %}{% if j.semaine contains ref %}{% assign att = 1 %}{% else %}{% assign att = 0 %}{% endif %}{% endif %}{% if n == att %}{% assign tourne = '✅' %}{% else %}{% assign tourne = '❌' %}{% endif %}{% if e == 0 %}{% assign ok = '✅' %}{% else %}{% assign ok = '❌' %}{% endif %}\n{{ tourne }} {{ ok }} {{ j.type }} : {{ n }} exécution(s){% if att %} sur {{ att }} attendue(s){% endif %}, {{ e }} échec(s){% endfor %}{% assign types = consts.jobs | map: 'type' %}{% for v in steps.requete.output.values %}{% unless types contains v[3] %}\n— {% if v[1] == 0 %}✅{% else %}❌{% endif %} {{ v[3] }} : {{ v[0] }} exécution(s), {{ v[1] }} échec(s), hors CRON{% endunless %}{% endfor %}"
+        html: "<p><font data-mx-color=\"#808080\" color=\"#808080\">ℹ️ <strong>Rapport quotidien des jobs — prod</strong> (24 dernières heures)</font></p><table><thead><tr><th>A tourné</th><th>Sans échec</th><th>Job</th><th>Attendues</th><th>Exécutions</th><th>Échecs</th><th>Durée moyenne</th><th>Description</th></tr></thead><tbody>{% assign t = 'now' | date: '%s' | plus: 7200 %}{% assign aujourdhui_jour = t | date: '%-d' | plus: 0 %}{% assign aujourdhui_semaine = t | date: '%w' | plus: 0 %}{% assign th = t | minus: 86400 %}{% assign hier_jour = th | date: '%-d' | plus: 0 %}{% assign hier_semaine = th | date: '%w' | plus: 0 %}{% for j in consts.jobs %}{% assign ligne = nil %}{% for v in steps.requete.output.values %}{% if v[3] == j.type %}{% assign ligne = v %}{% endif %}{% endfor %}{% if ligne %}{% assign n = ligne[0] %}{% assign e = ligne[1] %}{% assign d = ligne[2] | append: ' s' %}{% else %}{% assign n = 0 %}{% assign e = 0 %}{% assign d = '—' %}{% endif %}{% assign att = j.attendues %}{% if j.jour %}{% if j.minute < 570 %}{% assign ref = aujourdhui_jour %}{% else %}{% assign ref = hier_jour %}{% endif %}{% if j.jour contains ref %}{% assign att = 1 %}{% else %}{% assign att = 0 %}{% endif %}{% endif %}{% if j.semaine %}{% if j.minute < 570 %}{% assign ref = aujourdhui_semaine %}{% else %}{% assign ref = hier_semaine %}{% endif %}{% if j.semaine contains ref %}{% assign att = 1 %}{% else %}{% assign att = 0 %}{% endif %}{% endif %}{% if n == att %}{% assign tourne = '✅' %}{% else %}{% assign tourne = '❌' %}{% endif %}{% if e == 0 %}{% assign ok = '✅' %}{% else %}{% assign ok = '❌' %}{% endif %}<tr><td>{{ tourne }}</td><td>{{ ok }}</td><td>{{ j.type }}</td><td>{{ att | default: '—' }}</td><td>{{ n }}</td><td>{{ e }}</td><td>{{ d }}</td><td>{{ j.description | escape }}</td></tr>{% endfor %}{% assign types = consts.jobs | map: 'type' %}{% for v in steps.requete.output.values %}{% unless types contains v[3] %}{% if v[1] == 0 %}{% assign ok = '✅' %}{% else %}{% assign ok = '❌' %}{% endif %}<tr><td>—</td><td>{{ ok }}</td><td>{{ v[3] }}</td><td>—</td><td>{{ v[0] }}</td><td>{{ v[1] }}</td><td>{{ v[2] }} s</td><td>Hors CRON (lancé par un autre job ou un événement)</td></tr>{% endunless %}{% endfor %}</tbody></table><p><strong>Liens</strong><br/>[Pass Emploi] Logs de Prod - Jobs - https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c0d38bba-66ef-4b68-8a10-4d786f6a9f4a?_g=(time:(from:now-24h,to:now))</p>"
+"""
+}
