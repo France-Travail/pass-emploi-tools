@@ -23,7 +23,7 @@ steps:
       - name: requete
         type: elasticsearch.esql.query
         with:
-          query: "FROM logs-prod-default | WHERE @timestamp >= TO_DATETIME(\"{{ foreach.item.kibana.alert.start }}\") - 11520 minutes AND @timestamp <= TO_DATETIME(\"{{ foreach.item.kibana.alert.start }}\") | WHERE event.action == \"auth_failed\" | EVAL recent = @timestamp >= NOW() - 10 minutes, meme_heure = @timestamp < NOW() - 1 day AND DATE_EXTRACT(\"HOUR_OF_DAY\", @timestamp) == DATE_EXTRACT(\"HOUR_OF_DAY\", NOW()) | STATS refus = COUNT(*) WHERE recent, historique = COUNT(*) WHERE meme_heure | EVAL reference = ROUND(historique / 42.0, 1) | WHERE refus >= 20 AND refus > 3 * reference"
+          query: "FROM logs-prod-default | WHERE @timestamp >= TO_DATETIME(\"{{ foreach.item.kibana.alert.start }}\") - 11520 minutes AND @timestamp <= TO_DATETIME(\"{{ foreach.item.kibana.alert.start }}\") | WHERE event.action == \"auth_failed\" | EVAL recent = @timestamp >= NOW() - 10 minutes, meme_heure = @timestamp < NOW() - 1 day AND DATE_EXTRACT(\"HOUR_OF_DAY\", @timestamp) == DATE_EXTRACT(\"HOUR_OF_DAY\", NOW()) | STATS refus = COUNT(*) WHERE recent, historique = COUNT(*) WHERE meme_heure | EVAL reference = ROUND(historique / 42.0, 1) | WHERE refus >= 20 AND refus > 3 * reference | EVAL reference = REPLACE(TO_STRING(reference), \"[.]\", \",\")"
       - name: notifier
         type: workflow.execute
         with:

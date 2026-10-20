@@ -270,6 +270,7 @@ FROM logs-prod-default
 | STATS refus = COUNT(*) WHERE recent, historique = COUNT(*) WHERE meme_heure
 | EVAL reference = ROUND(historique / 42.0, 1)
 | WHERE refus >= 20 AND refus > 3 * reference
+| EVAL reference = REPLACE(TO_STRING(reference), "[.]", ",")
 ```
 
 **Calibrage** (7 jours, par tranche de 10 min) :

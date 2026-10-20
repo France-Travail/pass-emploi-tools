@@ -89,7 +89,7 @@ REGLES = {
         doc=('Alertes applicatives', 'supervision/alertes-applicatives.md')),
     'A3': dict(id='ad326ad3-aea7-4ef8-be28-31008c4aebce', commentaire='# A3 — Pic d\'authentifications refusées (Critical)',
         name="API - Prod - Pic d'auth refusées", tags=['prod', 'applicatif'], interval='5m', fenetre=8, unite='d',
-        esql='FROM logs-prod-default\n| WHERE event.action == "auth_failed"\n| EVAL recent = @timestamp >= NOW() - 10 minutes,\n       meme_heure = @timestamp < NOW() - 1 day\n                AND DATE_EXTRACT("HOUR_OF_DAY", @timestamp) == DATE_EXTRACT("HOUR_OF_DAY", NOW())\n| STATS refus = COUNT(*) WHERE recent, historique = COUNT(*) WHERE meme_heure\n| EVAL reference = ROUND(historique / 42.0, 1)\n| WHERE refus >= 20 AND refus > 3 * reference',
+        esql='FROM logs-prod-default\n| WHERE event.action == "auth_failed"\n| EVAL recent = @timestamp >= NOW() - 10 minutes,\n       meme_heure = @timestamp < NOW() - 1 day\n                AND DATE_EXTRACT("HOUR_OF_DAY", @timestamp) == DATE_EXTRACT("HOUR_OF_DAY", NOW())\n| STATS refus = COUNT(*) WHERE recent, historique = COUNT(*) WHERE meme_heure\n| EVAL reference = ROUND(historique / 42.0, 1)\n| WHERE refus >= 20 AND refus > 3 * reference\n| EVAL reference = REPLACE(TO_STRING(reference), "[.]", ",")',
         mm='12e46700-6e45-11ec-9757-c9700cd1bb4e', couleur='#d00000', emoji='🚨',
         titre="Pic d'authentifications refusées — prod", suite='plus de 3 × la normale sur 10 min : IDP ou Keycloak probablement en cause.',
         lignes='{{#context.hits}}{{_source.refus}} refus en 10 min, contre {{_source.reference}} d\'habitude à cette heure\\n{{/context.hits}}',

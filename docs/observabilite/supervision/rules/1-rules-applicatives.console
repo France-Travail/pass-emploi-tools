@@ -1214,7 +1214,8 @@ PUT kbn:/api/alerting/rule/ad326ad3-aea7-4ef8-be28-31008c4aebce
                 AND DATE_EXTRACT("HOUR_OF_DAY", @timestamp) == DATE_EXTRACT("HOUR_OF_DAY", NOW())
 | STATS refus = COUNT(*) WHERE recent, historique = COUNT(*) WHERE meme_heure
 | EVAL reference = ROUND(historique / 42.0, 1)
-| WHERE refus >= 20 AND refus > 3 * reference"""
+| WHERE refus >= 20 AND refus > 3 * reference
+| EVAL reference = REPLACE(TO_STRING(reference), "[.]", ",")"""
     },
     "timeField": "@timestamp",
     "timeWindowSize": 8,
