@@ -37,6 +37,7 @@ Toutes notifient via Mattermost (`#monitoring-production`), sauf A4b
 | A4b | Événements Scalingo — staging, perf | `logs-alertes-scalingo-{staging,perf}-default` | idem A4a, canal staging | 5 min | — | par ligne : ⚠️ / ℹ️ |
 | A5a | Jobs en échec — prod | `logs-prod-default` | `job_crashed`, `job_handler_not_found` | 1 min | — | ❌ par ligne |
 | A5b | Jobs en échec — staging, perf | `logs-{staging,perf}-default` | idem A5a, canal jobs-staging | 5 min | — | ❌ par ligne |
+| A6 | Erreurs base de données | `logs-prod-default` | `error.type` Sequelize* > 20 / 5 min | 1 min | 1h | 🚨 Critical |
 
 > **Prod uniquement** (sauf A4b) : en staging, ces signaux reflètent les tests
 > en cours, pas une panne. A4b garde le fil d'activité Scalingo de staging et de
@@ -271,6 +272,49 @@ FROM logs-prod-default
 ```
 
 **Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/1-rules-applicatives.console`](rules/1-rules-applicatives.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+
+### A6 — Erreurs base de données (Critical)
+
+Compte les erreurs Sequelize (`error.type` `Sequelize*`) de tous les logs de
+prod : connexion perdue, pool de connexions saturé
+(`SequelizeConnectionAcquireTimeoutError`), contrainte violée. Remplace
+« 🏠 API - erreurs DB », cassée : 4 tranches de 5 min au-dessus de son seuil en
+30 jours, aucune alerte.
+
+| Paramètre               | Valeur                                                                                                             |
+|-------------------------|--------------------------------------------------------------------------------------------------------------------|
+| **Rule name**           | `API - Prod - Erreurs base de données`                                                                             |
+| **Type**                | Elasticsearch query rule (ES\|QL), `groupBy: all`                                                                 |
+| **Requête ES\|QL**      | voir ci-dessous — l'alerte part dès qu'elle renvoie une ligne (une par service)                                    |
+| **Fenêtre**             | 5 min                                                                                                              |
+| **Fréquence**           | 1 min                                                                                                              |
+| **Sévérité**            | Critical                                                                                                           |
+| **Throttle**            | `On custom action intervals` / `Run every 1 hour` / `Run when: Query matched` (onglet Actions → Settings)          |
+| **Action**              | Connecteur Kibana **Mattermost-monitoring-production**, et Workflow `tchap-alerte-a6` — messages dans le bloc de la règle |
+| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook d'investigation](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md) |
+
+**Requête ES|QL** :
+```
+FROM logs-prod-default
+| WHERE error.type LIKE "Sequelize*"
+| EVAL message = SUBSTRING(error.message, 1, 120)
+| STATS erreurs = COUNT(*), types = VALUES(error.type), exemples = VALUES(message) BY service = service.name
+| WHERE erreurs > 20
+| EVAL types = MV_CONCAT(types, ", "), exemples = MV_CONCAT(MV_SLICE(exemples, 0, 1), " / ")
+```
+
+**Calibrage** (2026-10-20, 30 jours, par tranche de 5 min) : max = 345, 3
+tranches au-dessus de 20 (3 heures distinctes), toutes de vrais incidents de
+connexion à la base.
+```
+FROM logs-prod-default
+| WHERE @timestamp >= NOW() - 30 days AND error.type LIKE "Sequelize*"
+| STATS n = COUNT(*) BY service.name, tranche = BUCKET(@timestamp, 5 minutes)
+| STATS p99 = PERCENTILE(n, 99), max = MAX(n), au_dessus = COUNT(*) WHERE n > 20 BY service.name
+```
+
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/1-rules-applicatives.console`](rules/1-rules-applicatives.console), qui fait foi ; son Investigation guide reprend les mêmes étapes. La règle est **nouvelle** : la créer avec `POST` (cf. l'en-tête de son bloc).
 
 ## Événements Scalingo — ce qui arrive aux apps
 
