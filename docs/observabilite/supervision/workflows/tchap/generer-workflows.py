@@ -45,6 +45,10 @@ BURN_RATE = ("{% assign r = " + ALERTE + ".reason | split: ' is ' %}{% assign ld
              "{% assign lb = r[1] | split: ' ' | first | plus: 0 %}{% assign sd = r[1] | split: ' ' | last %}"
              "{% assign sb = r[2] | split: ' ' | first | plus: 0 %}{% assign s = " + ALERTE + ".reason | split: 'above ' %}"
              "{% assign seuil = s[1] | split: ' ' | first %}")
+# Résumé d'un certificat (règle TLS), toujours en anglais : « expires on Nov 14, 2026  in 25 days. ».
+TLS_RESUME = ("{% assign etat = " + ALERTE + ".state %}{% if etat.status == 'expiring' %}{% assign morceaux = etat.summary | remove_first: 'expires on ' | split: ' in ' %}"
+              "expire le {{ morceaux[0] | strip | date: '%d/%m/%Y' }}, dans {{ morceaux[1] | remove: 'days.' | remove: 'day.' | strip }} jours"
+              "{% else %}{{ etat.summary" + EGAL + "ECHAP }}{% endif %}")
 JOURS = r'\{\{#EvalMath\}\}\s*round\(30 / \{\{context\.longWindow\.burnRate\}\}, 1\)\s*\{\{/EvalMath\}\}'
 VIA_RAISON = set()
 
@@ -77,6 +81,10 @@ def liquide(modele, en_html):
             sortie.append(html.escape(fixe, quote=False) if en_html else fixe)
         elif v.group(1) in VARIABLES:
             sortie.append(VARIABLES[v.group(1)].replace('ECHAP', ' | escape' if en_html else ''))
+        elif v.group(1) == 'state.summary':
+            sortie.append(TLS_RESUME.replace('ECHAP', ' | escape' if en_html else ''))
+        elif v.group(1).startswith('state.'):
+            sortie.append('{{ ' + ALERTE + '.' + v.group(1) + EGAL + (' | escape' if en_html else '') + ' }}')
         elif v.group(1) == 'context.message':
             sortie.append('@@DETAIL@@')
         elif v.group(1) in VIA_RAISON:
@@ -183,14 +191,14 @@ def pages_dependabot(en_html):
 ORDRE_LIENS = ['Dashboards', 'Discover sessions']
 
 
-def message(regle, en_html, lignes_esql=None):
+def message(regle, en_html, lignes_esql=None, groupe=None):
     """Titre en couleur, date, détail, explications ; puis toutes les sections de liens,
-    et la règle en dernier."""
-    mm = [a for a in regle['actions'] if a['id'] != 'system-connector-.workflows'][0]
+    et la règle en dernier. groupe : le message de ce groupe d'action (« recovered »)."""
+    mm = [a for a in regle['actions'] if a['id'] != 'system-connector-.workflows' and (groupe is None or a.get('group') == groupe)][0]
     corps = json.loads(re.sub(r'\{\{!.*?\}\}', '', mm['params']['body'], flags=re.S))
     piece = corps['attachments'][0]
     titre = remplir(markdown(liquide(corps['text'], en_html), en_html), en_html)
-    champs = [f for f in piece.get('fields', []) if f['title'] not in ('Règle', 'Déclenchée à')]
+    champs = [f for f in piece.get('fields', []) if f['title'] not in ('Règle', 'Déclenchée à', 'Rétablie à')]
     explications = [f for f in champs if not est_lien(f['value'])]
     liens = {}
     for f in champs:
@@ -198,7 +206,8 @@ def message(regle, en_html, lignes_esql=None):
             titre_lien = 'Dashboards' if f['title'] == 'Dashboard' else f['title']
             liens.setdefault(titre_lien, []).append(f['value'])
     noms = [n for n in ORDRE_LIENS if n in liens] + [n for n in liens if n not in ORDRE_LIENS]
-    date = ('<p><strong>Déclenchée à</strong> : {{ ' + ALERTE + '.start }}</p>') if en_html else ('\\nDéclenchée à : {{ ' + ALERTE + '.start }}')
+    libelle, quand = ('Rétablie à', 'end') if groupe == 'recovered' else ('Déclenchée à', 'start')
+    date = ('<p><strong>' + libelle + '</strong> : {{ ' + ALERTE + '.' + quand + ' }}</p>') if en_html else ('\\n' + libelle + ' : {{ ' + ALERTE + '.' + quand + ' }}')
     regle_lien = ('<p><strong>Règle</strong><br/>{{ event.rule.name' + EGAL + ' | escape }} - {{ event.ruleUrl }}</p>') if en_html else \
                  ('\\nRègle :\\n{{ event.rule.name' + EGAL + ' }} - {{ event.ruleUrl }}')
     milieu = ''.join(section(f['title'], f['value'], en_html, gras=True) for f in explications)
@@ -209,6 +218,14 @@ def message(regle, en_html, lignes_esql=None):
         tete = '<p><font data-mx-color=\\"' + couleur + '\\" color=\\"' + couleur + '\\">' + titre.replace('"', '\\"') + '</font></p>'
         return prefixe + tete + date + (lignes_esql or lignes(True)) + milieu + fin
     return prefixe + titre.replace('"', '\\"') + date + (lignes_esql or lignes(False)) + milieu + fin
+
+
+def avec_retablissement(regle, en_html):
+    """Une règle qui a un message au rétablissement (Uptime) envoie celui-ci pour une alerte rétablie."""
+    if not any(a.get('group') == 'recovered' for a in regle['actions']):
+        return message(regle, en_html)
+    return ("{% if " + ALERTE + ".status == 'recovered' %}" + message(regle, en_html, groupe='recovered') +
+            "{% else %}" + message(regle, en_html) + "{% endif %}")
 
 
 def gabarit(salon):
@@ -267,8 +284,8 @@ def main():
                 continue
             par_salon[cible.removeprefix('tchap-')].append((rid, regle))
     for salon, regles in par_salon.items():
-        cas_t = ''.join("{% when '" + rid + "' %}" + message(r, False) for rid, r in regles)
-        cas_h = ''.join("{% when '" + rid + "' %}" + message(r, True) for rid, r in regles)
+        cas_t = ''.join("{% when '" + rid + "' %}" + avec_retablissement(r, False) for rid, r in regles)
+        cas_h = ''.join("{% when '" + rid + "' %}" + avec_retablissement(r, True) for rid, r in regles)
         defaut_t = "{{ event.rule.name" + EGAL + " }}\\n{{ " + ALERTE + ".reason" + EGAL + " }}\\n{{ event.ruleUrl }}"
         defaut_h = "<p><strong>{{ event.rule.name" + EGAL + " | escape }}</strong></p><p>{{ " + ALERTE + ".reason" + EGAL + " | escape }}</p><p>{{ event.ruleUrl }}</p>"
         texte = '{% case event.rule.id %}' + cas_t + '{% else %}' + defaut_t + '{% endcase %}'

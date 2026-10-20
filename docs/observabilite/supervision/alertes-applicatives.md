@@ -39,6 +39,10 @@ Toutes notifient via Mattermost (`#monitoring-production`), sauf A4b
 | A5b | Jobs en échec — staging, perf | `logs-{staging,perf}-default` | idem A5a, canal jobs-staging | 5 min | — | ❌ par ligne |
 | A6 | Erreurs base de données | `logs-prod-default` | `error.type` Sequelize* > 20 / 5 min | 1 min | 1h | 🚨 Critical |
 | A7 | Erreurs du front | APM `logs-apm.error-*` | erreurs JavaScript de `rum-pass-emploi-web-prod` > 200 / 5 min | 1 min | 1h | ⚠️Warning |
+| A10 | API injoignable | Uptime `pa-back-prod-status` | moniteur Heartbeat en échec | 1 min | — | 🚨 Critical, ✅ au rétablissement |
+| A11 | Web conseiller injoignable | Uptime `pa-web-prod-status` | idem | 1 min | — | 🚨 Critical, ✅ au rétablissement |
+| A12 | Authentification injoignable | Uptime `pass-emploi-connect-status` | idem | 1 min | — | 🚨 Critical, ✅ au rétablissement |
+| A13 | Certificat TLS bientôt expiré | Uptime (TLS) | certificat qui expire bientôt | 1 jour | — | ⚠️Warning |
 
 > **Prod uniquement** (sauf A4b) : en staging, ces signaux reflètent les tests
 > en cours, pas une panne. A4b garde le fil d'activité Scalingo de staging et de
@@ -363,6 +367,30 @@ FROM logs-apm.error-*
 ```
 
 **Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/1-rules-applicatives.console`](rules/1-rules-applicatives.console), qui fait foi ; son Investigation guide reprend les mêmes étapes. La règle est **nouvelle** : la créer avec `POST` (cf. l'en-tête de son bloc).
+
+## Disponibilité — les services répondent-ils ?
+
+Des **règles Uptime** existantes, sur les moniteurs Heartbeat de
+`pass-emploi-heartbeat-prod` : leur type (`xpack.uptime.alerts.*`) et leurs
+paramètres ne changent pas, leurs IDs non plus ; elles sont versionnées pour leur
+message. Un message à la panne, un au rétablissement (✅), et plus un message
+par minute tant que dure la panne : les actions passent de « à chaque
+exécution » à « au changement d'état ».
+
+| # | Rule name | Moniteur | URL | Message de panne / de rétablissement |
+|---|---|---|---|---|
+| A10 | `API - Prod - Disponibilité` | `pa-back-prod-status` | `https://api.pass-emploi.beta.gouv.fr/health` | 🚨 API injoignable — prod (pass-emploi-api) / ✅ API de nouveau joignable |
+| A11 | `Web - Prod - Disponibilité` | `pa-web-prod-status` | `https://web.pass-emploi.beta.gouv.fr/api/health` | 🚨 Application web conseiller injoignable / ✅ de nouveau joignable |
+| A12 | `Connect - Prod - Disponibilité` | `pass-emploi-connect-status` | `https://id.pass-emploi.beta.gouv.fr/health` | 🚨 Service d'authentification injoignable / ✅ de nouveau joignable |
+| A13 | `TLS - Certificat bientôt expiré` | tous les moniteurs HTTPS | — | ⚠️ Certificat TLS bientôt expiré — `<domaine>` : expire le …, dans N jours (un message par certificat et par jour) |
+
+Tchap reçoit les mêmes messages par le Workflow `tchap-monitoring-production`
+(alertes nouvelles et rétablies ; pour A13, aussi les alertes en cours, une
+fois par jour). Kibana donne l'échéance d'un certificat en anglais
+(`state.summary`) : le Workflow la traduit, le message Mattermost la garde
+telle quelle.
+
+**Message et étapes « À vérifier »** : dans les blocs des règles de [`rules/1-rules-applicatives.console`](rules/1-rules-applicatives.console), qui font foi. Mise à jour : `PUT`, comme les autres règles.
 
 ## Événements Scalingo — ce qui arrive aux apps
 
