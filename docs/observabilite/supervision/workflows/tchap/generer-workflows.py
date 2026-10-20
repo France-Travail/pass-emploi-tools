@@ -90,7 +90,8 @@ LIEN = r'\[([^\]]*(?:\[[^\]]*\][^\]]*)?)\]\(((?:https?://|\{\{)(?:[^)\s{]|\{\{[^
 
 
 # Les sessions Discover s'ouvrent d'une heure avant le début de l'alerte à 15 min après.
-PERIODE = "?_g=(time:(from:'{{ t0 }}',to:'{{ t1 }}'))"
+# Période encodée : la détection des liens de Tchap exclut la parenthèse finale d'une URL.
+PERIODE = "?_g=%28time%3A%28from%3A%27{{ t0 }}%27%2Cto%3A%27{{ t1 }}%27%29%29"
 FENETRE = ("{% assign t0 = " + ALERTE + ".start | date: '%s' | minus: 3600 | date: '%Y-%m-%dT%H:%M:%SZ' %}"
            "{% assign t1 = " + ALERTE + ".start | date: '%s' | plus: 900 | date: '%Y-%m-%dT%H:%M:%SZ' %}")
 
@@ -360,7 +361,7 @@ def rapport(env, salon, index, jobs):
             "{% if v[1] == 0 %}{% assign ok = '✅' %}{% else %}{% assign ok = '❌' %}{% endif %}"
             "<tr><td>—</td><td>{{ ok }}</td><td>{{ v[3] }}</td><td>—</td><td>{{ v[0] }}</td><td>{{ v[1] }}</td><td>{{ v[2] }} s</td><td>Hors CRON (lancé par un autre job ou un événement)</td></tr>{% endunless %}{% endfor %}"
                         "</tbody></table><p><strong>Liens</strong><br/>[Pass Emploi] Logs de " + ('Prod' if env == 'prod' else 'Hors-Prod') + " - Jobs - "
-            "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/" + ('c0d38bba-66ef-4b68-8a10-4d786f6a9f4a' if env == 'prod' else '16da36f4-a88e-4c01-b34f-e361a5292740') + "?_g=(time:(from:now-24h,to:now))</p>")
+            "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/" + ('c0d38bba-66ef-4b68-8a10-4d786f6a9f4a' if env == 'prod' else '16da36f4-a88e-4c01-b34f-e361a5292740') + "?_g=%28time%3A%28from%3Anow-24h%2Cto%3Anow%29%29</p>")
     texte = ("ℹ️ Rapport quotidien des jobs — " + env + " (24 dernières heures)" + dates + "{% for j in consts.jobs %}" + calcul +
              "\\n{{ tourne }} {{ ok }} {{ j.type }} : {{ n }} exécution(s){% if att %} sur {{ att }} attendue(s){% endif %}, {{ e }} échec(s)"
              "{% endfor %}{% assign types = consts.jobs | map: 'type' %}{% for v in steps.requete.output.values %}{% unless types contains v[3] %}"
