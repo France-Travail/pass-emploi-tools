@@ -49,8 +49,8 @@
 | 7  | `security-alerts.yml` (GitHub Actions, workflow réutilisable des repos api, web, connect, app) | `#monitoring-production` | **V1** | 🔲 §4 |
 | 8  | AutoOps : alertes 11 (disque) et 12 (indexation) | `#o11y-production` | connecteur AutoOps en `POST` direct vers le salon Tchap `o11y-production` (ADR-004) | 🔲 attend le bot |
 | 9  | `SuiviJobService` (pass-emploi-api) : résultat de chaque job notifiable (succès compris), stack d'erreur, rapport quotidien des CRONs | `MATTERMOST_JOBS_WEBHOOK_URL` | version dégradée : règle A5 + dashboard (§5) ; envoi Mattermost conservé | 🔲 §5 |
-| 11 | Kibana Rules **non versionnées**, actives, vers `Mattermost-monitoring-production` : APM (7 : error count front/auth/back, Connect threshold, Connect transactions failed, failed transaction rate auth/back), Uptime (4 : Check TLS, statut connect/back/web prod) | `#monitoring-production` | versionnées puis migrées comme les autres (format, Investigation guide, action Tchap) | 🔲 §7 |
-| 12 | Kibana Rules **non versionnées** « 🏠 / 🔌 » (créées le 2026-08-24), vivantes : 🏠 API - erreurs DB, 🔌 Partenaires - 429 rate-limit, - 5xx, - Timeouts | `#monitoring-production` | versionnées dans les alertes applicatives (A6 à A9), migrées | 🔲 §7 |
+| 11 | Kibana Rules **non versionnées**, actives, vers `Mattermost-monitoring-production` : APM (7 : error count front/auth/back, Connect threshold, Connect transactions failed, failed transaction rate auth/back), Uptime (4 : Check TLS, statut connect/back/web prod) | `#monitoring-production` | APM : services disparus, remplacées par A7 (erreurs du front) puis désactivées ; Uptime : versionnées en A10 à A13, mêmes IDs, avec message de rétablissement | ✅ repo (Plan 2), déploiement §10 |
+| 12 | Kibana Rules **non versionnées** « 🏠 / 🔌 » (créées le 2026-08-24), vivantes : 🏠 API - erreurs DB, 🔌 Partenaires - 429 rate-limit, - 5xx, - Timeouts | `#monitoring-production` | 🔌 fusionnées dans A1 (par domaine, 5xx / 429 / 4xx / timeout) ; 🏠 réécrite en A6 ; toutes désactivées après mise en service | ✅ repo (Plan 2), déploiement §10 |
 | 10 | *(nouveau)* failure store des événements externes | — | **14** (stack) | 🔲 §4 |
 | —  | Notifier « Dashboard Pass Emploi » sur `api-prod` → `pass-emploi-dashboard.osc-secnum-fr1.scalingo.io` (app absente du compte, HTTP 503, citée par aucun repo) | **pas Mattermost** | hors périmètre : à supprimer après confirmation de l'équipe | ❓ |
 
@@ -418,3 +418,28 @@ prise en compte au prochain démarrage de la perf.
   par tag de la règle : `tchap-lignes` (champ `message` posé par un pipeline),
   `jobs` (`labels.job_type` et `error.message`), sinon la raison de l'alerte.
   Salons `jobs-production` et `jobs-staging` créés, Workflows associés.
+
+## 14. Écarts du Plan 2
+
+- **A1 sur les logs, pas sur l'APM** (constaté le 2026-10-20) : l'agent APM
+  n'enregistre pas le span d'un appel sortant parti en timeout (27 590 timeouts
+  Milo en 21 jours dans les logs, aucun span en échec sans code HTTP), et les
+  traces sont échantillonnées (14 630 erreurs 500 France Travail dans les logs
+  en 30 jours, 1 401 dans les traces en 21 jours). A1 lit `external_api_call`
+  par `url.domain`, qui donne déjà le domaine du partenaire. A2 reste sur les
+  métriques APM (non échantillonnées), A7 sur les erreurs APM.
+- **Seuil d'A1** : > 50 par domaine gardé ; recalibré sur les logs (Milo
+  p99 = 85, France Travail p99 = 209), au plus 81 heures d'alerte en 30 jours,
+  contre 643 alertes pour l'ancienne A1 et les 3 🔌.
+- **Règles ES|QL en `groupBy: all`** (A1, A2, A3, A6, A7), chacune avec son
+  Workflow `tchap-alerte-<code>` qui relance la requête : le document d'alerte
+  ne contient pas les lignes de résultat, et `groupBy: row` donnait une nouvelle
+  alerte (un nouveau message) dès qu'un compteur changeait.
+- **Uptime (A10 à A12)** : actions « au changement d'état » au lieu de « à
+  chaque exécution » (un message par minute pendant une panne), message de
+  rétablissement. A13 (TLS) garde son rappel quotidien ; son échéance reste en
+  anglais dans Mattermost, traduite dans Tchap.
+- **Générateur de règles** : `--verifier` sans code vérifie toutes les règles
+  (il ne vérifiait rien), un bloc est retrouvé par sa ligne `PUT`, le guide
+  d'investigation reprend les champs annexes (contacts partenaires, runbook).
+

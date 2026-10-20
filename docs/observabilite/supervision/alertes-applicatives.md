@@ -392,6 +392,16 @@ telle quelle.
 
 **Message et étapes « À vérifier »** : dans les blocs des règles de [`rules/1-rules-applicatives.console`](rules/1-rules-applicatives.console), qui font foi. Mise à jour : `PUT`, comme les autres règles.
 
+## Données APM
+
+A2 et A7 lisent l'APM, A1 et A6 les logs.
+
+| Données | Index | Rétention (2026-10-20) | Remarque |
+|---|---|---|---|
+| métriques de transactions, 1 min | `metrics-apm.transaction.1m-*` | 90 jours (depuis le 2026-09-23) | non échantillonnées : `COUNT(transaction.duration.summary)` (champ `aggregate_metric_double`) donne le nombre de requêtes |
+| traces et spans | `traces-apm*` | 21 jours | **échantillonnées**, et sans span pour un appel sortant parti en timeout : pas de comptage dessus |
+| erreurs | `logs-apm.error-*` | 85 jours | une erreur par document, dont le RUM du front |
+
 ## Événements Scalingo — ce qui arrive aux apps
 
 Des **Elasticsearch query rules (KQL)** sur les événements des notifiers
