@@ -83,9 +83,9 @@ dans Dev Tools, après [`slo/1-slos.console`](slo/1-slos.console).
 | **SLO**                 | le SLO visé                                                                                          |
 | **Fenêtres**            | valeurs par défaut de Kibana, cf. tableau ci-dessous                                                 |
 | **Fréquence**           | 1 min                                                                                                |
-| **Action**              | Connecteur Kibana **Mattermost-monitoring-production**, groupes `Critical` et `High` uniquement — voir body ci-dessous |
-| **Related dashboards**  | —                                                                                                    |
-| **Investigation guide** | Voir [runbook d'investigation](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md) |
+| **Action**              | Connecteur Kibana **Mattermost-monitoring-production**, groupes `Critical` et `High` uniquement — message dans le bloc de la règle |
+| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook d'investigation](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md) |
 
 | Groupe   | Fenêtre longue / courte | Burn rate | Sens : budget des 30 j épuisé en… | Notifié ? |
 |----------|-------------------------|-----------|-----------------------------------|-----------|
@@ -106,27 +106,7 @@ dans Dev Tools, après [`slo/1-slos.console`](slo/1-slos.console).
 > première semaine, et sortir du SLO un parcours trop bruyant plutôt que de
 > relâcher l'objectif de tous.
 
-**Body du webhook** :
-```json
-{
-  "text": "🚨 **SLO menacé — prod** — {{context.reason}}",
-  "attachments": [
-    {
-      "color": "#d00000",
-      "fields": [
-        { "title": "SLO", "value": "{{context.sloName}}", "short": true },
-        { "title": "Parcours / mode", "value": "`{{context.sloInstanceId}}`", "short": true },
-        { "title": "Burn rate (longue / courte)", "value": "{{context.longWindow.burnRate}} / {{context.shortWindow.burnRate}} (seuil {{context.burnRateThreshold}})", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "SLO", "value": "[Budget d'erreur et historique]({{context.viewInAppUrl}})" },
-        { "title": "Dashboard", "value": "[[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)" },
-        { "title": "À vérifier", "value": "Alertes de diagnostic A1 à A3 en cours : partenaire en panne, 5xx, IDP" },
-        { "title": "Runbook", "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)" }
-      ]
-    }
-  ]
-}
-```
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/1-rules-applicatives.console`](rules/1-rules-applicatives.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 Les variables `context.*` sont celles de la règle SLO burn rate ; vérifier les
 noms dans la liste proposée par le bouton d'ajout de variable de l'action.
@@ -156,9 +136,9 @@ La colonne `dont_crash` sépare les deux dans le message.
 | **Fréquence**           | 1 min                                                                                                              |
 | **Sévérité**            | Warning                                                                                                            |
 | **Throttle**            | `On custom action intervals` / `Run every 1 hour` / `Run when: Query matched` (onglet Actions → Settings)          |
-| **Action**              | Connecteur Kibana **Mattermost-monitoring-production** — voir body ci-dessous                                      |
-| **Related dashboards**  | —                                                                                                                  |
-| **Investigation guide** | Voir [runbook d'investigation](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md) |
+| **Action**              | Connecteur Kibana **Mattermost-monitoring-production** — message dans le bloc de la règle                                      |
+| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook d'investigation](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md) |
 
 **Requête ES|QL** :
 ```
@@ -180,25 +160,7 @@ FROM logs-prod-default
 | SORT max DESC
 ```
 
-**Body du webhook** :
-```json
-{
-  "text": "⚠️ **Pic d'échecs partenaire — prod** — un client partenaire dépasse 25 échecs en 5 min.",
-  "attachments": [
-    {
-      "color": "#f2c744",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "Détail", "value": "{{context.message}}" },
-        { "title": "À vérifier", "value": "[Échecs des appels partenaires dans Discover](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)" },
-        { "title": "Contacts partenaires", "value": "[Partenariats (Notion)](https://app.notion.com/p/Partenariats-2077bd17c27a812a8700e489fe8ca506) : qui prévenir chez le partenaire en panne" },
-        { "title": "Runbook", "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)" }
-      ]
-    }
-  ]
-}
-```
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/1-rules-applicatives.console`](rules/1-rules-applicatives.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### A2 — Erreurs serveur 5xx (Critical)
 
@@ -218,9 +180,9 @@ exceptions (`log.logger: ExceptionsHandler`) ferait doublon.
 | **Fréquence**           | 1 min                                                                                                              |
 | **Sévérité**            | Critical                                                                                                           |
 | **Throttle**            | `On custom action intervals` / `Run every 1 hour` / `Run when: Query matched` (onglet Actions → Settings)          |
-| **Action**              | Connecteur Kibana **Mattermost-monitoring-production** — voir body ci-dessous                                      |
-| **Related dashboards**  | —                                                                                                                  |
-| **Investigation guide** | Voir [runbook d'investigation](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md) |
+| **Action**              | Connecteur Kibana **Mattermost-monitoring-production** — message dans le bloc de la règle                                      |
+| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook d'investigation](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md) |
 
 **Requête ES|QL** :
 ```
@@ -242,24 +204,7 @@ FROM logs-prod-default
 | STATS p99 = PERCENTILE(n, 99), max = MAX(n)
 ```
 
-**Body du webhook** :
-```json
-{
-  "text": "🚨 **Erreurs 5xx — prod** — plus de 5 requêtes en erreur serveur en 5 min.",
-  "attachments": [
-    {
-      "color": "#d00000",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "Détail", "value": "{{context.message}}" },
-        { "title": "À vérifier", "value": "Le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73), liste les logs des requêtes HTTP 5xx avec le motif et le `trace.id` pour remonter la requête" },
-        { "title": "Runbook", "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)" }
-      ]
-    }
-  ]
-}
-```
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/1-rules-applicatives.console`](rules/1-rules-applicatives.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### A3 — Pic d'authentifications refusées (Critical)
 
@@ -277,9 +222,9 @@ précédents, ramenée à 10 min (7 j × 6 tranches = 42). Le plancher de 20 ref
 | **Fréquence**           | 5 min                                                                                                              |
 | **Sévérité**            | Critical                                                                                                           |
 | **Throttle**            | `On custom action intervals` / `Run every 1 hour` / `Run when: Query matched` (onglet Actions → Settings)          |
-| **Action**              | Connecteur Kibana **Mattermost-monitoring-production** — voir body ci-dessous                                      |
-| **Related dashboards**  | —                                                                                                                  |
-| **Investigation guide** | Voir [runbook d'investigation](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md) |
+| **Action**              | Connecteur Kibana **Mattermost-monitoring-production** — message dans le bloc de la règle                                      |
+| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook d'investigation](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md) |
 
 **Requête ES|QL** :
 ```
@@ -303,24 +248,7 @@ FROM logs-prod-default
 | SORT heure
 ```
 
-**Body du webhook** :
-```json
-{
-  "text": "🚨 **Pic d'authentifications refusées — prod** — plus de 3 × la normale sur 10 min : IDP ou Keycloak probablement en cause.",
-  "attachments": [
-    {
-      "color": "#d00000",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "Détail", "value": "{{context.message}}" },
-        { "title": "À vérifier", "value": "Le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8), liste les logs de type `auth_failed` avec le motif de l'erreur d'habilitation - L'onglet `Field statistics` permet de comprendre la répartition (Ex : Quels IDP touchés ?)" },
-        { "title": "Runbook", "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)" }
-      ]
-    }
-  ]
-}
-```
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/1-rules-applicatives.console`](rules/1-rules-applicatives.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ## Événements Scalingo — ce qui arrive aux apps
 
@@ -366,7 +294,7 @@ après les sessions Discover de [`discovers/evenements-externes/`](discovers/eve
 | **Requête**             | `not service.name : ("pass-emploi-logstash" or "pass-emploi-logstash-process" or "pass-emploi-elastic-agent" or "pass-emploi-heartbeat")` |
 | **Fenêtre / fréquence** | 5 min / 1 min |
 | **Actions**             | Mattermost-monitoring-production ; Tchap via le Workflow `tchap-monitoring-production` |
-| **Related dashboards**  | [Pass Emploi] Diagnostic d'erreurs - Entrée |
+| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 
 **À vérifier** :
 1. Le Discover **[Pass Emploi] Alertes externes de Prod - Événements Scalingo**,
@@ -385,7 +313,7 @@ après les sessions Discover de [`discovers/evenements-externes/`](discovers/eve
 | **Requête**             | celle d'A4a |
 | **Fenêtre / fréquence** | 10 min / 5 min |
 | **Actions**             | Mattermost-monitoring-staging ; Tchap via le Workflow `tchap-monitoring-staging` |
-| **Related dashboards**  | — |
+| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 
 **À vérifier** :
 1. Le Discover **[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo**,
