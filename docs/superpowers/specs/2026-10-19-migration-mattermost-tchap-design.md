@@ -343,6 +343,19 @@ pass-emploi-api-perf (mauvais copier-coller à la création de la perf, il n'y a
 pas de canal `jobs-perf`) pointe aussi vers `jobs-staging` ; conteneurs à 0,
 prise en compte au prochain démarrage de la perf.
 
+**2026-10-20, 16:45 UTC : Plan 2, prod** (sans action Tchap). Session
+**[Pass Emploi] Logs de Prod - Erreurs base de données** (`c4dfc122…`)
+importée ; l'import a réécrit la data view `0208fbaf…` et 2 tags avec la
+version du 2026-10-06 déjà importée par les autres sessions (pas de champ
+calculé). `PUT` A1 (seuil 100), A2, A3, A10 à A13 (paramètres Uptime vérifiés
+identiques à la prod avant), `POST` A6 (`c9164880…`) et A7 (`52c66a2a…`) : les
+9 en `ok` après 2 exécutions (A13 `active` : certificat de
+`doc.pass-emploi.beta.gouv.fr` qui expire le 14/11). **Désactivées** (non
+supprimées) : les 7 règles APM (`2fdcb950…`, `7168ce70…`, `eaf59860…`,
+`7ee22a20…`, `d82b1c00…`, `f44b6dc0…`, `5b9ee990…`), les 3 « 🔌 Partenaires »
+(`f87bff78…`, `0230add3…`, `14fbf32e…`) et « 🏠 API - erreurs DB »
+(`738fda9e…`). État d'avant sauvegardé hors du dépôt (GET des 20 règles).
+
 ## 11. Suites à reporter en tickets (Notion)
 
 - [ ] Règles SLO « Burn Rate » non versionnées désactivées le 2026-10-19
