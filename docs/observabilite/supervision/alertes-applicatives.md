@@ -30,7 +30,7 @@ Toutes notifient via Mattermost (`#monitoring-production`), sauf A4b
 | S1 | SLO disponibilité api      | SLO Kibana          | burn rate ≥ 6 par parcours critique                   | 1 min     | —        | 🚨 Critical |
 | S2 | SLO latence api            | SLO Kibana          | burn rate ≥ 6 par parcours critique                   | 1 min     | —        | 🚨 Critical |
 | S3 | SLO réussite login         | SLO Kibana          | burn rate ≥ 6 par mode d'authentification             | 1 min     | —        | 🚨 Critical |
-| A1 | Pic d'échecs partenaire    | `logs-prod-default` | `external_api_call` `failure` > 50 / 5 min par domaine (5xx, 429, 4xx, timeout) | 1 min     | 1h       | ⚠️Warning  |
+| A1 | Pic d'échecs partenaire    | `logs-prod-default` | `external_api_call` `failure` > 100 / 5 min par domaine (5xx, 429, 4xx, timeout) | 1 min     | 1h       | ⚠️Warning  |
 | A2 | Erreurs serveur 5xx        | APM `metrics-apm.transaction.1m-*` | requêtes api + connect en 5xx > 50 / 5 min, par template | 1 min     | 1h       | 🚨 Critical |
 | A3 | Pic d'auth refusées        | `logs-prod-default` | `auth_failed` > 3 × même heure sur 7 j, ≥ 20 / 10 min | 5 min     | 1h       | 🚨 Critical |
 | A4a | Événements Scalingo — prod | `logs-alertes-scalingo-prod-default` | tout événement d'une app hors stack d'observabilité | 1 min | — | par ligne : 🚨 / ⚠️ / ℹ️ |
@@ -163,24 +163,24 @@ FROM logs-prod-default
 | WHERE NOT url.domain LIKE "*pass-emploi.beta.gouv.fr" AND url.domain != "stats.beta.gouv.fr"
 | EVAL type = CASE(http.response.status_code == 429, "429", http.response.status_code >= 500, "5xx", http.response.status_code >= 400, "4xx", "timeout / réseau")
 | STATS echecs = COUNT(*), types = VALUES(type) BY partenaire = url.domain
-| WHERE echecs > 50
+| WHERE echecs > 100
 | EVAL types = MV_CONCAT(types, ", ")
 | SORT echecs DESC
 ```
 
 **Calibrage** (2026-10-20, 30 jours, par tranche de 5 min) : Milo p99 = 85,
 max = 3 352 (le 2026-10-08 à 13 h 20, timeouts et 429) ; France Travail
-p99 = 209, max = 852 (des 500 et des timeouts chroniques). Au-dessus de 50 :
-Milo 49 heures sur 21 jours, France Travail 32 heures sur 13 jours, donc au plus
-81 messages en 30 jours avec le rappel toutes les heures. Les autres
-partenaires ne dépassent jamais 18.
+p99 = 209, max = 852 (des 500 et des timeouts chroniques). Seuil fixé à 100
+(décision de l'équipe, 2026-10-20) : au-dessus, Milo 15 heures sur 10 jours,
+France Travail 20 heures sur 9 jours, soit au plus 35 heures d'alerte en
+30 jours (81 avec un seuil de 50). Les autres partenaires ne dépassent jamais 18.
 ```
 FROM logs-prod-default
 | WHERE @timestamp >= NOW() - 30 days
     AND event.action == "external_api_call" AND event.outcome == "failure" AND url.domain IS NOT NULL
     AND NOT url.domain LIKE "*pass-emploi.beta.gouv.fr" AND url.domain != "stats.beta.gouv.fr"
 | STATS n = COUNT(*) BY partenaire = url.domain, tranche = BUCKET(@timestamp, 5 minutes)
-| STATS p99 = PERCENTILE(n, 99), max = MAX(n), au_dessus = COUNT(*) WHERE n > 50 BY partenaire
+| STATS p99 = PERCENTILE(n, 99), max = MAX(n), au_dessus = COUNT(*) WHERE n > 100 BY partenaire
 | SORT max DESC
 ```
 

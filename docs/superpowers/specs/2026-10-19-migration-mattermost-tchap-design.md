@@ -428,9 +428,10 @@ prise en compte au prochain démarrage de la perf.
   en 30 jours, 1 401 dans les traces en 21 jours). A1 lit `external_api_call`
   par `url.domain`, qui donne déjà le domaine du partenaire. A2 reste sur les
   métriques APM (non échantillonnées), A7 sur les erreurs APM.
-- **Seuil d'A1** : > 50 par domaine gardé ; recalibré sur les logs (Milo
-  p99 = 85, France Travail p99 = 209), au plus 81 heures d'alerte en 30 jours,
-  contre 643 alertes pour l'ancienne A1 et les 3 🔌.
+- **Seuil d'A1** : > 100 par domaine (décision de l'équipe, 2026-10-20) ;
+  recalibré sur les logs (Milo p99 = 85, France Travail p99 = 209), au plus
+  35 heures d'alerte en 30 jours (81 avec 50), contre 643 alertes pour
+  l'ancienne A1 et les 3 🔌.
 - **Règles ES|QL en `groupBy: all`** (A1, A2, A3, A6, A7), chacune avec son
   Workflow `tchap-alerte-<code>` qui relance la requête : le document d'alerte
   ne contient pas les lignes de résultat, et `groupBy: row` donnait une nouvelle
