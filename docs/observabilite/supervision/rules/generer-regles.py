@@ -57,6 +57,19 @@ JOBS_LIGNES = '{{#context.hits}}❌ `{{_source.labels.job_type}}` : {{_source.ev
 RUNBOOK_APPLICATIF = ('Runbook', [f'[Investiguer un incident applicatif]({GH}runbooks/investigation-incident.md)'])
 
 REGLES = {
+    'A2': dict(id='98e0103a-f809-48f2-8343-d1269213dce4', commentaire='# A2 — Erreurs serveur 5xx (Critical)',
+        name='API - Prod - Erreurs 5xx', tags=['prod', 'applicatif'], interval='1m', fenetre=5,
+        esql='FROM metrics-apm.transaction.1m-*\n| WHERE service.name IN ("pass-emploi-api-prod", "pass-emploi-connect-prod") AND transaction.result == "HTTP 5xx"\n| STATS erreurs = COUNT(transaction.duration.summary) BY service = service.name, template = transaction.name\n| INLINE STATS total = SUM(erreurs)\n| WHERE total > 50\n| SORT erreurs DESC\n| LIMIT 10',
+        mm='12e46700-6e45-11ec-9757-c9700cd1bb4e', couleur='#d00000', emoji='🚨',
+        titre='Erreurs 5xx — prod', suite='plus de 50 requêtes en erreur serveur en 5 min.',
+        lignes='{{#context.hits}}`{{_source.service}}` {{_source.template}} : {{_source.erreurs}}\\n{{/context.hits}}',
+        tchap='`{1}` {2} : {0}',
+        intro="Plus de 50 requêtes de l'api ou de connect ont répondu en erreur serveur (5xx) en 5 min, d'après l'APM, par template d'URL.",
+        steps=[f"1. Quelles routes sont touchées : les lignes ci-dessus (template d'URL et nombre d'erreurs), puis le dashboard {d('apps')}",
+               f"2. Si un partenaire est en cause (timeout, erreur d'API) : le dashboard {d('entree')}, puis le Discover {s('part')}",
+               f"3. Le motif d'une requête en erreur et son `trace.id` : le Discover {s('5xx')}"],
+        sessions=['part', '5xx'], dashboards=['apps', 'entree'], extra=[RUNBOOK_APPLICATIF],
+        doc=('Alertes applicatives', 'supervision/alertes-applicatives.md')),
     'A3': dict(id='ad326ad3-aea7-4ef8-be28-31008c4aebce', commentaire='# A3 — Pic d\'authentifications refusées (Critical)',
         name="API - Prod - Pic d'auth refusées", tags=['prod', 'applicatif'], interval='5m', fenetre=8, unite='d',
         esql='FROM logs-prod-default\n| WHERE event.action == "auth_failed"\n| EVAL recent = @timestamp >= NOW() - 10 minutes,\n       meme_heure = @timestamp < NOW() - 1 day\n                AND DATE_EXTRACT("HOUR_OF_DAY", @timestamp) == DATE_EXTRACT("HOUR_OF_DAY", NOW())\n| STATS refus = COUNT(*) WHERE recent, historique = COUNT(*) WHERE meme_heure\n| EVAL reference = ROUND(historique / 42.0, 1)\n| WHERE refus >= 20 AND refus > 3 * reference',

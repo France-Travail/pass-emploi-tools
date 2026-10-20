@@ -31,7 +31,7 @@ Toutes notifient via Mattermost (`#monitoring-production`), sauf A4b
 | S2 | SLO latence api            | SLO Kibana          | burn rate ≥ 6 par parcours critique                   | 1 min     | —        | 🚨 Critical |
 | S3 | SLO réussite login         | SLO Kibana          | burn rate ≥ 6 par mode d'authentification             | 1 min     | —        | 🚨 Critical |
 | A1 | Pic d'échecs partenaire    | `logs-prod-default` | `external_api_call` `failure` > 25 / 5 min par client | 1 min     | 1h       | ⚠️Warning  |
-| A2 | Erreurs serveur 5xx        | `logs-prod-default` | requêtes api en 5xx > 5 / 5 min                       | 1 min     | 1h       | 🚨 Critical |
+| A2 | Erreurs serveur 5xx        | APM `metrics-apm.transaction.1m-*` | requêtes api + connect en 5xx > 50 / 5 min, par template | 1 min     | 1h       | 🚨 Critical |
 | A3 | Pic d'auth refusées        | `logs-prod-default` | `auth_failed` > 3 × même heure sur 7 j, ≥ 20 / 10 min | 5 min     | 1h       | 🚨 Critical |
 | A4a | Événements Scalingo — prod | `logs-alertes-scalingo-prod-default` | tout événement d'une app hors stack d'observabilité | 1 min | — | par ligne : 🚨 / ⚠️ / ℹ️ |
 | A4b | Événements Scalingo — staging, perf | `logs-alertes-scalingo-{staging,perf}-default` | idem A4a, canal staging | 5 min | — | par ligne : ⚠️ / ℹ️ |
@@ -164,44 +164,48 @@ FROM logs-prod-default
 
 ### A2 — Erreurs serveur 5xx (Critical)
 
-Une exception non gérée renvoie une 500, qu'A2 compte : sa colonne `messages`
-(jusqu'à 5 messages d'erreur distincts, tronqués à 120 caractères) donne la
-cause. Mesuré sur 7 jours au 2026-10-07 : sur les 20 tranches de 5 min où plus
-de 3 exceptions non gérées sont tombées, A2 sonnait dans toutes ; les 1811
-erreurs 5xx portaient toutes leur `error.message`. Une règle à part sur les
-exceptions (`log.logger: ExceptionsHandler`) ferait doublon.
+Compte les requêtes en erreur serveur de l'api et de connect dans les métriques
+APM (`metrics-apm.transaction.1m-*`), par **template d'URL**
+(`transaction.name`, ex. `GET /jeunes/:idJeune`) : les `url.path` des logs
+contiennent des identifiants et dispersent une même route sur des milliers de
+valeurs. `COUNT(transaction.duration.summary)` donne le nombre de requêtes
+(champ `aggregate_metric_double`) ; il égale le compte des traces brutes, sans
+perte à l'échantillonnage. La cause de chaque erreur reste dans les logs : le
+Discover « Erreurs serveur 5xx » la retrouve par son `trace.id`.
 
 | Paramètre               | Valeur                                                                                                             |
 |-------------------------|--------------------------------------------------------------------------------------------------------------------|
 | **Rule name**           | `API - Prod - Erreurs 5xx`                                                                                         |
-| **Type**                | Elasticsearch query rule (ES\|QL)                                                                                  |
-| **Requête ES\|QL**      | voir ci-dessous — l'alerte part dès qu'elle renvoie une ligne                                                      |
+| **Type**                | Elasticsearch query rule (ES\|QL), `groupBy: all` : une seule alerte tant que l'incident dure                     |
+| **Requête ES\|QL**      | voir ci-dessous — l'alerte part dès qu'elle renvoie une ligne (une par template, 10 au plus)                       |
 | **Fenêtre**             | 5 min                                                                                                              |
 | **Fréquence**           | 1 min                                                                                                              |
 | **Sévérité**            | Critical                                                                                                           |
 | **Throttle**            | `On custom action intervals` / `Run every 1 hour` / `Run when: Query matched` (onglet Actions → Settings)          |
-| **Action**              | Connecteur Kibana **Mattermost-monitoring-production** — message dans le bloc de la règle                                      |
+| **Action**              | Connecteur Kibana **Mattermost-monitoring-production**, et Workflow `tchap-alerte-a2` (relance la requête, poste dans le salon monitoring-production) — messages dans le bloc de la règle |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook d'investigation](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md) |
 
 **Requête ES|QL** :
 ```
-FROM logs-prod-default
-| WHERE service.name == "pass-emploi-api" AND event.action == "request_failed"
-| EVAL message = SUBSTRING(error.message, 1, 120)
-| STATS erreurs_5xx = COUNT(*), statuts = VALUES(http.response.status_code),
-        parcours = VALUES(labels.user_journey), messages = VALUES(message)
-| WHERE erreurs_5xx > 5
-| EVAL messages = MV_SLICE(messages, 0, 4)
+FROM metrics-apm.transaction.1m-*
+| WHERE service.name IN ("pass-emploi-api-prod", "pass-emploi-connect-prod") AND transaction.result == "HTTP 5xx"
+| STATS erreurs = COUNT(transaction.duration.summary) BY service = service.name, template = transaction.name
+| INLINE STATS total = SUM(erreurs)
+| WHERE total > 50
+| SORT erreurs DESC
+| LIMIT 10
 ```
 
-**Calibrage** (7 jours, par tranche de 5 min) :
+**Calibrage** (2026-10-20, 26 jours de métriques, par tranche de 5 min) :
+p99 = 116, max = 1 061 (le 2026-10-08 à 13 h 20, sessions Milo), 32 tranches
+au-dessus de 50.
 ```
-FROM logs-prod-default
-| WHERE @timestamp >= NOW() - 7 days
-    AND service.name == "pass-emploi-api" AND event.action == "request_failed"
-| STATS n = COUNT(*) BY tranche = BUCKET(@timestamp, 5 minutes)
-| STATS p99 = PERCENTILE(n, 99), max = MAX(n)
+FROM metrics-apm.transaction.1m-*
+| WHERE @timestamp >= NOW() - 26 days
+    AND service.name IN ("pass-emploi-api-prod", "pass-emploi-connect-prod") AND transaction.result == "HTTP 5xx"
+| STATS n = COUNT(transaction.duration.summary) BY tranche = BUCKET(@timestamp, 5 minutes)
+| STATS p99 = PERCENTILE(n, 99), max = MAX(n), au_dessus = COUNT(*) WHERE n > 50
 ```
 
 **Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/1-rules-applicatives.console`](rules/1-rules-applicatives.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.

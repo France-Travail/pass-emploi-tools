@@ -1060,14 +1060,14 @@ PUT kbn:/api/alerting/rule/98e0103a-f809-48f2-8343-d1269213dce4
   ],
   "artifacts": {
     "investigation_guide": {
-      "blob": "## Ce que signale l'alerte\n\nErreurs 5xx — prod — plus de 5 requêtes en erreur serveur en 5 min.\n\n## À vérifier\n\n1. Quels parcours, quelles erreurs : le « Détail » ci-dessus (statuts, parcours, premiers messages), puis le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73) — motif et `trace.id` de chaque requête\n2. Si un partenaire est en cause (timeout, erreur d'API) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n3. Si l'erreur vient de l'api elle-même : la requête complète par son `trace.id`, dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n\n## Dashboards\n\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n- [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n- [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n\n## Documentation\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n"
+      "blob": "## Ce que signale l'alerte\n\nPlus de 50 requêtes de l'api ou de connect ont répondu en erreur serveur (5xx) en 5 min, d'après l'APM, par template d'URL.\n\n## À vérifier\n\n1. Quelles routes sont touchées : les lignes ci-dessus (template d'URL et nombre d'erreurs), puis le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n2. Si un partenaire est en cause (timeout, erreur d'API) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n3. Le motif d'une requête en erreur et son `trace.id` : le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n\n## Dashboards\n\n- [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n- [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-applicatives.md)\n"
     },
     "dashboards": [
       {
-        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+        "id": "014dae91-507a-44de-b782-72e5eddbab74"
       },
       {
-        "id": "014dae91-507a-44de-b782-72e5eddbab74"
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
       }
     ]
   },
@@ -1077,13 +1077,13 @@ PUT kbn:/api/alerting/rule/98e0103a-f809-48f2-8343-d1269213dce4
   "params": {
     "searchType": "esqlQuery",
     "esqlQuery": {
-      "esql": """FROM logs-prod-default
-| WHERE service.name == "pass-emploi-api" AND event.action == "request_failed"
-| EVAL message = SUBSTRING(error.message, 1, 120)
-| STATS erreurs_5xx = COUNT(*), statuts = VALUES(http.response.status_code),
-        parcours = VALUES(labels.user_journey), messages = VALUES(message)
-| WHERE erreurs_5xx > 5
-| EVAL messages = MV_SLICE(messages, 0, 4)"""
+      "esql": """FROM metrics-apm.transaction.1m-*
+| WHERE service.name IN ("pass-emploi-api-prod", "pass-emploi-connect-prod") AND transaction.result == "HTTP 5xx"
+| STATS erreurs = COUNT(transaction.duration.summary) BY service = service.name, template = transaction.name
+| INLINE STATS total = SUM(erreurs)
+| WHERE total > 50
+| SORT erreurs DESC
+| LIMIT 10"""
     },
     "timeField": "@timestamp",
     "timeWindowSize": 5,
@@ -1093,11 +1093,7 @@ PUT kbn:/api/alerting/rule/98e0103a-f809-48f2-8343-d1269213dce4
     ],
     "thresholdComparator": ">",
     "size": 100,
-    "aggType": "count",
-    "groupBy": "row",
-    "termSize": 5,
-    "sourceFields": [],
-    "excludeHitsFromPreviousRun": false
+    "groupBy": "all"
   },
   "actions": [
     {
@@ -1105,10 +1101,11 @@ PUT kbn:/api/alerting/rule/98e0103a-f809-48f2-8343-d1269213dce4
       "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
       "params": {
         "body": """{
-  "text": "🚨 **Erreurs 5xx — prod** — plus de 5 requêtes en erreur serveur en 5 min.",
+  "text": "🚨 **Erreurs 5xx — prod** — plus de 50 requêtes en erreur serveur en 5 min.",
   "attachments": [
     {
       "color": "#d00000",
+      "text": "{{#context.hits}}`{{_source.service}}` {{_source.template}} : {{_source.erreurs}}\n{{/context.hits}}",
       "fields": [
         {
           "title": "Règle",
@@ -1121,20 +1118,20 @@ PUT kbn:/api/alerting/rule/98e0103a-f809-48f2-8343-d1269213dce4
           "short": true
         },
         {
-          "title": "Détail",
-          "value": "{{context.message}}"
-        },
-        {
           "title": "À vérifier",
-          "value": "1. Quels parcours, quelles erreurs : le « Détail » ci-dessus (statuts, parcours, premiers messages), puis le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73) — motif et `trace.id` de chaque requête\n2. Si un partenaire est en cause (timeout, erreur d'API) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n3. Si l'erreur vient de l'api elle-même : la requête complète par son `trace.id`, dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)"
+          "value": "1. Quelles routes sont touchées : les lignes ci-dessus (template d'URL et nombre d'erreurs), puis le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n{{!
+                  }}2. Si un partenaire est en cause (timeout, erreur d'API) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n{{!
+                  }}3. Le motif d'une requête en erreur et son `trace.id` : le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)"
         },
         {
           "title": "Dashboards",
-          "value": "[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n[[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)"
+          "value": "[[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n{{!
+                  }}[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
         },
         {
           "title": "Discover sessions",
-          "value": "[[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n[[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)"
+          "value": "[[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n{{!
+                  }}[[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)"
         },
         {
           "title": "Runbook",
@@ -1156,9 +1153,13 @@ PUT kbn:/api/alerting/rule/98e0103a-f809-48f2-8343-d1269213dce4
       "params": {
         "subAction": "run",
         "subActionParams": {
-          "workflowId": "tchap-monitoring-production",
+          "workflowId": "tchap-alerte-a2",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }
