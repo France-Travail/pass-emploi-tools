@@ -384,7 +384,10 @@ rejoués en `_simulate` le 2026-10-20, ils passent (ℹ️ `scalingo_variable_re
 - [ ] Jobs : parité complète des notifications (`resultat` détaillé,
       `nbErreurs`, échecs rapportés `succes: false`, exécutions attendues par
       CRON), puis retrait de `envoyerMessageMattermost` et de
-      `MATTERMOST_JOBS_WEBHOOK_URL`. Deux voies : des logs ECS dans l'api, ou,
+      `MATTERMOST_JOBS_WEBHOOK_URL`.
+      Interrupteur pour couper l'envoi direct sans redéployer :
+      `FEATURE_NOTIFIER_JOBS_MATTERMOST` (France-Travail/pass-emploi-api#483) ;
+      à créer à `true` sur staging, perf et prod avant sa fusion. Deux voies : des logs ECS dans l'api, ou,
       sans toucher l'api, un filtre Logstash `process` qui décode le corps des
       `external_api_call` de `SuiviJobService` : il contient déjà le message
       Mattermost complet (`http.request.body.content`, constaté le 2026-10-19).
