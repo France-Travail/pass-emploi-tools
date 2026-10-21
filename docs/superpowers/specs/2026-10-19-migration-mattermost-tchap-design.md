@@ -401,6 +401,14 @@ rejoués en `_simulate` le 2026-10-20, ils passent (ℹ️ `scalingo_variable_re
       `pass-emploi-logstash-perf` n'a aucun notifier. Les rattacher au notifier
       Elastic de l'app, ou les supprimer si les alertes 4 et 9 les couvrent.
 
+- [ ] **Avant le retrait des actions Mattermost** (étape 9) : le message Tchap
+      est traduit du body Mattermost de chaque règle. Une seule source, hors
+      Mattermost : `generer-workflows.py` lit le message dans les définitions de
+      `rules/generer-regles.py`, ce qui suppose d'y faire passer les 25 règles
+      écrites à la main (5 SLO, 19 de la stack, expiration du bot) ; retirer
+      Mattermost devient alors un réglage du générateur de règles. D'ici là,
+      `generer-workflows.py` échoue sur une règle branchée sur Tchap sans message.
+
 ## 12. Risques et points ouverts
 
 - **Bot Tchap non disponible à temps** (étape 6) : les étapes 1 à 5 restent

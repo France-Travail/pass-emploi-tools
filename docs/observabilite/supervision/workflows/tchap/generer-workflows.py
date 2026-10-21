@@ -198,11 +198,36 @@ def pages_dependabot(en_html):
 ORDRE_LIENS = ['Dashboards', 'Discover sessions']
 
 
+# Règles branchées sur Tchap sans action Mattermost : leur message, au même format
+# qu'un body Mattermost (titre, couleur, champs). Une règle branchée sur Tchap sans
+# l'un ni l'autre fait échouer la génération.
+MESSAGES_SANS_MATTERMOST = {
+    'Tchap - Expiration du compte bot': json.dumps({
+        'text': "🚨 **Compte du bot Tchap bientôt expiré** — sans renouvellement, plus aucune alerte n'arrivera dans Tchap.",
+        'attachments': [{'color': '#d00000', 'text': '', 'fields': [
+            {'title': 'À vérifier', 'value': "1. Le lien de renouvellement reçu par email sur la boîte du bot : le cliquer avant la date d'expiration\n"
+                                             "2. Une fois le compte renouvelé, la nouvelle date d'expiration dans l'index `tchap-expiration-bot`, comme l'indique le runbook"},
+            {'title': 'Runbook', 'value': '[Expiration du compte bot Tchap](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-tchap-expiration-bot.md)'}]}]},
+        ensure_ascii=False),
+}
+
+
+def corps_message(regle, groupe=None):
+    """Le body Mattermost de la règle (du groupe d'action demandé), à défaut son message
+    de MESSAGES_SANS_MATTERMOST."""
+    mm = [a for a in regle['actions'] if a['id'] != 'system-connector-.workflows' and (groupe is None or a.get('group') == groupe)]
+    if mm:
+        return mm[0]['params']['body']
+    if groupe is None and regle['name'] in MESSAGES_SANS_MATTERMOST:
+        return MESSAGES_SANS_MATTERMOST[regle['name']]
+    raise SystemExit(f"« {regle['name']} » est branchée sur Tchap sans message : ni action Mattermost, ni entrée dans MESSAGES_SANS_MATTERMOST")
+
+
 def message(regle, en_html, lignes_esql=None, groupe=None):
     """Titre en couleur, date, détail, explications ; puis toutes les sections de liens,
     et la règle en dernier. groupe : le message de ce groupe d'action (« recovered »)."""
-    mm = [a for a in regle['actions'] if a['id'] != 'system-connector-.workflows' and (groupe is None or a.get('group') == groupe)][0]
-    corps = json.loads(re.sub(r'\{\{!.*?\}\}', '', mm['params']['body'], flags=re.S))
+    brut = corps_message(regle, groupe)
+    corps = json.loads(re.sub(r'\{\{!.*?\}\}', '', brut, flags=re.S))
     piece = corps['attachments'][0]
     titre = remplir(markdown(liquide(corps['text'], en_html), en_html), en_html)
     champs = [f for f in piece.get('fields', []) if f['title'] not in ('Règle', 'Déclenchée à', 'Rétablie à')]
@@ -219,7 +244,7 @@ def message(regle, en_html, lignes_esql=None, groupe=None):
                  ('\\nRègle :\\n{{ event.rule.name' + EGAL + ' }} - {{ event.ruleUrl }}')
     milieu = ''.join(section(f['title'], f['value'], en_html, gras=True) for f in explications)
     fin = ''.join(section(n, '\n'.join(liens[n]), en_html) for n in noms) + pages_dependabot(en_html) + regle_lien
-    prefixe = fenetre(regle) + (BURN_RATE if 'context.longWindow' in mm['params']['body'] or 'context.shortWindow' in mm['params']['body'] else '')
+    prefixe = fenetre(regle) + (BURN_RATE if 'context.longWindow' in brut or 'context.shortWindow' in brut else '')
     if en_html:
         couleur = piece.get('color', '#808080')
         tete = '<p><font data-mx-color=\\"' + couleur + '\\" color=\\"' + couleur + '\\">' + titre.replace('"', '\\"') + '</font></p>'
@@ -283,8 +308,9 @@ def main():
         for rid, regle in requetes(open(os.path.join(REGLES, nom)).read()):
             w = [a for a in regle.get('actions', []) if a['id'] == 'system-connector-.workflows']
             mattermost = [a for a in regle.get('actions', []) if a['id'] != 'system-connector-.workflows']
-            if not w or not mattermost:
+            if not w:
                 continue
+            corps_message(regle)
             cible = w[0]['params']['subActionParams']['workflowId']
             if cible.startswith('tchap-alerte-'):
                 esql.append((cible.removeprefix('tchap-alerte-'), rid, regle, mattermost[0]['id']))

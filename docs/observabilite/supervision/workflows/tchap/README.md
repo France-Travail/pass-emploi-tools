@@ -267,6 +267,13 @@ Intégrations (l'équipe beta.gouv n'a pas la réponse, 2026-10-14) :
    exécution par jour) n'a pas de rétablissement mais garde `ongoing: true` :
    un rappel par jour et par certificat, comme dans Mattermost.
 
+**D'où vient le message Tchap** : du body de l'action Mattermost de la règle,
+traduit par `generer-workflows.py`. Une règle branchée sur Tchap sans action
+Mattermost (« Tchap - Expiration du compte bot ») a son message dans
+`MESSAGES_SANS_MATTERMOST`, au même format. Une règle branchée sur Tchap sans
+l'un ni l'autre **fait échouer la génération**, en la nommant : elle n'aurait
+reçu qu'un message générique (nom de la règle et raison brute de Kibana).
+
 ## Ajouter un salon
 
 1. Créer le salon dans Tchap, y inviter le bot, le faire rejoindre (`curl …/join`

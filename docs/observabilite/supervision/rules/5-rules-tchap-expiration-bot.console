@@ -67,7 +67,8 @@ POST kbn:/api/alerting/rule/bcd45d7d-6fe6-4303-a73e-7cff877dde96
     "critical",
     "prod",
     "o11y",
-    "tchap"
+    "tchap",
+    "tchap-lignes"
   ],
   "schedule": {
     "interval": "1d"
