@@ -32,7 +32,7 @@ Principes et import des templates ES : [stockage/README.md](stockage/README.md).
 
 | Fichier | Usage |
 |---|---|
-| [routine-surveillance.md](routine-surveillance.md) | Ce qu'on regarde régulièrement : reporting métier, santé tech, dashboards |
+| [routine-surveillance.md](routine-surveillance.md) | Ce qu'on regarde sans attendre une alerte : chaque jour (5 min), chaque semaine (15 min), reporting métier |
 | [supervision/sli-slo.md](supervision/sli-slo.md) | Les promesses de service (I1-I5, seuil commun) et leurs requêtes |
 | [supervision/alertes-applicatives.md](supervision/alertes-applicatives.md) | Alertes sur les pannes visibles des utilisateurs (partenaires, 5xx, auth, événements Scalingo des apps) |
 | [supervision/alertes-stack-observabilite.md](supervision/alertes-stack-observabilite.md) | Alertes sur notre infra de télémétrie (Logstash, Redis, agents Fleet, événements Scalingo de la stack) |

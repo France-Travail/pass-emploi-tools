@@ -1,74 +1,60 @@
-# Routine de surveillance — dashboards et requêtes
+# Routine de surveillance
 
-Ce qu'on regarde **régulièrement**, sans attendre une alerte : l'activité métier
-et la santé technique. Pour une question ponctuelle sur un incident, voir
-[runbooks/investigation-incident](runbooks/investigation-incident.md) ; pour ce
-qui réveille quelqu'un, [alertes applicatives](supervision/alertes-applicatives.md),
-[alertes de la stack d'observabilité](supervision/alertes-stack-observabilite.md) et
-[alertes de sécurité](supervision/alertes-securite.md) ; pour les
-promesses tenues ou non, [supervision/sli-slo](supervision/sli-slo.md).
+Ce qu'on regarde **sans attendre une alerte**, en best effort : quelques minutes
+par jour, un quart d'heure par semaine. Les alertes arrivent d'elles-mêmes dans
+les canaux de monitoring (cf. [alertes applicatives](supervision/alertes-applicatives.md),
+[de la stack](supervision/alertes-stack-observabilite.md),
+[de sécurité](supervision/alertes-securite.md)) ; cette routine couvre ce
+qu'aucune alerte ne signale. Pour enquêter sur un incident :
+[runbook d'investigation](runbooks/investigation-incident.md).
 
-## Pré-requis
+## Chaque jour (5 min)
 
-Les logs sortent dans **deux familles de data streams** :
+1. **Kibana → Alerts** : les alertes en cours. Surtout **« Tchap - Envoi en
+   échec »** : elle n'envoie aucune notification (Tchap ne peut pas signaler sa
+   propre panne), on ne la voit qu'ici. Une alerte = des messages Tchap perdus ;
+   l'erreur est dans *Workflows → Executions* (cf. [Workflows Tchap](supervision/workflows/tchap/README.md#pièges)).
+2. **[[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)** :
+   le budget d'erreur restant de chaque promesse (cf. [ci-dessous](#promesses-utilisateurs-slo)).
+3. **Le rapport des jobs de 9 h 30**, dans le canal `jobs-production` : un job
+   en échec, ou qui n'a pas tourné.
 
-- `logs-<env>-default` — logs applicatifs (code + pino-http)
-- `logs-router-<env>-default` — logs router Scalingo (`event.action: request_routed`)
+## Chaque semaine (15 min)
 
-Pour corréler edge + app par `http.request.id`, la **data view doit matcher les
-deux** : `logs-*-default-*` les couvre. Conventions des champs :
-[format/logs/conventions](format/logs/conventions.md) ; exemples propres à
-l'api : [format/logs/couverture-api](format/logs/couverture-api.md).
+Sur les **7 derniers jours** :
 
-## Reporting métier
-
-« Combien d'actions métier cette semaine, par structure ? » — champs pivots :
-`log.logger`, `event.outcome`, `user.structure`.
-
-| Métrique                | KQL                                                         |
-|-------------------------|-------------------------------------------------------------|
-| Actions métier réussies | `event.action: handler_executed AND event.outcome: success` |
-| Échecs par handler      | `… AND event.outcome: failure` (group by `log.logger`)      |
-| Activité par structure  | filtre/agrégation sur `user.structure`                      |
-
-**Dashboard « Activité métier »** — filtres `user.structure`, `user.type` ;
-compteurs des handlers clés, évolution temporelle, heatmap structure × handler.
+1. **[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)** :
+   la tendance de la mémoire des conteneurs, du heap, du backlog Redis et des
+   logs non indexés. Une courbe qui monte lentement n'atteint aucun seuil
+   d'alerte avant le jour où elle les dépasse tous. Signification des
+   métriques : [collecte/metriques/stack-observabilite](collecte/metriques/stack-observabilite.md).
+2. **[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)** :
+   les erreurs qui augmentent sans franchir de seuil (un parcours, une app, un
+   partenaire).
 
 ## Promesses utilisateurs (SLO)
 
-« La promesse de [sli-slo](supervision/sli-slo.md) est-elle tenue ? » — à ouvrir
-en premier, et sur toute alerte SLO.
+| Dashboard | Ce qu'on y lit |
+|---|---|
+| **[Pass Emploi] SLO de Prod**, versionné dans [`supervision/dashboards/dashboard-slo.ndjson`](supervision/dashboards/dashboard-slo.ndjson) | statut et budget restant de chaque SLO, par parcours api et par mode de login ; alertes burn rate en cours ; budget et burn rate du login jeune France Travail |
 
-| Dashboard             | Où                                                                                                                                                                                                                                         | Ce qu'on y lit                                                                                                       |
-|-----------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------|
-| **[Pass Emploi] SLO de Prod** | [dashboard](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14), versionné dans [`supervision/dashboards/dashboard-slo.ndjson`](supervision/dashboards/dashboard-slo.ndjson) (import : [objets Kibana](supervision/objets-kibana.md#importer)) | statut et budget restant de chaque SLO, par parcours api et par mode de login ; alertes burn rate en cours ; budget et burn rate du login jeune France Travail |
+Les promesses elles-mêmes : [supervision/sli-slo](supervision/sli-slo.md).
 
-## Santé technique applicative
+## Reporting métier
 
-« Un partenaire est-il en panne ? » — champs pivots : `log.logger`,
-`event.outcome: failure`, `event.duration`.
+« Combien d'actions métier cette semaine, par structure ? », dans Discover :
 
-| Signal                  | KQL                                                                                     | Seuil                    |
-|-------------------------|-----------------------------------------------------------------------------------------|--------------------------|
-| Pic d'échecs partenaire | `event.action: external_api_call AND log.logger: "<Client>" AND event.outcome: failure` | > 5–10/min sur 5min      |
-| Pic d'auth refusées     | `event.action: auth_failed`                                                             | > baseline × 3 sur 10min |
-| Erreurs serveur 5xx     | `event.action: request_failed AND http.response.status_code >= 500`                     | > 1/min sur 5min         |
+| Métrique | KQL |
+|---|---|
+| Actions métier réussies | `event.action: handler_executed AND event.outcome: success` |
+| Échecs par handler | `… AND event.outcome: failure`, réparti par `log.logger` |
+| Activité par structure | filtre ou répartition par `user.structure` |
 
-Ces trois signaux sont aussi alertés, cf.
-[alertes applicatives](supervision/alertes-applicatives.md). Chacun a sa session Discover prête à l'emploi,
-cf. [objets Kibana](supervision/objets-kibana.md#sessions-discover).
+## Pré-requis
 
-**Dashboard « Santé tech »** — taux d'échec par partenaire, latence p50/p95/p99,
-top `error.type`, ratio `auth_failed`, count `request_failed` par status.
-
-## Santé de la stack d'observabilité
-
-| Dashboard                 | Où                                                                                                                                        | Ce qu'on y lit                                                        |
-|---------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------|
-| **[Pass Emploi] Supervision Stack d'Observabilité** | [dashboard](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d), versionné dans [`supervision/dashboards/dashboard-supervision-stack-observabilite.ndjson`](supervision/dashboards/dashboard-supervision-stack-observabilite.ndjson) (import : [objets Kibana](supervision/objets-kibana.md#importer)) | par environnement : mémoire conteneurs (% limite Scalingo), heap JVM, backpressure, backlog Redis, débit des pipelines, logs non indexés : erreurs de transformation détectées par Logstash et échecs non détectés (DLQ), tendance et totaux |
-| Dashboards Fleet Logstash | [assets de l'intégration Logstash](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/integrations/detail/logstash-2.11.3/assets) | débit des pipelines, queue, heap, GC                                  |
-| **[Metrics Redis] Keys**  | intégration Redis → graphe **Lists length** → clé `db0 › logstash:ingest`                                                                 | backlog entre INGEST et PROCESS                                       |
-| Kibana → Fleet → Agents   | filtrer par tag                                                                                                                           | agents `Healthy` / offline / UNENROLLED (cf. [pilotage](pilotage.md)) |
-| Kibana → Alerts, règle **Tchap - Envoi en échec** | versionnée dans [`supervision/rules/4-rules-tchap.console`](supervision/rules/4-rules-tchap.console) | une alerte = des notifications Tchap perdues ; l'erreur Matrix est dans l'exécution du Workflow (*Workflows → Executions*), cf. [Workflows Tchap](supervision/workflows/tchap/README.md#pièges) |
-
-Signification des métriques : [collecte/metriques/stack-observabilite](collecte/metriques/stack-observabilite.md).
+Les logs de prod sont dans deux data streams : `logs-prod-default` (logs
+applicatifs : code et pino-http) et `logs-router-prod-default` (routeur
+Scalingo, `event.action: request_routed`). Pour corréler les deux par
+`http.request.id`, la data view doit couvrir les deux : `logs-*-default-*`.
+Conventions des champs : [format/logs/conventions](format/logs/conventions.md) ;
+propres à l'api : [format/logs/couverture-api](format/logs/couverture-api.md).
