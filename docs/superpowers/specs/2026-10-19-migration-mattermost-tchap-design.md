@@ -1,7 +1,7 @@
 # Réorganisation des alertes par périmètre et migration Mattermost → Tchap — design
 
 > **Statut : validé le 2026-10-19 ; Plan 1 (réorganisation) implémenté le
-> 2026-10-19** ([plan](../plans/2026-10-19-plan-1-reorganisation-par-perimetre.md), écarts en §13). Fait suite à
+> 2026-10-19** (écarts en §13). Fait suite à
 > [`2026-10-13-alertes-tchap-workflows-design.md`](2026-10-13-alertes-tchap-workflows-design.md)
 > (Workflows Tchap, livrés) et le complète : tout ce qui poste dans Mattermost
 > doit arriver dans Tchap avant le **décommissionnement de Mattermost, le
@@ -174,21 +174,8 @@ erreurs 5xx ou par partenaire ne permettent pas de remonter, en un coup d'œil,
 incidents** pour ça : `eb348ed9-3bc2-4204-a5c2-c31465731c74`, **non versionné
 à ce jour**.
 
-**Principes**, appliqués à chaque règle :
-1. **Une étape répond à une question de diagnostic**, dans l'ordre où on la
-   pose : qu'est-ce qui s'est passé (le fait) → pourquoi (l'erreur d'origine)
-   → qu'est-ce que ça touche (l'impact). Trois étapes au plus.
-2. **Une étape ne parle que du périmètre de la règle.** Pas de branche « pour
-   une app d'une autre famille », pas de vérification « au cas où ».
-3. **Le dashboard d'investigation d'abord** pour remonter à l'erreur d'origine
-   d'un incident applicatif (5xx, partenaires, authentification) ; une session
-   Discover seulement pour la liste exhaustive des documents, en dernier.
-4. **Chaque lien cité est versionné** (dashboards et sessions dans
-   `supervision/`), titré par son origine (`[Pass Emploi]`, `[Scalingo]`…), et
-   repris à l'identique dans « Dashboards », « Discover sessions »,
-   l'Investigation guide et Related dashboards.
-5. **Les sessions Discover existantes restent citées**, après le dashboard :
-   elles donnent la liste exhaustive des documents (décision du 2026-10-19).
+**Principes**, appliqués à chaque règle : reportés dans la doc de référence,
+[alertes applicatives § Principes des étapes à vérifier](../../observabilite/supervision/alertes-applicatives.md#principes-des-étapes-à-vérifier).
 
 **Revue** : toutes les règles (S1 à S3, A1 à A5, V1, 1 à 14, Tchap) passent
 par ces principes. Pour chacune : la question de chaque étape, les objets

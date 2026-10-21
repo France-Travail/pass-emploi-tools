@@ -63,6 +63,30 @@ l'action Tchap est déployée avec le compte du bot.
 > les alertes de diagnostic vers les dashboards **[Pass Emploi] Diagnostic
 > d'erreurs**, puis leur session Discover et le [runbook d'investigation](../runbooks/investigation-incident.md).
 
+## Principes des étapes à vérifier
+
+Les étapes « À vérifier » d'une alerte, dans son message comme dans son
+Investigation guide, suivent ces règles. Elles valent pour toutes les règles
+d'alerte, y compris celles de la [stack](alertes-stack-observabilite.md) et de
+[sécurité](alertes-securite.md).
+
+1. **Une étape répond à une question de diagnostic**, dans l'ordre où on se la
+   pose : qu'est-ce qui s'est passé (le fait), pourquoi (l'erreur d'origine),
+   qu'est-ce que ça touche (l'impact). **Trois étapes au plus.**
+2. **Une étape ne parle que du périmètre de la règle** : pas de branche « pour
+   une app d'une autre famille », pas de vérification « au cas où ».
+3. **Le dashboard de diagnostic d'abord** pour remonter à l'erreur d'origine
+   d'un incident applicatif (5xx, partenaires, authentification) :
+   [Pass Emploi] Diagnostic d'erreurs - Entrée, - Apps ou - Robots / scan.
+4. **La session Discover en dernier** : elle donne la liste exhaustive des
+   documents, une fois la cause cernée.
+5. **Chaque lien cité est versionné** (dashboards et sessions dans
+   `supervision/`), titré par son origine (`[Pass Emploi]`, `[Scalingo]`…), et
+   repris à l'identique dans « Dashboards », « Discover sessions »,
+   l'Investigation guide et les Related dashboards de la règle.
+6. **Pas d'acronyme d'alerte** (« A1 », « 6a »…) dans le texte : on nomme ce
+   qu'il faut regarder.
+
 ## Alertes SLO — la promesse est menacée
 
 Une règle **SLO burn rate** par SLO de

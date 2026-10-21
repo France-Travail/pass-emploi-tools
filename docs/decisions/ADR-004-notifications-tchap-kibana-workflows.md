@@ -149,7 +149,6 @@ puis invite le bot `tchap-bot@beta.gouv.fr` dans le salon.
 
 ## Liens
 
-* Spécification : [`docs/superpowers/specs/2026-10-13-alertes-tchap-workflows-design.md`](../superpowers/specs/2026-10-13-alertes-tchap-workflows-design.md)
 * [Collecte des événements externes](../observabilite/collecte/evenements-externes/README.md)
 * [slack2tchap](https://github.com/betagouv/slack2tchap)
 * [Configuration n8n des webhooks Tchap de beta.gouv](https://github.com/betagouv/n8n-configs/blob/main/tchap-webhooks.yaml) (dépôt non public)
