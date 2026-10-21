@@ -12,11 +12,21 @@ on:
         required: false
         type: string
         default: ''
+      envoi-mattermost:
+        description: "Envoi Mattermost (variable CVE_ENVOI_MATTERMOST du repo, false pour le couper)"
+        required: false
+        type: boolean
+        default: true
+      envoi-elasticsearch:
+        description: "Envoi Elasticsearch (variable CVE_ENVOI_ELASTICSEARCH du repo, false pour le couper)"
+        required: false
+        type: boolean
+        default: true
     secrets:
       DEPENDABOT_ALERTS_READER:
         required: true
       MATTERMOST_WEBHOOK_URL:
-        required: true
+        required: false
       ELASTIC_ALERTES_GITHUB_API_KEY:
         required: false
 
@@ -28,7 +38,8 @@ jobs:
       contents: read
       security-events: read
     env:
-      ELASTIC_ACTIF: ${{ secrets.ELASTIC_ALERTES_GITHUB_API_KEY != '' && inputs.elastic-url != '' }}
+      MATTERMOST_ACTIF: ${{ inputs.envoi-mattermost && secrets.MATTERMOST_WEBHOOK_URL != '' }}
+      ELASTIC_ACTIF: ${{ inputs.envoi-elasticsearch && secrets.ELASTIC_ALERTES_GITHUB_API_KEY != '' && inputs.elastic-url != '' }}
 
     steps:
       - name: Fetch Dependabot alerts (high/critical)
@@ -61,7 +72,7 @@ jobs:
           GH_TOKEN: ${{ secrets.DEPENDABOT_ALERTS_READER }}
 
       - name: Send Mattermost alert
-        if: steps.fetch-alerts.outputs.has_alerts == 'true'
+        if: steps.fetch-alerts.outputs.has_alerts == 'true' && env.MATTERMOST_ACTIF == 'true'
         run: |
           echo "📤 Envoi alerte Mattermost..."
 

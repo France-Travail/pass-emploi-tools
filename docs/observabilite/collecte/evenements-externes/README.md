@@ -193,6 +193,19 @@ du repo). `@timestamp` est l'heure d'envoi par le workflow.
    épingler le nouveau commit et les transmettre. Un rejet par Elasticsearch
    fait échouer l'étape, après l'envoi Mattermost.
 
+   **Chaque canal se coupe sans PR**, par une variable du repo appelant
+   (*Settings* → *Secrets and variables* → *Actions* → *Variables*), transmise
+   en entrée `envoi-mattermost` / `envoi-elasticsearch` :
+
+   | Variable du repo | Absente (défaut) | `false` |
+   |---|---|---|
+   | `CVE_ENVOI_MATTERMOST` | message Mattermost, si le secret `MATTERMOST_WEBHOOK_URL` existe | pas de message Mattermost |
+   | `CVE_ENVOI_ELASTICSEARCH` | CVE envoyées, si `ELASTIC_URL` et `ELASTIC_ALERTES_GITHUB_API_KEY` existent | pas d'envoi |
+
+   Pendant la migration, V1 poste déjà les CVE dans `#monitoring-production` :
+   `CVE_ENVOI_MATTERMOST=false` supprime le doublon de l'envoi direct. Avec les
+   deux à `false`, le workflow ne fait que lister les CVE dans son journal.
+
 Pendant la migration vers Tchap, les notifiers `Mattermost*` sont
 **désactivés, jamais supprimés**, une fois la parité constatée :
 [`verifier-parite.py`](verifier-parite.py) compare, app par app, l'historique
