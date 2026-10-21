@@ -5,10 +5,67 @@ salon en choisissant le Workflow de ce salon dans son action `.workflows`,
 comme elle choisissait un connecteur Mattermost par canal. Décision :
 [ADR-004](../../../../decisions/ADR-004-notifications-tchap-kibana-workflows.md).
 
+```mermaid
+flowchart LR
+  subgraph regles["Règles Kibana"]
+    direction TB
+    RMP["S1 à S3 (SLO), A4a, A10 à A13, V1"]
+    RMS["A4b"]
+    ROP["Stack prod : Logstash, Redis, Elastic Agent,<br/>ILM, 6a, 14, expiration du compte bot"]
+    ROS["Stack hors prod : Logstash, Redis,<br/>Elastic Agent, 6b"]
+    RJ["A5a / A5b (jobs en échec)"]
+    RE["A1, A2, A3, A6, A7 (règles ES|QL)"]
+  end
+
+  subgraph salons["Workflows de salon (générés)"]
+    direction TB
+    WMP["tchap-monitoring-production"]
+    WMS["tchap-monitoring-staging"]
+    WOP["tchap-o11y-production"]
+    WOS["tchap-o11y-staging"]
+    WJP["tchap-jobs-production"]
+    WJS["tchap-jobs-staging"]
+  end
+
+  subgraph parregle["Workflows par règle ES|QL (générés)"]
+    WE["tchap-alerte-a1 … a7<br/>relancent la requête de la règle"]
+  end
+
+  subgraph planifies["Workflows planifiés (générés)"]
+    WR["rapport-jobs-prod / -staging<br/>chaque jour à 9 h 30"]
+  end
+
+  RMP -- "action .workflows" --> WMP
+  RMS --> WMS
+  ROP --> WOP
+  ROS --> WOS
+  RJ --> WJP & WJS
+  RE -- "action .workflows" --> WE
+
+  ES[("Elasticsearch")]
+  WE -- "requête ES|QL" --> ES
+  WR -- "requête ES|QL" --> ES
+
+  CLIENT["tchap-client<br/>seul Workflow qui parle à Matrix"]
+  WMP & WMS & WOP & WOS & WJP & WJS -- "workflow.execute" --> CLIENT
+  WE -- "workflow.execute" --> CLIENT
+  WR -- "workflow.execute" --> CLIENT
+
+  CONN["Connecteur .http « Tchap »<br/>URL + jeton du bot"]
+  CLIENT -- "étape http" --> CONN
+  CONN -- "PUT …/send/m.room.message" --> TCHAP(["Tchap : 6 salons"])
+
+  AUTO["AutoOps (alertes 11 et 12)"] -. "Webhook POST direct,<br/>sans passer par Kibana" .-> TCHAP
+
+  ECHEC["Règle « Tchap - Envoi en échec »<br/>sans action, lue par la routine"]
+  CLIENT -. "exécutions failed<br/>(.workflows-executions)" .-> ECHEC
 ```
-Rule ──action .workflows──► tchap-<salon> ──workflow.execute──► tchap-client ──connecteur .http──► Tchap
-                            (met en forme)                     (PUT …/send/m.room.message/{execution.id})
-```
+
+Une règle choisit son salon par le Workflow qu'elle appelle ; les règles ES|QL
+passent par leur propre Workflow (cf. [brancher une règle](#brancher-une-règle)).
+Tous les chemins aboutissent à `tchap-client`, seul à détenir l'accès à Matrix
+(le connecteur et son jeton). AutoOps poste directement : il doit alerter même
+cluster en panne.
 
 | Fichier | Contenu |
 |---|---|
