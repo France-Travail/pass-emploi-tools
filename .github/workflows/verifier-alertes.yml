@@ -58,7 +58,7 @@ jobs:
         working-directory: pass-emploi-tools/docs/observabilite/supervision/rules
         run: |
           if ! python3 -I generer-regles.py --verifier; then
-            echo "::error::Les fichiers de docs/observabilite/supervision/rules/generated/ ne correspondent plus à leurs sources. Ils sont générés : ne pas les modifier directement. Modifier la définition de la règle (rules/generer-regles.py ou rules/definitions-format-kibana.py) ou le texte autour (rules/modeles/), puis lancer FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I docs/observabilite/supervision/rules/generer-regles.py et commiter le résultat."
+            echo "::error::Les fichiers de docs/observabilite/supervision/rules/generated/ ne correspondent plus à leurs sources. Ils sont générés : ne pas les modifier directement. Modifier la définition de la règle (rules/generer-regles.py ou rules/<n>-rules-<périmètre>-definitions-kibana.py) ou le texte autour (rules/modeles/), puis lancer FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I docs/observabilite/supervision/rules/generer-regles.py et commiter le résultat."
             exit 1
           fi
 

@@ -2,7 +2,7 @@
 """Génère les fichiers de règles Kibana de generated/, à coller dans Dev Tools.
 
 Sources : les définitions des règles (REGLES ci-dessous, champ par champ, et
-definitions-format-kibana.py, au format de Kibana), et le texte autour d'elles dans
+<n>-rules-<périmètre>-definitions-kibana.py, au format de Kibana), et le texte autour d'elles dans
 modeles/<fichier> (repères @@REGLE <code>@@).
 
 Usage : FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I generer-regles.py [--verifier]
@@ -262,13 +262,21 @@ REGLES.update({
 
 
 def _charger_format_kibana():
-    spec = importlib.util.spec_from_file_location('definitions_format_kibana', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'definitions-format-kibana.py'))
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module.REGLES_FORMAT_KIBANA
+    """Règles de tous les fichiers <n>-rules-<périmètre>-definitions-kibana.py, un par fichier généré."""
+    regles = {}
+    dossier = os.path.dirname(os.path.abspath(__file__))
+    for nom in sorted(f for f in os.listdir(dossier) if f.endswith('-definitions-kibana.py')):
+        spec = importlib.util.spec_from_file_location(nom[:-3].replace('-', '_'), os.path.join(dossier, nom))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        doublons = set(regles) & set(module.REGLES_FORMAT_KIBANA)
+        if doublons:
+            raise SystemExit(f"{nom} : codes déjà définis ailleurs : {', '.join(sorted(doublons))}")
+        regles.update(module.REGLES_FORMAT_KIBANA)
+    return regles
 
 
-# Règles définies au format de Kibana (definitions-format-kibana.py).
+# Règles définies au format de Kibana (<n>-rules-<périmètre>-definitions-kibana.py).
 REGLES.update({code: dict(d, format_kibana=True) for code, d in _charger_format_kibana().items()})
 
 def coherence(r):
@@ -447,16 +455,23 @@ MODELES = os.path.join(ICI, 'modeles')
 GENERES = os.path.join(ICI, 'generated')
 
 
+def definitions_kibana(nom_fichier):
+    nom = nom_fichier.removesuffix('.console') + '-definitions-kibana.py'
+    if not os.path.exists(os.path.join(ICI, nom)):
+        return ''
+    return f" ou ../{nom}\n#     (règle définie au format de Kibana)"
+
+
 def entete(nom_fichier):
     return f"""# ⚠️ FICHIER GÉNÉRÉ par ../generer-regles.py : NE PAS LE MODIFIER, il serait écrasé.
 # À modifier à la place :
 #   - une règle : sa définition, dans ../generer-regles.py (règle définie champ par
-#     champ) ou ../definitions-format-kibana.py (règle définie au format de Kibana) ;
+#     champ){definitions_kibana(nom_fichier)} ;
 #   - le texte autour des règles (commentaires, autres requêtes) : ../modeles/{nom_fichier}.
 # Puis : FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I ../generer-regles.py
 #        python3 -I ../../workflows/tchap/generer-workflows.py
 # La CI de chaque PR vérifie que ce fichier correspond à ses sources.
-# Ce fichier se colle tel quel dans Kibana → Dev Tools.
+# Ce fichier se colle tel quel dans Kibana → Dev Tools. Mode d'emploi : ../README.md.
 #
 """
 
@@ -497,7 +512,7 @@ def main(args):
             continue
         os.makedirs(GENERES, exist_ok=True)
         open(chemin, 'w').write(contenu)
-        print(f'generated/{nom_fichier} : {contenu.count("kbn:/api/alerting/rule/")} règle(s)')
+        print(f'generated/{nom_fichier} : {len(re.findall(r"^(?:PUT|POST) kbn:/api/alerting/rule/", contenu, flags=re.M))} règle(s)')
     if verifier:
         print('identiques' if not ecarts else f'{ecarts} fichier(s) différent(s) : lancer FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I generer-regles.py')
     sys.exit(1 if ecarts else 0)

@@ -1,12 +1,13 @@
 # ⚠️ FICHIER GÉNÉRÉ par ../generer-regles.py : NE PAS LE MODIFIER, il serait écrasé.
 # À modifier à la place :
 #   - une règle : sa définition, dans ../generer-regles.py (règle définie champ par
-#     champ) ou ../definitions-format-kibana.py (règle définie au format de Kibana) ;
+#     champ) ou ../5-rules-tchap-expiration-bot-definitions-kibana.py
+#     (règle définie au format de Kibana) ;
 #   - le texte autour des règles (commentaires, autres requêtes) : ../modeles/5-rules-tchap-expiration-bot.console.
 # Puis : FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I ../generer-regles.py
 #        python3 -I ../../workflows/tchap/generer-workflows.py
 # La CI de chaque PR vérifie que ce fichier correspond à ses sources.
-# Ce fichier se colle tel quel dans Kibana → Dev Tools.
+# Ce fichier se colle tel quel dans Kibana → Dev Tools. Mode d'emploi : ../README.md.
 #
 # Expiration du compte bot Tchap. Spécification et procédure :
 # ../../../runbooks/runbook-tchap-expiration-bot.md.

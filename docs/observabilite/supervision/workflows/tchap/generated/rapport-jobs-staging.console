@@ -1,8 +1,8 @@
 # ⚠️ FICHIER GÉNÉRÉ par ../generer-workflows.py : NE PAS LE MODIFIER, il serait écrasé.
 # Il se construit depuis les règles (../../../rules/generated/), leurs définitions
-# (../../../rules/generer-regles.py, definitions-format-kibana.py) et, pour les rapports
+# (../../../rules/generer-regles.py, *-definitions-kibana.py) et, pour les rapports
 # des jobs, la liste des CRON de pass-emploi-api. Pour changer un message : la définition
-# de la règle. Puis : python3 -I ../generer-workflows.py
+# de la règle (../../../rules/README.md). Puis : python3 -I ../generer-workflows.py
 # La CI de chaque PR vérifie que ce fichier correspond à ses sources.
 #
 # Rapport quotidien des jobs de pass-emploi-api (staging), chaque jour à 9 h 30

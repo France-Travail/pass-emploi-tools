@@ -273,7 +273,7 @@ Tchap. Deux formes de définition :
 - règle définie champ par champ (A1 à A13, A4a/b, A5a/b, 6a/b, 14, V1) : titre,
   étapes, liens, dans `generer-regles.py` ;
 - règle définie au format de Kibana (S2, S3…, 1a à 10, expiration du bot) :
-  son corps JSON et ses messages dans `../../rules/definitions-format-kibana.py`.
+  son corps JSON et ses messages dans `../../rules/<n>-rules-<périmètre>-definitions-kibana.py`.
 
 Une règle branchée sur Tchap absente des définitions **fait échouer la
 génération**, en la nommant : elle n'aurait reçu qu'un message générique (nom

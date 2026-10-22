@@ -1,12 +1,12 @@
 # ⚠️ FICHIER GÉNÉRÉ par ../generer-regles.py : NE PAS LE MODIFIER, il serait écrasé.
 # À modifier à la place :
 #   - une règle : sa définition, dans ../generer-regles.py (règle définie champ par
-#     champ) ou ../definitions-format-kibana.py (règle définie au format de Kibana) ;
+#     champ) ;
 #   - le texte autour des règles (commentaires, autres requêtes) : ../modeles/3-rules-securite.console.
 # Puis : FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I ../generer-regles.py
 #        python3 -I ../../workflows/tchap/generer-workflows.py
 # La CI de chaque PR vérifie que ce fichier correspond à ses sources.
-# Ce fichier se colle tel quel dans Kibana → Dev Tools.
+# Ce fichier se colle tel quel dans Kibana → Dev Tools. Mode d'emploi : ../README.md.
 #
 # Règles Kibana des alertes de sécurité. Spécification : ../../alertes-securite.md.
 #

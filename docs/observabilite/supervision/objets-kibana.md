@@ -106,12 +106,13 @@ Modifier dans Kibana, puis réexporter par-dessus le fichier versionné :
 
 - **dashboard ou session Discover** : page *Saved objects*, sélectionner l'objet,
   **Export** avec *Include related objects* ;
-- **règle d'alerte** : les fichiers de `rules/generated/` et de
+- **règle d'alerte** (mode d'emploi détaillé : [`rules/README.md`](rules/README.md)) :
+  les fichiers de `rules/generated/` et de
   `workflows/tchap/generated/` sont **générés** (ils le disent en tête) : ne pas
   les modifier, ils seraient écrasés et le check de la PR échouerait. Modifier
   la source :
   - la règle : sa définition dans `rules/generer-regles.py` (règle définie champ
-    par champ) ou dans `rules/definitions-format-kibana.py` (règle définie au
+    par champ) ou dans `rules/<n>-rules-<périmètre>-definitions-kibana.py` (règle définie au
     format de Kibana : SLO, stack 1a à 10, expiration du bot) ;
   - le texte autour des règles (commentaires, autres requêtes) :
     `rules/modeles/<fichier>`, où `@@REGLE <code>@@` marque la place de chaque règle ;

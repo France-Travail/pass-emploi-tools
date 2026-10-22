@@ -419,7 +419,7 @@ de déploiement (2026-10-23 08:48 UTC).
       `generer-workflows.py` échoue sur une règle branchée sur Tchap sans message.
       Fait le 2026-10-22 : les 42 règles branchées sur Tchap ont une
       définition (17 champ par champ, 25 au format de Kibana dans
-      `rules/definitions-format-kibana.py`, contenu vérifié identique), et le
+      `rules/<n>-rules-<périmètre>-definitions-kibana.py`, contenu vérifié identique), et le
       message Tchap n'est plus lu que là. Retrait de Mattermost :
       `FEATURE_NOTIFIER_ALERTES_MATTERMOST` (convention des apps, active
       seulement à `true` ; fixée à `true` dans le CI) ; le jour venu, régénérer
