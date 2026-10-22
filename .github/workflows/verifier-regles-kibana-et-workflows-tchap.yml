@@ -1,6 +1,7 @@
-# Garde-fou des alertes : les fichiers générés (blocs de règles, Workflows Tchap,
-# rapports des jobs) doivent correspondre à leurs sources, et passer les contrôles
-# des générateurs.
+# Vérifie les règles d'alerte Kibana et les Workflows Kibana qui envoient ces alertes
+# dans Tchap (docs/observabilite/supervision/rules/ et workflows/tchap/) : leurs fichiers
+# générés (à coller dans Kibana → Dev Tools) doivent correspondre à leurs sources, et
+# passer les contrôles et les tests des générateurs.
 #
 # Les générateurs se lancent à la main (cf. docs/observabilite/supervision/workflows/tchap/README.md) :
 # ce workflow échoue si l'un d'eux a été oublié, ou si une règle viole une de leurs
@@ -12,18 +13,18 @@
 #
 # Aucun accès à Kibana ni à la prod : le déploiement reste manuel.
 
-name: Alertes - Fichiers générés (règles Kibana, Workflows Tchap)
+name: Supervision - Règles d'alerte Kibana et Workflows Tchap à jour avec leurs sources
 
 on:
   pull_request:
     paths:
       - 'docs/observabilite/supervision/**'
-      - '.github/workflows/verifier-alertes.yml'
+      - '.github/workflows/verifier-regles-kibana-et-workflows-tchap.yml'
   push:
     branches: [master]
     paths:
       - 'docs/observabilite/supervision/**'
-      - '.github/workflows/verifier-alertes.yml'
+      - '.github/workflows/verifier-regles-kibana-et-workflows-tchap.yml'
   workflow_dispatch:
 
 permissions:
