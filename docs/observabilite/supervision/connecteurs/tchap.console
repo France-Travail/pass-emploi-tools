@@ -1,5 +1,5 @@
 # Connecteur .http vers Tchap, le seul utilisé par les Workflows Tchap
-# (tchap-client). Spécification : README.md.
+# (../workflows/tchap/tchap-client.console). Spécification : ../workflows/tchap/README.md.
 #
 # Jeton du compte bot : à substituer à <jeton-du-bot> au moment de l'import,
 # rangé dans le coffre de l'équipe, JAMAIS commité. Kibana le chiffre et ne le

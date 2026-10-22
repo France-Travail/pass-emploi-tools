@@ -64,7 +64,7 @@ cluster en panne.
 
 | Fichier | Contenu |
 |---|---|
-| [`connecteur-tchap.console`](connecteur-tchap.console) | connecteur `.http` : URL de Tchap et jeton du bot |
+| [`../../connecteurs/tchap.console`](../../connecteurs/tchap.console) | connecteur `.http` : URL de Tchap et jeton du bot |
 | [`tchap-client.console`](tchap-client.console) | le seul Workflow qui parle à Matrix |
 | [`generated/tchap-monitoring-production.console`](generated/tchap-monitoring-production.console), [`generated/tchap-monitoring-staging.console`](generated/tchap-monitoring-staging.console), [`generated/tchap-o11y-production.console`](generated/tchap-o11y-production.console), [`generated/tchap-o11y-staging.console`](generated/tchap-o11y-staging.console), [`generated/tchap-jobs-production.console`](generated/tchap-jobs-production.console), [`generated/tchap-jobs-staging.console`](generated/tchap-jobs-staging.console) | un Workflow par salon, **générés** : ne pas les modifier à la main |
 | [`generated/rapport-jobs-prod.console`](generated/rapport-jobs-prod.console), [`generated/rapport-jobs-staging.console`](generated/rapport-jobs-staging.console) | rapport quotidien des jobs de l'api, chaque jour à 9 h 30 (heure de Paris), **générés** |
@@ -175,7 +175,7 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
    `refresh_token`, constaté le 2026-10-20). Garder aussi `user_id`, à
    reporter dans le document d'expiration (étape 7), et `device_id`, pour
    révoquer la session.
-5. **Kibana**, dans Dev Tools : rejouer `connecteur-tchap.console` en
+5. **Kibana**, dans Dev Tools : rejouer [`../../connecteurs/tchap.console`](../../connecteurs/tchap.console) en
    remplaçant `<jeton-du-bot>`, puis `tchap-client.console`, puis les 4
    `tchap-<salon>.console` tels quels (ils portent l'ID de leur salon).
 6. **Test** : poster dans chaque salon depuis Dev Tools.
