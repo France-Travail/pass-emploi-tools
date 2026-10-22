@@ -91,7 +91,7 @@ redéployer.
 
 ## Le check de la PR
 
-« Alertes Kibana et Workflows Tchap à jour avec leurs générateurs »
+« Règles d'alerte Kibana et Workflows Tchap à jour avec leurs générateurs »
 ([`verifier-regles-kibana-et-workflows-tchap.yml`](../../../../.github/workflows/verifier-regles-kibana-et-workflows-tchap.yml))
 échoue si :
 

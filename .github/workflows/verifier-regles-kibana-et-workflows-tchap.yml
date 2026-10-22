@@ -32,7 +32,7 @@ permissions:
 
 jobs:
   verifier:
-    name: Alertes Kibana et Workflows Tchap à jour avec leurs générateurs
+    name: Règles d'alerte Kibana et Workflows Tchap à jour avec leurs générateurs
     runs-on: ubuntu-latest
     env:
       # Feature flipping (actif seulement à « true ») : les règles gardent leurs actions
