@@ -198,38 +198,20 @@ def pages_dependabot(en_html):
 ORDRE_LIENS = ['Dashboards', 'Discover sessions']
 
 
-# Règles branchées sur Tchap sans action Mattermost : leur message, au même format
-# qu'un body Mattermost (titre, couleur, champs). Une règle branchée sur Tchap sans
-# l'un ni l'autre fait échouer la génération.
-MESSAGES_SANS_MATTERMOST = {
-    'Tchap - Expiration du compte bot': json.dumps({
-        'text': "🚨 **Compte du bot Tchap bientôt expiré** — sans renouvellement, plus aucune alerte n'arrivera dans Tchap.",
-        'attachments': [{'color': '#d00000', 'text': '', 'fields': [
-            {'title': 'À vérifier', 'value': "1. Le lien de renouvellement reçu par email sur la boîte du bot : le cliquer avant la date d'expiration\n"
-                                             "2. Une fois le compte renouvelé, la nouvelle date d'expiration dans l'index `tchap-expiration-bot`, comme l'indique le runbook"},
-            {'title': 'Runbook', 'value': '[Expiration du compte bot Tchap](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-tchap-expiration-bot.md)'}]}]},
-        ensure_ascii=False),
-}
-
-
-# Messages des règles générées, lus dans leur définition (generer-regles.py), par nom de règle.
+# Messages des règles, lus dans leur définition (generer-regles.py), par nom de règle.
 MESSAGES_DEFINITIONS = {}
 
 
 def corps_message(regle, groupe=None):
-    """Le message de la règle (du groupe d'action demandé) : celui de sa définition dans
-    generer-regles.py ; à défaut le body de son action Mattermost (règles écrites à la
-    main), à défaut MESSAGES_SANS_MATTERMOST."""
-    definition = MESSAGES_DEFINITIONS.get(regle['name'], {})
-    cle = 'recovered' if groupe == 'recovered' else 'principal' if groupe is None else None
-    if cle in definition:
-        return definition[cle]
-    mm = [a for a in regle['actions'] if a['id'] != 'system-connector-.workflows' and (groupe is None or a.get('group') == groupe)]
-    if mm:
-        return mm[0]['params']['body']
-    if groupe is None and regle['name'] in MESSAGES_SANS_MATTERMOST:
-        return MESSAGES_SANS_MATTERMOST[regle['name']]
-    raise SystemExit(f"« {regle['name']} » est branchée sur Tchap sans message : ni action Mattermost, ni entrée dans MESSAGES_SANS_MATTERMOST")
+    """Le message de la règle (du groupe d'action demandé), lu dans sa définition de
+    generer-regles.py, jamais dans son action Mattermost : celle-ci peut disparaître."""
+    definition = MESSAGES_DEFINITIONS.get(regle['name'])
+    if definition is None:
+        raise SystemExit(f"« {regle['name']} » est branchée sur Tchap mais absente de ../../rules/generer-regles.py : pas de message")
+    cle = 'recovered' if groupe == 'recovered' else 'principal' if groupe is None else groupe
+    if not definition.get(cle):
+        raise SystemExit(f"« {regle['name']} » : pas de message « {cle} » dans sa définition")
+    return definition[cle]
 
 
 def message(regle, en_html, lignes_esql=None, groupe=None):
@@ -263,7 +245,7 @@ def message(regle, en_html, lignes_esql=None, groupe=None):
 
 def avec_retablissement(regle, en_html):
     """Une règle qui a un message au rétablissement (Uptime) envoie celui-ci pour une alerte rétablie."""
-    if 'recovered' not in MESSAGES_DEFINITIONS.get(regle['name'], {}) and not any(a.get('group') == 'recovered' for a in regle['actions']):
+    if 'recovered' not in MESSAGES_DEFINITIONS.get(regle['name'], {}):
         return message(regle, en_html)
     return ("{% if " + ALERTE + ".status == 'recovered' %}" + message(regle, en_html, groupe='recovered') +
             "{% else %}" + message(regle, en_html) + "{% endif %}")
@@ -331,7 +313,7 @@ ETAPE_ESQL = f'''      - name: si-esql
 
 def main():
     regles_generees = generateur_regles()
-    MESSAGES_DEFINITIONS.update({r['name']: regles_generees.messages(code) for code, r in regles_generees.REGLES.items()})
+    MESSAGES_DEFINITIONS.update({r.get('name') or r['regle']['name']: regles_generees.messages(code) for code, r in regles_generees.REGLES.items()})
     par_salon = {s: [] for s in SALONS}
     esql = set()
     for nom in sorted(os.listdir(REGLES)):

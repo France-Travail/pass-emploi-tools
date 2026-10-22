@@ -5,6 +5,8 @@
 # À rejouer dans Dev Tools. PUT met à jour une règle existante ; sur un cluster
 # vide, la créer avec POST kbn:/api/alerting/rule/<id> et le même corps plus
 # "rule_type_id": ".es-query" et "consumer": "alerts".
+# Blocs de règle générés par generer-regles.py, depuis definitions-manuelles.py : modifier
+# la définition, puis python3 -I generer-regles.py --ecrire <code>.
 # Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
 # ../objets-kibana.md#slo-et-règles-console.
 #
@@ -133,7 +135,11 @@ PUT kbn:/api/alerting/rule/fe53ada2-2c8b-42eb-930c-bae4286b7893
         "subActionParams": {
           "workflowId": "tchap-o11y-production",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }
@@ -250,7 +256,11 @@ PUT kbn:/api/alerting/rule/b100ff40-7409-4859-ac44-755ad2401f03
         "subActionParams": {
           "workflowId": "tchap-o11y-staging",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }
@@ -376,7 +386,11 @@ PUT kbn:/api/alerting/rule/dd107070-c841-4580-9923-db2ef37c795d
         "subActionParams": {
           "workflowId": "tchap-o11y-production",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }
@@ -484,7 +498,11 @@ PUT kbn:/api/alerting/rule/ede49ade-b4ee-4cbb-9dd2-28078e189f7b
         "subActionParams": {
           "workflowId": "tchap-o11y-staging",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }
@@ -634,7 +652,11 @@ PUT kbn:/api/alerting/rule/139c93c3-b744-4bd7-8274-bb88f77305c7
         "subActionParams": {
           "workflowId": "tchap-o11y-production",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }
@@ -784,7 +806,11 @@ PUT kbn:/api/alerting/rule/6c2a2a83-9c40-4f40-af8d-911402932417
         "subActionParams": {
           "workflowId": "tchap-o11y-production",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }
@@ -900,7 +926,11 @@ PUT kbn:/api/alerting/rule/32b686a2-659f-4b57-b583-e6aedaeea5f5
         "subActionParams": {
           "workflowId": "tchap-o11y-staging",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }
@@ -1016,7 +1046,11 @@ PUT kbn:/api/alerting/rule/f181937f-c75f-4232-bfa4-221997d1cfe1
         "subActionParams": {
           "workflowId": "tchap-o11y-staging",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }
@@ -1179,7 +1213,11 @@ PUT kbn:/api/alerting/rule/204d560c-b6a6-4b5c-b4af-8d1fa6ce345c
         "subActionParams": {
           "workflowId": "tchap-o11y-production",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }
@@ -1308,7 +1346,11 @@ PUT kbn:/api/alerting/rule/da91356c-39dc-4033-bc47-83421974a049
         "subActionParams": {
           "workflowId": "tchap-o11y-staging",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }
@@ -1431,7 +1473,11 @@ PUT kbn:/api/alerting/rule/f8ff266d-84dc-4673-b95c-c3d32bf2ff04
         "subActionParams": {
           "workflowId": "tchap-o11y-production",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }
@@ -1554,7 +1600,11 @@ PUT kbn:/api/alerting/rule/9f9c07f9-07a9-40a3-a882-4a701e81b83c
         "subActionParams": {
           "workflowId": "tchap-o11y-staging",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }
@@ -1950,7 +2000,11 @@ PUT kbn:/api/alerting/rule/07a8ee68-4994-4d70-b9a5-3d47f08297a5
         "subActionParams": {
           "workflowId": "tchap-o11y-production",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }
@@ -2070,7 +2124,11 @@ PUT kbn:/api/alerting/rule/720d949a-f73f-43e5-bc46-ff22c7b96cfb
         "subActionParams": {
           "workflowId": "tchap-o11y-staging",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }
@@ -2104,17 +2162,7 @@ PUT kbn:/api/alerting/rule/bbb9d642-f012-4747-8154-49162245a364
   "params": {
     "searchType": "esqlQuery",
     "esqlQuery": {
-      "esql": """FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*
-| EVAL host = COALESCE(hostname, agent.name)
-| WHERE host LIKE "*-prod-*"
-| WHERE health_status IN ("offline", "unenrolled", "unhealthy")
-     OR beat.stats.libbeat.output.write.errors IS NOT NULL
-| STATS statuts = VALUES(health_status),
-        erreurs = MAX(TO_LONG(beat.stats.libbeat.output.write.errors))
-                - MIN(TO_LONG(beat.stats.libbeat.output.write.errors))
-  BY host, component.id
-| STATS statuts = VALUES(statuts), erreurs_output = MAX(erreurs) BY host
-| WHERE statuts IS NOT NULL OR erreurs_output > 25"""
+      "esql": "FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*\n| EVAL host = COALESCE(hostname, agent.name)\n| WHERE host LIKE \"*-prod-*\"\n| WHERE health_status IN (\"offline\", \"unenrolled\", \"unhealthy\")\n     OR beat.stats.libbeat.output.write.errors IS NOT NULL\n| STATS statuts = VALUES(health_status),\n        erreurs = MAX(TO_LONG(beat.stats.libbeat.output.write.errors))\n                - MIN(TO_LONG(beat.stats.libbeat.output.write.errors))\n  BY host, component.id\n| STATS statuts = VALUES(statuts), erreurs_output = MAX(erreurs) BY host\n| WHERE statuts IS NOT NULL OR erreurs_output > 25"
     },
     "timeField": "@timestamp",
     "timeWindowSize": 5,
@@ -2189,7 +2237,11 @@ PUT kbn:/api/alerting/rule/bbb9d642-f012-4747-8154-49162245a364
         "subActionParams": {
           "workflowId": "tchap-o11y-production",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }
@@ -2223,17 +2275,7 @@ PUT kbn:/api/alerting/rule/8d593176-8752-4369-a37f-6b42fa3890b2
   "params": {
     "searchType": "esqlQuery",
     "esqlQuery": {
-      "esql": """FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*
-| EVAL host = COALESCE(hostname, agent.name)
-| WHERE host LIKE "*-staging-*"
-| WHERE health_status IN ("offline", "unenrolled", "unhealthy")
-     OR beat.stats.libbeat.output.write.errors IS NOT NULL
-| STATS statuts = VALUES(health_status),
-        erreurs = MAX(TO_LONG(beat.stats.libbeat.output.write.errors))
-                - MIN(TO_LONG(beat.stats.libbeat.output.write.errors))
-  BY host, component.id
-| STATS statuts = VALUES(statuts), erreurs_output = MAX(erreurs) BY host
-| WHERE statuts IS NOT NULL OR erreurs_output > 25"""
+      "esql": "FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*\n| EVAL host = COALESCE(hostname, agent.name)\n| WHERE host LIKE \"*-staging-*\"\n| WHERE health_status IN (\"offline\", \"unenrolled\", \"unhealthy\")\n     OR beat.stats.libbeat.output.write.errors IS NOT NULL\n| STATS statuts = VALUES(health_status),\n        erreurs = MAX(TO_LONG(beat.stats.libbeat.output.write.errors))\n                - MIN(TO_LONG(beat.stats.libbeat.output.write.errors))\n  BY host, component.id\n| STATS statuts = VALUES(statuts), erreurs_output = MAX(erreurs) BY host\n| WHERE statuts IS NOT NULL OR erreurs_output > 25"
     },
     "timeField": "@timestamp",
     "timeWindowSize": 5,
@@ -2308,7 +2350,11 @@ PUT kbn:/api/alerting/rule/8d593176-8752-4369-a37f-6b42fa3890b2
         "subActionParams": {
           "workflowId": "tchap-o11y-staging",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }
@@ -2465,7 +2511,11 @@ PUT kbn:/api/alerting/rule/3c65ffd4-165f-4d0b-b820-24be398f19fd
         "subActionParams": {
           "workflowId": "tchap-o11y-production",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }
@@ -2588,7 +2638,11 @@ PUT kbn:/api/alerting/rule/895bd492-e02f-4f18-b8e0-f453742c885f
         "subActionParams": {
           "workflowId": "tchap-o11y-staging",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }
@@ -2614,17 +2668,7 @@ PUT kbn:/api/alerting/rule/fb66693b-f17a-4cd0-baf5-113e7e153604
   "params": {
     "searchType": "esqlQuery",
     "esqlQuery": {
-      "esql": """FROM .ds-ilm-history-7-*
-| WHERE index LIKE "*.ds-logs-*" OR index LIKE "*.ds-metrics-*"
-     OR index LIKE "*.ds-traces-*" OR index LIKE "*.ds-heartbeat-*"
-| EVAL policy_par_defaut = policy IN ("logs", "metrics", "logs@lifecycle", "metrics@lifecycle", "metricbeat")
-                           OR policy LIKE "*-default_policy"
-| WHERE success == false OR policy_par_defaut
-| STATS index_en_echec = COUNT_DISTINCT(index) WHERE success == false,
-        index_policy_par_defaut = COUNT_DISTINCT(index) WHERE policy_par_defaut,
-        policies = VALUES(policy), exemples = VALUES(index)
-| WHERE index_en_echec > 0 OR index_policy_par_defaut > 0
-| EVAL exemples = MV_SLICE(exemples, 0, 9)"""
+      "esql": "FROM .ds-ilm-history-7-*\n| WHERE index LIKE \"*.ds-logs-*\" OR index LIKE \"*.ds-metrics-*\"\n     OR index LIKE \"*.ds-traces-*\" OR index LIKE \"*.ds-heartbeat-*\"\n| EVAL policy_par_defaut = policy IN (\"logs\", \"metrics\", \"logs@lifecycle\", \"metrics@lifecycle\", \"metricbeat\")\n                           OR policy LIKE \"*-default_policy\"\n| WHERE success == false OR policy_par_defaut\n| STATS index_en_echec = COUNT_DISTINCT(index) WHERE success == false,\n        index_policy_par_defaut = COUNT_DISTINCT(index) WHERE policy_par_defaut,\n        policies = VALUES(policy), exemples = VALUES(index)\n| WHERE index_en_echec > 0 OR index_policy_par_defaut > 0\n| EVAL exemples = MV_SLICE(exemples, 0, 9)"
     },
     "timeField": "@timestamp",
     "timeWindowSize": 24,
@@ -2713,7 +2757,11 @@ PUT kbn:/api/alerting/rule/fb66693b-f17a-4cd0-baf5-113e7e153604
         "subActionParams": {
           "workflowId": "tchap-o11y-production",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }

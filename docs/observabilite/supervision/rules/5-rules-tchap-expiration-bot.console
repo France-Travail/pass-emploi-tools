@@ -9,6 +9,8 @@
 # on range la date dans Elasticsearch et on alerte dans les 60 jours qui
 # précèdent, tant que le bot fonctionne encore.
 # À rejouer dans l'ordre : pipeline, index, date du compte, règle.
+# Blocs de règle générés par generer-regles.py, depuis definitions-manuelles.py : modifier
+# la définition, puis python3 -I generer-regles.py --ecrire <code>.
 
 PUT _ingest/pipeline/tchap-expiration-bot
 {
@@ -76,7 +78,9 @@ POST kbn:/api/alerting/rule/bcd45d7d-6fe6-4303-a73e-7cff877dde96
   "params": {
     "searchType": "esQuery",
     "esQuery": "{\"query\":{\"match_all\":{}}}",
-    "index": ["tchap-expiration-bot"],
+    "index": [
+      "tchap-expiration-bot"
+    ],
     "timeField": "renouveler_a_partir_du",
     "timeWindowSize": 730,
     "timeWindowUnit": "d",

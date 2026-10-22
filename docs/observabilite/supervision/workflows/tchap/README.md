@@ -266,17 +266,18 @@ Intégrations (l'équipe beta.gouv n'a pas la réponse, 2026-10-14) :
    exécution par jour) n'a pas de rétablissement mais garde `ongoing: true` :
    un rappel par jour et par certificat, comme dans Mattermost.
 
-**D'où vient le message Tchap**, traduit par `generer-workflows.py` :
-- règle générée (A1 à A13, A4a/b, A5a/b, 6a/b, 14, V1) : sa **définition** dans
-  `../../rules/generer-regles.py` (fonction `messages`), la même que celle de son
-  action Mattermost, mais lue sans elle : retirer l'action Mattermost ne change
-  pas le message Tchap ;
-- règle écrite à la main : le body de son action Mattermost, en attendant d'être
-  passée dans `generer-regles.py` ;
-- règle sans action Mattermost (« Tchap - Expiration du compte bot ») :
-  `MESSAGES_SANS_MATTERMOST`, au même format. Une règle branchée sur Tchap sans
-l'un ni l'autre **fait échouer la génération**, en la nommant : elle n'aurait
-reçu qu'un message générique (nom de la règle et raison brute de Kibana).
+**D'où vient le message Tchap** : de la **définition** de la règle, lue par
+`generer-workflows.py` dans `../../rules/generer-regles.py` (fonction `messages`),
+jamais dans son action Mattermost : retirer celle-ci ne change pas le message
+Tchap. Deux formes de définition :
+- règle décrite champ par champ (A1 à A13, A4a/b, A5a/b, 6a/b, 14, V1) : titre,
+  étapes, liens, dans `generer-regles.py` ;
+- règle reprise telle quelle (S2, S3…, 1a à 10, expiration du bot) : son corps
+  et ses messages dans `../../rules/definitions-manuelles.py`.
+
+Une règle branchée sur Tchap absente des définitions **fait échouer la
+génération**, en la nommant : elle n'aurait reçu qu'un message générique (nom
+de la règle et raison brute de Kibana).
 
 ## Ajouter un salon
 

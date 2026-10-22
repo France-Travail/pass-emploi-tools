@@ -10,7 +10,8 @@
 # xpack.uptime.alerts.monitorStatus / uptime pour A10 à A12,
 # xpack.uptime.alerts.tlsCertificate / uptime pour A13).
 #
-# Blocs générés par generer-regles.py (A1 à A13 sauf S*) : modifier la définition,
+# Blocs générés par generer-regles.py (définitions dans ce fichier Python et dans
+# definitions-manuelles.py) : modifier la définition,
 # puis python3 -I generer-regles.py --ecrire <code> ; --verifier compare tout.
 # Règles ES|QL (A1, A2, A3, A6, A7) : le Workflow du salon relance leur requête.
 #
@@ -260,7 +261,11 @@ PUT kbn:/api/alerting/rule/e41ef1d8-efd8-449b-b2a5-6fff758c8939
         "subActionParams": {
           "workflowId": "tchap-monitoring-production",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }
@@ -477,7 +482,11 @@ PUT kbn:/api/alerting/rule/72914c41-01ed-4ce7-ae68-a1b5eb445773
         "subActionParams": {
           "workflowId": "tchap-monitoring-production",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }
@@ -704,7 +713,11 @@ PUT kbn:/api/alerting/rule/ca02fee2-9d18-46bd-b2b9-dd96d8a6d593
         "subActionParams": {
           "workflowId": "tchap-monitoring-production",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }
@@ -820,7 +833,11 @@ PUT kbn:/api/alerting/rule/8c760b1b-5859-410e-9a0d-829fb0499412
         "subActionParams": {
           "workflowId": "tchap-monitoring-production",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }
@@ -936,7 +953,11 @@ PUT kbn:/api/alerting/rule/00f15660-40ba-4fb1-a59d-6345ce07c360
         "subActionParams": {
           "workflowId": "tchap-monitoring-production",
           "summaryMode": true,
-          "alertStates": { "new": true, "ongoing": false, "recovered": false }
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
         }
       }
     }

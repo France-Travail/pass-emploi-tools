@@ -7,7 +7,7 @@ Usage : python3 -I generer-regles.py [--verifier | --ecrire] <code>…
   --ecrire : remplace le bloc dans son fichier (l'ajoute en fin de fichier s'il est nouveau).
 Après toute modification : ../workflows/tchap/generer-workflows.py.
 """
-import json, os, re, sys
+import importlib.util, json, os, re, sys
 
 KD = 'https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/'
 KB = 'https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/'
@@ -245,6 +245,17 @@ REGLES.update({
         doc=('Alertes applicatives', 'supervision/alertes-applicatives.md')),
 })
 
+
+def _charger_manuelles():
+    spec = importlib.util.spec_from_file_location('definitions_manuelles', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'definitions-manuelles.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.REGLES_MANUELLES
+
+
+# Règles écrites à la main avant ce générateur, reprises telles quelles (definitions-manuelles.py).
+REGLES.update({code: dict(d, manuelle=True) for code, d in _charger_manuelles().items()})
+
 def coherence(r):
     verifier(r['steps'], r['sessions'], r['dashboards'], r['name'])
     verifier(r.get('steps_message', r['steps']), r['sessions'], r.get('dashboards_message', r['dashboards']), r['name'])
@@ -301,6 +312,8 @@ def guide(r):
 
 def bloc(nom):
     r = REGLES[nom]
+    if r.get('manuelle'):
+        return bloc_manuel(r)
     coherence(r)
     artifacts = {'investigation_guide': {'blob': guide(r)}}
     ids = [DASHBOARDS[k][2] for k in r['dashboards'] if DASHBOARDS[k][2]]
@@ -328,11 +341,29 @@ def bloc(nom):
     texte = json.dumps(regle, ensure_ascii=False, indent=2).replace('"@@BODY@@"', '"""' + body(r) + '"""')
     return r['commentaire'] + '\nPUT kbn:/api/alerting/rule/' + r['id'] + '\n' + texte + '\n'
 
+def bloc_manuel(r):
+    """Règle reprise telle quelle : son corps, avec ses messages remis dans ses actions."""
+    regle = json.loads(json.dumps(r['regle']))
+    for a in regle.get('actions', []):
+        if a.get('params', {}).get('body') == '@@MESSAGE@@':
+            a['params']['body'] = '@@MESSAGE:' + a['group'] + '@@'
+    texte = json.dumps(regle, ensure_ascii=False, indent=2)
+    for groupe, corps in r['messages'].items():
+        texte = texte.replace('"@@MESSAGE:' + groupe + '@@"', '"""' + corps + '"""')
+    entete = r['commentaire'] + '\n' if r['commentaire'] else ''
+    return entete + r['methode'] + ' kbn:/api/alerting/rule/' + r['id'] + '\n' + texte + '\n'
+
+
 def messages(nom):
     """Le message de la règle, au format d'un body Mattermost, indépendant de son action
     Mattermost : « principal », et « recovered » pour une règle qui en a un. C'est la source
     que lisent les Workflows Tchap (../workflows/tchap/generer-workflows.py)."""
     r = REGLES[nom]
+    if r.get('manuelle'):
+        m = dict(r['messages'])
+        envois = [a['group'] for a in r['regle'].get('actions', []) if a.get('params', {}).get('body') == '@@MESSAGE@@']
+        m.setdefault('principal', m[envois[0]] if envois else None)
+        return m
     m = {'principal': body(r)}
     retabli = r.get('uptime', {}).get('retabli')
     if retabli:
@@ -390,17 +421,19 @@ FICHIERS = {'1-rules-applicatives.console': ('A',), '2-rules-stack-observabilite
 
 
 def fichier(nom):
+    if REGLES[nom].get('fichier'):
+        return os.path.join(ICI, REGLES[nom]['fichier'])
     return os.path.join(ICI, next(f for f, p in FICHIERS.items() if nom.startswith(p)))
 
 
 def emplacement(lignes, nom):
-    """Lignes [début, fin] du bloc : des commentaires qui précèdent son PUT à l'accolade fermante."""
-    put_ = 'PUT kbn:/api/alerting/rule/' + REGLES[nom]['id']
+    """Lignes [début, fin] du bloc : des commentaires qui précèdent son PUT (ou POST) à l'accolade fermante."""
+    put_ = REGLES[nom].get('methode', 'PUT') + ' kbn:/api/alerting/rule/' + REGLES[nom]['id']
     if put_ not in lignes:
         return None
     put = lignes.index(put_)
     debut = put
-    commentaire = len(REGLES[nom]['commentaire'].split('\n'))
+    commentaire = len(REGLES[nom]['commentaire'].split('\n')) if REGLES[nom]['commentaire'] else 0
     while debut > 0 and put - debut < commentaire and lignes[debut - 1].startswith('#'):
         debut -= 1
     return debut, lignes.index('}', put)
