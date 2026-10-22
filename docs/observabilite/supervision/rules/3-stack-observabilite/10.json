@@ -1,0 +1,120 @@
+{
+  "_id": "fb66693b-f17a-4cd0-baf5-113e7e153604",
+  "_commentaire": [
+    "# 10 — ILM en échec ou policy sans suppression (Warning, bilan quotidien)"
+  ],
+  "name": "Elasticsearch - ILM en échec ou policy sans suppression",
+  "tags": [
+    "elasticsearch",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nRétention ILM — bilan des 24 h — des index n'appliquent pas leur rétention : étape ILM en échec ou policy par défaut sans suppression.\n\n## À vérifier\n\n1. Quels index n'appliquent pas leur rétention : le Discover [[Pass Emploi] Historique ILM - Index hors rétention](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/3f3c69ef-e515-4be4-b679-eff837c92ecb)\n2. Si l'index porte une policy d'Elastic par défaut (`logs@lifecycle`, `metrics@lifecycle`) : il ne sera jamais supprimé, lui rattacher la policy de l'équipe (runbook ILM)\n3. Si une étape ILM a échoué (`success` à `false`) : lire l'erreur de l'étape, corriger, puis relancer ILM sur l'index (runbook ILM)\n\n## Discover sessions\n\n- [[Pass Emploi] Historique ILM - Index hors rétention](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/3f3c69ef-e515-4be4-b679-eff837c92ecb)\n\n## Documentation\n\n- [Runbook ILM](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-ilm.md)\n"
+    }
+  },
+  "schedule": {
+    "interval": "1h"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": "FROM .ds-ilm-history-7-*\n| WHERE index LIKE \"*.ds-logs-*\" OR index LIKE \"*.ds-metrics-*\"\n     OR index LIKE \"*.ds-traces-*\" OR index LIKE \"*.ds-heartbeat-*\"\n| EVAL policy_par_defaut = policy IN (\"logs\", \"metrics\", \"logs@lifecycle\", \"metrics@lifecycle\", \"metricbeat\")\n                           OR policy LIKE \"*-default_policy\"\n| WHERE success == false OR policy_par_defaut\n| STATS index_en_echec = COUNT_DISTINCT(index) WHERE success == false,\n        index_policy_par_defaut = COUNT_DISTINCT(index) WHERE policy_par_defaut,\n        policies = VALUES(policy), exemples = VALUES(index)\n| WHERE index_en_echec > 0 OR index_policy_par_defaut > 0\n| EVAL exemples = MV_SLICE(exemples, 0, 9)"
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 24,
+    "timeWindowUnit": "h",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "aggType": "count",
+    "groupBy": "row",
+    "termSize": 5,
+    "sourceFields": [],
+    "excludeHitsFromPreviousRun": false
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
+      "params": {
+        "body": {
+          "text": "⚠️ **Rétention ILM — bilan des 24 h** — des index n'appliquent pas leur rétention : étape ILM en échec ou policy par défaut sans suppression.",
+          "attachments": [
+            {
+              "color": "#f2c744",
+              "fields": [
+                {
+                  "title": "Règle",
+                  "value": "`{{rule.name}}`",
+                  "short": true
+                },
+                {
+                  "title": "Déclenchée à",
+                  "value": "`{{date}}`",
+                  "short": true
+                },
+                {
+                  "title": "Détail",
+                  "value": "{{context.message}}"
+                },
+                {
+                  "title": "À vérifier",
+                  "value": "1. Quels index n'appliquent pas leur rétention : le Discover [[Pass Emploi] Historique ILM - Index hors rétention](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/3f3c69ef-e515-4be4-b679-eff837c92ecb)\n2. Si l'index porte une policy d'Elastic par défaut (`logs@lifecycle`, `metrics@lifecycle`) : il ne sera jamais supprimé, lui rattacher la policy de l'équipe (runbook ILM)\n3. Si une étape ILM a échoué (`success` à `false`) : lire l'erreur de l'étape, corriger, puis relancer ILM sur l'index (runbook ILM)"
+                },
+                {
+                  "title": "Discover sessions",
+                  "value": "[[Pass Emploi] Historique ILM - Index hors rétention](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/3f3c69ef-e515-4be4-b679-eff837c92ecb)"
+                },
+                {
+                  "title": "Runbook",
+                  "value": "[Runbook ILM](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-ilm.md)"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActiveAlert",
+        "throttle": null
+      },
+      "alerts_filter": {
+        "timeframe": {
+          "days": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "timezone": "Europe/Paris",
+          "hours": {
+            "start": "09:30",
+            "end": "10:30"
+          }
+        }
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}

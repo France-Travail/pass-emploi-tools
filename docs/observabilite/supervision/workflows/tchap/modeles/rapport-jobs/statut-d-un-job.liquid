@@ -1,0 +1,56 @@
+# Pour le job « job » (une entrée de consts.jobs) : ses exécutions, ses échecs et sa durée
+# moyenne sur 24 h, lus dans le résultat de la requête, puis ✅ / ❌.
+# Colonnes du résultat : 0 exécutions, 1 échecs, 2 durée moyenne (s), 3 type du job.
+{% assign resultat_du_job = nil %}
+{% for resultat in steps.requete.output.values %}
+{% if resultat[3] == job.type %}
+{% assign resultat_du_job = resultat %}
+{% endif %}
+{% endfor %}
+{% if resultat_du_job %}
+{% assign executions = resultat_du_job[0] %}
+{% assign echecs = resultat_du_job[1] %}
+{% assign duree_moyenne = resultat_du_job[2] | append: ' s' %}
+{% else %}
+{% assign executions = 0 %}
+{% assign echecs = 0 %}
+{% assign duree_moyenne = '—' %}
+{% endif %}
+# Exécutions attendues : fixes par jour (job.attendues), ou 1 / 0 pour un job mensuel
+# (job.jour) ou hebdomadaire (job.semaine) selon que son jour tombe dans les 24 h. Un job
+# prévu avant 9 h 30 (job.minute, en minutes depuis minuit) se compare à aujourd'hui, sinon à hier.
+{% assign executions_attendues = job.attendues %}
+{% if job.jour %}
+{% if job.minute < @@RAPPORT_HEURE@@ %}
+{% assign jour_de_reference = jour_du_mois_aujourdhui %}
+{% else %}
+{% assign jour_de_reference = jour_du_mois_hier %}
+{% endif %}
+{% if job.jour contains jour_de_reference %}
+{% assign executions_attendues = 1 %}
+{% else %}
+{% assign executions_attendues = 0 %}
+{% endif %}
+{% endif %}
+{% if job.semaine %}
+{% if job.minute < @@RAPPORT_HEURE@@ %}
+{% assign jour_de_reference = jour_de_la_semaine_aujourdhui %}
+{% else %}
+{% assign jour_de_reference = jour_de_la_semaine_hier %}
+{% endif %}
+{% if job.semaine contains jour_de_reference %}
+{% assign executions_attendues = 1 %}
+{% else %}
+{% assign executions_attendues = 0 %}
+{% endif %}
+{% endif %}
+{% if executions == executions_attendues %}
+{% assign a_tourne = '✅' %}
+{% else %}
+{% assign a_tourne = '❌' %}
+{% endif %}
+{% if echecs == 0 %}
+{% assign sans_echec = '✅' %}
+{% else %}
+{% assign sans_echec = '❌' %}
+{% endif %}

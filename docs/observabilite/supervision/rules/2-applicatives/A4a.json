@@ -1,0 +1,121 @@
+{
+  "_id": "1b97f0e0-870f-498d-8dd7-1c2f9aeba665",
+  "_commentaire": [
+    "# A4a — Événements Scalingo des apps applicatives, prod (gravité par ligne)"
+  ],
+  "name": "Scalingo - Prod - Événements des apps applicatives",
+  "tags": [
+    "prod",
+    "applicatif",
+    "scalingo",
+    "tchap-lignes"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nUn événement Scalingo sur une app applicative de prod : incident (🚨 crash, redémarrage ou arrêt ; ⚠️ seuil dépassé) ou opération d'infra (ℹ️ déploiement, variable, scaling…).\n\n## À vérifier\n\n1. Le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur\n2. Pour un incident, l'impact sur les utilisateurs : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n3. L'activité de l'app (onglet Activity) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Dashboards\n\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Discover sessions\n\n- [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87)\n- [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n\n## Documentation\n\n[Collecte des événements externes](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/collecte/evenements-externes/README.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "not service.name : (\"pass-emploi-logstash\" or \"pass-emploi-logstash-process\" or \"pass-emploi-elastic-agent\" or \"pass-emploi-heartbeat\")",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "d327d85c-91ea-4092-867f-08a940504c96",
+        "title": "logs-alertes-scalingo-prod-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Alertes Scalingo - Prod",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 20,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": true,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": {
+          "text": "**Événements Scalingo des apps de prod** ({{context.value}})",
+          "attachments": [
+            {
+              "color": "#808080",
+              "text": "{{#context.hits}}{{_source.message}}\n{{/context.hits}}",
+              "fields": [
+                {
+                  "title": "Règle",
+                  "value": "`{{rule.name}}`",
+                  "short": true
+                },
+                {
+                  "title": "Déclenchée à",
+                  "value": "`{{date}}`",
+                  "short": true
+                },
+                {
+                  "title": "À vérifier",
+                  "value": "1. Le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur\n2. Pour un incident, l'impact sur les utilisateurs : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n3. L'activité de l'app (onglet Activity) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+                },
+                {
+                  "title": "Dashboards",
+                  "value": "[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+                },
+                {
+                  "title": "Discover sessions",
+                  "value": "[[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87)\n[[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActiveAlert",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}

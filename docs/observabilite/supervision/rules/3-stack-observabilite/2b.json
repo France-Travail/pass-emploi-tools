@@ -1,0 +1,113 @@
+{
+  "_id": "ede49ade-b4ee-4cbb-9dd2-28078e189f7b",
+  "_commentaire": [
+    "# 2b — Erreurs staging / perf (Warning)"
+  ],
+  "name": "Logstash - Hors-Prod - Détection erreurs pipeline process",
+  "tags": [
+    "hors-prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nLogs hors prod non indexés : erreur de transformation Logstash — des logs de staging/perf ne sont pas consultables dans Kibana.\n\n## À vérifier\n\n1. Quels logs n'ont pas pu être transformés : le Discover [[Pass Emploi] Logs Hors-Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/716175ed-b2a0-4fe1-8f9d-1892d04dbe92) — `tags` donne l'étape en échec, `message` le log d'origine\n2. Quelle app les émet, et depuis quand : la répartition par `service.name` (onglet *Field statistics*) du même Discover\n3. Corriger le filtre Logstash concerné (`logs/` de pass-emploi-tools), puis vérifier que les erreurs cessent dans le même Discover\n\n## Discover sessions\n\n- [[Pass Emploi] Logs Hors-Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/716175ed-b2a0-4fe1-8f9d-1892d04dbe92)\n\n## Documentation\n\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)\n"
+    }
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "1ed38454-c7e7-4726-9db4-434106a710d4",
+        "title": "logs-logstash-errors-staging-default,logs-logstash-errors-perf-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Logs Logstash Hors-Prod - Index erreurs de traitement Pipeline process",
+        "allowHidden": true,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": false,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "c4a313b3-aa42-4e07-8196-c007625ce8af",
+      "params": {
+        "body": {
+          "text": "⚠️ **Logs hors prod non indexés : erreur de transformation Logstash** — des logs de staging/perf ne sont pas consultables dans Kibana.",
+          "attachments": [
+            {
+              "color": "#f2c744",
+              "fields": [
+                {
+                  "title": "Règle",
+                  "value": "`{{rule.name}}`",
+                  "short": true
+                },
+                {
+                  "title": "Déclenchée à",
+                  "value": "`{{date}}`",
+                  "short": true
+                },
+                {
+                  "title": "À vérifier",
+                  "value": "1. Quels logs n'ont pas pu être transformés : le Discover [[Pass Emploi] Logs Hors-Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/716175ed-b2a0-4fe1-8f9d-1892d04dbe92) — `tags` donne l'étape en échec, `message` le log d'origine\n2. Quelle app les émet, et depuis quand : la répartition par `service.name` (onglet *Field statistics*) du même Discover\n3. Corriger le filtre Logstash concerné (`logs/` de pass-emploi-tools), puis vérifier que les erreurs cessent dans le même Discover"
+                },
+                {
+                  "title": "Discover sessions",
+                  "value": "[[Pass Emploi] Logs Hors-Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/716175ed-b2a0-4fe1-8f9d-1892d04dbe92)"
+                },
+                {
+                  "title": "Runbook",
+                  "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "6h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-staging",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,168 @@
+{
+  "_id": "204d560c-b6a6-4b5c-b4af-8d1fa6ce345c",
+  "_commentaire": [
+    "# 4a — Backpressure prod (Critical)"
+  ],
+  "name": "Logstash - Prod - Détection backpressure ingest (inputs bloqués)",
+  "tags": [
+    "prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nBackpressure Logstash prod — le pipeline `ingest` a au moins un thread HTTP bloqué en continu depuis 15 min (`queue_backpressure ≥ 1`) : l'écriture dans Redis ne suit plus, le drain Scalingo attend.\n\n## À vérifier\n\n1. Où le pipeline `ingest` du nœud bloque : le temps passé à pousser dans la file, dans le dashboard [[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)\n2. Redis répond-il : le statut et la mémoire de l'add-on Redis dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps), puis le temps d'écriture de l'output `redis` dans le dashboard [[Metrics Logstash] Output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-fe17b800-6eb4-11ee-86f6-d7074508d975)\n3. Les entrées refusent-elles des logs (429 renvoyés aux drains) : le dashboard [[Metrics Logstash] Input plugin Info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-8f8c78a0-6e9e-11ee-86f6-d7074508d975), et l'état de toute la chaîne dans le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n\n## Dashboards\n\n- [[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n- [[Metrics Logstash] Output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-fe17b800-6eb4-11ee-86f6-d7074508d975)\n- [[Metrics Logstash] Input plugin Info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-8f8c78a0-6e9e-11ee-86f6-d7074508d975)\n- [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n\n## Documentation\n\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch)\n"
+    },
+    "dashboards": [
+      {
+        "id": "logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc"
+      },
+      {
+        "id": "logstash-fe17b800-6eb4-11ee-86f6-d7074508d975"
+      },
+      {
+        "id": "logstash-8f8c78a0-6e9e-11ee-86f6-d7074508d975"
+      },
+      {
+        "id": "fd40a516-c323-4e5e-91e5-1328b8b1a78d"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "2m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "logstash.pipeline.name: ingest and logstash.pipeline.host.name: pass-emploi-logstash-prod-*",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "68ab5f84-55a4-43b9-9e7d-c6154919c39d",
+        "title": "metrics-logstash.pipeline-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "metrics-logstash.pipeline-default",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 15,
+    "timeWindowUnit": "m",
+    "threshold": [
+      1
+    ],
+    "thresholdComparator": ">=",
+    "size": 100,
+    "aggType": "min",
+    "groupBy": "top",
+    "termSize": 10,
+    "excludeHitsFromPreviousRun": false,
+    "sourceFields": [],
+    "aggField": "logstash.pipeline.total.flow.queue_backpressure.current",
+    "termField": "logstash.pipeline.host.name"
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
+      "params": {
+        "body": {
+          "text": "🚨 **Backpressure Logstash prod** — le pipeline `ingest` a au moins un thread HTTP bloqué en continu depuis 15 min (`queue_backpressure ≥ 1`) : l'écriture dans Redis ne suit plus, le drain Scalingo attend.",
+          "attachments": [
+            {
+              "color": "#d00000",
+              "fields": [
+                {
+                  "title": "Règle",
+                  "value": "`{{rule.name}}`",
+                  "short": true
+                },
+                {
+                  "title": "Déclenchée à",
+                  "value": "`{{date}}`",
+                  "short": true
+                },
+                {
+                  "title": "Nœud",
+                  "value": "`{{context.group}}`",
+                  "short": true
+                },
+                {
+                  "title": "À vérifier",
+                  "value": "1. Où le pipeline `ingest` du nœud bloque : le temps passé à pousser dans la file, dans le dashboard [[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)\n2. Redis répond-il : le statut et la mémoire de l'add-on Redis dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps), puis le temps d'écriture de l'output `redis` dans le dashboard [[Metrics Logstash] Output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-fe17b800-6eb4-11ee-86f6-d7074508d975)\n3. Les entrées refusent-elles des logs (429 renvoyés aux drains) : le dashboard [[Metrics Logstash] Input plugin Info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-8f8c78a0-6e9e-11ee-86f6-d7074508d975), et l'état de toute la chaîne dans le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)"
+                },
+                {
+                  "title": "Dashboards",
+                  "value": "[[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Metrics Logstash] Output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-fe17b800-6eb4-11ee-86f6-d7074508d975)\n[[Metrics Logstash] Input plugin Info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-8f8c78a0-6e9e-11ee-86f6-d7074508d975)\n[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)"
+                },
+                {
+                  "title": "Runbook",
+                  "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch)"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "6h"
+      }
+    },
+    {
+      "group": "recovered",
+      "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
+      "params": {
+        "body": {
+          "text": "✅ **Backpressure Logstash prod résolue** — le pipeline `ingest` n'a plus de thread bloqué en continu.",
+          "attachments": [
+            {
+              "color": "#2eb886",
+              "fields": [
+                {
+                  "title": "Règle",
+                  "value": "`{{rule.name}}`",
+                  "short": true
+                },
+                {
+                  "title": "À vérifier",
+                  "value": "1. Où le pipeline `ingest` du nœud bloque : le temps passé à pousser dans la file, dans le dashboard [[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)\n2. Redis répond-il : le statut et la mémoire de l'add-on Redis dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps), puis le temps d'écriture de l'output `redis` dans le dashboard [[Metrics Logstash] Output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-fe17b800-6eb4-11ee-86f6-d7074508d975)\n3. Les entrées refusent-elles des logs (429 renvoyés aux drains) : le dashboard [[Metrics Logstash] Input plugin Info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-8f8c78a0-6e9e-11ee-86f6-d7074508d975), et l'état de toute la chaîne dans le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)"
+                },
+                {
+                  "title": "Dashboards",
+                  "value": "[[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Metrics Logstash] Output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-fe17b800-6eb4-11ee-86f6-d7074508d975)\n[[Metrics Logstash] Input plugin Info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-8f8c78a0-6e9e-11ee-86f6-d7074508d975)\n[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}

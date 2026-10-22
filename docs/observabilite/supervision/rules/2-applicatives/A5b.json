@@ -1,0 +1,111 @@
+{
+  "_id": "9dbcb316-60cd-481e-8717-33ffe0275e7d",
+  "_commentaire": [
+    "# A5b — Jobs en échec, staging / perf (même version dégradée que A5a)"
+  ],
+  "name": "API - Hors-Prod - Jobs en échec",
+  "tags": [
+    "hors-prod",
+    "applicatif",
+    "jobs"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nUn job de l'api de staging ou de perf a planté (`job_crashed`) ou n'a pas de handler (`job_handler_not_found`).\n\n## À vérifier\n\n1. Le Discover [[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740), onglet « Jobs en échec » : le job, son environnement, son erreur et sa stack\n2. L'onglet « Exécutions » de [[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740) : le job échoue-t-il à chaque exécution, ou a-t-il réussi depuis ?\n\n## Discover sessions\n\n- [[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-applicatives.md)\n"
+    }
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "service.name : \"pass-emploi-api\" and event.action : (\"job_crashed\" or \"job_handler_not_found\")",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "9ef69e58-9ad1-43e4-87e1-cf1a68e38c09",
+        "title": "logs-staging-default,logs-perf-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Logs apps hors prod",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 10,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 20,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": true,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "3f71e705-99b5-4b37-ab14-932e28bc29b4",
+      "params": {
+        "body": {
+          "text": "**Jobs en échec — hors prod** ({{context.value}})",
+          "attachments": [
+            {
+              "color": "#808080",
+              "text": "{{#context.hits}}❌ `{{_source.labels.job_type}}` ({{_source.service.environment}}) : {{_source.event.action}} — {{_source.error.message}}\n{{/context.hits}}",
+              "fields": [
+                {
+                  "title": "Règle",
+                  "value": "`{{rule.name}}`",
+                  "short": true
+                },
+                {
+                  "title": "Déclenchée à",
+                  "value": "`{{date}}`",
+                  "short": true
+                },
+                {
+                  "title": "À vérifier",
+                  "value": "1. Le Discover [[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740), onglet « Jobs en échec » : le job, son environnement, son erreur et sa stack\n2. L'onglet « Exécutions » de [[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740) : le job échoue-t-il à chaque exécution, ou a-t-il réussi depuis ?"
+                },
+                {
+                  "title": "Discover sessions",
+                  "value": "[[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740)"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActiveAlert",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-jobs-staging",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}

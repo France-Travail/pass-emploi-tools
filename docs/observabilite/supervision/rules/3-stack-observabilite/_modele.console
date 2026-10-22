@@ -1,0 +1,68 @@
+# Règles Kibana de la stack d'observabilité, notifiées dans #o11y-production
+# (Mattermost-o11y-production) et #o11y-staging (Mattermost-o11y-staging).
+# Spécification et calibrage : ../../alertes-stack-observabilite.md.
+#
+# À rejouer dans Dev Tools. PUT met à jour une règle existante ; sur un cluster
+# vide, la créer avec POST kbn:/api/alerting/rule/<id> et le même corps plus
+# "rule_type_id": ".es-query" et "consumer": "alerts".
+# Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
+# ../../objets-kibana.md#slo-et-règles-console.
+#
+# PUT ne change pas l'état activé / désactivé d'une règle. Les data views sont
+# embarquées dans la règle (searchConfiguration.index) : leur id ne renvoie à
+# aucune data view enregistrée.
+#
+# Messages Mattermost : une section (« À vérifier », « Dashboards », « Discover
+# sessions ») = un champ, un élément par ligne (`\n`). Chaque champ tient sur une
+# seule ligne du fichier : l'éditeur de règle de Kibana lit le body comme du JSON
+# brut, un retour à la ligne dans une chaîne l'empêche de l'afficher. Pour relire
+# les étapes : le fichier <code>.json de la règle, dans ../3-stack-observabilite/, ou son
+# Investigation guide.
+#
+# artifacts : l'Investigation guide et les Related dashboards (onglets de la
+# règle). L'API publique ne les renvoie pas dans ses réponses : les vérifier
+# dans l'interface.
+
+@@REGLE 1a@@
+
+@@REGLE 1b@@
+
+@@REGLE 2a@@
+
+@@REGLE 2b@@
+
+@@REGLE 3a@@
+
+@@REGLE 3b@@
+
+@@REGLE 3c@@
+
+@@REGLE 3d@@
+
+@@REGLE 4a@@
+
+@@REGLE 4b@@
+
+@@REGLE 5a@@
+
+@@REGLE 5b@@
+
+@@REGLE 6a@@
+
+@@REGLE 6b@@
+
+@@REGLE 7a@@
+
+@@REGLE 7b@@
+
+@@REGLE 8a@@
+
+@@REGLE 8b@@
+
+@@REGLE 9a@@
+
+@@REGLE 9b@@
+
+@@REGLE 10@@
+
+@@REGLE 14@@

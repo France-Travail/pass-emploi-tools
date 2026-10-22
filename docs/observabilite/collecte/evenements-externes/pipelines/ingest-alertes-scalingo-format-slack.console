@@ -1,0 +1,74 @@
+# Remet au format habituel {id, created_at, type, app_name, user, type_data} un
+# événement qu'un notifier webhook Scalingo envoie au format Slack. Appelé par
+# ingest-alertes-scalingo-<env>-default, avant leurs vérifications.
+# Spécification : ../README.md.
+#
+# Constaté le 2026-10-19 sur pass-emploi-logstash-perf : le même notifier
+# webhook envoie les redémarrages au format habituel, mais les modifications de
+# variables au format Slack ({username: "Scalingo", attachments: [{title:
+# "[<app>] <libellé>", fields, footer: "By <auteur>", ts}]}). type devient le
+# libellé en snake_case (scalingo_<type> en sortie, catégorie infra), et
+# type_data.details la liste des champs. Ce sont des noms de variables, jamais
+# leurs valeurs : le notifier Mattermost poste déjà ce même contenu.
+PUT _ingest/pipeline/ingest-alertes-scalingo-format-slack
+{
+  "description": "Événement Scalingo au format Slack → enveloppe Scalingo habituelle",
+  "processors": [
+    {
+      "script": {
+        "source": """
+          Map att = ctx.attachments[0];
+          String title = att.title == null ? '' : att.title;
+          int fin = title.indexOf(']');
+          if (!title.startsWith('[') || fin < 0) {
+            return;
+          }
+          ctx.app_name = title.substring(1, fin);
+          String libelle = title.substring(fin + 1).trim().toLowerCase();
+          StringBuilder type = new StringBuilder();
+          for (char c : libelle.toCharArray()) {
+            type.append(Character.isLetterOrDigit(c) ? c : (char) 95);
+          }
+          ctx.type = type.toString();
+          List details = new ArrayList();
+          if (att.fields instanceof List) {
+            for (def field : att.fields) {
+              List noms = new ArrayList();
+              for (String ligne : String.valueOf(field.value).splitOnToken(String.valueOf((char) 10))) {
+                String nom = ligne.replace('•', '').replace('`', '').trim();
+                if (!nom.isEmpty()) {
+                  noms.add(nom);
+                }
+              }
+              details.add(field.title + ' : ' + String.join(', ', noms));
+            }
+          }
+          ctx.type_data = ['details': String.join(' ; ', details)];
+          if (att.footer instanceof String && att.footer.startsWith('By ')) {
+            ctx.user = ['username': att.footer.substring(3)];
+          }
+          if (att.ts != null) {
+            ctx.created_at = Instant.ofEpochSecond(((Number) att.ts).longValue()).toString();
+            ctx.id = ctx.app_name + '-' + att.ts;
+          }
+        """
+      }
+    }
+  ]
+}
+
+# TESTS — captures réelles du 2026-10-19 (pass-emploi-logstash-perf), puis un
+# titre sans [app] : laissé tel quel, le pipeline par environnement le rejette.
+# 1 → app_name: pass-emploi-logstash-perf, type: variables_bulk_edited,
+#   type_data.details: "New vars : TEST_NOTIFIER_ELASTIC",
+#   user.username: alexandre.tingaud-octo, created_at: 2026-10-19T16:23:28Z
+# 2 → type: variable_removed, type_data.details: "Removed var : TEST_NOTIFIER_ELASTIC"
+# 3 → ni app_name ni type
+POST _ingest/pipeline/ingest-alertes-scalingo-format-slack/_simulate
+{
+  "docs": [
+    { "_source": {"icon_url":"https://cdn.scalingo.com/logo.png","attachments":[{"color":"#DD9C2D","footer":"By alexandre.tingaud-octo","mrkdwn_in":["fields"],"title_link":"https://dashboard.scalingo.com/apps/osc-secnum-fr1/pass-emploi-logstash-perf/environment","title":"[pass-emploi-logstash-perf] Variables bulk edited","fields":[{"short":true,"title":"New vars","value":"• `TEST_NOTIFIER_ELASTIC`\n"}],"fallback":"Variables edited.","ts":1792427008}],"username":"Scalingo"} },
+    { "_source": {"icon_url":"https://cdn.scalingo.com/logo.png","attachments":[{"color":"#DD9C2D","footer":"By alexandre.tingaud-octo","mrkdwn_in":["fields"],"title_link":"https://dashboard.scalingo.com/apps/osc-secnum-fr1/pass-emploi-logstash-perf/environment","title":"[pass-emploi-logstash-perf] Variable removed","fields":[{"short":true,"title":"Removed var","value":"`TEST_NOTIFIER_ELASTIC`\n"}],"fallback":"Variable TEST_NOTIFIER_ELASTIC removed.","ts":1792427083}],"username":"Scalingo"} },
+    { "_source": {"attachments":[{"title":"Sans app","ts":1792427083}],"username":"Scalingo"} }
+  ]
+}

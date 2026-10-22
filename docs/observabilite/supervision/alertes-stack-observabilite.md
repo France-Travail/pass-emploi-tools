@@ -3,12 +3,20 @@
 Les alertes sur **notre infra de télémétrie** (Logstash, Redis, agents Fleet, Elasticsearch) :
 elles signalent que la chaîne de logs et de métriques est en panne ou aveugle,
 pas que les utilisateurs sont touchés. Les pannes visibles des utilisateurs sont
-dans [alertes-applicatives](alertes-applicatives.md). Hors alertes 6
-(webhook Scalingo), 11 et 12 (AutoOps), ce sont des **Kibana Rules** qui notifient via Mattermost
+dans [alertes-applicatives](alertes-applicatives.md). Hors alertes 11 et 12
+(AutoOps), ce sont des **Kibana Rules** qui notifient via Mattermost
 (`#o11y-production`, `#o11y-staging`).
 
-**Création** : les alertes 1 à 5 et 7 à 10 sont versionnées dans
-[`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console),
+> ⚠️ **Mattermost est décommissionné le 1er novembre 2026.** Les Kibana Rules
+> migrent vers Tchap par les [Workflows Tchap](workflows/tchap/README.md). Les
+> alertes émises hors Kibana, **11 et 12 (AutoOps)**, postent directement dans
+> Tchap, par un connecteur Webhook AutoOps en `POST` (cf. leur section,
+> [ADR-004](../../decisions/ADR-004-notifications-tchap-kibana-workflows.md#alertes-émises-hors-kibana-autoops)).
+> Elles ne passent surtout pas par Elasticsearch : elles doivent alerter quand le
+> cluster va mal.
+
+**Création** : les alertes 1 à 10 et 14 sont versionnées dans
+[`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console),
 qui reprend les tableaux et bodies de cette page, à rejouer dans Dev Tools.
 
 > **Contexte** : les scénarios de panne et leurs indicateurs sont documentés dans
@@ -34,7 +42,8 @@ qui reprend les tableaux et bodies de cette page, à rejouer dans Dev Tools.
 | 4b | Backpressure ingest — staging/perf            | `metrics-logstash.pipeline-default`             | `Min` `≥ 1` / 15 min, par nœud                           | 5 min      | 6h       | ⚠️Warning  |
 | 5a | Heap JVM élevé — prod                         | `metrics-logstash.node-default`                 | `Min` `≥ 90` / 15 min, par nœud                          | 2 min      | 6h       | 🚨 Critical |
 | 5b | Heap JVM élevé — staging/perf                 | `metrics-logstash.node-default`                 | `Min` `≥ 90` / 15 min, par nœud                          | 5 min      | 6h       | ⚠️Warning  |
-| 6  | Restart conteneur                             | Scalingo webhook                                | `app_crashed_repeated/app_restarted`                     | —          | —        | 🚨 Critical |
+| 6a | Événements Scalingo des apps de la stack — prod | `logs-alertes-scalingo-prod-default`          | tout événement d'une app de la stack                     | 1 min      | —        | par ligne 🚨/⚠️/ℹ️ |
+| 6b | Événements Scalingo des apps de la stack — staging/perf | `logs-alertes-scalingo-staging/perf-default` | tout événement d'une app de la stack               | 5 min      | —        | par ligne ⚠️/ℹ️ |
 | 7a | Backlog Redis `logstash:ingest` — prod        | `metrics-redis.key-default`                     | `Min` `Is above 1 000` / 15 min                          | 2 min      | 6h       | 🚨 Critical |
 | 7b | Backlog Redis `logstash:ingest` — staging/perf| `metrics-redis.key-default`                     | `Min` `Is above 1 000` / 15 min                          | 5 min      | 6h       | ⚠️Warning  |
 | 8a | Elastic Agent en défaut — prod                | status_change + `metrics-elastic_agent.*beat-*` | offline/unenrolled/unhealthy ou > 25 err. output / 5 min | 1 min      | 6h       | 🚨 Critical |
@@ -44,6 +53,7 @@ qui reprend les tableaux et bodies de cette page, à rejouer dans Dev Tools.
 | 10 | ILM en échec ou policy sans suppression       | historique ILM (`ilm-history-7`)                | étape en échec ou policy par défaut / 24 h               | 1 h        | 1 / jour, 9 h 30 | ⚠️Warning  |
 | 11 | Disque des nœuds Elasticsearch                | AutoOps (Elastic Cloud)                         | préavis 75 %, paliers 85 / 90 / 95 %, cluster red       | —          | —        | 🚨 Critical |
 | 12 | Saturation de l'indexation Elasticsearch      | AutoOps (Elastic Cloud)                         | management queue ou index queue haute                    | —          | —        | 🚨 Critical |
+| 14 | Événement externe rejeté                      | les 4 `logs-alertes-*`, sélecteur `::failures`  | tout document / 10 min                                   | 5 min      | —        | ⚠️Warning  |
 
 ---
 
@@ -97,28 +107,11 @@ Session Discover : onglet « Logs non indexés : Échec de process Logstash ind�
 | **Fréquence**           | 1 min                                                                                                                                                                                    |
 | **Sévérité**            | Critical                                                                                                                                                                                 |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                               |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-production** — voir body ci-dessous                                                                                                            |
-| **Related dashboards**  | `[Metrics Logstash] Elasticsearch output plugin info` |
-| **Investigation guide** | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue) |
+| **Action**              | Connecteur Kibana **Mattermost-o11y-production** — message dans le bloc de la règle                                                                                                            |
+| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue) |
 
-**Body du webhook** (champ "Body" dans l'onglet Message de l'action) :
-```json
-{
-  "text": "🚨 **Logs de prod non indexés : échec de process Logstash indéterminé** — des logs de prod ne sont pas consultables dans Kibana, sans erreur détectée par Logstash.",
-  "attachments": [
-    {
-      "color": "#d00000",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)" },
-        { "title": "À vérifier", "value": "Le Discover [[Pass Emploi] Logs de Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/97e2d85f-7bd2-49df-86b3-2ffc290bbe69), liste les logs avec le motif de rejet d'Elasticsearch (mapping, document trop gros…)" },
-        { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)" }
-      ]
-    }
-  ]
-}
-```
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### 1b — DLQ staging / perf (Warning)
 
@@ -132,28 +125,11 @@ Session Discover : onglet « Logs non indexés : Échec de process Logstash ind�
 | **Fréquence**           | 5 min                                                                                                                                                                                      |
 | **Sévérité**            | Warning                                                                                                                                                                                    |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                 |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — voir body ci-dessous                                                                                                                 |
-| **Related dashboards**  | `[Metrics Logstash] Elasticsearch output plugin info` |
-| **Investigation guide** | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)   |
+| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — message dans le bloc de la règle                                                                                                                 |
+| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)   |
 
-**Body du webhook** :
-```json
-{
-  "text": "⚠️ **Logs hors prod non indexés : échec de process Logstash indéterminé** — des logs de staging/perf ne sont pas consultables dans Kibana, sans erreur détectée par Logstash.",
-  "attachments": [
-    {
-      "color": "#f2c744",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)" },
-        { "title": "À vérifier", "value": "Le Discover [[Pass Emploi] Logs Hors-Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/e5bec6b4-0ae3-47b1-8bb5-2e9bf77493a4), les logs désignent le motif de rejet d'Elasticsearch (mapping, document trop gros…)" },
-        { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)" }
-      ]
-    }
-  ]
-}
-```
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 **KQL de diagnostic dans Discover** (data view `logs-logstash-dlq-*`) :
 ```
@@ -192,9 +168,9 @@ Session Discover : onglet « Logs non indexés : Erreur de transformation Logsta
 | **Fréquence**           | 1 h                                                                                                                                                                                                            |
 | **Sévérité**            | Warning                                                                                                                                                                                                        |
 | **Notification**        | Une fois par jour : `On check intervals` / `Run when: Query matched`, avec `If alert is generated during timeframe` tous les jours de `09:30` à `10:30` (`Europe/Paris`) (onglet Actions → Settings) |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-production** — voir body ci-dessous                                                                                                                                  |
-| **Related dashboards**  | — |
-| **Investigation guide** | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue) |
+| **Action**              | Connecteur Kibana **Mattermost-o11y-production** — message dans le bloc de la règle                                                                                                                                  |
+| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue) |
 
 Une erreur de transformation perd un log, pas la chaîne : elle se traite dans la
 journée, pas à chaud. La règle compte les erreurs des 24 dernières heures à chaque
@@ -203,23 +179,7 @@ message par jour, à l'arrivée de l'équipe, week-end compris (lu le lundi). Ki
 ne planifie pas une règle à heure fixe : c'est la plage horaire de l'action qui
 fait ce travail.
 
-**Body du webhook** :
-```json
-{
-  "text": "⚠️ **Logs de prod non indexés : erreur de transformation Logstash — bilan des 24 h** — {{context.value}} logs de prod ne sont pas consultables dans Kibana.",
-  "attachments": [
-    {
-      "color": "#f2c744",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "À vérifier", "value": "Le Discover [[Pass Emploi] Logs de PROD - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17), `tags` et `message` désignent le traitement et le log en échec" },
-        { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)" }
-      ]
-    }
-  ]
-}
-```
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### 2b — Erreurs staging / perf (Warning)
 
@@ -233,27 +193,11 @@ fait ce travail.
 | **Fréquence**           | 5 min                                                                                                                                                                                                          |
 | **Sévérité**            | Warning                                                                                                                                                                                                        |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                               |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — voir body ci-dessous                                                                                                                                     |
-| **Related dashboards**  | — |
-| **Investigation guide** | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue) |
+| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — message dans le bloc de la règle                                                                                                                                     |
+| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue) |
 
-**Body du webhook** :
-```json
-{
-  "text": "⚠️ **Logs hors prod non indexés : erreur de transformation Logstash** — des logs de staging/perf ne sont pas consultables dans Kibana.",
-  "attachments": [
-    {
-      "color": "#f2c744",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "À vérifier", "value": "Le Discover [[Pass Emploi] Logs Hors-Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/716175ed-b2a0-4fe1-8f9d-1892d04dbe92), `tags` et `message` désignent le traitement et le log en échec" },
-        { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)" }
-      ]
-    }
-  ]
-}
-```
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 **KQL de diagnostic dans Discover** (data view `logs-logstash-errors-*`) :
 ```
@@ -286,45 +230,12 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 | **Fenêtre**               | 5 min                                                                                                                                                                                                       |
 | **Fréquence**             | 2 min                                                                                                                                                                                                       |
 | **Sévérité**              | Critical                                                                                                                                                                                                    |
-| **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-o11y-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — voir body ci-dessous                  |
-| **Action 2 (résolution)** | Connecteur Kibana **Mattermost-o11y-production** — `On status changes` / `Run when: Recovered` (onglet Actions → Settings) — voir body ci-dessous                                                    |
-| **Related dashboards**    | `[Metrics Logstash] Logstash Overview` |
-| **Investigation guide**   | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
+| **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-o11y-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — message dans le bloc de la règle                  |
+| **Action 2 (résolution)** | Connecteur Kibana **Mattermost-o11y-production** — `On status changes` / `Run when: Recovered` (onglet Actions → Settings) — message dans le bloc de la règle                                                    |
+| **Related dashboards**    | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide**   | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
 
-**Body du webhook — Action 1 (alerte)** :
-```json
-{
-  "text": "🚨 **Silence Logstash** — aucun log dans `logs-prod-default` depuis 5 min. Drain en quarantaine ou Logstash crashé.",
-  "attachments": [
-    {
-      "color": "#d00000",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)" },
-        { "title": "Dashboard", "value": "[[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824)" },
-        { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash)" }
-      ]
-    }
-  ]
-}
-```
-
-**Body du webhook — Action 2 (résolution)** :
-```json
-{
-  "text": "✅ **Silence Logstash résolu** — les logs sont revenus dans `logs-prod-default`.",
-  "attachments": [
-    {
-      "color": "#2eb886",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Résolue à", "value": "`{{date}}`", "short": true }
-      ]
-    }
-  ]
-}
-```
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### 3b — Absence dans `logs-router-prod-default`
 
@@ -337,45 +248,12 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 | **Fenêtre**               | 5 min                                                                                                                                                                                                       |
 | **Fréquence**             | 2 min                                                                                                                                                                                                       |
 | **Sévérité**              | Critical                                                                                                                                                                                                    |
-| **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-o11y-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — voir body ci-dessous                  |
-| **Action 2 (résolution)** | Connecteur Kibana **Mattermost-o11y-production** — `On status changes` / `Run when: Recovered` (onglet Actions → Settings) — voir body ci-dessous                                                    |
-| **Related dashboards**    | `[Metrics Logstash] Logstash Overview` |
-| **Investigation guide**   | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
+| **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-o11y-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — message dans le bloc de la règle                  |
+| **Action 2 (résolution)** | Connecteur Kibana **Mattermost-o11y-production** — `On status changes` / `Run when: Recovered` (onglet Actions → Settings) — message dans le bloc de la règle                                                    |
+| **Related dashboards**    | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide**   | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
 
-**Body du webhook — Action 1 (alerte)** :
-```json
-{
-  "text": "🚨 **Silence Logstash** — aucun log router dans `logs-router-prod-default` depuis 5 min. Drain en quarantaine ou Logstash crashé.",
-  "attachments": [
-    {
-      "color": "#d00000",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)" },
-        { "title": "Dashboard", "value": "[[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824)" },
-        { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash)" }
-      ]
-    }
-  ]
-}
-```
-
-**Body du webhook — Action 2 (résolution)** :
-```json
-{
-  "text": "✅ **Silence Logstash résolu** — les logs router sont revenus dans `logs-router-prod-default`.",
-  "attachments": [
-    {
-      "color": "#2eb886",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Résolue à", "value": "`{{date}}`", "short": true }
-      ]
-    }
-  ]
-}
-```
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### 3c — Absence dans `logs-staging-default` / `logs-perf-default`
 
@@ -389,28 +267,11 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 | **Fréquence**           | 5 min                                                                                                                                                                                                       |
 | **Sévérité**            | Warning                                                                                                                                                                                                     |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                            |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — voir body ci-dessous                                                                                                                                  |
-| **Related dashboards**  | `[Metrics Logstash] Logstash Overview` |
-| **Investigation guide** | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
+| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — message dans le bloc de la règle                                                                                                                                  |
+| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
 
-**Body du webhook** :
-```json
-{
-  "text": "⚠️ **Silence Logstash** — aucun log dans `logs-staging-default` ou `logs-perf-default` depuis 5 min. Drain en quarantaine ou Logstash crashé.",
-  "attachments": [
-    {
-      "color": "#f2c744",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)" },
-        { "title": "Dashboard", "value": "[[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824)" },
-        { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash)" }
-      ]
-    }
-  ]
-}
-```
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### 3d — Absence dans `logs-router-staging-default` / `logs-router-perf-default`
 
@@ -424,28 +285,11 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 | **Fréquence**           | 5 min                                                                                                                                                                                                       |
 | **Sévérité**            | Warning                                                                                                                                                                                                     |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                            |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — voir body ci-dessous                                                                                                                                  |
-| **Related dashboards**  | `[Metrics Logstash] Logstash Overview` |
-| **Investigation guide** | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
+| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — message dans le bloc de la règle                                                                                                                                  |
+| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
 
-**Body du webhook** :
-```json
-{
-  "text": "⚠️ **Silence Logstash** — aucun log router dans `logs-router-staging-default` ou `logs-router-perf-default` depuis 5 min. Drain en quarantaine ou Logstash crashé.",
-  "attachments": [
-    {
-      "color": "#f2c744",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)" },
-        { "title": "Dashboard", "value": "[[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824)" },
-        { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash)" }
-      ]
-    }
-  ]
-}
-```
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 > **Corrélation** : si les deux alertes (3a+3b ou 3c+3d) se déclenchent simultanément,
 > c'est un crash Logstash ou un arrêt de l'app Scalingo. Si seulement l'alerte
@@ -508,49 +352,12 @@ attendu : Redis absorbe, et un backlog qui ne se vide pas relève de l'alerte 7.
 | **Fenêtre**               | 15 min                                                                                                                                                                                                   |
 | **Fréquence**             | 2 min                                                                                                                                                                                                    |
 | **Sévérité**              | Critical                                                                                                                                                                                                 |
-| **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-o11y-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — voir body ci-dessous               |
-| **Action 2 (résolution)** | Connecteur Kibana **Mattermost-o11y-production** — `On status changes` / `Run when: Recovered` (onglet Actions → Settings) — voir body ci-dessous                                               |
-| **Related dashboards**    | `[Metrics Logstash] Logstash Single Pipeline View`, `[Metrics Logstash] Input plugin Info`, `[Metrics Logstash] Output plugin info` |
-| **Investigation guide**   | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch) |
+| **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-o11y-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — message dans le bloc de la règle               |
+| **Action 2 (résolution)** | Connecteur Kibana **Mattermost-o11y-production** — `On status changes` / `Run when: Recovered` (onglet Actions → Settings) — message dans le bloc de la règle                                               |
+| **Related dashboards**    | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide**   | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch) |
 
-**Body du webhook — Action 1 (alerte)** :
-```json
-{
-  "text": "🚨 **Backpressure Logstash prod** — le pipeline `ingest` a au moins un thread HTTP bloqué en continu depuis 15 min (`queue_backpressure ≥ 1`) : l'écriture dans Redis ne suit plus, le drain Scalingo attend.",
-  "attachments": [
-    {
-      "color": "#d00000",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "Nœud", "value": "`{{context.group}}`", "short": true },
-        { "title": "À vérifier", "value": "Le statut et la mémoire de Redis dans le dashboard Scalingo, puis le temps d'écriture de l'output `redis` dans Output plugin info" },
-        { "title": "Dashboard", "value": "[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)" },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)" },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Input plugin Info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-8f8c78a0-6e9e-11ee-86f6-d7074508d975)" },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-fe17b800-6eb4-11ee-86f6-d7074508d975)" },
-        { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch)" }
-      ]
-    }
-  ]
-}
-```
-
-**Body du webhook — Action 2 (résolution)** :
-```json
-{
-  "text": "✅ **Backpressure Logstash prod résolue** — le pipeline `ingest` n'a plus de thread bloqué en continu.",
-  "attachments": [
-    {
-      "color": "#2eb886",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Résolue à", "value": "`{{date}}`", "short": true }
-      ]
-    }
-  ]
-}
-```
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### 4b — Backpressure staging / perf (Warning)
 
@@ -567,31 +374,11 @@ attendu : Redis absorbe, et un backlog qui ne se vide pas relève de l'alerte 7.
 | **Fréquence**           | 5 min                                                                                                                                                                                                    |
 | **Sévérité**            | Warning                                                                                                                                                                                                  |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                         |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — voir body ci-dessous                                                                                                                               |
-| **Related dashboards**  | `[Metrics Logstash] Logstash Single Pipeline View`, `[Metrics Logstash] Input plugin Info`, `[Metrics Logstash] Output plugin info` |
-| **Investigation guide** | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch) |
+| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — message dans le bloc de la règle                                                                                                                               |
+| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch) |
 
-**Body du webhook** :
-```json
-{
-  "text": "⚠️ **Backpressure Logstash staging/perf** — le pipeline `ingest` a au moins un thread HTTP bloqué en continu depuis 15 min (`queue_backpressure ≥ 1`).",
-  "attachments": [
-    {
-      "color": "#f2c744",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "Nœud", "value": "`{{context.group}}`", "short": true },
-        { "title": "Dashboard", "value": "[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)" },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)" },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Input plugin Info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-8f8c78a0-6e9e-11ee-86f6-d7074508d975)" },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-fe17b800-6eb4-11ee-86f6-d7074508d975)" },
-        { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch)" }
-      ]
-    }
-  ]
-}
-```
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ---
 
@@ -634,30 +421,11 @@ ici : c'est l'[alerte 9](#alerte-9--mémoire-du-conteneur-logstash-oom-kill-scal
 | **Fréquence**           | 2 min                                                                                                                                                                    |
 | **Sévérité**            | Critical                                                                                                                                                                 |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                         |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-production** — voir body ci-dessous                                                                                            |
-| **Related dashboards**  | `[Metrics Logstash] Single Node Overview` |
-| **Investigation guide** | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-2--gel-gc-jvm) |
+| **Action**              | Connecteur Kibana **Mattermost-o11y-production** — message dans le bloc de la règle                                                                                            |
+| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-2--gel-gc-jvm) |
 
-**Body du webhook** :
-```json
-{
-  "text": "🚨 **Heap JVM Logstash prod** — le heap reste au-dessus de 90 % depuis 15 min : le GC ne libère plus, pauses stop-the-world et `OutOfMemoryError` en vue.",
-  "attachments": [
-    {
-      "color": "#d00000",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "Nœud", "value": "`{{context.group}}`", "short": true },
-        { "title": "À vérifier", "value": "`LS_JAVA_OPTS` : doit être `-Xms256m -Xmx256m`" },
-        { "title": "Dashboard", "value": "[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)" },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Single Node Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9d450b10-4680-11ee-9ddc-919f87fe352d)" },
-        { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-2--gel-gc-jvm)" }
-      ]
-    }
-  ]
-}
-```
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### 5b — Heap élevé staging / perf (Warning)
 
@@ -674,77 +442,90 @@ ici : c'est l'[alerte 9](#alerte-9--mémoire-du-conteneur-logstash-oom-kill-scal
 | **Fréquence**           | 5 min                                                                                                                                                                    |
 | **Sévérité**            | Warning                                                                                                                                                                  |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                         |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — voir body ci-dessous                                                                                               |
-| **Related dashboards**  | `[Metrics Logstash] Single Node Overview` |
-| **Investigation guide** | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-2--gel-gc-jvm) |
+| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — message dans le bloc de la règle                                                                                               |
+| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-2--gel-gc-jvm) |
 
-**Body du webhook** :
-```json
-{
-  "text": "⚠️ **Heap JVM Logstash staging/perf** — le heap reste au-dessus de 90 % depuis 15 min : le GC ne libère plus.",
-  "attachments": [
-    {
-      "color": "#f2c744",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "Nœud", "value": "`{{context.group}}`", "short": true },
-        { "title": "Dashboard", "value": "[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)" },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Single Node Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9d450b10-4680-11ee-9ddc-919f87fe352d)" },
-        { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-2--gel-gc-jvm)" }
-      ]
-    }
-  ]
-}
-```
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ---
 
-## Alerte 6 — Restart du conteneur Logstash (Scalingo webhook)
+## Alerte 6 — Événements Scalingo des apps de la stack
 
-**Objectif** : être alerté d'un restart du conteneur Logstash (OOM-kill ou crash).
+**Objectif** : savoir ce qui arrive aux apps de la stack d'observabilité
+(`pass-emploi-logstash`, `pass-emploi-logstash-process`,
+`pass-emploi-elastic-agent`, `pass-emploi-heartbeat`) : crash, arrêt,
+redémarrage (OOM-kill…), seuil de ressource, mais aussi déploiements et
+opérations d'infra.
 
-**Configuration dans le dashboard Scalingo** (hors repo — action manuelle) :
+Des **Elasticsearch query rules (KQL)** sur les événements des notifiers
+Scalingo, collectés dans `logs-alertes-scalingo-<env>-default` (cf.
+[collecte des événements externes](../collecte/evenements-externes/README.md),
+dont la [mise en service](../collecte/evenements-externes/README.md#mise-en-service)
+des notifiers). Une règle par environnement, qui liste chaque événement sur une
+ligne, préfixée de sa gravité (niveaux des anciennes X1 à X3) : en prod, 🚨
+crash, redémarrage ou arrêt, ⚠️ seuil dépassé ; en staging / perf, ⚠️ pour
+les deux ; ℹ️ le reste. Les
+apps applicatives vont aux règles A4a / A4b des
+[alertes applicatives](alertes-applicatives.md#événements-scalingo--ce-qui-arrive-aux-apps).
 
-Répéter l'opération pour chaque app Logstash :
+Chaque exécution ne compte que les documents arrivés depuis la précédente
+(`excludeHitsFromPreviousRun`) : un événement = une notification, sans
+throttle. Scalingo n'envoie `app_crashed` qu'aux 2ᵉ, 5ᵉ et 12ᵉ crashs, et
+`app_crashed_repeatedly` à chaque crash : le notifier doit sélectionner les deux.
 
-| App Scalingo                           | Canal Mattermost   |
-| -------------------------------------- | ------------------ |
-| `pass-emploi-logstash-prod`            | `#o11y-production` |
-| `pass-emploi-logstash-process-prod`    | `#o11y-production` |
-| `pass-emploi-logstash-staging`         | `#o11y-staging`    |
-| `pass-emploi-logstash-process-staging` | `#o11y-staging`    |
-| `pass-emploi-logstash-perf`            | `#o11y-staging`    |
-| `pass-emploi-logstash-process-perf`    | `#o11y-staging`    |
+### 6a — Événements Scalingo des apps de la stack, prod
 
-Pour chaque app :
+| Paramètre               | Valeur |
+|-------------------------|--------|
+| **Rule name**           | `Scalingo - Prod - Événements des apps de la stack` |
+| **Type**                | Elasticsearch query rule (KQL), data view `logs-alertes-scalingo-prod-default` |
+| **Requête**             | `service.name : ("pass-emploi-logstash" or "pass-emploi-logstash-process" or "pass-emploi-elastic-agent" or "pass-emploi-heartbeat")` |
+| **Fenêtre / fréquence** | 5 min / 1 min |
+| **Actions**             | Mattermost-o11y-production ; Tchap via le Workflow `tchap-o11y-production` |
+| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 
-1. Aller sur l'app dans le dashboard Scalingo.
-2. **Settings → Notifications → Add notification**.
-3. Choisir le type **Webhook**.
-4. Événements à surveiller : `app_restarted`, `app_crashed_repeated`, `app_stopped`.
-   Pas `app_crashed` : Scalingo ne l'envoie qu'aux 2ᵉ, 5ᵉ et 12ᵉ crashs ;
-   `app_crashed_repeated` part à chaque crash.
-5. URL du webhook : URL du webhook entrant Mattermost du canal correspondant.
+**À vérifier** :
+1. Le Discover **[Pass Emploi] Alertes externes de Prod - Événements Scalingo**,
+   onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur.
+2. Pour un incident sur une app Logstash, l'impact sur l'ingestion : le dashboard **[Pass Emploi]
+   Supervision Stack d'Observabilité**, puis les Discover **[Pass Emploi] Logs de
+   Prod - DLQ Logstash Process** et **[Pass Emploi] Logs de Prod - Erreurs de
+   traitement Logstash Process** (logs non indexés).
+3. Les métriques (onglet Metrics) et l'activité (onglet Activity) de l'app dans
+   le **[Scalingo] Dashboard des apps**.
 
-> **Note** : le throttle ne s'applique pas aux webhooks Scalingo — chaque événement
-> `app_crashed_repeated` / `app_restarted` est une notification unitaire envoyée par Scalingo.
+### 6b — Événements Scalingo des apps de la stack, staging / perf
 
-**Payload Scalingo** (exemple pour un restart OOM) :
+| Paramètre               | Valeur |
+|-------------------------|--------|
+| **Rule name**           | `Scalingo - Hors-Prod - Événements des apps de la stack` |
+| **Type**                | Elasticsearch query rule (KQL), data view `logs-alertes-scalingo-staging-default,logs-alertes-scalingo-perf-default` |
+| **Requête**             | celle de 6a |
+| **Fenêtre / fréquence** | 10 min / 5 min |
+| **Actions**             | Mattermost-o11y-staging ; Tchap via le Workflow `tchap-o11y-staging` |
+| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+
+**À vérifier** : comme 6a, avec le Discover **[Pass Emploi] Alertes externes
+Hors-Prod - Événements Scalingo** et les Discover **Logs Hors-Prod** de Logstash
+Process.
+
+**Payload Scalingo** (capture réelle d'un redémarrage, 2026-09-23) :
 ```json
 {
-  "app": { "name": "pass-emploi-logstash-prod" },
-  "event_type": "app_crashed_repeated",
-  "event": {
-    "container_type": "web",
-    "reason": "OOM"
-  }
+  "id": "6ab3fc9805b3851e56c0404f",
+  "created_at": "2026-09-23T16:21:44.047Z",
+  "type": "restart",
+  "app_id": "6a9972b3d144aa4ac4db658b",
+  "app_name": "pass-emploi-logstash-perf",
+  "user": { "username": "…", "email": "…", "id": "…" },
+  "type_data": { "scope": ["web"], "reason": "user_restart" }
 }
 ```
 
 > **Alternative** : utiliser l'alerte 3 (absence de logs) comme proxy indirect du
 > crash — un crash Logstash se traduit immédiatement par un silence dans
-> `logs-prod-default`. Les deux alertes sont complémentaires : le webhook Scalingo
+> `logs-prod-default`. Les deux alertes sont complémentaires : l'alerte 6
 > donne la **cause** (OOM), l'alerte 3 donne l'**effet** (silence logs).
 
 ---
@@ -792,50 +573,12 @@ sévère côté `process`.
 | **Fenêtre**               | 15 min                                                                                                                                                                                     |
 | **Fréquence**             | 2 min                                                                                                                                                                                      |
 | **Sévérité**              | Critical                                                                                                                                                                                   |
-| **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-o11y-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — voir body ci-dessous |
-| **Action 2 (résolution)** | Connecteur Kibana **Mattermost-o11y-production** — `On status changes` / `Run when: Recovered` (onglet Actions → Settings) — voir body ci-dessous                                    |
-| **Related dashboards**    | `[Metrics Redis] Keys`, `[Metrics Logstash] Logstash Single Pipeline View`, `[Metrics Logstash] Elasticsearch output plugin info` |
-| **Investigation guide**   | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-5--backlog-redis-logstashingest) |
+| **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-o11y-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — message dans le bloc de la règle |
+| **Action 2 (résolution)** | Connecteur Kibana **Mattermost-o11y-production** — `On status changes` / `Run when: Recovered` (onglet Actions → Settings) — message dans le bloc de la règle                                    |
+| **Related dashboards**    | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide**   | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-5--backlog-redis-logstashingest) |
 
-**Body du webhook — Action 1 (alerte)** :
-```json
-{
-  "text": "🚨 **Backlog Redis prod** — la liste `logstash:ingest` reste au-dessus de 1 000 événements depuis 15 min. Le pipeline `process` ne consomme plus Redis (redémarrage ou blocage de `pass-emploi-logstash-process-prod`, ou backpressure ES sévère).",
-  "attachments": [
-    {
-      "color": "#d00000",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "À vérifier", "value": "Les logs de `pass-emploi-logstash-process-prod` sur Scalingo" },
-        { "title": "À vérifier", "value": "Le statut Redis dans le dashboard Scalingo" },
-        { "title": "Dashboard", "value": "[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)" },
-        { "title": "Dashboard", "value": "[[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)" },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)" },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)" },
-        { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-5--backlog-redis-logstashingest)" }
-      ]
-    }
-  ]
-}
-```
-
-**Body du webhook — Action 2 (résolution)** :
-```json
-{
-  "text": "✅ **Backlog Redis prod résorbé** — la liste `logstash:ingest` est redescendue sous 1 000 événements. Le pipeline `process` a reconnecté et vide le backlog.",
-  "attachments": [
-    {
-      "color": "#2eb886",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Résolue à", "value": "`{{date}}`", "short": true },
-        { "title": "⚠️ Attention", "value": "Les logs accumulés pendant la coupure vont apparaître dans Kibana avec un timestamp d'origine — vérifier l'absence de trou dans les index `logs-prod-default` et `logs-router-prod-default`" }
-      ]
-    }
-  ]
-}
-```
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### 7b — Backlog Redis staging / perf (Warning)
 
@@ -851,31 +594,11 @@ sévère côté `process`.
 | **Fréquence**           | 5 min                                                                                                           |
 | **Sévérité**            | Warning                                                                                                         |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)      |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — voir body ci-dessous                                                                                                                                                    |
-| **Related dashboards**  | `[Metrics Redis] Keys`, `[Metrics Logstash] Logstash Single Pipeline View`, `[Metrics Logstash] Elasticsearch output plugin info` |
-| **Investigation guide** | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-5--backlog-redis-logstashingest) |
+| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — message dans le bloc de la règle                                                                                                                                                    |
+| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-5--backlog-redis-logstashingest) |
 
-**Body du webhook** :
-```json
-{
-  "text": "⚠️ **Backlog Redis staging/perf** — la liste `logstash:ingest` reste au-dessus de 1 000 événements depuis 15 min. Le pipeline `process` ne consomme plus Redis.",
-  "attachments": [
-    {
-      "color": "#f2c744",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "À vérifier", "value": "Les logs de `pass-emploi-logstash-process-staging` / `pass-emploi-logstash-process-perf` sur Scalingo" },
-        { "title": "Dashboard", "value": "[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)" },
-        { "title": "Dashboard", "value": "[[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)" },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)" },
-        { "title": "Dashboard", "value": "[[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)" },
-        { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-5--backlog-redis-logstashingest)" }
-      ]
-    }
-  ]
-}
-```
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ---
 
@@ -941,10 +664,10 @@ agent ressemble à une infra saine. Contexte :
 | **Fenêtre**               | 5 min                                                                                                                                                                                                                                                                                                          |
 | **Fréquence**             | 1 min                                                                                                                                                                                                                                                                                                          |
 | **Sévérité**              | Critical                                                                                                                                                                                                                                                                                                       |
-| **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-o11y-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — voir body ci-dessous                                                                                                                     |
+| **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-o11y-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — message dans le bloc de la règle                                                                                                                     |
 | **Action 2 (résolution)** | **Aucune** — voir note « Transition, pas état » ci-dessus                                                                                                                                                                                                                                                      |
-| **Related dashboards**    | `[Elastic Agent] Concerning Agents`, `[Elastic Agent] Overview`, `[Elastic Agent] Agent metrics` |
-| **Investigation guide**   | Voir [pilotage des agents](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/pilotage.md) et [post-mortem — agent UNENROLLED](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/post-mortems/postmortem-2026-09-unenrolled-elastic-agent.md) |
+| **Related dashboards**    | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide**   | dans la règle (mêmes étapes que le message) ; runbook : [pilotage des agents](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/pilotage.md) et [post-mortem — agent UNENROLLED](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/post-mortems/postmortem-2026-09-unenrolled-elastic-agent.md) |
 
 **Requête ES|QL** :
 ```
@@ -961,30 +684,7 @@ FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*
 | WHERE statuts IS NOT NULL OR erreurs_output > 25
 ```
 
-**Body du webhook — Action 1 (alerte)** :
-```json
-{
-  "text": "🚨 **Elastic Agent en défaut — prod** — les alertes Logstash/Redis (4, 5, 7) peuvent être aveugles.",
-  "attachments": [
-    {
-      "color": "#d00000",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "Détail", "value": "{{context.message}}" },
-        { "title": "offline", "value": "vérifier l'app Scalingo (conteneur arrêté, restart)" },
-        { "title": "unenrolled", "value": "cas du post-mortem du 11/09 → `ELASTIC_AGENT_ID_SUFFIX`" },
-        { "title": "unhealthy / erreurs d'output", "value": "Kibana → Fleet → Agents → composants en erreur, output ES de la policy" },
-        { "title": "Dashboard", "value": "[[Elastic Agent] Concerning Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-0600ffa0-6b5e-11ed-98de-67bdecd21824)" },
-        { "title": "Dashboard", "value": "[[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824)" },
-        { "title": "Dashboard", "value": "[[Elastic Agent] Agent metrics](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-f47f18cc-9c7d-4278-b2ea-a6dee816d395)" },
-        { "title": "Fleet", "value": "[Fleet → Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/fleet/agents)" },
-        { "title": "Doc", "value": "[Pilotage des agents](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/pilotage.md)" }
-      ]
-    }
-  ]
-}
-```
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### 8b — Elastic Agent en défaut staging (Warning)
 
@@ -997,9 +697,9 @@ FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*
 | **Fréquence**           | 1 min                                                                                                                                                                                                                                                                                                          |
 | **Sévérité**            | Warning                                                                                                                                                                                                                                                                                                        |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                                                                                     |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — voir body ci-dessous                                                                                                                                                                                                                                     |
-| **Related dashboards**  | `[Elastic Agent] Concerning Agents`, `[Elastic Agent] Overview`, `[Elastic Agent] Agent metrics` |
-| **Investigation guide** | Voir [pilotage des agents](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/pilotage.md) et [post-mortem — agent UNENROLLED](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/post-mortems/postmortem-2026-09-unenrolled-elastic-agent.md) |
+| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — message dans le bloc de la règle                                                                                                                                                                                                                                     |
+| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [pilotage des agents](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/pilotage.md) et [post-mortem — agent UNENROLLED](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/post-mortems/postmortem-2026-09-unenrolled-elastic-agent.md) |
 
 **Requête ES|QL** :
 ```
@@ -1016,30 +716,7 @@ FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*
 | WHERE statuts IS NOT NULL OR erreurs_output > 25
 ```
 
-**Body du webhook** :
-```json
-{
-  "text": "⚠️ **Elastic Agent en défaut — staging** — les alertes Logstash/Redis (4, 5, 7) peuvent être aveugles.",
-  "attachments": [
-    {
-      "color": "#f2c744",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "Détail", "value": "{{context.message}}" },
-        { "title": "offline", "value": "vérifier l'app Scalingo (conteneur arrêté, restart)" },
-        { "title": "unenrolled", "value": "cas du post-mortem du 11/09 → `ELASTIC_AGENT_ID_SUFFIX`" },
-        { "title": "unhealthy / erreurs d'output", "value": "Kibana → Fleet → Agents → composants en erreur, output ES de la policy" },
-        { "title": "Dashboard", "value": "[[Elastic Agent] Concerning Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-0600ffa0-6b5e-11ed-98de-67bdecd21824)" },
-        { "title": "Dashboard", "value": "[[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824)" },
-        { "title": "Dashboard", "value": "[[Elastic Agent] Agent metrics](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-f47f18cc-9c7d-4278-b2ea-a6dee816d395)" },
-        { "title": "Fleet", "value": "[Fleet → Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/fleet/agents)" },
-        { "title": "Doc", "value": "[Pilotage des agents](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/pilotage.md)" }
-      ]
-    }
-  ]
-}
-```
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ---
 
@@ -1079,46 +756,12 @@ et l'Elastic Agent co-localisé lui échappent (cf.
 | **Fenêtre**               | 5 min                                                                                                                                                                                      |
 | **Fréquence**             | 1 min                                                                                                                                                                                      |
 | **Sévérité**              | Critical                                                                                                                                                                                   |
-| **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-o11y-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — voir body ci-dessous |
-| **Action 2 (résolution)** | Connecteur Kibana **Mattermost-o11y-production** — `On status changes` / `Run when: Recovered` (onglet Actions → Settings) — voir body ci-dessous                                    |
-| **Related dashboards**    | `[Pass Emploi] Supervision Stack d'Observabilité`                                                                                                                                          |
-| **Investigation guide**   | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
+| **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-o11y-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — message dans le bloc de la règle |
+| **Action 2 (résolution)** | Connecteur Kibana **Mattermost-o11y-production** — `On status changes` / `Run when: Recovered` (onglet Actions → Settings) — message dans le bloc de la règle                                    |
+| **Related dashboards**    | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide**   | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
 
-**Body du webhook — Action 1 (alerte)** :
-```json
-{
-  "text": "🚨 **Mémoire conteneur Logstash prod** — un conteneur dépasse 95 % de sa limite Scalingo : OOM-kill et redémarrage imminents.",
-  "attachments": [
-    {
-      "color": "#d00000",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "Conteneur", "value": "`{{context.group}}`", "short": true },
-        { "title": "À vérifier", "value": "Le heap (alerte 5) et le backlog Redis (alerte 7) : un `process` qui rattrape un backlog consomme plus. `LS_JAVA_OPTS` doit rester `-Xms256m -Xmx256m`" },
-        { "title": "Dashboard", "value": "[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)" },
-        { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash)" }
-      ]
-    }
-  ]
-}
-```
-
-**Body du webhook — Action 2 (résolution)** :
-```json
-{
-  "text": "✅ **Mémoire conteneur Logstash prod** — tous les conteneurs sont repassés sous 95 % de leur limite.",
-  "attachments": [
-    {
-      "color": "#2eb886",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Résolue à", "value": "`{{date}}`", "short": true }
-      ]
-    }
-  ]
-}
-```
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### 9b — Mémoire conteneur staging / perf (Warning)
 
@@ -1135,28 +778,11 @@ et l'Elastic Agent co-localisé lui échappent (cf.
 | **Fréquence**           | 5 min                                                                                                                                                                   |
 | **Sévérité**            | Warning                                                                                                                                                                 |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                              |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — voir body ci-dessous                                                                                                    |
-| **Related dashboards**  | `[Pass Emploi] Supervision Stack d'Observabilité`                                                                                                                       |
-| **Investigation guide** | Voir [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
+| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — message dans le bloc de la règle                                                                                                    |
+| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
 
-**Body du webhook** :
-```json
-{
-  "text": "⚠️ **Mémoire conteneur Logstash staging/perf** — un conteneur dépasse 95 % de sa limite Scalingo : OOM-kill imminent.",
-  "attachments": [
-    {
-      "color": "#f2c744",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "Conteneur", "value": "`{{context.group}}`", "short": true },
-        { "title": "Dashboard", "value": "[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)" },
-        { "title": "Runbook", "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash)" }
-      ]
-    }
-  ]
-}
-```
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ---
 
@@ -1194,9 +820,9 @@ les métriques Fleet et les logs Elastic Agent sur `metrics@lifecycle` /
 | **Fréquence**           | 1 h                                                                                                                                                                                                            |
 | **Sévérité**            | Warning                                                                                                                                                                                                        |
 | **Notification**        | Une fois par jour : `On check intervals` / `Run when: Query matched`, avec `If alert is generated during timeframe` tous les jours de `09:30` à `10:30` (`Europe/Paris`) (onglet Actions → Settings) |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-production** — voir body ci-dessous                                                                                                                                        |
-| **Related dashboards**  | — |
-| **Investigation guide** | Voir [runbook ILM](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-ilm.md) |
+| **Action**              | Connecteur Kibana **Mattermost-o11y-production** — message dans le bloc de la règle                                                                                                                                        |
+| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
+| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook ILM](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-ilm.md) |
 
 **Requête ES|QL** :
 ```
@@ -1213,24 +839,7 @@ FROM .ds-ilm-history-7-*
 | EVAL exemples = MV_SLICE(exemples, 0, 9)
 ```
 
-**Body du webhook** :
-```json
-{
-  "text": "⚠️ **Rétention ILM — bilan des 24 h** — des index n'appliquent pas leur rétention : étape ILM en échec ou policy par défaut sans suppression.",
-  "attachments": [
-    {
-      "color": "#f2c744",
-      "fields": [
-        { "title": "Règle", "value": "`{{rule.name}}`", "short": true },
-        { "title": "Déclenchée à", "value": "`{{date}}`", "short": true },
-        { "title": "Détail", "value": "{{context.message}}" },
-        { "title": "À vérifier", "value": "Le Discover [[Pass Emploi] Historique ILM - Index hors rétention](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/3f3c69ef-e515-4be4-b679-eff837c92ecb), liste les index concernés. Deux cas : l'index ne sera jamais supprimé (il porte une policy d'Elastic par défaut au lieu de la nôtre), ou ILM est bloqué sur cet index (`success` à `false`)" },
-        { "title": "Runbook", "value": "[Runbook ILM](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-ilm.md)" }
-      ]
-    }
-  ]
-}
-```
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ---
 
@@ -1263,13 +872,13 @@ du déploiement `Pass Emploi` au connecteur ci-dessous. Un événement garde ses
 réglages par défaut tant qu'on ne lui crée pas de réglage personnalisé (*custom
 event settings*) : seul le statut red en a un.
 
-| Événement AutoOps | Réglage personnalisé | Déclenchement |
-|---|---|---|
-| The disk capacity is about to reach low watermark | aucun (défaut : 10 points sous le palier) | 75 %, préavis |
-| The low disk watermark has been exceeded | aucun | 85 % |
-| The high disk watermark has been exceeded | aucun | 90 % |
-| The flood stage disk watermark has been exceeded | aucun | 95 % |
-| The cluster status is red | `Minimum duration of the red status` = **300** s (ignore les passages en rouge des maintenances Elastic Cloud) ; exclusions par défaut `partial-*`, `restored-*` conservées (index frozen et restaurés, brièvement rouges au montage) | shard principal indisponible depuis 5 min |
+| Événement AutoOps                                 | Réglage personnalisé                                                                                                                                                                                                                  | Déclenchement                             |
+|---------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------|
+| The disk capacity is about to reach low watermark | aucun (défaut : 10 points sous le palier)                                                                                                                                                                                             | 75 %, préavis                             |
+| The low disk watermark has been exceeded          | aucun                                                                                                                                                                                                                                 | 85 %                                      |
+| The high disk watermark has been exceeded         | aucun                                                                                                                                                                                                                                 | 90 %                                      |
+| The flood stage disk watermark has been exceeded  | aucun                                                                                                                                                                                                                                 | 95 %                                      |
+| The cluster status is red                         | `Minimum duration of the red status` = **300** s (ignore les passages en rouge des maintenances Elastic Cloud) ; exclusions par défaut `partial-*`, `restored-*` conservées (index frozen et restaurés, brièvement rouges au montage) | shard principal indisponible depuis 5 min |
 
 Écartés : *The cluster status is yellow* (une copie de secours manque, à chaque
 maintenance Elastic Cloud ; la perte réelle est couverte par le statut red) et
@@ -1307,6 +916,39 @@ version).
 }
 ```
 
+**Connecteur Tchap** (à créer avant le 1er novembre 2026, en plus du connecteur
+Mattermost jusqu'à cette date ; même filtre) : type **Webhook**, nom
+`Tchap o11y-production - Monitoring disque et santé Elasticsearch`, méthode `POST`, URL
+`https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/%21GcUrxqTFizBjxwmsBO%3Aagent.dinum.tchap.gouv.fr/send/m.room.message`
+(ID du salon `o11y-production`, encodé),
+en-têtes `Content-Type: application/json` et
+`Authorization: Bearer <jeton du bot Tchap>` (le bot des
+[Workflows Tchap](workflows/tchap/README.md) ; secret : ne pas le versionner).
+
+> **Pourquoi `POST` sans `txnId`** : AutoOps n'a ni variable unique par
+> événement ni variable dans l'URL, il ne peut pas produire le `txnId` de
+> l'envoi normalisé (`PUT …/{txnId}`). La route `POST` sans `txnId` est
+> ancienne, hors norme Matrix, mais acceptée par Synapse (le serveur de Tchap).
+> Concession : un envoi rejoué après une coupure réseau peut doubler le message.
+> Si une montée de version de Tchap supprimait cette route, les notifications
+> cesseraient : garder une notification AutoOps **par email** vers l'équipe en
+> secours.
+
+**Body du webhook Tchap** : `${DESCRIPTION}` est omis, identique à
+`${MESSAGE}` sur le premier événement réel (le rajouter si un événement montre
+une différence). Dans le HTML, les `<br />` de `${MESSAGE}` s'affichent comme des
+retours à la ligne.
+```json
+{
+  "msgtype": "m.text",
+  "body": "🚨 AutoOps — ${TITLE} (${SEVERITY}, ${STATUS}) — ${RESOURCE_NAME}\n${MESSAGE}\nNœuds : ${AFFECTED_NODES} · Index : ${AFFECTED_INDICES}\nDébut : ${START_TIME} · Fin : ${END_TIME}\n${EVENT_LINK}",
+  "format": "org.matrix.custom.html",
+  "formatted_body": "<p>🚨 <strong>AutoOps — ${TITLE}</strong> (${SEVERITY}, ${STATUS}) — ${RESOURCE_NAME}</p><p>${MESSAGE}</p><p>Nœuds : ${AFFECTED_NODES} · Index : ${AFFECTED_INDICES}<br />Début : <code>${START_TIME}</code> · Fin : <code>${END_TIME}</code></p><p>À vérifier : <a href=\"${EVENT_LINK}\">l'événement dans AutoOps</a></p><p>Runbook : <a href=\"https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-disque-elasticsearch.md\">Disque des nœuds Elasticsearch</a></p>"
+}
+```
+Tester avec **Run to test** : le message doit arriver dans le salon, variables
+non remplies.
+
 ---
 
 ## Alerte 12 — Saturation de l'indexation Elasticsearch (AutoOps)
@@ -1332,10 +974,10 @@ Cette alerte précède l'[alerte 4](#alerte-4--backpressure-inputs-bloqués-sur-
 **Événements** : filtre `Saturation indexation Elasticsearch` de l'onglet
 *Filter settings*, déploiement `Pass Emploi`, vers le connecteur ci-dessous.
 
-| Événement AutoOps | Réglages (par défaut, sans réglage personnalisé) | Ce qu'il signale |
-|---|---|---|
-| The management queue size is high | `High management queue activity threshold` = 5 ; `How many successive samplings…` = 3 | la file des opérations internes (rollovers, fusions, ILM) sature |
-| The index queue is high | `Write queue threshold` = 30 ; `How many successive samplings…` = 3 | la file des écritures d'un nœud n'absorbe plus le flux de Logstash |
+| Événement AutoOps                 | Réglages (par défaut, sans réglage personnalisé)                                      | Ce qu'il signale                                                   |
+|-----------------------------------|---------------------------------------------------------------------------------------|--------------------------------------------------------------------|
+| The management queue size is high | `High management queue activity threshold` = 5 ; `How many successive samplings…` = 3 | la file des opérations internes (rollovers, fusions, ILM) sature   |
+| The index queue is high           | `Write queue threshold` = 30 ; `How many successive samplings…` = 3                   | la file des écritures d'un nœud n'absorbe plus le flux de Logstash |
 
 Les 3 mesures successives au-dessus du seuil ignorent les montées brèves de ces
 files aux pics de logs (:00 et :30). En cas de bruit, augmenter d'abord ce nombre
@@ -1346,6 +988,14 @@ de mesures (réglage personnalisé), avant de toucher aux seuils.
 entrant que l'alerte 11 (secret : ne pas la versionner), méthode `POST`, en-tête
 `Content-Type: application/json`. Tester avec **Run to test** avant **Save** : les
 variables `${…}` arrivent non remplies au test, c'est normal.
+
+> **Constaté sur le premier événement réel** (management queue, 2026-10-14) :
+> toutes les variables sont remplies. AutoOps envoie un message à l'ouverture
+> (`OPENED`, `${END_TIME}` vaut alors `N/A`) puis un à la clôture
+> (`RESOLVED`). Les heures sont en UTC (`+0000`). `${MESSAGE}` contient des
+> `<br />` que Mattermost affiche tels quels, et il était identique à
+> `${DESCRIPTION}` sur cet événement. L'émoji 🚨 et la couleur sont fixes,
+> quelle que soit la sévérité (`LOW` ici) : seul le texte la donne.
 
 **Body du webhook** :
 ```json
@@ -1369,7 +1019,71 @@ variables `${…}` arrivent non remplies au test, c'est normal.
 }
 ```
 
+**Connecteur Tchap** (à créer avant le 1er novembre 2026, en plus du connecteur
+Mattermost jusqu'à cette date ; même filtre) : type **Webhook**, nom
+`Tchap o11y-production - Monitoring indexation Elasticsearch`, méthode `POST`, URL
+`https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/%21GcUrxqTFizBjxwmsBO%3Aagent.dinum.tchap.gouv.fr/send/m.room.message`
+(ID du salon `o11y-production`, encodé),
+en-têtes `Content-Type: application/json` et
+`Authorization: Bearer <jeton du bot Tchap>` (le bot des
+[Workflows Tchap](workflows/tchap/README.md) ; secret : ne pas le versionner).
+
+> **Pourquoi `POST` sans `txnId`** : AutoOps n'a ni variable unique par
+> événement ni variable dans l'URL, il ne peut pas produire le `txnId` de
+> l'envoi normalisé (`PUT …/{txnId}`). La route `POST` sans `txnId` est
+> ancienne, hors norme Matrix, mais acceptée par Synapse (le serveur de Tchap).
+> Concession : un envoi rejoué après une coupure réseau peut doubler le message.
+> Si une montée de version de Tchap supprimait cette route, les notifications
+> cesseraient : garder une notification AutoOps **par email** vers l'équipe en
+> secours.
+
+**Body du webhook Tchap** : `${DESCRIPTION}` est omis, identique à
+`${MESSAGE}` sur le premier événement réel (le rajouter si un événement montre
+une différence). Dans le HTML, les `<br />` de `${MESSAGE}` s'affichent comme des
+retours à la ligne.
+```json
+{
+  "msgtype": "m.text",
+  "body": "🚨 AutoOps — ${TITLE} (${SEVERITY}, ${STATUS}) — ${RESOURCE_NAME}\n${MESSAGE}\nNœuds : ${AFFECTED_NODES} · Index : ${AFFECTED_INDICES}\nDébut : ${START_TIME} · Fin : ${END_TIME}\n${EVENT_LINK}",
+  "format": "org.matrix.custom.html",
+  "formatted_body": "<p>🚨 <strong>AutoOps — ${TITLE}</strong> (${SEVERITY}, ${STATUS}) — ${RESOURCE_NAME}</p><p>${MESSAGE}</p><p>Nœuds : ${AFFECTED_NODES} · Index : ${AFFECTED_INDICES}<br />Début : <code>${START_TIME}</code> · Fin : <code>${END_TIME}</code></p><p>À vérifier : <a href=\"${EVENT_LINK}\">l'événement dans AutoOps</a>, puis la backpressure Logstash dans le dashboard <a href=\"https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d\">[Pass Emploi] Supervision Stack d'Observabilité</a></p><p>Runbook : <a href=\"https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch\">Backpressure Elasticsearch</a></p>"
+}
+```
+Tester avec **Run to test** : le message doit arriver dans le salon, variables
+non remplies.
+
 ---
+
+---
+
+## Alerte 14 — Événement externe rejeté
+
+**Objectif** : ne pas perdre en silence une notification Scalingo ou GitHub.
+Un document rejeté par son ingest pipeline (ou par Elasticsearch) part au
+failure store de son data stream, et son émetteur reçoit **quand même un
+succès** : sans cette règle, un changement de format chez Scalingo ou GitHub,
+ou un notifier qui vise le mauvais environnement, passerait inaperçu, et
+l'alerte que portait le document ne serait pas levée.
+
+### 14 — Événement externe rejeté (Warning)
+
+| Paramètre               | Valeur |
+|-------------------------|--------|
+| **Rule name**           | `Événements externes - Payload rejeté (failure store)` |
+| **Type**                | Elasticsearch query rule (KQL), data view sur les 4 `logs-alertes-*-default::failures` (`allowHidden`) |
+| **Requête**             | aucune : tout document |
+| **Fenêtre / fréquence** | 10 min / 5 min |
+| **Actions**             | Mattermost-o11y-production ; Tchap via le Workflow `tchap-o11y-production` |
+| **Related dashboards**  | — |
+
+Une ligne par rejet : `error.type` et `error.message`.
+
+**À vérifier** :
+1. Le Discover **[Pass Emploi] Alertes externes - Rejets (failure store)** :
+   `error.type` et `error.message` donnent le motif du rejet.
+2. Le payload d'origine (`document.source`) : adapter le pipeline (cf.
+   [collecte](../collecte/evenements-externes/README.md#champs-ecs-produits)),
+   puis le rejouer en `_simulate`.
 
 ---
 

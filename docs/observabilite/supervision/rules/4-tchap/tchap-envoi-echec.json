@@ -1,0 +1,40 @@
+{
+  "_id": "26888801-090e-41ee-839b-73d2832330a8",
+  "_methode": "POST",
+  "_commentaire": [
+    "# Envois Tchap en échec (tchap-client et Workflows de salon)"
+  ],
+  "name": "Tchap - Envoi en échec",
+  "tags": [
+    "warning",
+    "prod",
+    "o11y",
+    "tchap"
+  ],
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchType": "esQuery",
+    "esQuery": "{\"query\":{\"bool\":{\"filter\":[{\"term\":{\"status\":\"failed\"}},{\"prefix\":{\"workflowId\":\"tchap-\"}}]}}}",
+    "index": [
+      ".workflows-executions"
+    ],
+    "timeField": "finishedAt",
+    "timeWindowSize": 10,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 20,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": true,
+    "sourceFields": []
+  },
+  "actions": [],
+  "rule_type_id": ".es-query",
+  "consumer": "alerts"
+}

@@ -7,11 +7,28 @@ on:
         description: 'Nom du repo pour le message Mattermost'
         required: true
         type: string
+      elastic-url:
+        description: "Endpoint Elasticsearch (variable ELASTIC_URL du repo) ; vide = pas d'envoi"
+        required: false
+        type: string
+        default: ''
+      envoi-mattermost:
+        description: "Envoi Mattermost (variable CVE_ENVOI_MATTERMOST du repo, false pour le couper)"
+        required: false
+        type: boolean
+        default: true
+      envoi-elasticsearch:
+        description: "Envoi Elasticsearch (variable CVE_ENVOI_ELASTICSEARCH du repo, false pour le couper)"
+        required: false
+        type: boolean
+        default: true
     secrets:
       DEPENDABOT_ALERTS_READER:
         required: true
       MATTERMOST_WEBHOOK_URL:
-        required: true
+        required: false
+      ELASTIC_ALERTES_GITHUB_API_KEY:
+        required: false
 
 jobs:
   check-cves:
@@ -20,6 +37,9 @@ jobs:
     permissions:
       contents: read
       security-events: read
+    env:
+      MATTERMOST_ACTIF: ${{ inputs.envoi-mattermost && secrets.MATTERMOST_WEBHOOK_URL != '' }}
+      ELASTIC_ACTIF: ${{ inputs.envoi-elasticsearch && secrets.ELASTIC_ALERTES_GITHUB_API_KEY != '' && inputs.elastic-url != '' }}
 
     steps:
       - name: Fetch Dependabot alerts (high/critical)
@@ -52,7 +72,7 @@ jobs:
           GH_TOKEN: ${{ secrets.DEPENDABOT_ALERTS_READER }}
 
       - name: Send Mattermost alert
-        if: steps.fetch-alerts.outputs.has_alerts == 'true'
+        if: steps.fetch-alerts.outputs.has_alerts == 'true' && env.MATTERMOST_ACTIF == 'true'
         run: |
           echo "📤 Envoi alerte Mattermost..."
 
@@ -90,3 +110,31 @@ jobs:
           echo "✅ Alerte envoyée"
         env:
           MATTERMOST_WEBHOOK_URL: ${{ secrets.MATTERMOST_WEBHOOK_URL }}
+
+      - name: Send alerts to Elasticsearch
+        if: steps.fetch-alerts.outputs.has_alerts == 'true' && env.ELASTIC_ACTIF == 'true'
+        run: |
+          echo "📤 Envoi des CVEs à Elasticsearch..."
+
+          repo_name="${{ inputs.repo-name }}"
+          if [ -z "$repo_name" ]; then
+            repo_name="${{ github.event.repository.name }}"
+          fi
+
+          jq -c --arg repo "$repo_name" '.[] | {"create": {}}, (. + {"repository": $repo})' /tmp/alerts.json > /tmp/alerts.ndjson
+
+          response=$(curl -sS --fail-with-body -X POST "${ELASTIC_URL%/}/logs-alertes-github-default/_bulk" \
+            -H "Authorization: ApiKey $ELASTIC_ALERTES_GITHUB_API_KEY" \
+            -H 'Content-Type: application/x-ndjson' \
+            --data-binary @/tmp/alerts.ndjson)
+
+          if [ "$(echo "$response" | jq '.errors')" != "false" ]; then
+            echo "❌ Rejet par Elasticsearch :"
+            echo "$response" | jq -c '[.items[].create | select(.error) | .error.reason]'
+            exit 1
+          fi
+
+          echo "✅ $(echo "$response" | jq '.items | length') CVE(s) envoyée(s)"
+        env:
+          ELASTIC_URL: ${{ inputs.elastic-url }}
+          ELASTIC_ALERTES_GITHUB_API_KEY: ${{ secrets.ELASTIC_ALERTES_GITHUB_API_KEY }}

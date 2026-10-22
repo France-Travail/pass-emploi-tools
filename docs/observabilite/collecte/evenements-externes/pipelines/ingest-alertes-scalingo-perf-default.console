@@ -1,0 +1,53 @@
+# Pipeline par défaut de logs-alertes-scalingo-perf-default. Spécification :
+# ../README.md. À rejouer après ingest-alertes-scalingo.console et
+# ingest-alertes-scalingo-format-slack.console.
+#
+# Vérifie que le document est bien un événement Scalingo d'une app de perf, puis
+# délègue la transformation au pipeline commun. Un document rejeté part dans le
+# failure store du data stream (règle 14) : un notifier mal configuré (mauvais
+# data stream dans son URL) se voit au lieu de polluer les alertes d'un autre env.
+PUT _ingest/pipeline/ingest-alertes-scalingo-perf-default
+{
+  "description": "Notifiers Scalingo des apps de perf → ECS",
+  "processors": [
+    {
+      "pipeline": {
+        "if": "ctx.app_name == null && ctx.attachments instanceof List && !ctx.attachments.isEmpty()",
+        "name": "ingest-alertes-scalingo-format-slack"
+      }
+    },
+    {
+      "fail": {
+        "if": "ctx.app_name == null || ctx.type == null || ctx.type_data == null",
+        "message": "Pas un événement de notifier Scalingo : app_name, type ou type_data absent"
+      }
+    },
+    {
+      "pipeline": {
+        "name": "ingest-alertes-scalingo"
+      }
+    },
+    {
+      "fail": {
+        "if": "ctx.service?.environment != 'perf'",
+        "message": "App {{{scalingo.app_name}}} envoyée vers logs-alertes-scalingo-perf-default : corriger l'URL de son notifier"
+      }
+    }
+  ]
+}
+
+# TESTS — app de perf → indexée ; app de prod → erreur « corriger l'URL de
+# son notifier » ; payload d'une autre source → erreur « Pas un événement de
+# notifier Scalingo » (failure store en réel) ; événement au format Slack (capture
+# du 2026-10-19) → indexé, message « ℹ️ pass-emploi-logstash-perf :
+# scalingo_variables_bulk_edited (New vars : TEST_NOTIFIER_ELASTIC), par
+# alexandre.tingaud-octo », labels.categorie: infra.
+POST _ingest/pipeline/ingest-alertes-scalingo-perf-default/_simulate
+{
+  "docs": [
+    { "_source": {"id":"test-perf","created_at":"2026-10-12T08:00:00.000Z","type":"restart","app_id":"test","app_name":"pass-emploi-api-perf","user":{"username":"scalingo-platform"},"type_data":{"scope":["web"],"reason":"user_restart"}} },
+    { "_source": {"id":"test-prod","created_at":"2026-10-12T08:00:00.000Z","type":"restart","app_id":"test","app_name":"pass-emploi-api-prod","user":{"username":"scalingo-platform"},"type_data":{"scope":["web"],"reason":"user_restart"}} },
+    { "_source": {"message":"payload sans source connue"} },
+    { "_source": {"icon_url":"https://cdn.scalingo.com/logo.png","attachments":[{"color":"#DD9C2D","footer":"By alexandre.tingaud-octo","title":"[pass-emploi-logstash-perf] Variables bulk edited","fields":[{"short":true,"title":"New vars","value":"• `TEST_NOTIFIER_ELASTIC`\n"}],"fallback":"Variables edited.","ts":1792427008}],"username":"Scalingo"} }
+  ]
+}

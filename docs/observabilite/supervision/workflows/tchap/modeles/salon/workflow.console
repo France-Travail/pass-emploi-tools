@@ -1,0 +1,37 @@
+# Workflow du salon Tchap @@SALON@@, généré par generer-workflows.py depuis les
+# règles de ../../../rules/generated/ : ne pas modifier à la main. Spécification : ../README.md.
+#
+# ID du salon : Tchap → paramètres du salon → Avancé. Ce n'est pas un secret :
+# le salon est privé, sur invitation.
+# Le foreach écarte les alertes en attente de rétablissement
+# (pending_recovered_count > 0) : une alerte qui bagote reste « active », à 0
+# document, plusieurs exécutions, et l'action .workflows la transmet quand même.
+@@SI_ESQL_COMMENTAIRE@@
+# Mise à jour : PUT kbn:/api/workflows/workflow/tchap-@@SALON@@ avec {"yaml": …}.
+POST kbn:/api/workflows/workflow
+{
+  "id": "tchap-@@SALON@@",
+  "yaml": """
+name: Tchap - @@SALON@@
+description: Envoie les alertes des règles dans le salon Tchap @@SALON@@
+enabled: true
+triggers:
+  - type: alert
+consts:
+  salon: "@@ID_SALON@@"
+steps:
+  - name: chaque-alerte
+    type: foreach
+    foreach: "{{ event.alerts | where_exp: 'a', 'a.kibana.alert.pending_recovered_count == blank or a.kibana.alert.pending_recovered_count == 0' | json }}"
+    steps:
+@@SI_ESQL_ETAPE@@
+      - name: notifier
+        type: workflow.execute
+        with:
+          workflow-id: tchap-client
+          inputs:
+            salon: "{{ consts.salon }}"
+            texte: "@@TEXTE@@"
+            html: "@@HTML@@"
+"""
+}
