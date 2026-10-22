@@ -11,9 +11,9 @@
 # la main. Spécification : ../../../alertes-applicatives.md.
 POST kbn:/api/workflows/workflow
 {
-  "id": "rapport-jobs-prod",
+  "id": "tchap-jobs-production-rapport",
   "yaml": """
-name: Rapport quotidien des jobs - prod
+name: Tchap - jobs-production - rapport quotidien des jobs
 description: Exécutions des jobs de pass-emploi-api sur 24 h, dans le salon Tchap jobs-production
 enabled: true
 triggers:

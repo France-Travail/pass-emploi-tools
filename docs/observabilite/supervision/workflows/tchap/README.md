@@ -28,7 +28,7 @@ flowchart LR
   end
 
   subgraph planifies["Workflows planifiés (générés)"]
-    WR["rapport-jobs-prod / -staging<br/>chaque jour à 9 h 30"]
+    WR["tchap-jobs-production-rapport<br/>tchap-jobs-staging-rapport<br/>chaque jour à 9 h 30"]
   end
 
   RMP -- "action .workflows" --> WMP
@@ -67,7 +67,7 @@ cluster en panne.
 | [`../../connecteurs/tchap.console`](../../connecteurs/tchap.console) | connecteur `.http` : URL de Tchap et jeton du bot |
 | [`tchap-client.console`](tchap-client.console) | le seul Workflow qui parle à Matrix |
 | [`generated/tchap-monitoring-production.console`](generated/tchap-monitoring-production.console), [`generated/tchap-monitoring-staging.console`](generated/tchap-monitoring-staging.console), [`generated/tchap-o11y-production.console`](generated/tchap-o11y-production.console), [`generated/tchap-o11y-staging.console`](generated/tchap-o11y-staging.console), [`generated/tchap-jobs-production.console`](generated/tchap-jobs-production.console), [`generated/tchap-jobs-staging.console`](generated/tchap-jobs-staging.console) | un Workflow par salon, **générés** : ne pas les modifier à la main |
-| [`generated/rapport-jobs-prod.console`](generated/rapport-jobs-prod.console), [`generated/rapport-jobs-staging.console`](generated/rapport-jobs-staging.console) | rapport quotidien des jobs de l'api, chaque jour à 9 h 30 (heure de Paris), **générés** |
+| [`generated/tchap-jobs-production-rapport.console`](generated/tchap-jobs-production-rapport.console), [`generated/tchap-jobs-staging-rapport.console`](generated/tchap-jobs-staging-rapport.console) | rapport quotidien des jobs de l'api, chaque jour à 9 h 30 (heure de Paris), **générés** |
 | [`generer-workflows.py`](generer-workflows.py) | génère les Workflows de salon depuis les règles de [`../../rules/`](../../rules/), et les rapports depuis la liste des CRON de `pass-emploi-api` (`origin/develop`) : `python3 -I generer-workflows.py` après toute modification d'une règle, d'un salon ou des CRON de l'api |
 | [`../../rules/generated/4-rules-tchap.console`](../../rules/generated/4-rules-tchap.console) | règle « Tchap - Envoi en échec » |
 | [`../../rules/generated/5-rules-tchap-expiration-bot.console`](../../rules/generated/5-rules-tchap-expiration-bot.console) | règle « Tchap - Expiration du compte bot », date d'expiration rangée dans Elasticsearch |

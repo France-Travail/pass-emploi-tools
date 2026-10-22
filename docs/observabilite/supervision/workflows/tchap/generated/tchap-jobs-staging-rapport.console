@@ -11,9 +11,9 @@
 # la main. Spécification : ../../../alertes-applicatives.md.
 POST kbn:/api/workflows/workflow
 {
-  "id": "rapport-jobs-staging",
+  "id": "tchap-jobs-staging-rapport",
   "yaml": """
-name: Rapport quotidien des jobs - staging
+name: Tchap - jobs-staging - rapport quotidien des jobs
 description: Exécutions des jobs de pass-emploi-api sur 24 h, dans le salon Tchap jobs-staging
 enabled: true
 triggers:

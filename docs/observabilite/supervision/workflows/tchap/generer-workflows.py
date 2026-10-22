@@ -323,9 +323,22 @@ ENTETE = """# ⚠️ FICHIER GÉNÉRÉ par ../generer-workflows.py : NE PAS LE M
 """
 
 
+ECRITS = set()
+
+
 def ecrire(nom_fichier, contenu):
     os.makedirs(GENERES, exist_ok=True)
     open(os.path.join(GENERES, nom_fichier), 'w').write(ENTETE + contenu)
+    ECRITS.add(nom_fichier)
+
+
+def retirer_orphelins():
+    """Supprime de generated/ les fichiers que cette génération n'a pas produits (Workflow
+    renommé ou supprimé) : la suppression apparaît dans le diff, et le CI la voit."""
+    for nom in sorted(os.listdir(GENERES)):
+        if nom.endswith('.console') and nom not in ECRITS:
+            os.remove(os.path.join(GENERES, nom))
+            print(f'generated/{nom} : sans source, supprimé')
 
 
 def main():
@@ -377,8 +390,9 @@ def main():
         print(f'tchap-{salon}.console : {len(regles)} règle(s), {len(sortie) // 1024} Ko')
     jobs = jobs_suivis()
     for env, salon, index in [('prod', 'jobs-production', 'logs-prod-default'), ('staging', 'jobs-staging', 'logs-staging-default')]:
-        ecrire(f'rapport-jobs-{env}.console', rapport(env, salon, index, jobs))
-        print(f'rapport-jobs-{env}.console : {len(jobs)} jobs suivis')
+        ecrire(f'tchap-{salon}-rapport.console', rapport(env, salon, index, jobs))
+        print(f'tchap-{salon}-rapport.console : {len(jobs)} jobs suivis')
+    retirer_orphelins()
 
 
 API = os.path.join(ICI, '..', '..', '..', '..', '..', '..', 'pass-emploi-api')
@@ -488,9 +502,9 @@ def rapport(env, salon, index, jobs):
 # la main. Spécification : ../../../alertes-applicatives.md.
 POST kbn:/api/workflows/workflow
 {{
-  "id": "rapport-jobs-{env}",
+  "id": "tchap-{salon}-rapport",
   "yaml": """
-name: Rapport quotidien des jobs - {env}
+name: Tchap - {salon} - rapport quotidien des jobs
 description: Exécutions des jobs de pass-emploi-api sur 24 h, dans le salon Tchap {salon}
 enabled: true
 triggers:

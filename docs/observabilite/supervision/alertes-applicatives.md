@@ -544,7 +544,7 @@ tous les jobs des 24 dernières heures, dans `jobs-production` et
 échec, ses exécutions attendues et réelles, sa durée moyenne, sa description.
 Ce n'est pas une règle : une action Tchap ne sait pas viser une heure fixe,
 c'est un Workflow planifié
-([`rapport-jobs-prod.console`](workflows/tchap/generated/rapport-jobs-prod.console)).
+([`tchap-jobs-production-rapport.console`](workflows/tchap/generated/tchap-jobs-production-rapport.console)).
 Les exécutions attendues viennent des expressions cron de pass-emploi-api,
 lues par [`generer-workflows.py`](workflows/tchap/generer-workflows.py) : à
 relancer quand les CRON changent. Les jobs hors CRON qui ont tourné y figurent

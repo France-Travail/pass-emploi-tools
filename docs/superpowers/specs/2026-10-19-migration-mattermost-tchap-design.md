@@ -393,7 +393,7 @@ de déploiement (2026-10-23 08:48 UTC).
 - [ ] Rapport quotidien des jobs : la liste des CRON (type, expression,
       description) est lue dans le code de pass-emploi-api (`listeCronJobs`,
       `origin/develop`) par `workflows/tchap/generer-workflows.py`, puis figée
-      dans les Workflows `rapport-jobs-*` : un CRON ajouté, modifié ou supprimé
+      dans les Workflows `tchap-jobs-*-rapport` : un CRON ajouté, modifié ou supprimé
       exige de relancer le générateur et de redéployer. Pour s'en passer :
       l'api logue sa liste de CRON (au démarrage), et le rapport la lit dans
       les logs.
