@@ -72,8 +72,9 @@ python3 -I workflows/tchap/generer-workflows.py
    (`../workflows/tchap/generated/`), depuis les mêmes JSON.
 
 Commiter les sources **et** les fichiers générés dans la même PR.
-`python3 -I rules/generer-regles.py --verifier` compare `generated/` à ses
-sources sans rien écrire.
+`FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I rules/generer-regles.py --verifier`
+compare `generated/` à ses sources sans rien écrire. Sans la variable, il compare
+aux règles sans Mattermost et signale donc des différences.
 
 ## `FEATURE_NOTIFIER_ALERTES_MATTERMOST`
 
