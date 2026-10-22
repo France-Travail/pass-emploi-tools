@@ -1,0 +1,16 @@
+[
+  {
+    "env": "prod",
+    "salon": "jobs-production",
+    "index": "logs-prod-default",
+    "libelle": "Prod",
+    "session_discover_jobs": "c0d38bba-66ef-4b68-8a10-4d786f6a9f4a"
+  },
+  {
+    "env": "staging",
+    "salon": "jobs-staging",
+    "index": "logs-staging-default",
+    "libelle": "Hors-Prod",
+    "session_discover_jobs": "16da36f4-a88e-4c01-b34f-e361a5292740"
+  }
+]

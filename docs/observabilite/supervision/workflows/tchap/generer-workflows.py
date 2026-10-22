@@ -1,24 +1,21 @@
 #!/usr/bin/env python3
 """Génère, dans generated/, les Workflows de salon tchap-<salon>.console depuis les règles
-de ../../rules/generated/ (et ../../rules/*.console), et les rapports des jobs.
+de ../../rules/generated/, et les rapports des jobs tchap-jobs-<env>-rapport.console.
 
-Chaque règle qui a une action .workflows reçoit, dans le Workflow de son salon, le
-contenu de son message Mattermost (titre, couleur, champs), traduit en Liquid.
+Chaque règle qui a une action .workflows reçoit, dans le Workflow de son salon, son message,
+lu dans son fichier JSON (../../rules/<n>-<périmètre>/<code>.json) et traduit en Liquid.
+Les gabarits des Workflows sont dans modeles/, les salons dans salons.json, les rapports
+des jobs dans rapports-jobs.json : ce script ne fait que les assembler.
 
-Usage : python3 -I generer-workflows.py
+Usage : python3 -I generer-workflows.py [--sans-rapports-jobs]
+  --sans-rapports-jobs : ne régénère pas les rapports des jobs (pas besoin de pass-emploi-api ;
+  utilisé par les tests).
 """
 import glob, html, json, os, re
 
 ICI = os.path.dirname(os.path.abspath(__file__))
 REGLES = os.path.join(ICI, '..', '..', 'rules')
-SALONS = {
-    'monitoring-production': '!wYxfADtvOcuPbjTOBU:agent.dinum.tchap.gouv.fr',
-    'monitoring-staging': '!ZfOFaCZYUWPLIxrYsx:agent.dinum.tchap.gouv.fr',
-    'o11y-production': '!GcUrxqTFizBjxwmsBO:agent.dinum.tchap.gouv.fr',
-    'o11y-staging': '!EGmOEFBsJoXIngQOvU:agent.dinum.tchap.gouv.fr',
-    'jobs-production': '!vZkZkmTRLjAJTdkonL:agent.dinum.tchap.gouv.fr',
-    'jobs-staging': '!SmJcAqcZyoguQAJTho:agent.dinum.tchap.gouv.fr',
-}
+SALONS = json.load(open(os.path.join(ICI, 'salons.json')))
 ALERTE = 'foreach.item.kibana.alert'
 # Le pare-feu de Tchap rejette un message qui contient un « = » et un lien https.
 EGAL = " | replace: '=', '＝'"
@@ -252,75 +249,25 @@ def avec_retablissement(regle, en_html):
             "{% else %}" + message(regle, en_html) + "{% endif %}")
 
 
+MODELES = os.path.join(ICI, 'modeles')
+
+
+def modele(nom):
+    return open(os.path.join(MODELES, nom)).read()
+
+
 def gabarit(salon, avec_esql=False):
-    return f'''# Workflow du salon Tchap {salon}, généré par generer-workflows.py depuis les
-# règles de ../../../rules/generated/ : ne pas modifier à la main. Spécification : ../README.md.
-#
-# ID du salon : Tchap → paramètres du salon → Avancé. Ce n'est pas un secret :
-# le salon est privé, sur invitation.
-# Le foreach écarte les alertes en attente de rétablissement
-# (pending_recovered_count > 0) : une alerte qui bagote reste « active », à 0
-# document, plusieurs exécutions, et l'action .workflows la transmet quand même.
-{COMMENTAIRE_ESQL if avec_esql else ''}# Mise à jour : PUT kbn:/api/workflows/workflow/tchap-{salon} avec {{"yaml": …}}.
-POST kbn:/api/workflows/workflow
-{{
-  "id": "tchap-{salon}",
-  "yaml": """
-name: Tchap - {salon}
-description: Envoie les alertes des règles dans le salon Tchap {salon}
-enabled: true
-triggers:
-  - type: alert
-consts:
-  salon: "{SALONS[salon]}"
-steps:
-  - name: chaque-alerte
-    type: foreach
-    foreach: "{{{{ event.alerts | where_exp: 'a', 'a.kibana.alert.pending_recovered_count == blank or a.kibana.alert.pending_recovered_count == 0' | json }}}}"
-    steps:
-{ETAPE_ESQL if avec_esql else ''}      - name: notifier
-        type: workflow.execute
-        with:
-          workflow-id: tchap-client
-          inputs:
-            salon: "{{{{ consts.salon }}}}"
-            texte: "@@TEXTE@@"
-            html: "@@HTML@@"
-"""
-}}
-'''
+    """Le Workflow d'un salon (modeles/salon.console), avec l'étape qui relance la requête des
+    règles ES|QL si le salon en a ; @@TEXTE@@ et @@HTML@@ restent à remplir."""
+    t = modele('salon.console')
+    t = t.replace('@@SI_ESQL_COMMENTAIRE@@\n', modele('salon-esql-commentaire.console') if avec_esql else '')
+    t = t.replace('@@SI_ESQL_ETAPE@@\n', modele('salon-esql-etape.yaml') if avec_esql else '')
+    return t.replace('@@ID_SALON@@', SALONS[salon]).replace('@@SALON@@', salon)
 
-
-COMMENTAIRE_ESQL = '''# Règle ES|QL en groupBy all : son action ne transmet pas les lignes du résultat ; l'étape si-esql
-# relance sa requête, lue dans l'alerte, sur la fenêtre de la règle avant le début de
-# l'alerte (filtre sur @timestamp : une variable n'est pas remplacée dans un nom de champ).
-'''
-PARAMETRES = ALERTE + '.rule.parameters'
-ETAPE_ESQL = f'''      - name: si-esql
-        type: if
-        condition: "${{{{ {PARAMETRES}.searchType == 'esqlQuery' and {PARAMETRES}.groupBy == 'all' }}}}"
-        steps:
-          - name: requete
-            type: elasticsearch.esql.query
-            with:
-              query: "{{{{ {PARAMETRES}.esqlQuery.esql }}}}"
-              filter:
-                range:
-                  "@timestamp":
-                    gte: "{{{{ {ALERTE}.start }}}}||-{{{{ {PARAMETRES}.timeWindowSize }}}}{{{{ {PARAMETRES}.timeWindowUnit }}}}"
-                    lte: "{{{{ {ALERTE}.start }}}}"
-'''
 
 
 GENERES = os.path.join(ICI, 'generated')
-ENTETE = """# ⚠️ FICHIER GÉNÉRÉ par ../generer-workflows.py : NE PAS LE MODIFIER, il serait écrasé.
-# Il se construit depuis les règles (../../../rules/generated/), leurs définitions
-# (../../../rules/<n>-<périmètre>/<code>.json) et, pour les rapports
-# des jobs, la liste des CRON de pass-emploi-api. Pour changer un message : la définition
-# de la règle (../../../rules/README.md). Puis : python3 -I ../generer-workflows.py
-# La CI de chaque PR vérifie que ce fichier correspond à ses sources.
-#
-"""
+ENTETE = modele('entete.console')
 
 
 ECRITS = set()
@@ -341,7 +288,7 @@ def retirer_orphelins():
             print(f'generated/{nom} : sans source, supprimé')
 
 
-def main():
+def main(args=()):
     regles_generees = generateur_regles()
     MESSAGES_DEFINITIONS.update({r['name']: regles_generees.messages(code) for code, r in regles_generees.REGLES.items()})
     par_salon = {s: [] for s in SALONS}
@@ -388,10 +335,12 @@ def main():
         sortie = gabarit(salon, any(rid in esql for rid, _ in regles)).replace('@@TEXTE@@', texte).replace('@@HTML@@', corps)
         ecrire(f'tchap-{salon}.console', sortie)
         print(f'tchap-{salon}.console : {len(regles)} règle(s), {len(sortie) // 1024} Ko')
+    if '--sans-rapports-jobs' in args:
+        return
     jobs = jobs_suivis()
-    for env, salon, index in [('prod', 'jobs-production', 'logs-prod-default'), ('staging', 'jobs-staging', 'logs-staging-default')]:
-        ecrire(f'tchap-{salon}-rapport.console', rapport(env, salon, index, jobs))
-        print(f'tchap-{salon}-rapport.console : {len(jobs)} jobs suivis')
+    for r in json.load(open(os.path.join(ICI, 'rapports-jobs.json'))):
+        ecrire(f"tchap-{r['salon']}-rapport.console", rapport(r, jobs))
+        print(f"tchap-{r['salon']}-rapport.console : {len(jobs)} jobs suivis")
     retirer_orphelins()
 
 
@@ -462,80 +411,33 @@ def jobs_suivis():
     return jobs
 
 
-def rapport(env, salon, index, jobs):
+def colle(nom):
+    """Un fragment Liquid de modeles/, écrit une instruction par ligne : recollé en une ligne."""
+    return ''.join(modele(nom).split('\n'))
+
+
+def rapport(r, jobs):
+    """Le Workflow du rapport quotidien des jobs d'un environnement (modeles/rapport-jobs*)."""
     consts = '\n'.join('    - type: ' + j['type'] + '\n      description: "' + j['description'].replace('"', '\\"') + '"'
                        + ''.join(f'\n      {k}: {j[k]}' for k in ('attendues', 'jour', 'semaine', 'minute') if j[k] is not None)
                        for j in jobs)
-    requete = ('FROM ' + index + ' | WHERE @timestamp >= NOW() - 24 hours AND service.name == \\"pass-emploi-api\\" '
-               'AND event.action == \\"job_completed\\" | STATS executions = COUNT(*), echecs = COUNT(*) WHERE event.outcome == \\"failure\\", '
-               'duree_s = ROUND(AVG(event.duration) / 1000000000, 1) BY job = labels.job_type')
-    # Exécutions attendues : fixes par jour, ou 1 si le jour du mois / de la semaine du job
-    # tombe dans les 24 h qui précèdent le rapport (9 h 30, heure de Paris).
-    calcul = ("{% assign ligne = nil %}{% for v in steps.requete.output.values %}{% if v[3] == j.type %}{% assign ligne = v %}{% endif %}{% endfor %}"
-              "{% if ligne %}{% assign n = ligne[0] %}{% assign e = ligne[1] %}{% assign d = ligne[2] | append: ' s' %}{% else %}{% assign n = 0 %}{% assign e = 0 %}{% assign d = '—' %}{% endif %}"
-              "{% assign att = j.attendues %}"
-              "{% if j.jour %}{% if j.minute < " + str(RAPPORT_HEURE) + " %}{% assign ref = aujourdhui_jour %}{% else %}{% assign ref = hier_jour %}{% endif %}"
-              "{% if j.jour contains ref %}{% assign att = 1 %}{% else %}{% assign att = 0 %}{% endif %}{% endif %}"
-              "{% if j.semaine %}{% if j.minute < " + str(RAPPORT_HEURE) + " %}{% assign ref = aujourdhui_semaine %}{% else %}{% assign ref = hier_semaine %}{% endif %}"
-              "{% if j.semaine contains ref %}{% assign att = 1 %}{% else %}{% assign att = 0 %}{% endif %}{% endif %}"
-              "{% if n == att %}{% assign tourne = '✅' %}{% else %}{% assign tourne = '❌' %}{% endif %}"
-              "{% if e == 0 %}{% assign ok = '✅' %}{% else %}{% assign ok = '❌' %}{% endif %}")
-    dates = ("{% assign t = 'now' | date: '%s' | plus: 7200 %}{% assign aujourdhui_jour = t | date: '%-d' | plus: 0 %}"
-             "{% assign aujourdhui_semaine = t | date: '%w' | plus: 0 %}{% assign th = t | minus: 86400 %}"
-             "{% assign hier_jour = th | date: '%-d' | plus: 0 %}{% assign hier_semaine = th | date: '%w' | plus: 0 %}")
-    html = ("<p><font data-mx-color=\\\"#808080\\\" color=\\\"#808080\\\">ℹ️ <strong>Rapport quotidien des jobs — " + env + "</strong> (24 dernières heures)</font></p>"
-            "<table><thead><tr><th>A tourné</th><th>Sans échec</th><th>Job</th><th>Attendues</th><th>Exécutions</th><th>Échecs</th><th>Durée moyenne</th><th>Description</th></tr></thead><tbody>"
-            + dates + "{% for j in consts.jobs %}" + calcul +
-            "<tr><td>{{ tourne }}</td><td>{{ ok }}</td><td>{{ j.type }}</td><td>{{ att | default: '—' }}</td><td>{{ n }}</td><td>{{ e }}</td><td>{{ d }}</td><td>{{ j.description | escape }}</td></tr>{% endfor %}"
-            "{% assign types = consts.jobs | map: 'type' %}{% for v in steps.requete.output.values %}{% unless types contains v[3] %}"
-            "{% if v[1] == 0 %}{% assign ok = '✅' %}{% else %}{% assign ok = '❌' %}{% endif %}"
-            "<tr><td>—</td><td>{{ ok }}</td><td>{{ v[3] }}</td><td>—</td><td>{{ v[0] }}</td><td>{{ v[1] }}</td><td>{{ v[2] }} s</td><td>Hors CRON (lancé par un autre job ou un événement)</td></tr>{% endunless %}{% endfor %}"
-                        "</tbody></table><p><strong>Liens</strong><br/>[Pass Emploi] Logs de " + ('Prod' if env == 'prod' else 'Hors-Prod') + " - Jobs - "
-            "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/" + ('c0d38bba-66ef-4b68-8a10-4d786f6a9f4a' if env == 'prod' else '16da36f4-a88e-4c01-b34f-e361a5292740') + "?_g=%28time%3A%28from%3Anow-24h%2Cto%3Anow%29%29</p>")
-    texte = ("ℹ️ Rapport quotidien des jobs — " + env + " (24 dernières heures)" + dates + "{% for j in consts.jobs %}" + calcul +
-             "\\n{{ tourne }} {{ ok }} {{ j.type }} : {{ n }} exécution(s){% if att %} sur {{ att }} attendue(s){% endif %}, {{ e }} échec(s)"
-             "{% endfor %}{% assign types = consts.jobs | map: 'type' %}{% for v in steps.requete.output.values %}{% unless types contains v[3] %}"
-             "\\n— {% if v[1] == 0 %}✅{% else %}❌{% endif %} {{ v[3] }} : {{ v[0] }} exécution(s), {{ v[1] }} échec(s), hors CRON{% endunless %}{% endfor %}")
-    return f'''# Rapport quotidien des jobs de pass-emploi-api ({env}), chaque jour à 9 h 30
-# (heure de Paris), dans le salon Tchap {salon}. Généré par generer-workflows.py
-# depuis la liste des CRON de pass-emploi-api (origin/develop) : ne pas modifier à
-# la main. Spécification : ../../../alertes-applicatives.md.
-POST kbn:/api/workflows/workflow
-{{
-  "id": "tchap-{salon}-rapport",
-  "yaml": """
-name: Tchap - {salon} - rapport quotidien des jobs
-description: Exécutions des jobs de pass-emploi-api sur 24 h, dans le salon Tchap {salon}
-enabled: true
-triggers:
-  - type: scheduled
-    with:
-      rrule:
-        freq: DAILY
-        interval: 1
-        tzid: Europe/Paris
-        byhour: [9]
-        byminute: [30]
-consts:
-  salon: "{SALONS[salon]}"
-  jobs:
-{consts}
-steps:
-  - name: requete
-    type: elasticsearch.esql.query
-    with:
-      query: "{requete}"
-  - name: envoyer
-    type: workflow.execute
-    with:
-      workflow-id: tchap-client
-      inputs:
-        salon: "{{{{ consts.salon }}}}"
-        texte: "{texte}"
-        html: "{html}"
-"""
-}}
-'''
+    valeurs = {'@@ENV@@': r['env'], '@@INDEX@@': r['index'], '@@LIBELLE_ENV@@': r['libelle'],
+               '@@SESSION_JOBS@@': r['session_discover_jobs'], '@@RAPPORT_HEURE@@': str(RAPPORT_HEURE)}
+
+    def remplir(texte):
+        for repere, valeur in valeurs.items():
+            texte = texte.replace(repere, valeur)
+        return texte.replace('"', '\\"')
+
+    dates, calcul = colle('rapport-jobs-dates.liquid'), colle('rapport-jobs-calcul.liquid')
+    html = remplir(colle('rapport-jobs-html.liquid').replace('@@DATES@@', dates).replace('@@CALCUL@@', calcul))
+    texte = remplir(colle('rapport-jobs-texte.liquid').replace('@@DATES@@', dates).replace('@@CALCUL@@', calcul))
+    requete = remplir(modele('rapport-jobs-requete.esql').strip())
+    t = modele('rapport-jobs.console')
+    for repere, valeur in [('@@JOBS@@', consts), ('@@REQUETE@@', requete), ('@@TEXTE@@', texte), ('@@HTML@@', html),
+                           ('@@ID_SALON@@', SALONS[r['salon']]), ('@@SALON@@', r['salon']), ('@@ENV@@', r['env'])]:
+        t = t.replace(repere, valeur)
+    return t
 
 
 VIDE = "Sous le seuil à la relecture : l'incident est peut-être en train de se résorber."
@@ -560,4 +462,5 @@ def lignes_resultat(gabarit, en_html, vide=VIDE):
 
 
 if __name__ == '__main__':
-    main()
+    import sys
+    main(sys.argv[1:])

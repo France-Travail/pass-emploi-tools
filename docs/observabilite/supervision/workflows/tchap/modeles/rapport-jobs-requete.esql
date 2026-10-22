@@ -1,0 +1,1 @@
+FROM @@INDEX@@ | WHERE @timestamp >= NOW() - 24 hours AND service.name == "pass-emploi-api" AND event.action == "job_completed" | STATS executions = COUNT(*), echecs = COUNT(*) WHERE event.outcome == "failure", duree_s = ROUND(AVG(event.duration) / 1000000000, 1) BY job = labels.job_type

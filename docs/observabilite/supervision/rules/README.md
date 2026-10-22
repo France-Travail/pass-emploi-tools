@@ -101,6 +101,11 @@ redéployer.
   Workflow de salon inconnu, règle ES|QL dont le champ de temps n'est pas
   `@timestamp` ou sans `_tchap.ligne`.
 
+Les générateurs ont leurs tests, sans dépendance (bibliothèque standard Python),
+lancés aussi par le CI : `python3 -I -m unittest discover -s docs/observabilite/supervision/tests -v`
+depuis la racine du repo. Les lancer après toute modification d'un générateur ou
+d'un gabarit.
+
 ## Déployer
 
 Manuel, jamais par le CI :

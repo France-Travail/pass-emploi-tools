@@ -426,6 +426,17 @@ de déploiement (2026-10-23 08:48 UTC).
       les règles sans elle, passer celle du CI à `false` dans le même commit,
       redéployer, puis « Update API keys ».
 
+- [ ] **Ticket Notion — après la bascule** : supprimer la traduction Mattermost
+      → Tchap de `workflows/tchap/generer-workflows.py` (≈ 170 lignes). Une fois
+      Mattermost retiré, convertir une fois le message de chaque règle au format
+      Tchap dans son fichier JSON (`rules/<n>-<périmètre>/<code>.json`), puis ne
+      garder qu'un affichage simple du message.
+- [ ] **Ticket Notion — rapport des jobs** : faire publier par pass-emploi-api
+      sa liste de CRON dans ses logs (au démarrage) et la faire lire par le
+      rapport de 9 h 30 dans Elasticsearch, à la place de l'analyse du code
+      TypeScript de l'api par `generer-workflows.py` (≈ 50 lignes, fragile). Cf.
+      la suite « Rapport quotidien des jobs » ci-dessus.
+
 ## 12. Risques et points ouverts
 
 - **Bot Tchap non disponible à temps** (étape 6) : les étapes 1 à 5 restent

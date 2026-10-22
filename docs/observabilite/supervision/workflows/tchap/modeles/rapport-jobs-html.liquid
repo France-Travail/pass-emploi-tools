@@ -1,0 +1,18 @@
+<p><font data-mx-color="#808080" color="#808080">ℹ️ <strong>Rapport quotidien des jobs — @@ENV@@</strong> (24 dernières heures)</font></p><table><thead>
+<tr><th>A tourné</th><th>Sans échec</th><th>Job</th><th>Attendues</th><th>Exécutions</th><th>Échecs</th><th>Durée moyenne</th><th>Description</th></tr></thead><tbody>@@DATES@@
+{% for j in consts.jobs %}@@CALCUL@@
+<tr><td>{{ tourne }}</td><td>{{ ok }}</td><td>{{ j.type }}</td><td>{{ att | default: '—' }}</td><td>{{ n }}</td><td>{{ e }}</td><td>{{ d }}</td><td>{{ j.description | escape }}</td></tr>
+{% endfor %}
+{% assign types = consts.jobs | map: 'type' %}
+{% for v in steps.requete.output.values %}
+{% unless types contains v[3] %}
+{% if v[1] == 0 %}
+{% assign ok = '✅' %}
+{% else %}
+{% assign ok = '❌' %}
+{% endif %}
+<tr><td>—</td><td>{{ ok }}</td><td>{{ v[3] }}</td><td>—</td><td>{{ v[0] }}</td><td>{{ v[1] }}</td><td>{{ v[2] }} s</td><td>Hors CRON (lancé par un autre job ou un événement)</td></tr>
+{% endunless %}
+{% endfor %}
+</tbody></table>
+<p><strong>Liens</strong><br/>[Pass Emploi] Logs de @@LIBELLE_ENV@@ - Jobs - https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/@@SESSION_JOBS@@?_g=%28time%3A%28from%3Anow-24h%2Cto%3Anow%29%29</p>

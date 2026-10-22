@@ -1,0 +1,15 @@
+ℹ️ Rapport quotidien des jobs — @@ENV@@ (24 dernières heures)@@DATES@@
+{% for j in consts.jobs %}@@CALCUL@@
+\n{{ tourne }} {{ ok }} {{ j.type }} : {{ n }} exécution(s)
+{% if att %} sur {{ att }} attendue(s)
+{% endif %}, {{ e }} échec(s)
+{% endfor %}
+{% assign types = consts.jobs | map: 'type' %}
+{% for v in steps.requete.output.values %}
+{% unless types contains v[3] %}
+\n— 
+{% if v[1] == 0 %}✅
+{% else %}❌
+{% endif %} {{ v[3] }} : {{ v[0] }} exécution(s), {{ v[1] }} échec(s), hors CRON
+{% endunless %}
+{% endfor %}

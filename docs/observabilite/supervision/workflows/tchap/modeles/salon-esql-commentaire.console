@@ -1,0 +1,3 @@
+# Règle ES|QL en groupBy all : son action ne transmet pas les lignes du résultat ; l'étape si-esql
+# relance sa requête, lue dans l'alerte, sur la fenêtre de la règle avant le début de
+# l'alerte (filtre sur @timestamp : une variable n'est pas remplacée dans un nom de champ).

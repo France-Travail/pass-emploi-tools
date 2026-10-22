@@ -1,0 +1,6 @@
+{% assign t = 'now' | date: '%s' | plus: 7200 %}
+{% assign aujourdhui_jour = t | date: '%-d' | plus: 0 %}
+{% assign aujourdhui_semaine = t | date: '%w' | plus: 0 %}
+{% assign th = t | minus: 86400 %}
+{% assign hier_jour = th | date: '%-d' | plus: 0 %}
+{% assign hier_semaine = th | date: '%w' | plus: 0 %}

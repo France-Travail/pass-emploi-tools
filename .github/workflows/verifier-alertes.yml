@@ -54,6 +54,10 @@ jobs:
       - name: Référence origin/develop de pass-emploi-api
         run: git -C pass-emploi-api fetch --depth=1 origin +develop:refs/remotes/origin/develop
 
+      - name: Tests des générateurs
+        working-directory: pass-emploi-tools
+        run: python3 -I -m unittest discover -s docs/observabilite/supervision/tests -v
+
       - name: Règles générées à jour (rules/generated/)
         working-directory: pass-emploi-tools/docs/observabilite/supervision/rules
         run: |
