@@ -260,7 +260,7 @@ def avec_retablissement(regle, en_html):
             "{% else %}" + message(regle, en_html) + "{% endif %}")
 
 
-def gabarit(salon):
+def gabarit(salon, avec_esql=False):
     return f'''# Workflow du salon Tchap {salon}, généré par generer-workflows.py depuis les
 # règles de ../../rules/ : ne pas modifier à la main. Spécification : README.md.
 #
@@ -269,7 +269,7 @@ def gabarit(salon):
 # Le foreach écarte les alertes en attente de rétablissement
 # (pending_recovered_count > 0) : une alerte qui bagote reste « active », à 0
 # document, plusieurs exécutions, et l'action .workflows la transmet quand même.
-# Mise à jour : PUT kbn:/api/workflows/workflow/tchap-{salon} avec {{"yaml": …}}.
+{COMMENTAIRE_ESQL if avec_esql else ''}# Mise à jour : PUT kbn:/api/workflows/workflow/tchap-{salon} avec {{"yaml": …}}.
 POST kbn:/api/workflows/workflow
 {{
   "id": "tchap-{salon}",
@@ -286,7 +286,7 @@ steps:
     type: foreach
     foreach: "{{{{ event.alerts | where_exp: 'a', 'a.kibana.alert.pending_recovered_count == blank or a.kibana.alert.pending_recovered_count == 0' | json }}}}"
     steps:
-      - name: notifier
+{ETAPE_ESQL if avec_esql else ''}      - name: notifier
         type: workflow.execute
         with:
           workflow-id: tchap-client
@@ -299,9 +299,30 @@ steps:
 '''
 
 
+COMMENTAIRE_ESQL = '''# Règle ES|QL en groupBy all : son action ne transmet pas les lignes du résultat ; l'étape si-esql
+# relance sa requête, lue dans l'alerte, sur la fenêtre de la règle avant le début de
+# l'alerte (filtre sur @timestamp : une variable n'est pas remplacée dans un nom de champ).
+'''
+PARAMETRES = ALERTE + '.rule.parameters'
+ETAPE_ESQL = f'''      - name: si-esql
+        type: if
+        condition: "${{{{ {PARAMETRES}.searchType == 'esqlQuery' and {PARAMETRES}.groupBy == 'all' }}}}"
+        steps:
+          - name: requete
+            type: elasticsearch.esql.query
+            with:
+              query: "{{{{ {PARAMETRES}.esqlQuery.esql }}}}"
+              filter:
+                range:
+                  "@timestamp":
+                    gte: "{{{{ {ALERTE}.start }}}}||-{{{{ {PARAMETRES}.timeWindowSize }}}}{{{{ {PARAMETRES}.timeWindowUnit }}}}"
+                    lte: "{{{{ {ALERTE}.start }}}}"
+'''
+
+
 def main():
     par_salon = {s: [] for s in SALONS}
-    esql = []
+    esql = set()
     for nom in sorted(os.listdir(REGLES)):
         if not nom.endswith('.console'):
             continue
@@ -312,27 +333,32 @@ def main():
                 continue
             corps_message(regle)
             cible = w[0]['params']['subActionParams']['workflowId']
-            salon = next((s for s in SALONS if cible == f'tchap-{s}' or cible.startswith(f'tchap-{s}-')), None)
-            if salon is None:
+            salon = cible.removeprefix('tchap-')
+            if salon not in SALONS:
                 raise SystemExit(f"« {regle['name']} » vise le Workflow {cible}, qui ne correspond à aucun salon")
-            if cible != f'tchap-{salon}':
-                esql.append((salon, cible.removeprefix(f'tchap-{salon}-'), rid, regle))
-                continue
+            if regle['params'].get('searchType') == 'esqlQuery' and regle['params'].get('groupBy') == 'all':
+                if regle['params'].get('timeField') != '@timestamp':
+                    raise SystemExit(f"« {regle['name']} » : règle ES|QL dont le champ de temps n'est pas @timestamp")
+                esql.add(rid)
             par_salon[salon].append((rid, regle))
+    definitions = {v['id']: v for v in definitions_regles().values()} if esql else {}
+
+    def cas(rid, r, en_html):
+        if rid not in esql:
+            return avec_retablissement(r, en_html)
+        d = definitions[rid]
+        return message(r, en_html, lignes_resultat(d['tchap'], en_html, d.get('vide', VIDE)))
+
     for salon, regles in par_salon.items():
-        cas_t = ''.join("{% when '" + rid + "' %}" + avec_retablissement(r, False) for rid, r in regles)
-        cas_h = ''.join("{% when '" + rid + "' %}" + avec_retablissement(r, True) for rid, r in regles)
+        cas_t = ''.join("{% when '" + rid + "' %}" + cas(rid, r, False) for rid, r in regles)
+        cas_h = ''.join("{% when '" + rid + "' %}" + cas(rid, r, True) for rid, r in regles)
         defaut_t = "{{ event.rule.name" + EGAL + " }}\\n{{ " + ALERTE + ".reason" + EGAL + " }}\\n{{ event.ruleUrl }}"
         defaut_h = "<p><strong>{{ event.rule.name" + EGAL + " | escape }}</strong></p><p>{{ " + ALERTE + ".reason" + EGAL + " | escape }}</p><p>{{ event.ruleUrl }}</p>"
         texte = '{% case event.rule.id %}' + cas_t + '{% else %}' + defaut_t + '{% endcase %}'
         corps = '{% case event.rule.id %}' + cas_h + '{% else %}' + defaut_h + '{% endcase %}'
-        sortie = gabarit(salon).replace('@@TEXTE@@', texte).replace('@@HTML@@', corps)
+        sortie = gabarit(salon, any(rid in esql for rid, _ in regles)).replace('@@TEXTE@@', texte).replace('@@HTML@@', corps)
         open(os.path.join(ICI, f'tchap-{salon}.console'), 'w').write(sortie)
         print(f'tchap-{salon}.console : {len(regles)} règle(s), {len(sortie) // 1024} Ko')
-    definitions = {k.lower(): v for k, v in definitions_regles().items()} if esql else {}
-    for salon, code, rid, regle in esql:
-        open(os.path.join(ICI, f'tchap-{salon}-{code}.console'), 'w').write(workflow_esql(code, regle, definitions[code]['tchap'], salon, definitions[code].get('vide', VIDE)))
-        print(f'tchap-{salon}-{code}.console')
     jobs = jobs_suivis()
     for env, salon, index in [('prod', 'jobs-production', 'logs-prod-default'), ('staging', 'jobs-staging', 'logs-staging-default')]:
         open(os.path.join(ICI, f'rapport-jobs-{env}.console'), 'w').write(rapport(env, salon, index, jobs))
@@ -501,60 +527,6 @@ def lignes_resultat(gabarit, en_html, vide=VIDE):
         ligne = markdown(ligne, True)
         return '<ul>{% for v in steps.requete.output.values %}<li>' + ligne + '</li>{% else %}<li>' + html.escape(vide, quote=False) + '</li>{% endfor %}</ul>'
     return '{% for v in steps.requete.output.values %}\\n• ' + markdown(ligne, False) + '{% else %}\\n• ' + vide + '{% endfor %}'
-
-
-def requete_esql(regle):
-    p = regle['params']
-    secondes = p['timeWindowSize'] * UNITES[p['timeWindowUnit']]
-    morceaux = [m.strip() for m in p['esqlQuery']['esql'].split('\n') if m.strip()]
-    # Fenêtre de la règle au moment où l'alerte est partie : relue avec NOW(), quelques
-    # secondes plus tard, elle peut repasser sous le seuil.
-    debut = 'TO_DATETIME("{{ foreach.item.kibana.alert.start }}")'
-    assert morceaux[0].startswith('FROM ') and '|' not in morceaux[0], 'le FROM doit tenir sur la première ligne : ' + morceaux[0]
-    filtre = f'| WHERE @timestamp >= {debut} - {secondes // 60} minutes AND @timestamp <= {debut}'
-    return ' '.join(morceaux[:1] + [filtre] + morceaux[1:]).replace('\\', '\\\\').replace('"', '\\"')
-
-
-def workflow_esql(code, regle, gabarit, salon, vide=VIDE):
-    texte = message(regle, False, lignes_resultat(gabarit, False, vide))
-    corps = message(regle, True, lignes_resultat(gabarit, True, vide))
-    return f'''# Workflow Tchap de la règle {code.upper()} ({regle['name']}), vers le salon {salon}, généré par generer-workflows.py
-# depuis ../../rules/ : ne pas modifier à la main. Spécification : README.md.
-#
-# La règle ES|QL est en groupBy all : son action .workflows ne transmet pas les lignes du
-# résultat, le Workflow relance donc la requête sur la fenêtre de la règle. Le foreach
-# écarte, comme les Workflows de salon, une alerte en attente de rétablissement.
-POST kbn:/api/workflows/workflow
-{{
-  "id": "tchap-{salon}-{code}",
-  "yaml": """
-name: Tchap - {salon} - {code.upper()}
-description: {json.dumps(f"Envoie les alertes de la règle « {regle['name']} » dans le salon Tchap {salon}", ensure_ascii=False)}
-enabled: true
-triggers:
-  - type: alert
-consts:
-  salon: "{SALONS[salon]}"
-steps:
-  - name: chaque-alerte
-    type: foreach
-    foreach: "{{{{ event.alerts | where_exp: 'a', 'a.kibana.alert.pending_recovered_count == blank or a.kibana.alert.pending_recovered_count == 0' | json }}}}"
-    steps:
-      - name: requete
-        type: elasticsearch.esql.query
-        with:
-          query: "{requete_esql(regle)}"
-      - name: notifier
-        type: workflow.execute
-        with:
-          workflow-id: tchap-client
-          inputs:
-            salon: "{{{{ consts.salon }}}}"
-            texte: "{texte}"
-            html: "{corps}"
-"""
-}}
-'''
 
 
 if __name__ == '__main__':

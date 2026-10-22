@@ -479,10 +479,11 @@ de déploiement (2026-10-23 08:48 UTC).
   recalibré sur les logs (Milo p99 = 85, France Travail p99 = 209), au plus
   35 heures d'alerte en 30 jours (81 avec 50), contre 643 alertes pour
   l'ancienne A1 et les 3 🔌.
-- **Règles ES|QL en `groupBy: all`** (A1, A2, A3, A6, A7), chacune avec son
-  Workflow `tchap-<salon>-<code>` qui relance la requête : le document d'alerte
-  ne contient pas les lignes de résultat, et `groupBy: row` donnait une nouvelle
-  alerte (un nouveau message) dès qu'un compteur changeait.
+- **Règles ES|QL en `groupBy: all`** (A1, A2, A3, A6, A7) : le document d'alerte
+  ne contient pas les lignes de résultat (`groupBy: row` donnait une nouvelle
+  alerte, un nouveau message, dès qu'un compteur changeait). Le Workflow de
+  salon relance la requête de la règle, lue dans le document d'alerte : pas de
+  Workflow ni de requête recopiée par règle.
 - **Uptime (A10 à A12)** : actions « au changement d'état » au lieu de « à
   chaque exécution » (un message par minute pendant une panne), message de
   rétablissement. A13 (TLS) garde son rappel quotidien ; son échéance reste en

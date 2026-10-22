@@ -358,7 +358,7 @@ SALON_DU_CONNECTEUR = {
 def bloc_esql(nom, r, artifacts):
     """Une seule alerte par règle (groupBy all) : son identité reste stable pendant un incident,
     le throttle Mattermost et le message Tchap à l'apparition s'appliquent. Le Workflow
-    tchap-<salon>-<code en minuscules> relance la requête, ses lignes n'étant pas transmises par l'action."""
+    du salon relance la requête (lue dans l'alerte), ses lignes n'étant pas transmises par l'action."""
     regle = {
         'name': r['name'], 'tags': r['tags'], 'artifacts': artifacts, 'schedule': {'interval': r['interval']},
         'params': {
@@ -367,7 +367,7 @@ def bloc_esql(nom, r, artifacts):
             'threshold': [0], 'thresholdComparator': '>', 'size': 100, 'groupBy': 'all'},
         'actions': [
             {'group': 'query matched', 'id': r['mm'], 'params': {'body': '@@BODY@@'}, 'frequency': {'summary': False, 'notify_when': 'onThrottleInterval', 'throttle': '1h'}},
-            {'id': 'system-connector-.workflows', 'params': {'subAction': 'run', 'subActionParams': {'workflowId': f"tchap-{SALON_DU_CONNECTEUR[r['mm']]}-{nom.lower()}", 'summaryMode': True, 'alertStates': {'new': True, 'ongoing': False, 'recovered': False}}}}],
+            {'id': 'system-connector-.workflows', 'params': {'subAction': 'run', 'subActionParams': {'workflowId': f"tchap-{SALON_DU_CONNECTEUR[r['mm']]}", 'summaryMode': True, 'alertStates': {'new': True, 'ongoing': False, 'recovered': False}}}}],
     }
     texte = json.dumps(regle, ensure_ascii=False, indent=2).replace('"@@BODY@@"', '"""' + body(r) + '"""')
     texte = texte.replace('"@@ESQL@@"', '"""' + r['esql'] + '"""')

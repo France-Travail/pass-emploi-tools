@@ -12,7 +12,7 @@
 #
 # Blocs générés par generer-regles.py (A1 à A13 sauf S*) : modifier la définition,
 # puis python3 -I generer-regles.py --ecrire <code> ; --verifier compare tout.
-# Règles ES|QL (A1, A2, A3, A6, A7) : Tchap par leur Workflow tchap-<salon>-<code>.
+# Règles ES|QL (A1, A2, A3, A6, A7) : le Workflow du salon relance leur requête.
 #
 # A4a / A4b : événements Scalingo des apps applicatives, #monitoring-production /
 # Mattermost-monitoring-staging ; Tchap via les Workflows de salon.
@@ -1047,7 +1047,7 @@ PUT kbn:/api/alerting/rule/1b751543-4233-4857-8fe6-8141a7c2d040
       "params": {
         "subAction": "run",
         "subActionParams": {
-          "workflowId": "tchap-monitoring-production-a1",
+          "workflowId": "tchap-monitoring-production",
           "summaryMode": true,
           "alertStates": {
             "new": true,
@@ -1159,7 +1159,7 @@ PUT kbn:/api/alerting/rule/98e0103a-f809-48f2-8343-d1269213dce4
       "params": {
         "subAction": "run",
         "subActionParams": {
-          "workflowId": "tchap-monitoring-production-a2",
+          "workflowId": "tchap-monitoring-production",
           "summaryMode": true,
           "alertStates": {
             "new": true,
@@ -1276,7 +1276,7 @@ PUT kbn:/api/alerting/rule/ad326ad3-aea7-4ef8-be28-31008c4aebce
       "params": {
         "subAction": "run",
         "subActionParams": {
-          "workflowId": "tchap-monitoring-production-a3",
+          "workflowId": "tchap-monitoring-production",
           "summaryMode": true,
           "alertStates": {
             "new": true,
@@ -1842,7 +1842,7 @@ PUT kbn:/api/alerting/rule/c9164880-1829-4847-acb1-5a70433ecbb8
       "params": {
         "subAction": "run",
         "subActionParams": {
-          "workflowId": "tchap-monitoring-production-a6",
+          "workflowId": "tchap-monitoring-production",
           "summaryMode": true,
           "alertStates": {
             "new": true,
@@ -1950,7 +1950,7 @@ PUT kbn:/api/alerting/rule/52c66a2a-2ee1-4de2-bc5c-642a96395405
       "params": {
         "subAction": "run",
         "subActionParams": {
-          "workflowId": "tchap-monitoring-production-a7",
+          "workflowId": "tchap-monitoring-production",
           "summaryMode": true,
           "alertStates": {
             "new": true,
