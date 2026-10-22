@@ -1,11 +1,11 @@
 # Réorganisation des alertes par périmètre et migration Mattermost → Tchap — design
 
 > **Statut : validé le 2026-10-19 ; Plan 1 (réorganisation) implémenté le
-> 2026-10-19** (écarts en §13). Fait suite à
-> [`2026-10-13-alertes-tchap-workflows-design.md`](2026-10-13-alertes-tchap-workflows-design.md)
-> (Workflows Tchap, livrés) et le complète : tout ce qui poste dans Mattermost
-> doit arriver dans Tchap avant le **décommissionnement de Mattermost, le
-> 1er novembre 2026**.
+> 2026-10-19** (écarts en §13). Complète les Workflows Tchap (cf.
+> [ADR-004](../../decisions/ADR-004-notifications-tchap-kibana-workflows.md) et
+> le [README Tchap](../../observabilite/supervision/workflows/tchap/README.md)) :
+> tout ce qui poste dans Mattermost doit arriver dans Tchap avant le
+> **décommissionnement de Mattermost, le 1er novembre 2026**.
 >
 > Artefact de travail : il sert de liste de contrôle jusqu'au 1er novembre. La
 > doc de référence reste celle des périmètres (`alertes-*.md`) et de la collecte.
