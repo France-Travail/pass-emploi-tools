@@ -86,13 +86,13 @@ Feature flipping, selon la convention des apps : **active seulement si elle vaut
 - absente : elles n'ont plus que leur action Tchap. Les messages Tchap ne changent pas.
 
 Le CI la fixe à `true`. Le jour de la bascule : régénérer sans elle, passer celle
-du CI (`.github/workflows/verifier-regles-kibana-et-workflows-tchap.yml`) à `false` dans le même commit,
+du CI (`.github/workflows/elastic-rules-and-workflows-checks.yml`) à `false` dans le même commit,
 redéployer.
 
 ## Le check de la PR
 
 « Règles d'alerte Kibana et Workflows Tchap à jour avec leurs générateurs »
-([`verifier-regles-kibana-et-workflows-tchap.yml`](../../../../.github/workflows/verifier-regles-kibana-et-workflows-tchap.yml))
+([`elastic-rules-and-workflows-checks.yml`](../../../../.github/workflows/elastic-rules-and-workflows-checks.yml))
 échoue si :
 
 - un fichier de `generated/` ne correspond plus à ses sources (générateur oublié,

@@ -125,7 +125,7 @@ Modifier dans Kibana, puis réexporter par-dessus le fichier versionné :
   ```
   Déployer ensuite le bloc de `rules/generated/` dans Dev Tools (manuellement).
   Sur chaque PR, le workflow GitHub
-  [`verifier-regles-kibana-et-workflows-tchap.yml`](../../../.github/workflows/verifier-regles-kibana-et-workflows-tchap.yml)
+  [`elastic-rules-and-workflows-checks.yml`](../../../.github/workflows/elastic-rules-and-workflows-checks.yml)
   échoue si un fichier généré ne correspond plus à ses sources, ou si une règle
   viole les contrôles des générateurs (message absent ou en JSON invalide,
   salon inconnu, règle ES|QL hors `@timestamp`).

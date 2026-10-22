@@ -19,12 +19,12 @@ on:
   pull_request:
     paths:
       - 'docs/observabilite/supervision/**'
-      - '.github/workflows/verifier-regles-kibana-et-workflows-tchap.yml'
+      - '.github/workflows/elastic-rules-and-workflows-checks.yml'
   push:
     branches: [master]
     paths:
       - 'docs/observabilite/supervision/**'
-      - '.github/workflows/verifier-regles-kibana-et-workflows-tchap.yml'
+      - '.github/workflows/elastic-rules-and-workflows-checks.yml'
   workflow_dispatch:
 
 permissions:
