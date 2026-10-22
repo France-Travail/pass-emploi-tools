@@ -12,7 +12,7 @@
 #
 # Aucun accès à Kibana ni à la prod : le déploiement reste manuel.
 
-name: Alertes - Vérification des fichiers générés
+name: Alertes - Fichiers générés (règles Kibana, Workflows Tchap)
 
 on:
   pull_request:
@@ -31,7 +31,7 @@ permissions:
 
 jobs:
   verifier:
-    name: Fichiers générés à jour
+    name: Alertes Kibana et Workflows Tchap à jour avec leurs générateurs
     runs-on: ubuntu-latest
     steps:
       - name: Récupérer pass-emploi-tools
