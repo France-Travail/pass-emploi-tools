@@ -363,6 +363,15 @@ variable au format Slack, avant le pipeline `ingest-alertes-scalingo-format-slac
 rejoués en `_simulate` le 2026-10-20, ils passent (ℹ️ `scalingo_variable_removed`,
 `scalingo_variables_bulk_edited`).
 
+**2026-10-22, 08:50 UTC : messages des règles en JSON valide.** L'éditeur de
+règle de Kibana affichait « Bad control character in string literal » sur les
+17 règles générées (champs coupés par un commentaire Mustache) ; les envois
+n'étaient pas touchés. `PUT` sans action Tchap des règles des fichiers 1 à 3
+(toutes, et non les 17 seules, par erreur de filtre : leur contenu était déjà
+celui du repo) ; 71 messages en prod, tous valides ; les 39 règles actives en
+`ok` ou `active`. « Update API keys » à refaire avant l'expiration de la clé
+de déploiement (2026-10-23 08:48 UTC).
+
 ## 11. Suites à reporter en tickets (Notion)
 
 - [ ] Règles SLO « Burn Rate » non versionnées désactivées le 2026-10-19
