@@ -418,8 +418,8 @@ de déploiement (2026-10-23 08:48 UTC).
       Mattermost devient alors un réglage du générateur de règles. D'ici là,
       `generer-workflows.py` échoue sur une règle branchée sur Tchap sans message.
       Fait le 2026-10-22 : les 42 règles branchées sur Tchap ont une
-      définition (17 décrites champ par champ, 25 reprises telles quelles dans
-      `rules/definitions-manuelles.py`, contenu vérifié identique), et le
+      définition (17 champ par champ, 25 au format de Kibana dans
+      `rules/definitions-format-kibana.py`, contenu vérifié identique), et le
       message Tchap n'est plus lu que là. Reste l'interrupteur « sans
       Mattermost » dans `generer-regles.py`.
 

@@ -109,9 +109,9 @@ Modifier dans Kibana, puis réexporter par-dessus le fichier versionné :
 - **règle d'alerte** : modifier d'abord le tableau et le body dans
   `alertes-*.md`, puis le `PUT` du `.console` correspondant, et le rejouer.
   Toutes les règles branchées sur Tchap sont générées : modifier leur
-  définition, dans `rules/generer-regles.py` ou, pour une règle reprise telle
-  quelle (SLO, stack 1a à 10, expiration du bot), dans
-  `rules/definitions-manuelles.py`, puis `python3 -I rules/generer-regles.py --ecrire <code>` et
+  définition, dans `rules/generer-regles.py` ou, pour une règle définie au format
+  de Kibana (SLO, stack 1a à 10, expiration du bot), dans
+  `rules/definitions-format-kibana.py`, puis `python3 -I rules/generer-regles.py --ecrire <code>` et
   `python3 -I workflows/tchap/generer-workflows.py`, et commiter les fichiers
   générés avec la définition. Sur chaque PR, le workflow GitHub
   [`verifier-alertes.yml`](../../../.github/workflows/verifier-alertes.yml)

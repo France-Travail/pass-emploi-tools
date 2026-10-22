@@ -11,7 +11,7 @@
 # xpack.uptime.alerts.tlsCertificate / uptime pour A13).
 #
 # Blocs générés par generer-regles.py (définitions dans ce fichier Python et dans
-# definitions-manuelles.py) : modifier la définition,
+# definitions-format-kibana.py) : modifier la définition,
 # puis python3 -I generer-regles.py --ecrire <code> ; --verifier compare tout.
 # Règles ES|QL (A1, A2, A3, A6, A7) : le Workflow du salon relance leur requête.
 #

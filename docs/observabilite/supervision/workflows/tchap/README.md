@@ -270,10 +270,10 @@ Intégrations (l'équipe beta.gouv n'a pas la réponse, 2026-10-14) :
 `generer-workflows.py` dans `../../rules/generer-regles.py` (fonction `messages`),
 jamais dans son action Mattermost : retirer celle-ci ne change pas le message
 Tchap. Deux formes de définition :
-- règle décrite champ par champ (A1 à A13, A4a/b, A5a/b, 6a/b, 14, V1) : titre,
+- règle définie champ par champ (A1 à A13, A4a/b, A5a/b, 6a/b, 14, V1) : titre,
   étapes, liens, dans `generer-regles.py` ;
-- règle reprise telle quelle (S2, S3…, 1a à 10, expiration du bot) : son corps
-  et ses messages dans `../../rules/definitions-manuelles.py`.
+- règle définie au format de Kibana (S2, S3…, 1a à 10, expiration du bot) :
+  son corps JSON et ses messages dans `../../rules/definitions-format-kibana.py`.
 
 Une règle branchée sur Tchap absente des définitions **fait échouer la
 génération**, en la nommant : elle n'aurait reçu qu'un message générique (nom

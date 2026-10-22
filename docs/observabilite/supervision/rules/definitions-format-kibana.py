@@ -1,11 +1,12 @@
-# Règles écrites à la main avant generer-regles.py, reprises telles quelles le 2026-10-22.
-# Leur message est rangé ici (messages, un par groupe d'action), à part de l'action
-# Mattermost qui l'envoie : il reste disponible pour Tchap quand cette action disparaît.
+# Règles définies au format de Kibana (le corps JSON de la règle), par opposition aux
+# règles définies champ par champ dans generer-regles.py. Leur message est rangé ici
+# (messages, un par groupe d'action), à part de l'action Mattermost qui l'envoie : il
+# reste disponible pour Tchap quand cette action disparaît.
 # regle : le corps de la règle, sans les messages. Modifier ici, puis
 # python3 -I generer-regles.py --ecrire <code> et ../workflows/tchap/generer-workflows.py.
 import json
 
-REGLES_MANUELLES = {
+REGLES_FORMAT_KIBANA = {
     'S2': dict(
         id='e41ef1d8-efd8-449b-b2a5-6fff758c8939', fichier='1-rules-applicatives.console', methode='PUT',
         commentaire="",

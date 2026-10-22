@@ -246,15 +246,15 @@ REGLES.update({
 })
 
 
-def _charger_manuelles():
-    spec = importlib.util.spec_from_file_location('definitions_manuelles', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'definitions-manuelles.py'))
+def _charger_format_kibana():
+    spec = importlib.util.spec_from_file_location('definitions_format_kibana', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'definitions-format-kibana.py'))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.REGLES_MANUELLES
+    return module.REGLES_FORMAT_KIBANA
 
 
-# Règles écrites à la main avant ce générateur, reprises telles quelles (definitions-manuelles.py).
-REGLES.update({code: dict(d, manuelle=True) for code, d in _charger_manuelles().items()})
+# Règles définies au format de Kibana (definitions-format-kibana.py).
+REGLES.update({code: dict(d, format_kibana=True) for code, d in _charger_format_kibana().items()})
 
 def coherence(r):
     verifier(r['steps'], r['sessions'], r['dashboards'], r['name'])
@@ -312,8 +312,8 @@ def guide(r):
 
 def bloc(nom):
     r = REGLES[nom]
-    if r.get('manuelle'):
-        return bloc_manuel(r)
+    if r.get('format_kibana'):
+        return bloc_format_kibana(r)
     coherence(r)
     artifacts = {'investigation_guide': {'blob': guide(r)}}
     ids = [DASHBOARDS[k][2] for k in r['dashboards'] if DASHBOARDS[k][2]]
@@ -341,8 +341,8 @@ def bloc(nom):
     texte = json.dumps(regle, ensure_ascii=False, indent=2).replace('"@@BODY@@"', '"""' + body(r) + '"""')
     return r['commentaire'] + '\nPUT kbn:/api/alerting/rule/' + r['id'] + '\n' + texte + '\n'
 
-def bloc_manuel(r):
-    """Règle reprise telle quelle : son corps, avec ses messages remis dans ses actions."""
+def bloc_format_kibana(r):
+    """Règle définie au format de Kibana : son corps, avec ses messages remis dans ses actions."""
     regle = json.loads(json.dumps(r['regle']))
     for a in regle.get('actions', []):
         if a.get('params', {}).get('body') == '@@MESSAGE@@':
@@ -359,7 +359,7 @@ def messages(nom):
     Mattermost : « principal », et « recovered » pour une règle qui en a un. C'est la source
     que lisent les Workflows Tchap (../workflows/tchap/generer-workflows.py)."""
     r = REGLES[nom]
-    if r.get('manuelle'):
+    if r.get('format_kibana'):
         m = dict(r['messages'])
         envois = [a['group'] for a in r['regle'].get('actions', []) if a.get('params', {}).get('body') == '@@MESSAGE@@']
         m.setdefault('principal', m[envois[0]] if envois else None)

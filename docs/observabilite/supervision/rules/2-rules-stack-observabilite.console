@@ -5,7 +5,7 @@
 # À rejouer dans Dev Tools. PUT met à jour une règle existante ; sur un cluster
 # vide, la créer avec POST kbn:/api/alerting/rule/<id> et le même corps plus
 # "rule_type_id": ".es-query" et "consumer": "alerts".
-# Blocs de règle générés par generer-regles.py, depuis definitions-manuelles.py : modifier
+# Blocs de règle générés par generer-regles.py, depuis definitions-format-kibana.py : modifier
 # la définition, puis python3 -I generer-regles.py --ecrire <code>.
 # Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
 # ../objets-kibana.md#slo-et-règles-console.
