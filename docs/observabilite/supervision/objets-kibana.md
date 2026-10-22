@@ -108,3 +108,11 @@ Modifier dans Kibana, puis réexporter par-dessus le fichier versionné :
   **Export** avec *Include related objects* ;
 - **règle d'alerte** : modifier d'abord le tableau et le body dans
   `alertes-*.md`, puis le `PUT` du `.console` correspondant, et le rejouer.
+  Pour une règle générée, modifier sa définition dans `rules/generer-regles.py`,
+  puis `python3 -I rules/generer-regles.py --ecrire <code>` et
+  `python3 -I workflows/tchap/generer-workflows.py`, et commiter les fichiers
+  générés avec la définition. Sur chaque PR, le workflow GitHub
+  [`verifier-alertes.yml`](../../../.github/workflows/verifier-alertes.yml)
+  échoue si un générateur a été oublié ou si une règle viole leurs contrôles
+  (message absent ou en JSON invalide, salon inconnu, règle ES|QL hors
+  `@timestamp`). Le déploiement dans Kibana reste manuel.

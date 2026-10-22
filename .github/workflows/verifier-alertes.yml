@@ -1,0 +1,68 @@
+# Garde-fou des alertes : les fichiers générés (blocs de règles, Workflows Tchap,
+# rapports des jobs) doivent correspondre à leurs sources, et passer les contrôles
+# des générateurs.
+#
+# Les générateurs se lancent à la main (cf. docs/observabilite/supervision/workflows/tchap/README.md) :
+# ce workflow échoue si l'un d'eux a été oublié, ou si une règle viole une de leurs
+# règles (message absent ou en JSON invalide, salon inconnu, règle ES|QL hors @timestamp).
+#
+# generer-workflows.py lit la liste des CRON dans pass-emploi-api (origin/develop) pour
+# le rapport des jobs : le repo est récupéré à côté, comme sur un poste de dev. Un CRON
+# ajouté dans l'api fait donc échouer ce contrôle tant que le rapport n'est pas régénéré.
+#
+# Aucun accès à Kibana ni à la prod : le déploiement reste manuel.
+
+name: Alertes - Vérification des fichiers générés
+
+on:
+  pull_request:
+    paths:
+      - 'docs/observabilite/supervision/**'
+      - '.github/workflows/verifier-alertes.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'docs/observabilite/supervision/**'
+      - '.github/workflows/verifier-alertes.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verifier:
+    name: Fichiers générés à jour
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer pass-emploi-tools
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          path: pass-emploi-tools
+
+      - name: Récupérer pass-emploi-api (liste des CRON)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: France-Travail/pass-emploi-api
+          ref: develop
+          path: pass-emploi-api
+
+      - name: Référence origin/develop de pass-emploi-api
+        run: git -C pass-emploi-api fetch --depth=1 origin +develop:refs/remotes/origin/develop
+
+      - name: Blocs de règles identiques à leurs définitions
+        working-directory: pass-emploi-tools/docs/observabilite/supervision/rules
+        run: python3 -I generer-regles.py --verifier
+
+      - name: Workflows Tchap et rapports des jobs à jour
+        working-directory: pass-emploi-tools
+        run: |
+          python3 -I docs/observabilite/supervision/workflows/tchap/generer-workflows.py
+          if ! git diff --exit-code --stat -- docs/observabilite/supervision/workflows/tchap/; then
+            echo "::error::Fichiers générés périmés : lancer python3 -I docs/observabilite/supervision/workflows/tchap/generer-workflows.py et commiter le résultat"
+            exit 1
+          fi
+          if [ -n "$(git status --porcelain --untracked-files=all -- docs/observabilite/supervision/workflows/tchap/)" ]; then
+            git status --short -- docs/observabilite/supervision/workflows/tchap/
+            echo "::error::Fichiers générés non commités : les ajouter à la PR"
+            exit 1
+          fi

@@ -329,6 +329,12 @@ def main():
         for rid, regle in requetes(open(os.path.join(REGLES, nom)).read()):
             w = [a for a in regle.get('actions', []) if a['id'] == 'system-connector-.workflows']
             mattermost = [a for a in regle.get('actions', []) if a['id'] != 'system-connector-.workflows']
+            for action in mattermost:
+                try:
+                    json.loads(action['params']['body'])
+                except (KeyError, json.JSONDecodeError) as e:
+                    raise SystemExit(f"« {regle.get('name')} » : le message de son action {action.get('group')} n'est pas du JSON valide "
+                                     f"tel quel ({e}) ; l'éditeur de règle de Kibana ne pourrait pas l'afficher")
             if not w:
                 continue
             corps_message(regle)
