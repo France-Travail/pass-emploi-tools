@@ -257,17 +257,17 @@ def modele(nom):
 
 
 def gabarit(salon, avec_esql=False):
-    """Le Workflow d'un salon (modeles/salon.console), avec l'étape qui relance la requête des
+    """Le Workflow d'un salon (modeles/salon/workflow.console), avec l'étape qui relance la requête des
     règles ES|QL si le salon en a ; @@TEXTE@@ et @@HTML@@ restent à remplir."""
-    t = modele('salon.console')
-    t = t.replace('@@SI_ESQL_COMMENTAIRE@@\n', modele('salon-esql-commentaire.console') if avec_esql else '')
-    t = t.replace('@@SI_ESQL_ETAPE@@\n', modele('salon-esql-etape.yaml') if avec_esql else '')
+    t = modele('salon/workflow.console')
+    t = t.replace('@@SI_ESQL_COMMENTAIRE@@\n', modele('salon/commentaire-esql.console') if avec_esql else '')
+    t = t.replace('@@SI_ESQL_ETAPE@@\n', modele('salon/etape-esql.yaml') if avec_esql else '')
     return t.replace('@@ID_SALON@@', SALONS[salon]).replace('@@SALON@@', salon)
 
 
 
 GENERES = os.path.join(ICI, 'generated')
-ENTETE = modele('entete.console')
+ENTETE = modele('commun/avertissement-fichier-genere.console')
 
 
 ECRITS = set()
@@ -417,7 +417,7 @@ def colle(nom):
 
 
 def rapport(r, jobs):
-    """Le Workflow du rapport quotidien des jobs d'un environnement (modeles/rapport-jobs*)."""
+    """Le Workflow du rapport quotidien des jobs d'un environnement (modeles/rapport-jobs/)."""
     consts = '\n'.join('    - type: ' + j['type'] + '\n      description: "' + j['description'].replace('"', '\\"') + '"'
                        + ''.join(f'\n      {k}: {j[k]}' for k in ('attendues', 'jour', 'semaine', 'minute') if j[k] is not None)
                        for j in jobs)
@@ -429,11 +429,11 @@ def rapport(r, jobs):
             texte = texte.replace(repere, valeur)
         return texte.replace('"', '\\"')
 
-    dates, calcul = colle('rapport-jobs-dates.liquid'), colle('rapport-jobs-calcul.liquid')
-    html = remplir(colle('rapport-jobs-html.liquid').replace('@@DATES@@', dates).replace('@@CALCUL@@', calcul))
-    texte = remplir(colle('rapport-jobs-texte.liquid').replace('@@DATES@@', dates).replace('@@CALCUL@@', calcul))
-    requete = remplir(modele('rapport-jobs-requete.esql').strip())
-    t = modele('rapport-jobs.console')
+    dates, calcul = colle('rapport-jobs/dates.liquid'), colle('rapport-jobs/calcul.liquid')
+    html = remplir(colle('rapport-jobs/html.liquid').replace('@@DATES@@', dates).replace('@@CALCUL@@', calcul))
+    texte = remplir(colle('rapport-jobs/texte.liquid').replace('@@DATES@@', dates).replace('@@CALCUL@@', calcul))
+    requete = remplir(modele('rapport-jobs/requete.esql').strip())
+    t = modele('rapport-jobs/workflow.console')
     for repere, valeur in [('@@JOBS@@', consts), ('@@REQUETE@@', requete), ('@@TEXTE@@', texte), ('@@HTML@@', html),
                            ('@@ID_SALON@@', SALONS[r['salon']]), ('@@SALON@@', r['salon']), ('@@ENV@@', r['env'])]:
         t = t.replace(repere, valeur)
