@@ -266,10 +266,15 @@ Intégrations (l'équipe beta.gouv n'a pas la réponse, 2026-10-14) :
    exécution par jour) n'a pas de rétablissement mais garde `ongoing: true` :
    un rappel par jour et par certificat, comme dans Mattermost.
 
-**D'où vient le message Tchap** : du body de l'action Mattermost de la règle,
-traduit par `generer-workflows.py`. Une règle branchée sur Tchap sans action
-Mattermost (« Tchap - Expiration du compte bot ») a son message dans
-`MESSAGES_SANS_MATTERMOST`, au même format. Une règle branchée sur Tchap sans
+**D'où vient le message Tchap**, traduit par `generer-workflows.py` :
+- règle générée (A1 à A13, A4a/b, A5a/b, 6a/b, 14, V1) : sa **définition** dans
+  `../../rules/generer-regles.py` (fonction `messages`), la même que celle de son
+  action Mattermost, mais lue sans elle : retirer l'action Mattermost ne change
+  pas le message Tchap ;
+- règle écrite à la main : le body de son action Mattermost, en attendant d'être
+  passée dans `generer-regles.py` ;
+- règle sans action Mattermost (« Tchap - Expiration du compte bot ») :
+  `MESSAGES_SANS_MATTERMOST`, au même format. Une règle branchée sur Tchap sans
 l'un ni l'autre **fait échouer la génération**, en la nommant : elle n'aurait
 reçu qu'un message générique (nom de la règle et raison brute de Kibana).
 

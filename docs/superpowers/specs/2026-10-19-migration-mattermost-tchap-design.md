@@ -417,6 +417,10 @@ de déploiement (2026-10-23 08:48 UTC).
       écrites à la main (5 SLO, 19 de la stack, expiration du bot) ; retirer
       Mattermost devient alors un réglage du générateur de règles. D'ici là,
       `generer-workflows.py` échoue sur une règle branchée sur Tchap sans message.
+      Fait le 2026-10-22 pour les 17 règles générées : leur message Tchap est lu
+      dans leur définition. Restent les 25 règles écrites à la main (7 KQL
+      simples, 4 KQL groupées, 5 KQL avec rétablissement, 5 SLO, 3 ES|QL par
+      ligne, l'expiration du bot), puis l'interrupteur « sans Mattermost ».
 
 ## 12. Risques et points ouverts
 

@@ -328,6 +328,18 @@ def bloc(nom):
     texte = json.dumps(regle, ensure_ascii=False, indent=2).replace('"@@BODY@@"', '"""' + body(r) + '"""')
     return r['commentaire'] + '\nPUT kbn:/api/alerting/rule/' + r['id'] + '\n' + texte + '\n'
 
+def messages(nom):
+    """Le message de la règle, au format d'un body Mattermost, indépendant de son action
+    Mattermost : « principal », et « recovered » pour une règle qui en a un. C'est la source
+    que lisent les Workflows Tchap (../workflows/tchap/generer-workflows.py)."""
+    r = REGLES[nom]
+    m = {'principal': body(r)}
+    retabli = r.get('uptime', {}).get('retabli')
+    if retabli:
+        m['recovered'] = body(dict(r, steps=[], sessions=[], dashboards=[], extra=[], lignes='', suite=None, libelle_date='Rétablie à', **retabli))
+    return m
+
+
 def bloc_uptime(nom, r, artifacts):
     """Règle Uptime (type et paramètres inchangés) : un message à la panne, un au
     rétablissement s'il est défini ; un rappel à chaque exécution pour A13 (TLS, 1 par jour)."""
@@ -342,8 +354,7 @@ def bloc_uptime(nom, r, artifacts):
     regle = {'name': r['name'], 'tags': r['tags'], 'artifacts': artifacts, 'schedule': {'interval': r['interval']}, 'params': r['uptime']['params'], 'actions': actions}
     texte = json.dumps(regle, ensure_ascii=False, indent=2).replace('"@@BODY@@"', '"""' + body(r) + '"""')
     if retabli:
-        r_retabli = dict(r, steps=[], sessions=[], dashboards=[], extra=[], lignes='', suite=None, libelle_date='Rétablie à', **retabli)
-        texte = texte.replace('"@@RETABLI@@"', '"""' + body(r_retabli) + '"""')
+        texte = texte.replace('"@@RETABLI@@"', '"""' + messages(nom)['recovered'] + '"""')
     return r['commentaire'] + '\nPUT kbn:/api/alerting/rule/' + r['id'] + '\n' + texte + '\n'
 
 

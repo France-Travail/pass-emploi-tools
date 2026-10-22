@@ -212,9 +212,18 @@ MESSAGES_SANS_MATTERMOST = {
 }
 
 
+# Messages des règles générées, lus dans leur définition (generer-regles.py), par nom de règle.
+MESSAGES_DEFINITIONS = {}
+
+
 def corps_message(regle, groupe=None):
-    """Le body Mattermost de la règle (du groupe d'action demandé), à défaut son message
-    de MESSAGES_SANS_MATTERMOST."""
+    """Le message de la règle (du groupe d'action demandé) : celui de sa définition dans
+    generer-regles.py ; à défaut le body de son action Mattermost (règles écrites à la
+    main), à défaut MESSAGES_SANS_MATTERMOST."""
+    definition = MESSAGES_DEFINITIONS.get(regle['name'], {})
+    cle = 'recovered' if groupe == 'recovered' else 'principal' if groupe is None else None
+    if cle in definition:
+        return definition[cle]
     mm = [a for a in regle['actions'] if a['id'] != 'system-connector-.workflows' and (groupe is None or a.get('group') == groupe)]
     if mm:
         return mm[0]['params']['body']
@@ -254,7 +263,7 @@ def message(regle, en_html, lignes_esql=None, groupe=None):
 
 def avec_retablissement(regle, en_html):
     """Une règle qui a un message au rétablissement (Uptime) envoie celui-ci pour une alerte rétablie."""
-    if not any(a.get('group') == 'recovered' for a in regle['actions']):
+    if 'recovered' not in MESSAGES_DEFINITIONS.get(regle['name'], {}) and not any(a.get('group') == 'recovered' for a in regle['actions']):
         return message(regle, en_html)
     return ("{% if " + ALERTE + ".status == 'recovered' %}" + message(regle, en_html, groupe='recovered') +
             "{% else %}" + message(regle, en_html) + "{% endif %}")
@@ -321,6 +330,8 @@ ETAPE_ESQL = f'''      - name: si-esql
 
 
 def main():
+    regles_generees = generateur_regles()
+    MESSAGES_DEFINITIONS.update({r['name']: regles_generees.messages(code) for code, r in regles_generees.REGLES.items()})
     par_salon = {s: [] for s in SALONS}
     esql = set()
     for nom in sorted(os.listdir(REGLES)):
@@ -347,7 +358,7 @@ def main():
                     raise SystemExit(f"« {regle['name']} » : règle ES|QL dont le champ de temps n'est pas @timestamp")
                 esql.add(rid)
             par_salon[salon].append((rid, regle))
-    definitions = {v['id']: v for v in definitions_regles().values()} if esql else {}
+    definitions = {v['id']: v for v in regles_generees.REGLES.values()}
 
     def cas(rid, r, en_html):
         if rid not in esql:
@@ -517,12 +528,12 @@ steps:
 VIDE = "Sous le seuil à la relecture : l'incident est peut-être en train de se résorber."
 
 
-def definitions_regles():
+def generateur_regles():
     import importlib.util
     spec = importlib.util.spec_from_file_location('generer_regles', os.path.join(REGLES, 'generer-regles.py'))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.REGLES
+    return module
 
 
 def lignes_resultat(gabarit, en_html, vide=VIDE):
