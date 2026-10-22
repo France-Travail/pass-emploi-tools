@@ -1,5 +1,5 @@
-ℹ️ Rapport quotidien des jobs — @@ENV@@ (24 dernières heures)@@DATES@@
-{% for j in consts.jobs %}@@CALCUL@@
+ℹ️ Rapport quotidien des jobs — @@ENV@@ (24 dernières heures)@@JOUR_DU_MOIS_ET_DE_LA_SEMAINE@@
+{% for j in consts.jobs %}@@STATUT_D_UN_JOB@@
 \n{{ tourne }} {{ ok }} {{ j.type }} : {{ n }} exécution(s)
 {% if att %} sur {{ att }} attendue(s)
 {% endif %}, {{ e }} échec(s)

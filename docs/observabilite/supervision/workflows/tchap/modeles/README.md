@@ -31,11 +31,11 @@ Le Workflow planifié chaque jour à 9 h 30 (heure de Paris), un par entrée de
 | Fichier | Rôle | Repères |
 |---|---|---|
 | `workflow.console` | le Workflow : déclencheur planifié, liste des jobs suivis, requête, envoi | `@@SALON@@`, `@@ID_SALON@@`, `@@ENV@@`, `@@JOBS@@` (la liste des CRON, lue dans pass-emploi-api), `@@REQUETE@@`, `@@TEXTE@@`, `@@HTML@@` |
-| `requete.esql` | la requête ES\|QL : exécutions et échecs de chaque job sur 24 h | `@@INDEX@@` |
-| `dates.liquid` | le jour du mois et de la semaine, aujourd'hui et hier, pour savoir si un job mensuel ou hebdomadaire était attendu | — |
-| `calcul.liquid` | pour un job : exécutions attendues, exécutions réelles, échecs, ✅ / ❌ | `@@RAPPORT_HEURE@@` (9 h 30, en minutes) |
-| `texte.liquid` | le message en texte brut (version de repli de Tchap) | `@@ENV@@`, `@@DATES@@`, `@@CALCUL@@` |
-| `html.liquid` | le message affiché : tableau des jobs et lien vers la session Discover | `@@ENV@@`, `@@LIBELLE_ENV@@`, `@@SESSION_JOBS@@`, `@@DATES@@`, `@@CALCUL@@` |
+| `executions-des-jobs-sur-24h.esql` | la requête ES\|QL : exécutions et échecs de chaque job sur 24 h | `@@INDEX@@` |
+| `jour-du-mois-et-de-la-semaine.liquid` | le jour du mois et de la semaine, aujourd'hui et hier, pour savoir si un job mensuel ou hebdomadaire était attendu | — |
+| `statut-d-un-job.liquid` | pour un job : exécutions attendues, exécutions réelles, échecs, ✅ / ❌ | `@@RAPPORT_HEURE@@` (9 h 30, en minutes) |
+| `texte.liquid` | le message en texte brut (version de repli de Tchap) | `@@ENV@@`, `@@JOUR_DU_MOIS_ET_DE_LA_SEMAINE@@`, `@@STATUT_D_UN_JOB@@` |
+| `html.liquid` | le message affiché : tableau des jobs et lien vers la session Discover | `@@ENV@@`, `@@LIBELLE_ENV@@`, `@@SESSION_JOBS@@`, `@@JOUR_DU_MOIS_ET_DE_LA_SEMAINE@@`, `@@STATUT_D_UN_JOB@@` |
 
 Les fichiers `.liquid` sont écrits **une instruction par ligne** pour être lisibles :
 le générateur recolle les lignes bout à bout, sans espace (un retour à la ligne dans

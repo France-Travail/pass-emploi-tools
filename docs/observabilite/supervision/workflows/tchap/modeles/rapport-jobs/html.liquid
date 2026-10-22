@@ -1,6 +1,6 @@
 <p><font data-mx-color="#808080" color="#808080">ℹ️ <strong>Rapport quotidien des jobs — @@ENV@@</strong> (24 dernières heures)</font></p><table><thead>
-<tr><th>A tourné</th><th>Sans échec</th><th>Job</th><th>Attendues</th><th>Exécutions</th><th>Échecs</th><th>Durée moyenne</th><th>Description</th></tr></thead><tbody>@@DATES@@
-{% for j in consts.jobs %}@@CALCUL@@
+<tr><th>A tourné</th><th>Sans échec</th><th>Job</th><th>Attendues</th><th>Exécutions</th><th>Échecs</th><th>Durée moyenne</th><th>Description</th></tr></thead><tbody>@@JOUR_DU_MOIS_ET_DE_LA_SEMAINE@@
+{% for j in consts.jobs %}@@STATUT_D_UN_JOB@@
 <tr><td>{{ tourne }}</td><td>{{ ok }}</td><td>{{ j.type }}</td><td>{{ att | default: '—' }}</td><td>{{ n }}</td><td>{{ e }}</td><td>{{ d }}</td><td>{{ j.description | escape }}</td></tr>
 {% endfor %}
 {% assign types = consts.jobs | map: 'type' %}

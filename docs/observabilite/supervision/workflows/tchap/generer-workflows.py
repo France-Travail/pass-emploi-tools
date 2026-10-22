@@ -429,10 +429,10 @@ def rapport(r, jobs):
             texte = texte.replace(repere, valeur)
         return texte.replace('"', '\\"')
 
-    dates, calcul = colle('rapport-jobs/dates.liquid'), colle('rapport-jobs/calcul.liquid')
-    html = remplir(colle('rapport-jobs/html.liquid').replace('@@DATES@@', dates).replace('@@CALCUL@@', calcul))
-    texte = remplir(colle('rapport-jobs/texte.liquid').replace('@@DATES@@', dates).replace('@@CALCUL@@', calcul))
-    requete = remplir(modele('rapport-jobs/requete.esql').strip())
+    jours, statut = colle('rapport-jobs/jour-du-mois-et-de-la-semaine.liquid'), colle('rapport-jobs/statut-d-un-job.liquid')
+    html = remplir(colle('rapport-jobs/html.liquid').replace('@@JOUR_DU_MOIS_ET_DE_LA_SEMAINE@@', jours).replace('@@STATUT_D_UN_JOB@@', statut))
+    texte = remplir(colle('rapport-jobs/texte.liquid').replace('@@JOUR_DU_MOIS_ET_DE_LA_SEMAINE@@', jours).replace('@@STATUT_D_UN_JOB@@', statut))
+    requete = remplir(modele('rapport-jobs/executions-des-jobs-sur-24h.esql').strip())
     t = modele('rapport-jobs/workflow.console')
     for repere, valeur in [('@@JOBS@@', consts), ('@@REQUETE@@', requete), ('@@TEXTE@@', texte), ('@@HTML@@', html),
                            ('@@ID_SALON@@', SALONS[r['salon']]), ('@@SALON@@', r['salon']), ('@@ENV@@', r['env'])]:
