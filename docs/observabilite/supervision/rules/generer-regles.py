@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Génère les blocs des règles Kibana décrites dans REGLES, au format des fichiers .console.
+"""Génère les fichiers de règles Kibana de generated/, à coller dans Dev Tools.
 
-Usage : python3 -I generer-regles.py [--verifier | --ecrire] <code>…
-  sans option : écrit les blocs sur la sortie standard ;
-  --verifier : sort en erreur si un bloc diffère de celui de son fichier ;
-  --ecrire : remplace le bloc dans son fichier (l'ajoute en fin de fichier s'il est nouveau).
-Après toute modification : ../workflows/tchap/generer-workflows.py.
+Sources : les définitions des règles (REGLES ci-dessous, champ par champ, et
+definitions-format-kibana.py, au format de Kibana), et le texte autour d'elles dans
+modeles/<fichier> (repères @@REGLE <code>@@).
+
+Usage : FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I generer-regles.py [--verifier]
+  sans option : écrit tous les fichiers de generated/ ;
+  --verifier  : compare generated/ à ses sources, code de sortie 1 au moindre écart (CI).
 """
 import importlib.util, json, os, re, sys
 
@@ -140,7 +142,7 @@ REGLES = {
                f"3. Un déploiement récent du web : l'activité de `pass-emploi-web-prod` dans le dashboard {d('scalingo')}"],
         sessions=[], dashboards=['apm-web', 'entree', 'scalingo'], extra=[RUNBOOK_APPLICATIF],
         doc=('Alertes applicatives', 'supervision/alertes-applicatives.md')),
-    'A5a': dict(id='a03feacb-ddf8-4e04-af82-48f77b07a86e', commentaire="# A5a — Jobs en échec, prod (version dégradée : un job qui plante ou introuvable ; un job\n# qui rapporte un échec sans planter n'est pas vu, cf. ../alertes-applicatives.md)",
+    'A5a': dict(id='a03feacb-ddf8-4e04-af82-48f77b07a86e', commentaire="# A5a — Jobs en échec, prod (version dégradée : un job qui plante ou introuvable ; un job\n# qui rapporte un échec sans planter n'est pas vu, cf. ../../alertes-applicatives.md)",
         name='API - Prod - Jobs en échec', tags=['prod', 'applicatif', 'jobs'],
         dv='logs-prod', kql=JOBS_KQL, interval='1m', fenetre=5, mm='cd0b8285-1b69-4e3a-9c7c-6d35b42e7115', couleur='#808080', emoji='',
         titre='Jobs en échec — prod', workflow='tchap-jobs-production', lignes=JOBS_LIGNES,
@@ -361,8 +363,13 @@ def bloc_format_kibana(r):
     for a in regle.get('actions', []):
         if a.get('params', {}).get('body') == '@@MESSAGE@@':
             a['params']['body'] = '@@MESSAGE:' + a['group'] + '@@'
+    esql = regle.get('params', {}).get('esqlQuery', {}).get('esql')
+    if esql:
+        regle['params']['esqlQuery']['esql'] = '@@ESQL@@'
     regle['actions'] = actions_envoyees(regle['actions'])
     texte = json.dumps(regle, ensure_ascii=False, indent=2)
+    if esql:
+        texte = texte.replace('"@@ESQL@@"', '"""' + esql + '"""')
     for groupe, corps in r['messages'].items():
         texte = texte.replace('"@@MESSAGE:' + groupe + '@@"', '"""' + corps + '"""')
     entete = r['commentaire'] + '\n' if r['commentaire'] else ''
@@ -434,60 +441,66 @@ def bloc_esql(nom, r, artifacts):
 
 
 ICI = os.path.dirname(os.path.abspath(__file__))
-FICHIERS = {'1-rules-applicatives.console': ('A',), '2-rules-stack-observabilite.console': ('6', '14'), '3-rules-securite.console': ('V',)}
 
 
-def fichier(nom):
-    if REGLES[nom].get('fichier'):
-        return os.path.join(ICI, REGLES[nom]['fichier'])
-    return os.path.join(ICI, next(f for f, p in FICHIERS.items() if nom.startswith(p)))
+MODELES = os.path.join(ICI, 'modeles')
+GENERES = os.path.join(ICI, 'generated')
 
 
-def emplacement(lignes, nom):
-    """Lignes [début, fin] du bloc : des commentaires qui précèdent son PUT (ou POST) à l'accolade fermante."""
-    put_ = REGLES[nom].get('methode', 'PUT') + ' kbn:/api/alerting/rule/' + REGLES[nom]['id']
-    if put_ not in lignes:
-        return None
-    put = lignes.index(put_)
-    debut = put
-    commentaire = len(REGLES[nom]['commentaire'].split('\n')) if REGLES[nom]['commentaire'] else 0
-    while debut > 0 and put - debut < commentaire and lignes[debut - 1].startswith('#'):
-        debut -= 1
-    return debut, lignes.index('}', put)
+def entete(nom_fichier):
+    return f"""# ⚠️ FICHIER GÉNÉRÉ par ../generer-regles.py : NE PAS LE MODIFIER, il serait écrasé.
+# À modifier à la place :
+#   - une règle : sa définition, dans ../generer-regles.py (règle définie champ par
+#     champ) ou ../definitions-format-kibana.py (règle définie au format de Kibana) ;
+#   - le texte autour des règles (commentaires, autres requêtes) : ../modeles/{nom_fichier}.
+# Puis : FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I ../generer-regles.py
+#        python3 -I ../../workflows/tchap/generer-workflows.py
+# La CI de chaque PR vérifie que ce fichier correspond à ses sources.
+# Ce fichier se colle tel quel dans Kibana → Dev Tools.
+#
+"""
+
+
+def assembler():
+    """{nom de fichier: contenu généré} : chaque modèle, ses repères @@REGLE <code>@@ remplacés
+    par le bloc de la règle."""
+    fichiers, places = {}, set()
+    for nom_fichier in sorted(os.listdir(MODELES)):
+        texte = open(os.path.join(MODELES, nom_fichier)).read()
+        for code in re.findall(r'^@@REGLE (\S+)@@$', texte, flags=re.M):
+            if code not in REGLES:
+                raise SystemExit(f'{nom_fichier} : repère @@REGLE {code}@@ sans définition')
+            if code in places:
+                raise SystemExit(f'règle {code} placée deux fois dans les modèles')
+            places.add(code)
+            texte = texte.replace(f'@@REGLE {code}@@', bloc(code).rstrip('\n'))
+        fichiers[nom_fichier] = entete(nom_fichier) + texte
+    oubliees = sorted(set(REGLES) - places)
+    if oubliees:
+        raise SystemExit(f"règles définies mais placées dans aucun modèle (../modeles/) : {', '.join(oubliees)}")
+    return fichiers
 
 
 def main(args):
-    mode = args[0] if args and args[0] in ('--verifier', '--ecrire') else None
-    if mode and not FEATURES['notifierAlertesMattermost']:
+    verifier = '--verifier' in args
+    if not FEATURES['notifierAlertesMattermost']:
         print('FEATURE_NOTIFIER_ALERTES_MATTERMOST absente ou différente de « true » : règles SANS action Mattermost', file=sys.stderr)
-    codes = (args[1:] if mode else args) or (list(REGLES) if mode == '--verifier' else [])
+    fichiers = assembler()
     ecarts = 0
-    for nom in codes:
-        genere = bloc(nom).rstrip('\n').split('\n')
-        if not mode:
-            print('\n'.join(genere) + '\n')
-            continue
-        chemin = fichier(nom)
-        lignes = open(chemin).read().split('\n')
-        place = emplacement(lignes, nom)
-        actuel = lignes[place[0]:place[1] + 1] if place else None
-        if mode == '--verifier':
-            if actuel != genere:
+    for nom_fichier, contenu in fichiers.items():
+        chemin = os.path.join(GENERES, nom_fichier)
+        actuel = open(chemin).read() if os.path.exists(chemin) else None
+        if verifier:
+            if actuel != contenu:
                 ecarts += 1
-                print(f'{nom} : diffère de {os.path.basename(chemin)}' if actuel else f'{nom} : absent de {os.path.basename(chemin)}')
+                print(f'generated/{nom_fichier} : ' + ('absent' if actuel is None else 'diffère de ses sources'))
             continue
-        if place:
-            lignes[place[0]:place[1] + 1] = genere
-        else:
-            while lignes and lignes[-1] == '':
-                lignes.pop()
-            lignes += [''] + genere + ['']
-        open(chemin, 'w').write('\n'.join(lignes))
-        print(f'{nom} : écrit dans {os.path.basename(chemin)}')
-    if mode == '--verifier':
-        print('identiques' if not ecarts else f'{ecarts} bloc(s) différent(s)')
+        os.makedirs(GENERES, exist_ok=True)
+        open(chemin, 'w').write(contenu)
+        print(f'generated/{nom_fichier} : {contenu.count("kbn:/api/alerting/rule/")} règle(s)')
+    if verifier:
+        print('identiques' if not ecarts else f'{ecarts} fichier(s) différent(s) : lancer FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I generer-regles.py')
     sys.exit(1 if ecarts else 0)
-
 
 if __name__ == '__main__':
     main(sys.argv[1:])

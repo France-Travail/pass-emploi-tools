@@ -135,7 +135,7 @@ PUT _index_template/logs-apm.error@template-custom
 # émetteurs n'ont pas à passer ?pipeline=, qu'un notifier Scalingo ne sait pas
 # poser. Failure store : un payload rejeté par le pipeline y est conservé au
 # lieu d'être perdu ; l'émetteur reçoit 201 dans les deux cas
-# (règle 14, ../../supervision/rules/2-rules-stack-observabilite.console).
+# (règle 14, ../../supervision/rules/generated/2-rules-stack-observabilite.console).
 PUT _index_template/logs-alertes-scalingo-prod@template-custom
 {
   "index_patterns": ["logs-alertes-scalingo-prod-default"],

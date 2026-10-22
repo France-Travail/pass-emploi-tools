@@ -1,0 +1,75 @@
+# Règles Kibana des alertes applicatives, notifiées dans #monitoring-production
+# (connecteur Mattermost-monitoring-production). Spécification : ../../alertes-applicatives.md.
+#
+# À rejouer dans Dev Tools, après ../../slo/1-slos.console. PUT met à jour une règle
+# existante ; sur un cluster vide, la créer avec POST kbn:/api/alerting/rule/<id>
+# et le même corps plus "rule_type_id" et "consumer" (slo.rules.burnRate / slo pour
+# Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
+# ../../objets-kibana.md#slo-et-règles-console.
+# S2 et S3, .es-query / alerts pour A1 à A7, A4a, A4b, A5a et A5b,
+# xpack.uptime.alerts.monitorStatus / uptime pour A10 à A12,
+# xpack.uptime.alerts.tlsCertificate / uptime pour A13).
+#
+# Règles ES|QL (A1, A2, A3, A6, A7) : le Workflow du salon relance leur requête.
+#
+# A4a / A4b : événements Scalingo des apps applicatives, #monitoring-production /
+# Mattermost-monitoring-staging ; Tchap via les Workflows de salon.
+# A5a / A5b : jobs en échec, Mattermost-jobs-production / -staging
+# (../../connecteurs/mattermost-jobs.console, à créer avant) ; Tchap jobs-production /
+# jobs-staging.
+#
+# Messages Mattermost : une section (« À vérifier », « Dashboards », « Discover
+# sessions ») = un champ, un élément par ligne (`\n`). Chaque champ tient sur une
+# seule ligne du fichier : l'éditeur de règle de Kibana lit le body comme du JSON
+# brut, un retour à la ligne dans une chaîne l'empêche de l'afficher. Pour relire
+# les étapes, voir la définition de la règle dans ../generer-regles.py ou son
+# Investigation guide.
+#
+# artifacts : l'Investigation guide et les Related dashboards (onglets de la
+# règle). L'API publique ne les renvoie pas dans ses réponses : les vérifier
+# dans l'interface.
+#
+# S2, S3 — SLO burn rate. Seuls Critical (slo.burnRate.alert) et High notifient.
+#
+# maxBurnRateThreshold = 1 / (1 - objectif) : burn rate à 100 % d'échecs.
+#
+# Invité et conseiller départemental : quelques tentatives par jour, un seul échec
+# sur 1 h vaut 100 % d'échecs. Une seule fenêtre, longue, qui exige plusieurs
+# échecs : invité ≥ 20 % d'échecs sur 72 h (~18 tentatives), conseiller
+# départemental ≥ 20 % sur 168 h (~10 tentatives).
+
+@@REGLE S2@@
+
+@@REGLE S3-jeune-ft@@
+
+@@REGLE S3@@
+
+@@REGLE S3-invite@@
+
+@@REGLE S3-cd@@
+
+@@REGLE A1@@
+
+@@REGLE A2@@
+
+@@REGLE A3@@
+
+@@REGLE A4a@@
+
+@@REGLE A4b@@
+
+@@REGLE A5a@@
+
+@@REGLE A5b@@
+
+@@REGLE A6@@
+
+@@REGLE A7@@
+
+@@REGLE A10@@
+
+@@REGLE A11@@
+
+@@REGLE A12@@
+
+@@REGLE A13@@

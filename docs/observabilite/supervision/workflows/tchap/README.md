@@ -66,11 +66,11 @@ cluster en panne.
 |---|---|
 | [`connecteur-tchap.console`](connecteur-tchap.console) | connecteur `.http` : URL de Tchap et jeton du bot |
 | [`tchap-client.console`](tchap-client.console) | le seul Workflow qui parle à Matrix |
-| [`tchap-monitoring-production.console`](tchap-monitoring-production.console), [`tchap-monitoring-staging.console`](tchap-monitoring-staging.console), [`tchap-o11y-production.console`](tchap-o11y-production.console), [`tchap-o11y-staging.console`](tchap-o11y-staging.console), [`tchap-jobs-production.console`](tchap-jobs-production.console), [`tchap-jobs-staging.console`](tchap-jobs-staging.console) | un Workflow par salon, **générés** : ne pas les modifier à la main |
-| [`rapport-jobs-prod.console`](rapport-jobs-prod.console), [`rapport-jobs-staging.console`](rapport-jobs-staging.console) | rapport quotidien des jobs de l'api, chaque jour à 9 h 30 (heure de Paris), **générés** |
+| [`generated/tchap-monitoring-production.console`](generated/tchap-monitoring-production.console), [`generated/tchap-monitoring-staging.console`](generated/tchap-monitoring-staging.console), [`generated/tchap-o11y-production.console`](generated/tchap-o11y-production.console), [`generated/tchap-o11y-staging.console`](generated/tchap-o11y-staging.console), [`generated/tchap-jobs-production.console`](generated/tchap-jobs-production.console), [`generated/tchap-jobs-staging.console`](generated/tchap-jobs-staging.console) | un Workflow par salon, **générés** : ne pas les modifier à la main |
+| [`generated/rapport-jobs-prod.console`](generated/rapport-jobs-prod.console), [`generated/rapport-jobs-staging.console`](generated/rapport-jobs-staging.console) | rapport quotidien des jobs de l'api, chaque jour à 9 h 30 (heure de Paris), **générés** |
 | [`generer-workflows.py`](generer-workflows.py) | génère les Workflows de salon depuis les règles de [`../../rules/`](../../rules/), et les rapports depuis la liste des CRON de `pass-emploi-api` (`origin/develop`) : `python3 -I generer-workflows.py` après toute modification d'une règle, d'un salon ou des CRON de l'api |
 | [`../../rules/4-rules-tchap.console`](../../rules/4-rules-tchap.console) | règle « Tchap - Envoi en échec » |
-| [`../../rules/5-rules-tchap-expiration-bot.console`](../../rules/5-rules-tchap-expiration-bot.console) | règle « Tchap - Expiration du compte bot », date d'expiration rangée dans Elasticsearch |
+| [`../../rules/generated/5-rules-tchap-expiration-bot.console`](../../rules/generated/5-rules-tchap-expiration-bot.console) | règle « Tchap - Expiration du compte bot », date d'expiration rangée dans Elasticsearch |
 
 ## Le message
 
@@ -185,7 +185,7 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
    ```
 7. **Règles** : brancher les règles (ci-dessous), puis rejouer
    [`4-rules-tchap.console`](../../rules/4-rules-tchap.console) et
-   [`5-rules-tchap-expiration-bot.console`](../../rules/5-rules-tchap-expiration-bot.console),
+   [`5-rules-tchap-expiration-bot.console`](../../rules/generated/5-rules-tchap-expiration-bot.console),
    en remplaçant `<identifiant-du-bot>` par le `user_id` de l'étape 4 et
    `<date-expiration>` par la date d'inscription du bot + 11 mois + 60 jours.
 

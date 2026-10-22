@@ -13,7 +13,7 @@ Elles signalent un risque à traiter, pas une panne.
 |----|---------------------------|-------------------------------|-------------------------------------------|-----------|----------|-------------|
 | V1 | CVE high/critical ouverte | `logs-alertes-github-default` | `vulnerability.severity` high ou critical | 5 min     | —        | 🚨 Critical |
 
-**Création** : rejouer [`rules/3-rules-securite.console`](rules/3-rules-securite.console)
+**Création** : rejouer [`rules/generated/3-rules-securite.console`](rules/generated/3-rules-securite.console)
 dans Dev Tools, après les sessions Discover de
 [`discovers/evenements-externes/`](discovers/evenements-externes/).
 

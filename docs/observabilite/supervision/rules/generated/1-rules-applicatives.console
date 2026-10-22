@@ -1,31 +1,38 @@
-# Règles Kibana des alertes applicatives, notifiées dans #monitoring-production
-# (connecteur Mattermost-monitoring-production). Spécification : ../alertes-applicatives.md.
+# ⚠️ FICHIER GÉNÉRÉ par ../generer-regles.py : NE PAS LE MODIFIER, il serait écrasé.
+# À modifier à la place :
+#   - une règle : sa définition, dans ../generer-regles.py (règle définie champ par
+#     champ) ou ../definitions-format-kibana.py (règle définie au format de Kibana) ;
+#   - le texte autour des règles (commentaires, autres requêtes) : ../modeles/1-rules-applicatives.console.
+# Puis : FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I ../generer-regles.py
+#        python3 -I ../../workflows/tchap/generer-workflows.py
+# La CI de chaque PR vérifie que ce fichier correspond à ses sources.
+# Ce fichier se colle tel quel dans Kibana → Dev Tools.
 #
-# À rejouer dans Dev Tools, après ../slo/1-slos.console. PUT met à jour une règle
+# Règles Kibana des alertes applicatives, notifiées dans #monitoring-production
+# (connecteur Mattermost-monitoring-production). Spécification : ../../alertes-applicatives.md.
+#
+# À rejouer dans Dev Tools, après ../../slo/1-slos.console. PUT met à jour une règle
 # existante ; sur un cluster vide, la créer avec POST kbn:/api/alerting/rule/<id>
 # et le même corps plus "rule_type_id" et "consumer" (slo.rules.burnRate / slo pour
 # Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
-# ../objets-kibana.md#slo-et-règles-console.
+# ../../objets-kibana.md#slo-et-règles-console.
 # S2 et S3, .es-query / alerts pour A1 à A7, A4a, A4b, A5a et A5b,
 # xpack.uptime.alerts.monitorStatus / uptime pour A10 à A12,
 # xpack.uptime.alerts.tlsCertificate / uptime pour A13).
 #
-# Blocs générés par generer-regles.py (définitions dans ce fichier Python et dans
-# definitions-format-kibana.py) : modifier la définition,
-# puis FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I generer-regles.py --ecrire <code> ; --verifier compare tout.
 # Règles ES|QL (A1, A2, A3, A6, A7) : le Workflow du salon relance leur requête.
 #
 # A4a / A4b : événements Scalingo des apps applicatives, #monitoring-production /
 # Mattermost-monitoring-staging ; Tchap via les Workflows de salon.
 # A5a / A5b : jobs en échec, Mattermost-jobs-production / -staging
-# (../connecteurs/mattermost-jobs.console, à créer avant) ; Tchap jobs-production /
+# (../../connecteurs/mattermost-jobs.console, à créer avant) ; Tchap jobs-production /
 # jobs-staging.
 #
 # Messages Mattermost : une section (« À vérifier », « Dashboards », « Discover
 # sessions ») = un champ, un élément par ligne (`\n`). Chaque champ tient sur une
 # seule ligne du fichier : l'éditeur de règle de Kibana lit le body comme du JSON
 # brut, un retour à la ligne dans une chaîne l'empêche de l'afficher. Pour relire
-# les étapes, voir la définition de la règle dans generer-regles.py ou son
+# les étapes, voir la définition de la règle dans ../generer-regles.py ou son
 # Investigation guide.
 #
 # artifacts : l'Investigation guide et les Related dashboards (onglets de la
@@ -1546,7 +1553,7 @@ PUT kbn:/api/alerting/rule/07c9c5d7-e8fe-4964-ac8d-684b1c4c39b8
 }
 
 # A5a — Jobs en échec, prod (version dégradée : un job qui plante ou introuvable ; un job
-# qui rapporte un échec sans planter n'est pas vu, cf. ../alertes-applicatives.md)
+# qui rapporte un échec sans planter n'est pas vu, cf. ../../alertes-applicatives.md)
 PUT kbn:/api/alerting/rule/a03feacb-ddf8-4e04-af82-48f77b07a86e
 {
   "name": "API - Prod - Jobs en échec",

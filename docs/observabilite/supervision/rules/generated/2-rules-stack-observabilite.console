@@ -1,14 +1,22 @@
+# ⚠️ FICHIER GÉNÉRÉ par ../generer-regles.py : NE PAS LE MODIFIER, il serait écrasé.
+# À modifier à la place :
+#   - une règle : sa définition, dans ../generer-regles.py (règle définie champ par
+#     champ) ou ../definitions-format-kibana.py (règle définie au format de Kibana) ;
+#   - le texte autour des règles (commentaires, autres requêtes) : ../modeles/2-rules-stack-observabilite.console.
+# Puis : FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I ../generer-regles.py
+#        python3 -I ../../workflows/tchap/generer-workflows.py
+# La CI de chaque PR vérifie que ce fichier correspond à ses sources.
+# Ce fichier se colle tel quel dans Kibana → Dev Tools.
+#
 # Règles Kibana de la stack d'observabilité, notifiées dans #o11y-production
 # (Mattermost-o11y-production) et #o11y-staging (Mattermost-o11y-staging).
-# Spécification et calibrage : ../alertes-stack-observabilite.md.
+# Spécification et calibrage : ../../alertes-stack-observabilite.md.
 #
 # À rejouer dans Dev Tools. PUT met à jour une règle existante ; sur un cluster
 # vide, la créer avec POST kbn:/api/alerting/rule/<id> et le même corps plus
 # "rule_type_id": ".es-query" et "consumer": "alerts".
-# Blocs de règle générés par generer-regles.py, depuis definitions-format-kibana.py : modifier
-# la définition, puis FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I generer-regles.py --ecrire <code>.
 # Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
-# ../objets-kibana.md#slo-et-règles-console.
+# ../../objets-kibana.md#slo-et-règles-console.
 #
 # PUT ne change pas l'état activé / désactivé d'une règle. Les data views sont
 # embarquées dans la règle (searchConfiguration.index) : leur id ne renvoie à
@@ -18,7 +26,7 @@
 # sessions ») = un champ, un élément par ligne (`\n`). Chaque champ tient sur une
 # seule ligne du fichier : l'éditeur de règle de Kibana lit le body comme du JSON
 # brut, un retour à la ligne dans une chaîne l'empêche de l'afficher. Pour relire
-# les étapes, voir la définition de la règle dans generer-regles.py ou son
+# les étapes, voir la définition de la règle dans ../generer-regles.py ou son
 # Investigation guide.
 #
 # artifacts : l'Investigation guide et les Related dashboards (onglets de la
@@ -2162,7 +2170,17 @@ PUT kbn:/api/alerting/rule/bbb9d642-f012-4747-8154-49162245a364
   "params": {
     "searchType": "esqlQuery",
     "esqlQuery": {
-      "esql": "FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*\n| EVAL host = COALESCE(hostname, agent.name)\n| WHERE host LIKE \"*-prod-*\"\n| WHERE health_status IN (\"offline\", \"unenrolled\", \"unhealthy\")\n     OR beat.stats.libbeat.output.write.errors IS NOT NULL\n| STATS statuts = VALUES(health_status),\n        erreurs = MAX(TO_LONG(beat.stats.libbeat.output.write.errors))\n                - MIN(TO_LONG(beat.stats.libbeat.output.write.errors))\n  BY host, component.id\n| STATS statuts = VALUES(statuts), erreurs_output = MAX(erreurs) BY host\n| WHERE statuts IS NOT NULL OR erreurs_output > 25"
+      "esql": """FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*
+| EVAL host = COALESCE(hostname, agent.name)
+| WHERE host LIKE "*-prod-*"
+| WHERE health_status IN ("offline", "unenrolled", "unhealthy")
+     OR beat.stats.libbeat.output.write.errors IS NOT NULL
+| STATS statuts = VALUES(health_status),
+        erreurs = MAX(TO_LONG(beat.stats.libbeat.output.write.errors))
+                - MIN(TO_LONG(beat.stats.libbeat.output.write.errors))
+  BY host, component.id
+| STATS statuts = VALUES(statuts), erreurs_output = MAX(erreurs) BY host
+| WHERE statuts IS NOT NULL OR erreurs_output > 25"""
     },
     "timeField": "@timestamp",
     "timeWindowSize": 5,
@@ -2275,7 +2293,17 @@ PUT kbn:/api/alerting/rule/8d593176-8752-4369-a37f-6b42fa3890b2
   "params": {
     "searchType": "esqlQuery",
     "esqlQuery": {
-      "esql": "FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*\n| EVAL host = COALESCE(hostname, agent.name)\n| WHERE host LIKE \"*-staging-*\"\n| WHERE health_status IN (\"offline\", \"unenrolled\", \"unhealthy\")\n     OR beat.stats.libbeat.output.write.errors IS NOT NULL\n| STATS statuts = VALUES(health_status),\n        erreurs = MAX(TO_LONG(beat.stats.libbeat.output.write.errors))\n                - MIN(TO_LONG(beat.stats.libbeat.output.write.errors))\n  BY host, component.id\n| STATS statuts = VALUES(statuts), erreurs_output = MAX(erreurs) BY host\n| WHERE statuts IS NOT NULL OR erreurs_output > 25"
+      "esql": """FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*
+| EVAL host = COALESCE(hostname, agent.name)
+| WHERE host LIKE "*-staging-*"
+| WHERE health_status IN ("offline", "unenrolled", "unhealthy")
+     OR beat.stats.libbeat.output.write.errors IS NOT NULL
+| STATS statuts = VALUES(health_status),
+        erreurs = MAX(TO_LONG(beat.stats.libbeat.output.write.errors))
+                - MIN(TO_LONG(beat.stats.libbeat.output.write.errors))
+  BY host, component.id
+| STATS statuts = VALUES(statuts), erreurs_output = MAX(erreurs) BY host
+| WHERE statuts IS NOT NULL OR erreurs_output > 25"""
     },
     "timeField": "@timestamp",
     "timeWindowSize": 5,
@@ -2668,7 +2696,17 @@ PUT kbn:/api/alerting/rule/fb66693b-f17a-4cd0-baf5-113e7e153604
   "params": {
     "searchType": "esqlQuery",
     "esqlQuery": {
-      "esql": "FROM .ds-ilm-history-7-*\n| WHERE index LIKE \"*.ds-logs-*\" OR index LIKE \"*.ds-metrics-*\"\n     OR index LIKE \"*.ds-traces-*\" OR index LIKE \"*.ds-heartbeat-*\"\n| EVAL policy_par_defaut = policy IN (\"logs\", \"metrics\", \"logs@lifecycle\", \"metrics@lifecycle\", \"metricbeat\")\n                           OR policy LIKE \"*-default_policy\"\n| WHERE success == false OR policy_par_defaut\n| STATS index_en_echec = COUNT_DISTINCT(index) WHERE success == false,\n        index_policy_par_defaut = COUNT_DISTINCT(index) WHERE policy_par_defaut,\n        policies = VALUES(policy), exemples = VALUES(index)\n| WHERE index_en_echec > 0 OR index_policy_par_defaut > 0\n| EVAL exemples = MV_SLICE(exemples, 0, 9)"
+      "esql": """FROM .ds-ilm-history-7-*
+| WHERE index LIKE "*.ds-logs-*" OR index LIKE "*.ds-metrics-*"
+     OR index LIKE "*.ds-traces-*" OR index LIKE "*.ds-heartbeat-*"
+| EVAL policy_par_defaut = policy IN ("logs", "metrics", "logs@lifecycle", "metrics@lifecycle", "metricbeat")
+                           OR policy LIKE "*-default_policy"
+| WHERE success == false OR policy_par_defaut
+| STATS index_en_echec = COUNT_DISTINCT(index) WHERE success == false,
+        index_policy_par_defaut = COUNT_DISTINCT(index) WHERE policy_par_defaut,
+        policies = VALUES(policy), exemples = VALUES(index)
+| WHERE index_en_echec > 0 OR index_policy_par_defaut > 0
+| EVAL exemples = MV_SLICE(exemples, 0, 9)"""
     },
     "timeField": "@timestamp",
     "timeWindowSize": 24,

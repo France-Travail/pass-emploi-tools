@@ -1,17 +1,27 @@
-# Règles Kibana des alertes de sécurité. Spécification : ../alertes-securite.md.
+# ⚠️ FICHIER GÉNÉRÉ par ../generer-regles.py : NE PAS LE MODIFIER, il serait écrasé.
+# À modifier à la place :
+#   - une règle : sa définition, dans ../generer-regles.py (règle définie champ par
+#     champ) ou ../definitions-format-kibana.py (règle définie au format de Kibana) ;
+#   - le texte autour des règles (commentaires, autres requêtes) : ../modeles/3-rules-securite.console.
+# Puis : FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I ../generer-regles.py
+#        python3 -I ../../workflows/tchap/generer-workflows.py
+# La CI de chaque PR vérifie que ce fichier correspond à ses sources.
+# Ce fichier se colle tel quel dans Kibana → Dev Tools.
+#
+# Règles Kibana des alertes de sécurité. Spécification : ../../alertes-securite.md.
 #
 # À rejouer dans Dev Tools, après les sessions Discover de
-# ../discovers/evenements-externes/. PUT met à jour une règle existante ; sur un
+# ../../discovers/evenements-externes/. PUT met à jour une règle existante ; sur un
 # cluster vide, la créer avec POST kbn:/api/alerting/rule/<id> et le même corps
 # plus "rule_type_id": ".es-query" et "consumer": "alerts".
 # Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
-# ../objets-kibana.md#slo-et-règles-console.
+# ../../objets-kibana.md#slo-et-règles-console.
 #
 # Messages Mattermost : une section (« À vérifier », « Dashboards », « Discover
 # sessions ») = un champ, un élément par ligne (`\n`). Chaque champ tient sur une
 # seule ligne du fichier : l'éditeur de règle de Kibana lit le body comme du JSON
 # brut, un retour à la ligne dans une chaîne l'empêche de l'afficher. Pour relire
-# les étapes, voir la définition de la règle dans generer-regles.py ou son
+# les étapes, voir la définition de la règle dans ../generer-regles.py ou son
 # Investigation guide.
 #
 # artifacts : l'Investigation guide et les Related dashboards (onglets de la

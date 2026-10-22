@@ -1,0 +1,125 @@
+# ⚠️ FICHIER GÉNÉRÉ par ../generer-regles.py : NE PAS LE MODIFIER, il serait écrasé.
+# À modifier à la place :
+#   - une règle : sa définition, dans ../generer-regles.py (règle définie champ par
+#     champ) ou ../definitions-format-kibana.py (règle définie au format de Kibana) ;
+#   - le texte autour des règles (commentaires, autres requêtes) : ../modeles/5-rules-tchap-expiration-bot.console.
+# Puis : FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I ../generer-regles.py
+#        python3 -I ../../workflows/tchap/generer-workflows.py
+# La CI de chaque PR vérifie que ce fichier correspond à ses sources.
+# Ce fichier se colle tel quel dans Kibana → Dev Tools.
+#
+# Expiration du compte bot Tchap. Spécification et procédure :
+# ../../../runbooks/runbook-tchap-expiration-bot.md.
+#
+# Le compte du bot est un compte Tchap ordinaire : il expire s'il n'est pas
+# renouvelé (CGU du 2026-10-14 : lien envoyé par email 11 mois après
+# l'inscription ou le dernier renouvellement, expiration 60 jours plus tard ; à
+# revérifier à chaque renouvellement, cf. runbook). Matrix ne donne pas
+# cette date au titulaire du compte, et un bot expiré ne peut plus notifier :
+# on range la date dans Elasticsearch et on alerte dans les 60 jours qui
+# précèdent, tant que le bot fonctionne encore.
+# À rejouer dans l'ordre : pipeline, index, date du compte, règle.
+
+PUT _ingest/pipeline/tchap-expiration-bot
+{
+  "description": "Date à partir de laquelle renouveler le compte bot Tchap, et ligne de notification",
+  "processors": [
+    {
+      "script": {
+        "description": "renouveler_a_partir_du = expire_le - 60 jours (date d'envoi du lien de renouvellement)",
+        "source": """
+          LocalDate expiration = LocalDate.parse(ctx.expire_le.substring(0, 10));
+          ctx.renouveler_a_partir_du = expiration.minusDays(60).toString();
+          ctx.message = ctx.compte + ' expire le ' + expiration
+            + ' : cliquer le lien de renouvellement reçu par email, puis mettre à jour la date';
+        """
+      }
+    }
+  ]
+}
+
+PUT tchap-expiration-bot
+{
+  "settings": {
+    "number_of_replicas": 0,
+    "index.default_pipeline": "tchap-expiration-bot"
+  },
+  "mappings": {
+    "dynamic": "strict",
+    "properties": {
+      "compte": { "type": "keyword" },
+      "expire_le": { "type": "date" },
+      "renouveler_a_partir_du": { "type": "date" },
+      "message": { "type": "text" }
+    }
+  }
+}
+
+# Date d'expiration du compte : à la création, date d'inscription + 11 mois +
+# 60 jours ; après chaque renouvellement, date du renouvellement + 13 mois
+# (cf. runbook). <identifiant-du-bot> : le user_id renvoyé par le login du bot.
+# Un seul document, toujours l'id « bot ».
+PUT tchap-expiration-bot/_doc/bot?refresh=true
+{
+  "compte": "<identifiant-du-bot>",
+  "expire_le": "<date-expiration>"
+}
+
+# La règle filtre sur renouveler_a_partir_du (date passée dès J-60) dans une
+# fenêtre de 2 ans : la fenêtre de temps d'une règle ne regarde que le passé,
+# une date d'expiration future n'y entrerait jamais. Pas
+# d'excludeHitsFromPreviousRun : le rappel est quotidien tant que la date n'est
+# pas mise à jour.
+POST kbn:/api/alerting/rule/bcd45d7d-6fe6-4303-a73e-7cff877dde96
+{
+  "name": "Tchap - Expiration du compte bot",
+  "tags": [
+    "critical",
+    "prod",
+    "o11y",
+    "tchap",
+    "tchap-lignes"
+  ],
+  "schedule": {
+    "interval": "1d"
+  },
+  "params": {
+    "searchType": "esQuery",
+    "esQuery": "{\"query\":{\"match_all\":{}}}",
+    "index": [
+      "tchap-expiration-bot"
+    ],
+    "timeField": "renouveler_a_partir_du",
+    "timeWindowSize": 730,
+    "timeWindowUnit": "d",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 1,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": false,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ],
+  "rule_type_id": ".es-query",
+  "consumer": "alerts"
+}

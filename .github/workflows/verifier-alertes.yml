@@ -54,20 +54,24 @@ jobs:
       - name: Référence origin/develop de pass-emploi-api
         run: git -C pass-emploi-api fetch --depth=1 origin +develop:refs/remotes/origin/develop
 
-      - name: Blocs de règles identiques à leurs définitions
+      - name: Règles générées à jour (rules/generated/)
         working-directory: pass-emploi-tools/docs/observabilite/supervision/rules
-        run: python3 -I generer-regles.py --verifier
+        run: |
+          if ! python3 -I generer-regles.py --verifier; then
+            echo "::error::Les fichiers de docs/observabilite/supervision/rules/generated/ ne correspondent plus à leurs sources. Ils sont générés : ne pas les modifier directement. Modifier la définition de la règle (rules/generer-regles.py ou rules/definitions-format-kibana.py) ou le texte autour (rules/modeles/), puis lancer FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I docs/observabilite/supervision/rules/generer-regles.py et commiter le résultat."
+            exit 1
+          fi
 
-      - name: Workflows Tchap et rapports des jobs à jour
+      - name: Workflows Tchap et rapports des jobs à jour (workflows/tchap/generated/)
         working-directory: pass-emploi-tools
         run: |
           python3 -I docs/observabilite/supervision/workflows/tchap/generer-workflows.py
-          if ! git diff --exit-code --stat -- docs/observabilite/supervision/workflows/tchap/; then
-            echo "::error::Fichiers générés périmés : lancer python3 -I docs/observabilite/supervision/workflows/tchap/generer-workflows.py et commiter le résultat"
+          if ! git diff --exit-code --stat -- docs/observabilite/supervision/workflows/tchap/generated/; then
+            echo "::error::Les fichiers de docs/observabilite/supervision/workflows/tchap/generated/ ne correspondent plus à leurs sources. Ils sont générés : ne pas les modifier directement. Lancer python3 -I docs/observabilite/supervision/workflows/tchap/generer-workflows.py et commiter le résultat."
             exit 1
           fi
-          if [ -n "$(git status --porcelain --untracked-files=all -- docs/observabilite/supervision/workflows/tchap/)" ]; then
-            git status --short -- docs/observabilite/supervision/workflows/tchap/
+          if [ -n "$(git status --porcelain --untracked-files=all -- docs/observabilite/supervision/workflows/tchap/generated/)" ]; then
+            git status --short -- docs/observabilite/supervision/workflows/tchap/generated/
             echo "::error::Fichiers générés non commités : les ajouter à la PR"
             exit 1
           fi

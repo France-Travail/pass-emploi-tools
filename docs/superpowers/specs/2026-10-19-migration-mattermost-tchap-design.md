@@ -84,7 +84,7 @@ Points à confirmer avant implémentation :
   couverte par défaut.
 - **IDs conservés** : en prod, A4a, A4b, 6a, V1 et 14 se mettent à jour par
   `PUT` ; seule 6b est créée.
-- `rules/3-rules-alertes-externes.console` disparaît ; `rules/3-rules-securite.console`
+- `rules/generated/3-rules-alertes-externes.console` disparaît ; `rules/generated/3-rules-securite.console`
   contient V1.
 - **Sévérité de la règle** : `warning` pour A4a/A4b/6a/6b (le flux mêle
   incidents et infra, la gravité se lit par ligne, D5), `critical` pour V1,
@@ -252,7 +252,7 @@ est retirée des corps au rejeu ; elle viendra avec l'étape 7).
 | A4a `1b97f0e0…` (ex-X1), A4b `07c9c5d7…` (ex-X3), 6a `c16f2ab5…` (ex-X2), 14 `ae398f47…` (ex-X5), V1 `67846c2c…` (ex-X4) | `PUT` | actives, `ok` |
 | 6b `5d1f7c2a…` | `POST` (création) | active, `ok` |
 
-Retour arrière : rejouer en `PUT` les blocs de `rules/3-rules-alertes-externes.console`
+Retour arrière : rejouer en `PUT` les blocs de `rules/generated/3-rules-alertes-externes.console`
 au commit `f1757ec` (mêmes IDs) et supprimer 6b ; réimporter les sessions de ce
 même commit. Le notifier « Elastic monitoring o11y staging » de
 `pass-emploi-logstash-perf` envoie encore tous les événements : 6b les poste

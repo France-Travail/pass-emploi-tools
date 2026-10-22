@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Génère les Workflows de salon tchap-<salon>.console depuis les règles de ../../rules/.
+"""Génère, dans generated/, les Workflows de salon tchap-<salon>.console depuis les règles
+de ../../rules/generated/ (et ../../rules/*.console), et les rapports des jobs.
 
 Chaque règle qui a une action .workflows reçoit, dans le Workflow de son salon, le
 contenu de son message Mattermost (titre, couleur, champs), traduit en Liquid.
 
 Usage : python3 -I generer-workflows.py
 """
-import html, json, os, re
+import glob, html, json, os, re
 
 ICI = os.path.dirname(os.path.abspath(__file__))
 REGLES = os.path.join(ICI, '..', '..', 'rules')
@@ -253,7 +254,7 @@ def avec_retablissement(regle, en_html):
 
 def gabarit(salon, avec_esql=False):
     return f'''# Workflow du salon Tchap {salon}, généré par generer-workflows.py depuis les
-# règles de ../../rules/ : ne pas modifier à la main. Spécification : README.md.
+# règles de ../../../rules/generated/ : ne pas modifier à la main. Spécification : ../README.md.
 #
 # ID du salon : Tchap → paramètres du salon → Avancé. Ce n'est pas un secret :
 # le salon est privé, sur invitation.
@@ -311,15 +312,29 @@ ETAPE_ESQL = f'''      - name: si-esql
 '''
 
 
+GENERES = os.path.join(ICI, 'generated')
+ENTETE = """# ⚠️ FICHIER GÉNÉRÉ par ../generer-workflows.py : NE PAS LE MODIFIER, il serait écrasé.
+# Il se construit depuis les règles (../../../rules/generated/), leurs définitions
+# (../../../rules/generer-regles.py, definitions-format-kibana.py) et, pour les rapports
+# des jobs, la liste des CRON de pass-emploi-api. Pour changer un message : la définition
+# de la règle. Puis : python3 -I ../generer-workflows.py
+# La CI de chaque PR vérifie que ce fichier correspond à ses sources.
+#
+"""
+
+
+def ecrire(nom_fichier, contenu):
+    os.makedirs(GENERES, exist_ok=True)
+    open(os.path.join(GENERES, nom_fichier), 'w').write(ENTETE + contenu)
+
+
 def main():
     regles_generees = generateur_regles()
     MESSAGES_DEFINITIONS.update({r.get('name') or r['regle']['name']: regles_generees.messages(code) for code, r in regles_generees.REGLES.items()})
     par_salon = {s: [] for s in SALONS}
     esql = set()
-    for nom in sorted(os.listdir(REGLES)):
-        if not nom.endswith('.console'):
-            continue
-        for rid, regle in requetes(open(os.path.join(REGLES, nom)).read()):
+    for chemin in sorted(glob.glob(os.path.join(REGLES, 'generated', '*.console'))) + sorted(glob.glob(os.path.join(REGLES, '*.console'))):
+        for rid, regle in requetes(open(chemin).read()):
             w = [a for a in regle.get('actions', []) if a['id'] == 'system-connector-.workflows']
             mattermost = [a for a in regle.get('actions', []) if a['id'] != 'system-connector-.workflows']
             for action in mattermost:
@@ -356,11 +371,11 @@ def main():
         texte = '{% case event.rule.id %}' + cas_t + '{% else %}' + defaut_t + '{% endcase %}'
         corps = '{% case event.rule.id %}' + cas_h + '{% else %}' + defaut_h + '{% endcase %}'
         sortie = gabarit(salon, any(rid in esql for rid, _ in regles)).replace('@@TEXTE@@', texte).replace('@@HTML@@', corps)
-        open(os.path.join(ICI, f'tchap-{salon}.console'), 'w').write(sortie)
+        ecrire(f'tchap-{salon}.console', sortie)
         print(f'tchap-{salon}.console : {len(regles)} règle(s), {len(sortie) // 1024} Ko')
     jobs = jobs_suivis()
     for env, salon, index in [('prod', 'jobs-production', 'logs-prod-default'), ('staging', 'jobs-staging', 'logs-staging-default')]:
-        open(os.path.join(ICI, f'rapport-jobs-{env}.console'), 'w').write(rapport(env, salon, index, jobs))
+        ecrire(f'rapport-jobs-{env}.console', rapport(env, salon, index, jobs))
         print(f'rapport-jobs-{env}.console : {len(jobs)} jobs suivis')
 
 
@@ -468,7 +483,7 @@ def rapport(env, salon, index, jobs):
     return f'''# Rapport quotidien des jobs de pass-emploi-api ({env}), chaque jour à 9 h 30
 # (heure de Paris), dans le salon Tchap {salon}. Généré par generer-workflows.py
 # depuis la liste des CRON de pass-emploi-api (origin/develop) : ne pas modifier à
-# la main. Spécification : ../../alertes-applicatives.md.
+# la main. Spécification : ../../../alertes-applicatives.md.
 POST kbn:/api/workflows/workflow
 {{
   "id": "rapport-jobs-{env}",

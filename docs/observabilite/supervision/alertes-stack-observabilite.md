@@ -16,7 +16,7 @@ dans [alertes-applicatives](alertes-applicatives.md). Hors alertes 11 et 12
 > cluster va mal.
 
 **Création** : les alertes 1 à 10 et 14 sont versionnées dans
-[`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console),
+[`rules/generated/2-rules-stack-observabilite.console`](rules/generated/2-rules-stack-observabilite.console),
 qui reprend les tableaux et bodies de cette page, à rejouer dans Dev Tools.
 
 > **Contexte** : les scénarios de panne et leurs indicateurs sont documentés dans
@@ -111,7 +111,7 @@ Session Discover : onglet « Logs non indexés : Échec de process Logstash ind�
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue) |
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-stack-observabilite.console`](rules/generated/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### 1b — DLQ staging / perf (Warning)
 
@@ -129,7 +129,7 @@ Session Discover : onglet « Logs non indexés : Échec de process Logstash ind�
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)   |
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-stack-observabilite.console`](rules/generated/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 **KQL de diagnostic dans Discover** (data view `logs-logstash-dlq-*`) :
 ```
@@ -179,7 +179,7 @@ message par jour, à l'arrivée de l'équipe, week-end compris (lu le lundi). Ki
 ne planifie pas une règle à heure fixe : c'est la plage horaire de l'action qui
 fait ce travail.
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-stack-observabilite.console`](rules/generated/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### 2b — Erreurs staging / perf (Warning)
 
@@ -197,7 +197,7 @@ fait ce travail.
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue) |
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-stack-observabilite.console`](rules/generated/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 **KQL de diagnostic dans Discover** (data view `logs-logstash-errors-*`) :
 ```
@@ -235,7 +235,7 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 | **Related dashboards**    | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide**   | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-stack-observabilite.console`](rules/generated/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### 3b — Absence dans `logs-router-prod-default`
 
@@ -253,7 +253,7 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 | **Related dashboards**    | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide**   | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-stack-observabilite.console`](rules/generated/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### 3c — Absence dans `logs-staging-default` / `logs-perf-default`
 
@@ -271,7 +271,7 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-stack-observabilite.console`](rules/generated/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### 3d — Absence dans `logs-router-staging-default` / `logs-router-perf-default`
 
@@ -289,7 +289,7 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-stack-observabilite.console`](rules/generated/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 > **Corrélation** : si les deux alertes (3a+3b ou 3c+3d) se déclenchent simultanément,
 > c'est un crash Logstash ou un arrêt de l'app Scalingo. Si seulement l'alerte
@@ -357,7 +357,7 @@ attendu : Redis absorbe, et un backlog qui ne se vide pas relève de l'alerte 7.
 | **Related dashboards**    | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide**   | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch) |
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-stack-observabilite.console`](rules/generated/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### 4b — Backpressure staging / perf (Warning)
 
@@ -378,7 +378,7 @@ attendu : Redis absorbe, et un backlog qui ne se vide pas relève de l'alerte 7.
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch) |
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-stack-observabilite.console`](rules/generated/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ---
 
@@ -425,7 +425,7 @@ ici : c'est l'[alerte 9](#alerte-9--mémoire-du-conteneur-logstash-oom-kill-scal
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-2--gel-gc-jvm) |
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-stack-observabilite.console`](rules/generated/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### 5b — Heap élevé staging / perf (Warning)
 
@@ -446,7 +446,7 @@ ici : c'est l'[alerte 9](#alerte-9--mémoire-du-conteneur-logstash-oom-kill-scal
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-2--gel-gc-jvm) |
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-stack-observabilite.console`](rules/generated/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ---
 
@@ -578,7 +578,7 @@ sévère côté `process`.
 | **Related dashboards**    | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide**   | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-5--backlog-redis-logstashingest) |
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-stack-observabilite.console`](rules/generated/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### 7b — Backlog Redis staging / perf (Warning)
 
@@ -598,7 +598,7 @@ sévère côté `process`.
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-5--backlog-redis-logstashingest) |
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-stack-observabilite.console`](rules/generated/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ---
 
@@ -684,7 +684,7 @@ FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*
 | WHERE statuts IS NOT NULL OR erreurs_output > 25
 ```
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-stack-observabilite.console`](rules/generated/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### 8b — Elastic Agent en défaut staging (Warning)
 
@@ -716,7 +716,7 @@ FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*
 | WHERE statuts IS NOT NULL OR erreurs_output > 25
 ```
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-stack-observabilite.console`](rules/generated/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ---
 
@@ -761,7 +761,7 @@ et l'Elastic Agent co-localisé lui échappent (cf.
 | **Related dashboards**    | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide**   | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-stack-observabilite.console`](rules/generated/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### 9b — Mémoire conteneur staging / perf (Warning)
 
@@ -782,7 +782,7 @@ et l'Elastic Agent co-localisé lui échappent (cf.
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-stack-observabilite.console`](rules/generated/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ---
 
@@ -839,7 +839,7 @@ FROM .ds-ilm-history-7-*
 | EVAL exemples = MV_SLICE(exemples, 0, 9)
 ```
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-stack-observabilite.console`](rules/generated/2-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ---
 

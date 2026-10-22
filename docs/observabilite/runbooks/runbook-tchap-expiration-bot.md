@@ -4,7 +4,7 @@
 > **« Tchap - Expiration du compte bot »** (🚨, salon `o11y-production`) signale
 > que le compte du bot arrive à expiration.
 >
-> Configuration : [`rules/5-rules-tchap-expiration-bot.console`](../supervision/rules/5-rules-tchap-expiration-bot.console).
+> Configuration : [`rules/generated/5-rules-tchap-expiration-bot.console`](../supervision/rules/generated/5-rules-tchap-expiration-bot.console).
 > Notifications Tchap : [Workflows Tchap](../supervision/workflows/tchap/README.md).
 > Toutes les requêtes se lancent dans Kibana → Dev Tools.
 
@@ -13,7 +13,7 @@ Tchap n'a pas de compte de service. Comme tout compte, il doit être renouvelé
 selon les [CGU Tchap](https://tchap.numerique.gouv.fr/cgu). Durées relevées dans
 les CGU le **2026-10-14** : les CGU peuvent changer, les relire à chaque
 renouvellement (§ 1, étape 2) et corriger ce tableau, la règle et le pipeline de
-[`5-rules-tchap-expiration-bot.console`](../supervision/rules/5-rules-tchap-expiration-bot.console)
+[`5-rules-tchap-expiration-bot.console`](../supervision/rules/generated/5-rules-tchap-expiration-bot.console)
 si elles ont bougé.
 
 | Moment | Ce qui se passe |

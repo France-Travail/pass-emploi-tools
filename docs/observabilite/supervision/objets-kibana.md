@@ -49,11 +49,11 @@ les logs à examiner.
 |---|---|
 | [`slo/1-slos.console`](slo/1-slos.console) | les SLO, cf. [sli-slo](sli-slo.md) |
 | [`connecteurs/mattermost-jobs.console`](connecteurs/mattermost-jobs.console) | connecteurs Mattermost des canaux jobs (A5a, A5b) |
-| [`rules/1-rules-applicatives.console`](rules/1-rules-applicatives.console) | règles S2, S3, A1 à A3, A4a, A4b, A5a et A5b, cf. [alertes applicatives](alertes-applicatives.md) |
-| [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console) | règles 1 à 10 et 14, cf. [alertes de la stack](alertes-stack-observabilite.md) |
-| [`rules/3-rules-securite.console`](rules/3-rules-securite.console) | règle V1, cf. [alertes de sécurité](alertes-securite.md) |
+| [`rules/generated/1-rules-applicatives.console`](rules/generated/1-rules-applicatives.console) | règles S2, S3, A1 à A3, A4a, A4b, A5a et A5b, cf. [alertes applicatives](alertes-applicatives.md) |
+| [`rules/generated/2-rules-stack-observabilite.console`](rules/generated/2-rules-stack-observabilite.console) | règles 1 à 10 et 14, cf. [alertes de la stack](alertes-stack-observabilite.md) |
+| [`rules/generated/3-rules-securite.console`](rules/generated/3-rules-securite.console) | règle V1, cf. [alertes de sécurité](alertes-securite.md) |
 | [`rules/4-rules-tchap.console`](rules/4-rules-tchap.console) | règle « Tchap - Envoi en échec », sans action |
-| [`rules/5-rules-tchap-expiration-bot.console`](rules/5-rules-tchap-expiration-bot.console) | règle « Tchap - Expiration du compte bot » et l'index de sa date, cf. [runbook](../runbooks/runbook-tchap-expiration-bot.md) |
+| [`rules/generated/5-rules-tchap-expiration-bot.console`](rules/generated/5-rules-tchap-expiration-bot.console) | règle « Tchap - Expiration du compte bot » et l'index de sa date, cf. [runbook](../runbooks/runbook-tchap-expiration-bot.md) |
 | [`workflows/tchap/`](workflows/tchap/README.md) | connecteur Tchap et Workflows de notification (tchap-client, un par salon) |
 
 Les rétentions (ILM, templates) sont dans [`stockage/`](../stockage/README.md#import--ordre-et-portée).
@@ -76,8 +76,8 @@ remplace aussi ses réglages d'affichage, sans effet sur les données.
 ### SLO et règles (`.console`)
 
 Copier le fichier dans Dev Tools et exécuter les requêtes, dans l'ordre :
-`slo/1-slos.console`, puis `rules/1-rules-applicatives.console`, puis
-`rules/2-rules-stack-observabilite.console`, puis `rules/3-rules-securite.console`.
+`slo/1-slos.console`, puis `rules/generated/1-rules-applicatives.console`, puis
+`rules/generated/2-rules-stack-observabilite.console`, puis `rules/generated/3-rules-securite.console`.
 Sur un cluster vide, l'en-tête de chaque fichier indique comment transformer les
 `PUT` en `POST` de création. Les règles sur les événements Scalingo et GitHub
 (A4a, A4b, 6a, 6b, 14, V1) supposent leur collecte en place : cf. sa
@@ -106,21 +106,30 @@ Modifier dans Kibana, puis réexporter par-dessus le fichier versionné :
 
 - **dashboard ou session Discover** : page *Saved objects*, sélectionner l'objet,
   **Export** avec *Include related objects* ;
-- **règle d'alerte** : modifier d'abord le tableau et le body dans
-  `alertes-*.md`, puis le `PUT` du `.console` correspondant, et le rejouer.
-  Toutes les règles branchées sur Tchap sont générées : modifier leur
-  définition, dans `rules/generer-regles.py` ou, pour une règle définie au format
-  de Kibana (SLO, stack 1a à 10, expiration du bot), dans
-  `rules/definitions-format-kibana.py`, puis
-  `FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I rules/generer-regles.py --ecrire <code>` et
-  `python3 -I workflows/tchap/generer-workflows.py`, et commiter les fichiers
-  générés avec la définition. Sur chaque PR, le workflow GitHub
+- **règle d'alerte** : les fichiers de `rules/generated/` et de
+  `workflows/tchap/generated/` sont **générés** (ils le disent en tête) : ne pas
+  les modifier, ils seraient écrasés et le check de la PR échouerait. Modifier
+  la source :
+  - la règle : sa définition dans `rules/generer-regles.py` (règle définie champ
+    par champ) ou dans `rules/definitions-format-kibana.py` (règle définie au
+    format de Kibana : SLO, stack 1a à 10, expiration du bot) ;
+  - le texte autour des règles (commentaires, autres requêtes) :
+    `rules/modeles/<fichier>`, où `@@REGLE <code>@@` marque la place de chaque règle ;
+  - le tableau de la page `alertes-*.md` correspondante, si le seuil ou le
+    principe change.
+
+  Puis régénérer et commiter le tout :
+  ```bash
+  FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I rules/generer-regles.py
+  python3 -I workflows/tchap/generer-workflows.py
+  ```
+  Déployer ensuite le bloc de `rules/generated/` dans Dev Tools (manuellement).
+  Sur chaque PR, le workflow GitHub
   [`verifier-alertes.yml`](../../../.github/workflows/verifier-alertes.yml)
-  échoue si un générateur a été oublié ou si une règle viole leurs contrôles
-  (message absent ou en JSON invalide, salon inconnu, règle ES|QL hors
-  `@timestamp`). Le déploiement dans Kibana reste manuel.
+  échoue si un fichier généré ne correspond plus à ses sources, ou si une règle
+  viole les contrôles des générateurs (message absent ou en JSON invalide,
+  salon inconnu, règle ES|QL hors `@timestamp`).
   `FEATURE_NOTIFIER_ALERTES_MATTERMOST` suit la convention des features des apps
   (active seulement à `true`) : à `true`, les règles gardent leurs actions
   Mattermost ; sans elle, elles n'ont plus que leur action Tchap. Le CI la fixe
-  à `true` jusqu'au décommissionnement de Mattermost : régénérer sans elle fait
-  échouer le check de la PR.
+  à `true` jusqu'au décommissionnement de Mattermost.

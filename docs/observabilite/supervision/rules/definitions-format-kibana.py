@@ -3,7 +3,7 @@
 # (messages, un par groupe d'action), à part de l'action Mattermost qui l'envoie : il
 # reste disponible pour Tchap quand cette action disparaît.
 # regle : le corps de la règle, sans les messages. Modifier ici, puis
-# FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I generer-regles.py --ecrire <code> et ../workflows/tchap/generer-workflows.py.
+# FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I generer-regles.py et ../workflows/tchap/generer-workflows.py.
 import json
 
 REGLES_FORMAT_KIBANA = {
