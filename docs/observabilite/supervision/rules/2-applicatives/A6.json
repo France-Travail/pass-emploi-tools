@@ -1,0 +1,109 @@
+{
+  "_id": "c9164880-1829-4847-acb1-5a70433ecbb8",
+  "_commentaire": [
+    "# A6 — Erreurs base de données (Critical). Remplace « 🏠 API - erreurs DB ».",
+    "# Nouvelle règle : absente de la prod avant le 2026-10-20, la créer avec POST",
+    "# (même corps plus \"rule_type_id\": \".es-query\" et \"consumer\": \"alerts\")."
+  ],
+  "_tchap": {
+    "ligne": "`{1}` : {0} erreurs ({2}) — {3}"
+  },
+  "name": "API - Prod - Erreurs base de données",
+  "tags": [
+    "prod",
+    "applicatif"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nPlus de 20 erreurs de base de données (`error.type` Sequelize*) en 5 min dans les logs de prod : connexion perdue, pool de connexions saturé, contrainte violée.\n\n## À vérifier\n\n1. L'état de la base PostgreSQL de `pass-emploi-api-prod` (connexions, mémoire, CPU) : son addon dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n2. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n3. Le type et le message de chaque erreur : le Discover [[Pass Emploi] Logs de Prod - Erreurs base de données](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c4dfc122-1edc-42b2-973d-98ac7b127211), onglet « error.type : Sequelize* »\n\n## Dashboards\n\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Erreurs base de données](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c4dfc122-1edc-42b2-973d-98ac7b127211)\n\n## Runbook\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-applicatives.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": "FROM logs-prod-default\n| WHERE error.type LIKE \"Sequelize*\"\n| EVAL message = SUBSTRING(error.message, 1, 120)\n| STATS erreurs = COUNT(*), types = VALUES(error.type), exemples = VALUES(message) BY service = service.name\n| WHERE erreurs > 20\n| EVAL types = MV_CONCAT(types, \", \"), exemples = MV_CONCAT(MV_SLICE(exemples, 0, 1), \" / \")"
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "groupBy": "all"
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": {
+          "text": "🚨 **Erreurs base de données — prod** — plus de 20 erreurs de base de données en 5 min.",
+          "attachments": [
+            {
+              "color": "#d00000",
+              "text": "{{#context.hits}}`{{_source.service}}` : {{_source.erreurs}} erreurs ({{_source.types}}) — {{_source.exemples}}\n{{/context.hits}}",
+              "fields": [
+                {
+                  "title": "Règle",
+                  "value": "`{{rule.name}}`",
+                  "short": true
+                },
+                {
+                  "title": "Déclenchée à",
+                  "value": "`{{date}}`",
+                  "short": true
+                },
+                {
+                  "title": "À vérifier",
+                  "value": "1. L'état de la base PostgreSQL de `pass-emploi-api-prod` (connexions, mémoire, CPU) : son addon dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n2. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n3. Le type et le message de chaque erreur : le Discover [[Pass Emploi] Logs de Prod - Erreurs base de données](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c4dfc122-1edc-42b2-973d-98ac7b127211), onglet « error.type : Sequelize* »"
+                },
+                {
+                  "title": "Dashboards",
+                  "value": "[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+                },
+                {
+                  "title": "Discover sessions",
+                  "value": "[[Pass Emploi] Logs de Prod - Erreurs base de données](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c4dfc122-1edc-42b2-973d-98ac7b127211)"
+                },
+                {
+                  "title": "Runbook",
+                  "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "1h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}

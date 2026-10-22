@@ -1,0 +1,119 @@
+{
+  "_id": "00f15660-40ba-4fb1-a59d-6345ce07c360",
+  "name": "SLO - Prod - Login — réussite conseiller départemental",
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nSLO menacé — connexion des conseillers départementaux (prod) : la marge d'erreur du SLO se consomme trop vite.\n\n**Promesse** : 95 % des connexions des conseillers départementaux aboutissent, hors refus métier, sur 30 jours glissants.\n\n## À vérifier\n\n1. Quel mode de connexion échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Le motif des connexions refusées (fournisseur d'identité, Keycloak) : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n3. Si un fournisseur d'identité ou un partenaire est en panne : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Dashboards\n\n- [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n\n## Documentation\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14"
+      },
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "tags": [
+    "prod",
+    "slo"
+  ],
+  "params": {
+    "sloId": "61f38008-cb75-41de-aadc-0a65d2cb7a0d",
+    "windows": [
+      {
+        "id": "high",
+        "actionGroup": "slo.burnRate.high",
+        "burnRateThreshold": 4,
+        "maxBurnRateThreshold": 20.0,
+        "longWindow": {
+          "value": 168,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 12,
+          "unit": "h"
+        }
+      }
+    ]
+  },
+  "actions": [
+    {
+      "group": "slo.burnRate.high",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": {
+          "text": "🚨 **SLO menacé — connexion des conseillers départementaux (prod)**",
+          "attachments": [
+            {
+              "color": "#d00000",
+              "fields": [
+                {
+                  "title": "Règle",
+                  "value": "`{{rule.name}}`",
+                  "short": true
+                },
+                {
+                  "title": "Déclenchée à",
+                  "value": "`{{date}}`",
+                  "short": true
+                },
+                {
+                  "title": "Promesse",
+                  "value": "95 % des connexions des conseillers départementaux aboutissent, hors refus métier, sur 30 jours glissants."
+                },
+                {
+                  "title": "Ce qui se passe",
+                  "value": "Sur {{context.longWindow.duration}}, les connexions en échec consomment la marge d'erreur du mois {{context.longWindow.burnRate}} fois plus vite que prévu ({{context.shortWindow.burnRate}} fois sur les {{context.shortWindow.duration}} les plus récentes). À ce rythme, elle est épuisée en {{#EvalMath}} round(30 / {{context.longWindow.burnRate}}, 1) {{/EvalMath}} jours."
+                },
+                {
+                  "title": "À vérifier",
+                  "value": "1. Quel mode de connexion échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Le motif des connexions refusées (fournisseur d'identité, Keycloak) : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n3. Si un fournisseur d'identité ou un partenaire est en panne : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+                },
+                {
+                  "title": "Dashboards",
+                  "value": "[[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+                },
+                {
+                  "title": "Discover sessions",
+                  "value": "[[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)"
+                },
+                {
+                  "title": "Marge d'erreur",
+                  "value": "[Budget d'erreur et historique du SLO]({{context.viewInAppUrl}})"
+                },
+                {
+                  "title": "Runbook",
+                  "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}

@@ -69,7 +69,7 @@ cluster en panne.
 | [`generated/tchap-monitoring-production.console`](generated/tchap-monitoring-production.console), [`generated/tchap-monitoring-staging.console`](generated/tchap-monitoring-staging.console), [`generated/tchap-o11y-production.console`](generated/tchap-o11y-production.console), [`generated/tchap-o11y-staging.console`](generated/tchap-o11y-staging.console), [`generated/tchap-jobs-production.console`](generated/tchap-jobs-production.console), [`generated/tchap-jobs-staging.console`](generated/tchap-jobs-staging.console) | un Workflow par salon, **générés** : ne pas les modifier à la main |
 | [`generated/rapport-jobs-prod.console`](generated/rapport-jobs-prod.console), [`generated/rapport-jobs-staging.console`](generated/rapport-jobs-staging.console) | rapport quotidien des jobs de l'api, chaque jour à 9 h 30 (heure de Paris), **générés** |
 | [`generer-workflows.py`](generer-workflows.py) | génère les Workflows de salon depuis les règles de [`../../rules/`](../../rules/), et les rapports depuis la liste des CRON de `pass-emploi-api` (`origin/develop`) : `python3 -I generer-workflows.py` après toute modification d'une règle, d'un salon ou des CRON de l'api |
-| [`../../rules/4-rules-tchap.console`](../../rules/4-rules-tchap.console) | règle « Tchap - Envoi en échec » |
+| [`../../rules/generated/4-rules-tchap.console`](../../rules/generated/4-rules-tchap.console) | règle « Tchap - Envoi en échec » |
 | [`../../rules/generated/5-rules-tchap-expiration-bot.console`](../../rules/generated/5-rules-tchap-expiration-bot.console) | règle « Tchap - Expiration du compte bot », date d'expiration rangée dans Elasticsearch |
 
 ## Le message
@@ -184,7 +184,7 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
    { "inputs": { "salon": "<id du salon>", "texte": "test", "html": "<b>test</b>" } }
    ```
 7. **Règles** : brancher les règles (ci-dessous), puis rejouer
-   [`4-rules-tchap.console`](../../rules/4-rules-tchap.console) et
+   [`4-rules-tchap.console`](../../rules/generated/4-rules-tchap.console) et
    [`5-rules-tchap-expiration-bot.console`](../../rules/generated/5-rules-tchap-expiration-bot.console),
    en remplaçant `<identifiant-du-bot>` par le `user_id` de l'étape 4 et
    `<date-expiration>` par la date d'inscription du bot + 11 mois + 60 jours.
@@ -266,16 +266,13 @@ Intégrations (l'équipe beta.gouv n'a pas la réponse, 2026-10-14) :
    exécution par jour) n'a pas de rétablissement mais garde `ongoing: true` :
    un rappel par jour et par certificat, comme dans Mattermost.
 
-**D'où vient le message Tchap** : de la **définition** de la règle, lue par
-`generer-workflows.py` dans `../../rules/generer-regles.py` (fonction `messages`),
-jamais dans son action Mattermost : retirer celle-ci ne change pas le message
-Tchap. Deux formes de définition :
-- règle définie champ par champ (A1 à A13, A4a/b, A5a/b, 6a/b, 14, V1) : titre,
-  étapes, liens, dans `generer-regles.py` ;
-- règle définie au format de Kibana (S2, S3…, 1a à 10, expiration du bot) :
-  son corps JSON et ses messages dans `../../rules/<n>-rules-<périmètre>-definitions-kibana.py`.
+**D'où vient le message Tchap** : du fichier JSON de la règle
+(`../../rules/<n>-<périmètre>/<code>.json`) : le message de son action Mattermost,
+lu dans ce fichier, ou sa clé `_message` pour une règle sans action Mattermost
+(« Tchap - Expiration du compte bot »). Jamais de la règle générée : retirer les
+actions Mattermost ne change pas les messages Tchap (cf. [règles](../../rules/README.md)).
 
-Une règle branchée sur Tchap absente des définitions **fait échouer la
+Une règle branchée sur Tchap sans fichier JSON **fait échouer la
 génération**, en la nommant : elle n'aurait reçu qu'un message générique (nom
 de la règle et raison brute de Kibana).
 

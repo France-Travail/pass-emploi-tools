@@ -1,0 +1,122 @@
+{
+  "_id": "b100ff40-7409-4859-ac44-755ad2401f03",
+  "_commentaire": [
+    "# 1b — DLQ staging / perf (Warning)"
+  ],
+  "name": "Logstash - Hors-Prod - Détection présence event dans DLQ",
+  "tags": [
+    "hors-prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nLogs hors prod non indexés : échec de process Logstash indéterminé — des logs de staging/perf ne sont pas consultables dans Kibana, sans erreur détectée par Logstash.\n\n## À vérifier\n\n1. Pourquoi Elasticsearch a refusé ces logs : le Discover [[Pass Emploi] Logs Hors-Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/e5bec6b4-0ae3-47b1-8bb5-2e9bf77493a4) donne le motif de chaque rejet (mapping, document trop gros…) et l'app d'origine\n2. Si des rejets arrivent encore : le débit et les erreurs de l'output Elasticsearch dans le dashboard [[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)\n3. Corriger le mapping ou le pipeline selon le motif (runbook, scénario 3)\n\n## Dashboards\n\n- [[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs Hors-Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/e5bec6b4-0ae3-47b1-8bb5-2e9bf77493a4)\n\n## Documentation\n\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)\n"
+    },
+    "dashboards": [
+      {
+        "id": "logstash-4bbf4a50-6ece-11ee-910d-eb0006359086"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "3bdd37f9-03a0-4247-94fd-6e6252d21a47",
+        "title": "logs-logstash-dlq-staging-default,logs-logstash-dlq-perf-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Logs Logstash Hors-Prod - Dead Letter Queue",
+        "allowHidden": true,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": false,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "c4a313b3-aa42-4e07-8196-c007625ce8af",
+      "params": {
+        "body": {
+          "text": "⚠️ **Logs hors prod non indexés : échec de process Logstash indéterminé** — des logs de staging/perf ne sont pas consultables dans Kibana, sans erreur détectée par Logstash.",
+          "attachments": [
+            {
+              "color": "#f2c744",
+              "fields": [
+                {
+                  "title": "Règle",
+                  "value": "`{{rule.name}}`",
+                  "short": true
+                },
+                {
+                  "title": "Déclenchée à",
+                  "value": "`{{date}}`",
+                  "short": true
+                },
+                {
+                  "title": "À vérifier",
+                  "value": "1. Pourquoi Elasticsearch a refusé ces logs : le Discover [[Pass Emploi] Logs Hors-Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/e5bec6b4-0ae3-47b1-8bb5-2e9bf77493a4) donne le motif de chaque rejet (mapping, document trop gros…) et l'app d'origine\n2. Si des rejets arrivent encore : le débit et les erreurs de l'output Elasticsearch dans le dashboard [[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)\n3. Corriger le mapping ou le pipeline selon le motif (runbook, scénario 3)"
+                },
+                {
+                  "title": "Dashboards",
+                  "value": "[[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)"
+                },
+                {
+                  "title": "Discover sessions",
+                  "value": "[[Pass Emploi] Logs Hors-Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/e5bec6b4-0ae3-47b1-8bb5-2e9bf77493a4)"
+                },
+                {
+                  "title": "Runbook",
+                  "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "6h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-staging",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}

@@ -40,8 +40,8 @@
 
 | #  | Source | Où elle poste | Cible | État |
 |----|--------|---------------|-------|------|
-| 1  | Kibana Rules applicatives : S1 à S3, A1 à A3 (`1-rules-applicatives`) | `#monitoring-production` | mêmes règles + action Tchap `monitoring-production` | 🔲 §7 |
-| 2  | Kibana Rules de la stack : 1 à 5, 7 à 10 (`2-rules-stack-observabilite`) | `#o11y-production`, `#o11y-staging` | mêmes règles + actions Tchap `o11y-*` | 🔲 §7 |
+| 1  | Kibana Rules applicatives : S1 à S3, A1 à A3 (`2-rules-applicatives`) | `#monitoring-production` | mêmes règles + action Tchap `monitoring-production` | 🔲 §7 |
+| 2  | Kibana Rules de la stack : 1 à 5, 7 à 10 (`3-rules-stack-observabilite`) | `#o11y-production`, `#o11y-staging` | mêmes règles + actions Tchap `o11y-*` | 🔲 §7 |
 | 3  | Notifiers Scalingo « Mattermost monitoring production » : api, connect, metabase (41 à 45 événements sélectionnés d'après la CLI), web et heartbeat (tous) | `#monitoring-production` | **A4a** (apps applicatives), **6a** (heartbeat, logstash) | 🔲 §4 |
 | 4  | Notifiers Scalingo « Mattermost monitoring staging » / « Mattermost » : api (déploiement, redémarrage, crash, arrêt), web et keycloak (déploiement), connect (tous) | canal(aux) staging | **A4b** | 🔲 §4 |
 | 5  | Notifiers Scalingo « Mattermost monitoring o11y production / staging » = **alerte 6** : logstash, logstash-process, heartbeat (prod), logstash, logstash-process (perf) | `#o11y-production`, `#o11y-staging` | **6a**, **6b** | 🔲 §4 |
@@ -70,12 +70,12 @@ Points à confirmer avant implémentation :
 
 | Règle | Ex | Famille / fichier | Données | Apps | Mattermost (transition) | Tchap |
 |-------|----|-------------------|---------|------|-------------------------|-------|
-| **A4a** Événements Scalingo — prod | X1 (id `1b97f0e0…`) | applicative / `1-rules-applicatives` | `logs-alertes-scalingo-prod-default` | api, web, connect, metabase | `#monitoring-production` | `monitoring-production` |
-| **A4b** Événements Scalingo — hors prod | X3 (id `07c9c5d7…`) | applicative / `1-rules-applicatives` | `logs-alertes-scalingo-{staging,perf}-default` | api, web, connect, keycloak | canal staging (cf. §3) | `monitoring-staging` |
-| **6a** Événements Scalingo de la stack — prod | X2 (id `c16f2ab5…`) | stack / `2-rules-stack-observabilite` | `logs-alertes-scalingo-prod-default` | logstash, logstash-process, elastic-agent, heartbeat | `#o11y-production` | `o11y-production` |
-| **6b** Événements Scalingo de la stack — hors prod | nouvelle | stack / `2-rules-stack-observabilite` | `logs-alertes-scalingo-{staging,perf}-default` | idem | `#o11y-staging` | `o11y-staging` |
-| **V1** CVE high ou critical ouverte | X4 (id `67846c2c…`) | sécurité / `3-rules-securite` (nouveau) | `logs-alertes-github-default` | — | `#monitoring-production` | `monitoring-production` |
-| **14** Événement externe rejeté | X5 (id `ae398f47…`) | stack / `2-rules-stack-observabilite` | les 4 `::failures` | — | `#o11y-production` | `o11y-production` |
+| **A4a** Événements Scalingo — prod | X1 (id `1b97f0e0…`) | applicative / `2-rules-applicatives` | `logs-alertes-scalingo-prod-default` | api, web, connect, metabase | `#monitoring-production` | `monitoring-production` |
+| **A4b** Événements Scalingo — hors prod | X3 (id `07c9c5d7…`) | applicative / `2-rules-applicatives` | `logs-alertes-scalingo-{staging,perf}-default` | api, web, connect, keycloak | canal staging (cf. §3) | `monitoring-staging` |
+| **6a** Événements Scalingo de la stack — prod | X2 (id `c16f2ab5…`) | stack / `3-rules-stack-observabilite` | `logs-alertes-scalingo-prod-default` | logstash, logstash-process, elastic-agent, heartbeat | `#o11y-production` | `o11y-production` |
+| **6b** Événements Scalingo de la stack — hors prod | nouvelle | stack / `3-rules-stack-observabilite` | `logs-alertes-scalingo-{staging,perf}-default` | idem | `#o11y-staging` | `o11y-staging` |
+| **V1** CVE high ou critical ouverte | X4 (id `67846c2c…`) | sécurité / `1-rules-securite` (nouveau) | `logs-alertes-github-default` | — | `#monitoring-production` | `monitoring-production` |
+| **14** Événement externe rejeté | X5 (id `ae398f47…`) | stack / `3-rules-stack-observabilite` | les 4 `::failures` | — | `#o11y-production` | `o11y-production` |
 
 - **Périmètre par app** : la requête filtre `service.name`. Stack =
   `pass-emploi-logstash`, `pass-emploi-logstash-process`,
@@ -84,7 +84,7 @@ Points à confirmer avant implémentation :
   couverte par défaut.
 - **IDs conservés** : en prod, A4a, A4b, 6a, V1 et 14 se mettent à jour par
   `PUT` ; seule 6b est créée.
-- `rules/generated/3-rules-alertes-externes.console` disparaît ; `rules/generated/3-rules-securite.console`
+- `rules/generated/3-rules-alertes-externes.console` disparaît ; `rules/generated/1-rules-securite.console`
   contient V1.
 - **Sévérité de la règle** : `warning` pour A4a/A4b/6a/6b (le flux mêle
   incidents et infra, la gravité se lit par ligne, D5), `critical` pour V1,
@@ -418,8 +418,8 @@ de déploiement (2026-10-23 08:48 UTC).
       Mattermost devient alors un réglage du générateur de règles. D'ici là,
       `generer-workflows.py` échoue sur une règle branchée sur Tchap sans message.
       Fait le 2026-10-22 : les 42 règles branchées sur Tchap ont une
-      définition (17 champ par champ, 25 au format de Kibana dans
-      `rules/<n>-rules-<périmètre>-definitions-kibana.py`, contenu vérifié identique), et le
+      définition : un fichier JSON par règle, dans `rules/<n>-<périmètre>/`
+      (contenu vérifié identique), et le
       message Tchap n'est plus lu que là. Retrait de Mattermost :
       `FEATURE_NOTIFIER_ALERTES_MATTERMOST` (convention des apps, active
       seulement à `true` ; fixée à `true` dans le CI) ; le jour venu, régénérer

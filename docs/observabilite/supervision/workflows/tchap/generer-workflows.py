@@ -199,16 +199,16 @@ def pages_dependabot(en_html):
 ORDRE_LIENS = ['Dashboards', 'Discover sessions']
 
 
-# Messages des règles, lus dans leur définition (generer-regles.py), par nom de règle.
+# Messages des règles, lus dans leur fichier JSON (../../rules/<n>-<périmètre>/<code>.json), par nom de règle.
 MESSAGES_DEFINITIONS = {}
 
 
 def corps_message(regle, groupe=None):
     """Le message de la règle (du groupe d'action demandé), lu dans sa définition de
-    generer-regles.py, jamais dans son action Mattermost : celle-ci peut disparaître."""
+    ../../rules/<n>-<périmètre>/<code>.json, présent même si son action Mattermost disparaît des règles générées."""
     definition = MESSAGES_DEFINITIONS.get(regle['name'])
     if definition is None:
-        raise SystemExit(f"« {regle['name']} » est branchée sur Tchap mais absente de ../../rules/generer-regles.py : pas de message")
+        raise SystemExit(f"« {regle['name']} » est branchée sur Tchap sans fichier JSON dans ../../rules/<n>-<périmètre>/ : pas de message")
     cle = 'recovered' if groupe == 'recovered' else 'principal' if groupe is None else groupe
     if not definition.get(cle):
         raise SystemExit(f"« {regle['name']} » : pas de message « {cle} » dans sa définition")
@@ -315,7 +315,7 @@ ETAPE_ESQL = f'''      - name: si-esql
 GENERES = os.path.join(ICI, 'generated')
 ENTETE = """# ⚠️ FICHIER GÉNÉRÉ par ../generer-workflows.py : NE PAS LE MODIFIER, il serait écrasé.
 # Il se construit depuis les règles (../../../rules/generated/), leurs définitions
-# (../../../rules/generer-regles.py, *-definitions-kibana.py) et, pour les rapports
+# (../../../rules/<n>-<périmètre>/<code>.json) et, pour les rapports
 # des jobs, la liste des CRON de pass-emploi-api. Pour changer un message : la définition
 # de la règle (../../../rules/README.md). Puis : python3 -I ../generer-workflows.py
 # La CI de chaque PR vérifie que ce fichier correspond à ses sources.
@@ -330,7 +330,7 @@ def ecrire(nom_fichier, contenu):
 
 def main():
     regles_generees = generateur_regles()
-    MESSAGES_DEFINITIONS.update({r.get('name') or r['regle']['name']: regles_generees.messages(code) for code, r in regles_generees.REGLES.items()})
+    MESSAGES_DEFINITIONS.update({r['name']: regles_generees.messages(code) for code, r in regles_generees.REGLES.items()})
     par_salon = {s: [] for s in SALONS}
     esql = set()
     for chemin in sorted(glob.glob(os.path.join(REGLES, 'generated', '*.console'))) + sorted(glob.glob(os.path.join(REGLES, '*.console'))):
@@ -355,13 +355,15 @@ def main():
                     raise SystemExit(f"« {regle['name']} » : règle ES|QL dont le champ de temps n'est pas @timestamp")
                 esql.add(rid)
             par_salon[salon].append((rid, regle))
-    definitions = {v['id']: v for v in regles_generees.REGLES.values()}
+    definitions = {v['_id']: v for v in regles_generees.REGLES.values()}
 
     def cas(rid, r, en_html):
         if rid not in esql:
             return avec_retablissement(r, en_html)
-        d = definitions[rid]
-        return message(r, en_html, lignes_resultat(d['tchap'], en_html, d.get('vide', VIDE)))
+        tchap = definitions[rid].get('_tchap')
+        if not tchap or not tchap.get('ligne'):
+            raise SystemExit(f"« {r['name']} » : règle ES|QL en groupBy all sans « _tchap.ligne » dans son fichier JSON (gabarit d'une ligne de résultat)")
+        return message(r, en_html, lignes_resultat(tchap['ligne'], en_html, tchap.get('vide', VIDE)))
 
     for salon, regles in par_salon.items():
         cas_t = ''.join("{% when '" + rid + "' %}" + cas(rid, r, False) for rid, r in regles)

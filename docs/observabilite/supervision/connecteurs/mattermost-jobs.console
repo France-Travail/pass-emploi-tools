@@ -1,5 +1,5 @@
 # Connecteurs Kibana des canaux Mattermost des jobs, utilisés par A5a / A5b
-# (../rules/generated/1-rules-applicatives.console). Spécification : ../alertes-applicatives.md.
+# (../rules/generated/2-rules-applicatives.console). Spécification : ../alertes-applicatives.md.
 #
 # Les autres connecteurs Mattermost existent déjà dans Kibana et ne sont pas
 # versionnés. Remplacer <url-du-webhook-…> par la valeur de

@@ -1,0 +1,114 @@
+{
+  "_id": "bbb9d642-f012-4747-8154-49162245a364",
+  "_commentaire": [
+    "# 8a — Elastic Agent en défaut prod (Critical)"
+  ],
+  "name": "Elastic Agent - Prod - Agent en défaut",
+  "tags": [
+    "prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nElastic Agent en défaut — prod — les alertes Logstash/Redis (4, 5, 7) peuvent être aveugles.\n\n## À vérifier\n\n1. Quel agent, et dans quel état : le « Détail » ci-dessus, puis le dashboard [[Elastic Agent] Concerning Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-0600ffa0-6b5e-11ed-98de-67bdecd21824)\n2. Selon l'état : *offline*, l'app Scalingo de l'agent est arrêtée ou a redémarré (le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)) ; *unenrolled*, l'agent a été recréé sans `ELASTIC_AGENT_ID_SUFFIX` (post-mortem du 11/09) ; *unhealthy* ou erreurs d'output, les composants en erreur dans Fleet → Agents\n3. Les métriques reprennent-elles après correction : le dashboard [[Elastic Agent] Agent metrics](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-f47f18cc-9c7d-4278-b2ea-a6dee816d395)\n\n## Dashboards\n\n- [[Elastic Agent] Concerning Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-0600ffa0-6b5e-11ed-98de-67bdecd21824)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n- [[Elastic Agent] Agent metrics](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-f47f18cc-9c7d-4278-b2ea-a6dee816d395)\n\n## Documentation\n\n- [Fleet → Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/fleet/agents)\n- [Pilotage des agents](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/pilotage.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "elastic_agent-0600ffa0-6b5e-11ed-98de-67bdecd21824"
+      },
+      {
+        "id": "elastic_agent-f47f18cc-9c7d-4278-b2ea-a6dee816d395"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": "FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*\n| EVAL host = COALESCE(hostname, agent.name)\n| WHERE host LIKE \"*-prod-*\"\n| WHERE health_status IN (\"offline\", \"unenrolled\", \"unhealthy\")\n     OR beat.stats.libbeat.output.write.errors IS NOT NULL\n| STATS statuts = VALUES(health_status),\n        erreurs = MAX(TO_LONG(beat.stats.libbeat.output.write.errors))\n                - MIN(TO_LONG(beat.stats.libbeat.output.write.errors))\n  BY host, component.id\n| STATS statuts = VALUES(statuts), erreurs_output = MAX(erreurs) BY host\n| WHERE statuts IS NOT NULL OR erreurs_output > 25"
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "aggType": "count",
+    "groupBy": "row",
+    "termSize": 5,
+    "sourceFields": [],
+    "excludeHitsFromPreviousRun": false
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
+      "params": {
+        "body": {
+          "text": "🚨 **Elastic Agent en défaut — prod** — les alertes Logstash/Redis (4, 5, 7) peuvent être aveugles.",
+          "attachments": [
+            {
+              "color": "#d00000",
+              "fields": [
+                {
+                  "title": "Règle",
+                  "value": "`{{rule.name}}`",
+                  "short": true
+                },
+                {
+                  "title": "Déclenchée à",
+                  "value": "`{{date}}`",
+                  "short": true
+                },
+                {
+                  "title": "Détail",
+                  "value": "{{context.message}}"
+                },
+                {
+                  "title": "À vérifier",
+                  "value": "1. Quel agent, et dans quel état : le « Détail » ci-dessus, puis le dashboard [[Elastic Agent] Concerning Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-0600ffa0-6b5e-11ed-98de-67bdecd21824)\n2. Selon l'état : *offline*, l'app Scalingo de l'agent est arrêtée ou a redémarré (le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)) ; *unenrolled*, l'agent a été recréé sans `ELASTIC_AGENT_ID_SUFFIX` (post-mortem du 11/09) ; *unhealthy* ou erreurs d'output, les composants en erreur dans Fleet → Agents\n3. Les métriques reprennent-elles après correction : le dashboard [[Elastic Agent] Agent metrics](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-f47f18cc-9c7d-4278-b2ea-a6dee816d395)"
+                },
+                {
+                  "title": "Dashboards",
+                  "value": "[[Elastic Agent] Concerning Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-0600ffa0-6b5e-11ed-98de-67bdecd21824)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Elastic Agent] Agent metrics](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-f47f18cc-9c7d-4278-b2ea-a6dee816d395)"
+                },
+                {
+                  "title": "Fleet",
+                  "value": "[Fleet → Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/fleet/agents)"
+                },
+                {
+                  "title": "Doc",
+                  "value": "[Pilotage des agents](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/pilotage.md)"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "6h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}

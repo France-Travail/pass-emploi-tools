@@ -1,8 +1,9 @@
 # Règles d'alerte Kibana
 
-Les règles d'alerte Kibana sont **générées** : on modifie leurs sources, puis un
-script produit les fichiers `.console` qui se collent dans Kibana → Dev Tools.
-Le même passage produit les Workflows qui envoient les alertes dans Tchap.
+Les règles d'alerte Kibana sont **générées** : chaque règle est décrite par un
+fichier JSON, et un script assemble les fichiers `.console` qui se collent dans
+Kibana → Dev Tools. Un second script produit, depuis les mêmes JSON, les Workflows
+qui envoient les alertes dans Tchap.
 
 Ce qu'elles signalent et pourquoi : [alertes applicatives](../alertes-applicatives.md),
 [de la stack](../alertes-stack-observabilite.md), [de sécurité](../alertes-securite.md).
@@ -11,30 +12,49 @@ Ce qu'elles signalent et pourquoi : [alertes applicatives](../alertes-applicativ
 
 ```
 rules/
-├── generer-regles.py                                  ← source : règles définies champ par champ
-├── 1-rules-applicatives-definitions-kibana.py         ← source : règles définies au format de Kibana
-├── 2-rules-stack-observabilite-definitions-kibana.py  ←   (un fichier par fichier généré)
-├── 5-rules-tchap-expiration-bot-definitions-kibana.py ←
-├── modeles/<fichier>.console                          ← source : le texte autour des règles
-├── 4-rules-tchap.console                              ← écrit à la main, non généré
-└── generated/<fichier>.console                        ← GÉNÉRÉ : à coller dans Dev Tools, ne pas modifier
+├── 1-securite/                 ← un répertoire par périmètre
+│   ├── _modele.console         ←   le texte du fichier généré autour des règles
+│   └── V1.json                 ←   une règle = un fichier JSON
+├── 2-applicatives/             ←   S2, S3…, A1 à A13…
+├── 3-stack-observabilite/      ←   1a à 10, 6a, 6b, 14
+├── 4-tchap/                    ←   Tchap - Envoi en échec
+├── 5-tchap-expiration-bot/     ←   expiration du compte bot (et son pipeline, son index)
+├── generer-regles.py           ← le générateur (aucune règle dedans)
+└── generated/                  ← GÉNÉRÉ : à coller dans Dev Tools, ne pas modifier
+    └── <n>-rules-<périmètre>.console
 ```
 
 | Je veux changer… | Je modifie… |
 |---|---|
-| le seuil, la requête ou le message d'une règle A1 à A13, A4a/b, A5a/b, 6a/b, 14, V1 | sa définition dans `generer-regles.py` (dictionnaire `REGLES`, une entrée par code) |
-| une règle SLO (S2, S3…), de la stack (1a à 10) ou l'expiration du bot | sa définition dans `<n>-rules-<périmètre>-definitions-kibana.py` : `regle` (le corps JSON de la règle) et `messages` (son message, un par groupe d'action) |
-| un commentaire d'en-tête, une note entre deux règles, une requête qui n'est pas une règle (pipeline, index…) | `modeles/<fichier>.console` |
+| une règle : seuil, requête, fréquence, message, étapes « À vérifier » | son fichier `<périmètre>/<code>.json` |
+| un commentaire d'en-tête, une note entre deux règles, une requête qui n'est pas une règle (pipeline, index…) | `<périmètre>/_modele.console` |
 | la page qui explique une alerte (seuil, calibrage) | `../alertes-*.md` |
 
-**Ne jamais modifier `generated/`** : ces fichiers sont écrasés à chaque génération,
-et le check de la PR échoue s'ils ne correspondent plus à leurs sources.
+**Ne jamais modifier `generated/`** : ces fichiers sont écrasés à chaque
+génération, et le check de la PR échoue s'ils ne correspondent plus à leurs sources.
 
-Deux formes de définition, pour une seule raison historique : les règles A1 à
-V1 ont été écrites pour le générateur, champ par champ (titre, étapes « À
-vérifier », dashboards, sessions Discover). Les autres existaient avant lui :
-elles sont reprises au format de Kibana, sans changement. Les deux produisent
-le même résultat.
+## Le fichier JSON d'une règle
+
+C'est le JSON de la règle tel que Kibana le reçoit, avec deux commodités :
+
+- le message de chaque action Mattermost (`actions[].params.body`) est un **objet
+  JSON**, lisible ; le générateur le transforme en texte pour Kibana ;
+- les clés qui commencent par `_` ne sont pas envoyées à Kibana :
+
+| Clé | Rôle |
+|---|---|
+| `_id` | identifiant de la règle dans Kibana (`PUT kbn:/api/alerting/rule/<_id>`) |
+| `_methode` | `POST` pour une règle à créer (avec `rule_type_id` et `consumer`) ; `PUT` par défaut |
+| `_commentaire` | lignes de commentaire écrites au-dessus de la règle dans le fichier généré |
+| `_message` | le message d'une règle **sans** action Mattermost (même format qu'un `body`) : c'est lui que Tchap affiche |
+| `_tchap` | règle ES\|QL en `groupBy: all` : `ligne`, le gabarit d'une ligne de résultat dans Tchap (`{0}`, `{1}`… = colonnes), et `vide`, le texte quand la relecture ne trouve plus rien |
+
+Le message Tchap de chaque règle est lu **ici**, dans ce fichier, jamais dans
+l'action Mattermost générée : retirer Mattermost ne change pas les messages Tchap.
+
+Les étapes « À vérifier » suivent les
+[principes des étapes à vérifier](../alertes-applicatives.md#principes-des-étapes-à-vérifier),
+et l'Investigation guide (`artifacts.investigation_guide`) reprend les mêmes étapes.
 
 ## Générer
 
@@ -45,12 +65,11 @@ FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I rules/generer-regles.py
 python3 -I workflows/tchap/generer-workflows.py
 ```
 
-1. `generer-regles.py` assemble chaque fichier de `generated/` : le modèle
-   `modeles/<fichier>.console`, où chaque repère `@@REGLE <code>@@` est remplacé
-   par la règle générée depuis sa définition.
-2. `generer-workflows.py` produit les Workflows Tchap
-   (`../workflows/tchap/generated/`) : le message Tchap de chaque règle est lu
-   dans sa définition, jamais dans son action Mattermost.
+1. `generer-regles.py` écrit `generated/<n>-rules-<périmètre>.console` : le
+   `_modele.console` du périmètre, où chaque repère `@@REGLE <code>@@` est
+   remplacé par la règle `<code>.json`.
+2. `generer-workflows.py` écrit les Workflows Tchap
+   (`../workflows/tchap/generated/`), depuis les mêmes JSON.
 
 Commiter les sources **et** les fichiers générés dans la même PR.
 `python3 -I rules/generer-regles.py --verifier` compare `generated/` à ses
@@ -63,7 +82,7 @@ Feature flipping, selon la convention des apps : **active seulement si elle vaut
 
 - `true` : les règles générées gardent leurs actions Mattermost (jusqu'au
   décommissionnement de Mattermost, le 1er novembre 2026) ;
-- absente : elles n'ont plus que leur action Tchap. Le message Tchap ne change pas.
+- absente : elles n'ont plus que leur action Tchap. Les messages Tchap ne changent pas.
 
 Le CI la fixe à `true`. Le jour de la bascule : régénérer sans elle, passer celle
 du CI (`.github/workflows/verifier-alertes.yml`) à `false` dans le même commit,
@@ -77,18 +96,17 @@ redéployer.
 
 - un fichier de `generated/` ne correspond plus à ses sources (générateur oublié,
   ou fichier généré modifié à la main) ;
-- un générateur refuse une règle : message absent ou qui n'est pas du JSON valide
-  tel quel (l'éditeur de Kibana ne pourrait pas l'afficher), Workflow de salon
-  inconnu, règle ES|QL dont le champ de temps n'est pas `@timestamp`, règle placée
-  dans aucun modèle ou deux fois.
+- un générateur refuse une règle : JSON invalide, règle placée dans aucun
+  `_modele.console` ou deux fois, code défini deux fois, message absent,
+  Workflow de salon inconnu, règle ES|QL dont le champ de temps n'est pas
+  `@timestamp` ou sans `_tchap.ligne`.
 
 ## Déployer
 
 Manuel, jamais par le CI :
 
 1. Dans Kibana → Dev Tools, coller le bloc de la règle depuis `generated/`
-   (`PUT` pour une règle existante ; une nouvelle règle se crée par `POST`, cf.
-   l'en-tête de son bloc).
+   (`PUT` pour une règle existante, `POST` pour une règle à créer).
 2. Si le déploiement passe par l'API avec une clé API (script, `curl`) plutôt
    que par Dev Tools : faire ensuite **« Update API keys »** sur les règles, sinon
    elles tournent avec cette clé et tombent en panne à son expiration (cf.
@@ -97,12 +115,8 @@ Manuel, jamais par le CI :
 
 ## Ajouter une règle
 
-1. Lui choisir un code et l'écrire champ par champ dans `REGLES` de
-   `generer-regles.py`, sur le modèle d'une règle du même type (KQL, ES|QL,
-   Uptime). Une nouvelle règle n'a pas besoin de la forme « format de Kibana ».
-2. Placer le repère `@@REGLE <code>@@` dans le modèle du fichier voulu
-   (`modeles/<fichier>.console`).
-3. Générer, commiter, déployer avec `POST` (création).
-
-Les étapes « À vérifier » suivent les
-[principes des étapes à vérifier](../alertes-applicatives.md#principes-des-étapes-à-vérifier).
+1. Copier le JSON d'une règle du même type (KQL, ES|QL, Uptime, SLO) dans le
+   répertoire du périmètre, sous le nom `<code>.json`, et l'adapter. Pour une règle
+   à créer : `_methode: "POST"`, avec `rule_type_id` et `consumer`.
+2. Placer le repère `@@REGLE <code>@@` dans le `_modele.console` du périmètre.
+3. Générer, commiter, déployer.

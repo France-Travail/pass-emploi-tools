@@ -109,7 +109,7 @@ instance par instance : un parcours ou un mode d'authentification à la fois.
 | Invité (objectif 90 %)     | 72 h / 6 h              | 2         | ≥ 20 % d'échecs sur ~18 tentatives     |
 | Conseiller départemental (objectif 95 %) | 168 h / 12 h | 4      | ≥ 20 % d'échecs sur ~10 tentatives     |
 
-**Création** : rejouer [`rules/generated/1-rules-applicatives.console`](rules/generated/1-rules-applicatives.console)
+**Création** : rejouer [`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console)
 dans Dev Tools, après [`slo/1-slos.console`](slo/1-slos.console).
 
 | Paramètre               | Valeur                                                                                               |
@@ -142,7 +142,7 @@ dans Dev Tools, après [`slo/1-slos.console`](slo/1-slos.console).
 > première semaine, et sortir du SLO un parcours trop bruyant plutôt que de
 > relâcher l'objectif de tous.
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/1-rules-applicatives.console`](rules/generated/1-rules-applicatives.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 Les variables `context.*` sont celles de la règle SLO burn rate ; vérifier les
 noms dans la liste proposée par le bouton d'ajout de variable de l'action.
@@ -153,7 +153,7 @@ Des **Elasticsearch query rules (ES|QL)**. Elles pointent une cause (partenaire,
 5xx, IDP), pas le respect d'une promesse : couche diagnostic de
 [sli-slo](sli-slo.md#principe--trois-usages-une-pyramide).
 
-**Création** : rejouer [`rules/generated/1-rules-applicatives.console`](rules/generated/1-rules-applicatives.console)
+**Création** : rejouer [`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console)
 dans Dev Tools, comme les alertes SLO.
 
 ### A1 — Pic d'échecs partenaire (Warning)
@@ -214,7 +214,7 @@ FROM logs-prod-default
 | SORT max DESC
 ```
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/1-rules-applicatives.console`](rules/generated/1-rules-applicatives.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### A2 — Erreurs serveur 5xx (Critical)
 
@@ -262,7 +262,7 @@ FROM metrics-apm.transaction.1m-*
 | STATS p99 = PERCENTILE(n, 99), max = MAX(n), au_dessus = COUNT(*) WHERE n > 50
 ```
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/1-rules-applicatives.console`](rules/generated/1-rules-applicatives.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### A3 — Pic d'authentifications refusées (Critical)
 
@@ -307,7 +307,7 @@ FROM logs-prod-default
 | SORT heure
 ```
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/1-rules-applicatives.console`](rules/generated/1-rules-applicatives.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 ### A6 — Erreurs base de données (Critical)
 
@@ -355,7 +355,7 @@ FROM logs-prod-default
 | STATS p99 = PERCENTILE(n, 99), max = MAX(n), au_dessus = COUNT(*) WHERE n > 20 BY service.name
 ```
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/1-rules-applicatives.console`](rules/generated/1-rules-applicatives.console), qui fait foi ; son Investigation guide reprend les mêmes étapes. La règle est **nouvelle** : la créer avec `POST` (cf. l'en-tête de son bloc).
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console), qui fait foi ; son Investigation guide reprend les mêmes étapes. La règle est **nouvelle** : la créer avec `POST` (cf. l'en-tête de son bloc).
 
 ### A7 — Erreurs du front (Warning)
 
@@ -402,7 +402,7 @@ FROM logs-apm.error-*
 | STATS p99 = PERCENTILE(n, 99), max = MAX(n), au_dessus = COUNT(*) WHERE n > 200
 ```
 
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/1-rules-applicatives.console`](rules/generated/1-rules-applicatives.console), qui fait foi ; son Investigation guide reprend les mêmes étapes. La règle est **nouvelle** : la créer avec `POST` (cf. l'en-tête de son bloc).
+**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console), qui fait foi ; son Investigation guide reprend les mêmes étapes. La règle est **nouvelle** : la créer avec `POST` (cf. l'en-tête de son bloc).
 
 ## Disponibilité — les services répondent-ils ?
 
@@ -426,7 +426,7 @@ fois par jour). Kibana donne l'échéance d'un certificat en anglais
 (`state.summary`) : le Workflow la traduit, le message Mattermost la garde
 telle quelle.
 
-**Message et étapes « À vérifier »** : dans les blocs des règles de [`rules/generated/1-rules-applicatives.console`](rules/generated/1-rules-applicatives.console), qui font foi. Mise à jour : `PUT`, comme les autres règles.
+**Message et étapes « À vérifier »** : dans les blocs des règles de [`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console), qui font foi. Mise à jour : `PUT`, comme les autres règles.
 
 ## Données APM
 
@@ -470,7 +470,7 @@ Chaque exécution ne compte que les documents arrivés depuis la précédente
 (`excludeHitsFromPreviousRun`) : un événement = une notification, sans
 throttle.
 
-**Création** : rejouer [`rules/generated/1-rules-applicatives.console`](rules/generated/1-rules-applicatives.console),
+**Création** : rejouer [`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console),
 après les sessions Discover de [`discovers/evenements-externes/`](discovers/evenements-externes/).
 
 ### A4a — Événements Scalingo des apps applicatives, prod
@@ -557,7 +557,7 @@ n'est pas jugée suffisante.
 [`connecteurs/mattermost-jobs.console`](connecteurs/mattermost-jobs.console),
 importer les sessions de [`discovers/applicatives/`](discovers/applicatives/)
 (`discover-session-*-jobs.ndjson`), puis rejouer les blocs A5a / A5b de
-[`rules/generated/1-rules-applicatives.console`](rules/generated/1-rules-applicatives.console)
+[`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console)
 (`POST` : ce sont de nouvelles règles).
 
 ### A5a — Jobs en échec, prod

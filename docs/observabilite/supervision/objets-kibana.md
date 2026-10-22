@@ -49,10 +49,10 @@ les logs à examiner.
 |---|---|
 | [`slo/1-slos.console`](slo/1-slos.console) | les SLO, cf. [sli-slo](sli-slo.md) |
 | [`connecteurs/mattermost-jobs.console`](connecteurs/mattermost-jobs.console) | connecteurs Mattermost des canaux jobs (A5a, A5b) |
-| [`rules/generated/1-rules-applicatives.console`](rules/generated/1-rules-applicatives.console) | règles S2, S3, A1 à A3, A4a, A4b, A5a et A5b, cf. [alertes applicatives](alertes-applicatives.md) |
-| [`rules/generated/2-rules-stack-observabilite.console`](rules/generated/2-rules-stack-observabilite.console) | règles 1 à 10 et 14, cf. [alertes de la stack](alertes-stack-observabilite.md) |
-| [`rules/generated/3-rules-securite.console`](rules/generated/3-rules-securite.console) | règle V1, cf. [alertes de sécurité](alertes-securite.md) |
-| [`rules/4-rules-tchap.console`](rules/4-rules-tchap.console) | règle « Tchap - Envoi en échec », sans action |
+| [`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console) | règles S2, S3, A1 à A3, A4a, A4b, A5a et A5b, cf. [alertes applicatives](alertes-applicatives.md) |
+| [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console) | règles 1 à 10 et 14, cf. [alertes de la stack](alertes-stack-observabilite.md) |
+| [`rules/generated/1-rules-securite.console`](rules/generated/1-rules-securite.console) | règle V1, cf. [alertes de sécurité](alertes-securite.md) |
+| [`rules/generated/4-rules-tchap.console`](rules/generated/4-rules-tchap.console) | règle « Tchap - Envoi en échec », sans action |
 | [`rules/generated/5-rules-tchap-expiration-bot.console`](rules/generated/5-rules-tchap-expiration-bot.console) | règle « Tchap - Expiration du compte bot » et l'index de sa date, cf. [runbook](../runbooks/runbook-tchap-expiration-bot.md) |
 | [`workflows/tchap/`](workflows/tchap/README.md) | connecteur Tchap et Workflows de notification (tchap-client, un par salon) |
 
@@ -76,8 +76,8 @@ remplace aussi ses réglages d'affichage, sans effet sur les données.
 ### SLO et règles (`.console`)
 
 Copier le fichier dans Dev Tools et exécuter les requêtes, dans l'ordre :
-`slo/1-slos.console`, puis `rules/generated/1-rules-applicatives.console`, puis
-`rules/generated/2-rules-stack-observabilite.console`, puis `rules/generated/3-rules-securite.console`.
+`slo/1-slos.console`, puis `rules/generated/2-rules-applicatives.console`, puis
+`rules/generated/3-rules-stack-observabilite.console`, puis `rules/generated/1-rules-securite.console`.
 Sur un cluster vide, l'en-tête de chaque fichier indique comment transformer les
 `PUT` en `POST` de création. Les règles sur les événements Scalingo et GitHub
 (A4a, A4b, 6a, 6b, 14, V1) supposent leur collecte en place : cf. sa
@@ -110,12 +110,11 @@ Modifier dans Kibana, puis réexporter par-dessus le fichier versionné :
   les fichiers de `rules/generated/` et de
   `workflows/tchap/generated/` sont **générés** (ils le disent en tête) : ne pas
   les modifier, ils seraient écrasés et le check de la PR échouerait. Modifier
-  la source :
-  - la règle : sa définition dans `rules/generer-regles.py` (règle définie champ
-    par champ) ou dans `rules/<n>-rules-<périmètre>-definitions-kibana.py` (règle définie au
-    format de Kibana : SLO, stack 1a à 10, expiration du bot) ;
-  - le texte autour des règles (commentaires, autres requêtes) :
-    `rules/modeles/<fichier>`, où `@@REGLE <code>@@` marque la place de chaque règle ;
+  la source, dans `rules/<n>-<périmètre>/` :
+  - la règle : son fichier `<code>.json` (le JSON de la règle Kibana, son message
+    lisible en objet JSON) ;
+  - le texte autour des règles (commentaires, autres requêtes) : `_modele.console`,
+    où `@@REGLE <code>@@` marque la place de chaque règle ;
   - le tableau de la page `alertes-*.md` correspondante, si le seuil ou le
     principe change.
 

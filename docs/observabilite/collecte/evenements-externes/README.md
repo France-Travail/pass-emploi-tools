@@ -158,9 +158,9 @@ du repo). `@timestamp` est l'heure d'envoi par le workflow.
    [`supervision/discovers/evenements-externes/`](../../supervision/discovers/evenements-externes/)
    (cf. [importer](../../supervision/objets-kibana.md#importer)), **avant** les
    règles : leurs liens pointent vers ces sessions par leur id.
-5. **Règles** : A4a, A4b ([`1-rules-applicatives.console`](../../supervision/rules/generated/1-rules-applicatives.console)),
-   6a, 6b, 14 ([`2-rules-stack-observabilite.console`](../../supervision/rules/generated/2-rules-stack-observabilite.console)),
-   V1 ([`3-rules-securite.console`](../../supervision/rules/generated/3-rules-securite.console)).
+5. **Règles** : A4a, A4b ([`2-rules-applicatives.console`](../../supervision/rules/generated/2-rules-applicatives.console)),
+   6a, 6b, 14 ([`3-rules-stack-observabilite.console`](../../supervision/rules/generated/3-rules-stack-observabilite.console)),
+   V1 ([`1-rules-securite.console`](../../supervision/rules/generated/1-rules-securite.console)).
    Elles reprennent les IDs des anciennes X1 à X5 : `PUT` les met à jour, sauf
    **6b**, nouvelle, à créer avec `POST` (cf. l'en-tête de son bloc).
 6. **Test sans Scalingo** :

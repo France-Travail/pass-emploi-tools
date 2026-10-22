@@ -1,5 +1,14 @@
+# ⚠️ FICHIER GÉNÉRÉ par ../generer-regles.py : NE PAS LE MODIFIER, il serait écrasé.
+# À modifier à la place, dans ../4-tchap/ :
+#   - une règle : son fichier <code>.json (le JSON de la règle Kibana) ;
+#   - le texte autour des règles (commentaires, autres requêtes) : _modele.console.
+# Puis : FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I ../generer-regles.py
+#        python3 -I ../../workflows/tchap/generer-workflows.py
+# La CI de chaque PR vérifie que ce fichier correspond à ses sources.
+# Ce fichier se colle tel quel dans Kibana → Dev Tools. Mode d'emploi : ../README.md.
+#
 # Règle de supervision des notifications Tchap. Spécification :
-# ../workflows/tchap/README.md.
+# ../../workflows/tchap/README.md.
 #
 # Un envoi en échec (jeton expiré, bot sorti d'un salon, salon inconnu) passe
 # l'exécution du Workflow en failed, mais la règle d'origine reste « ok » : sans
@@ -25,7 +34,9 @@ POST kbn:/api/alerting/rule/26888801-090e-41ee-839b-73d2832330a8
   "params": {
     "searchType": "esQuery",
     "esQuery": "{\"query\":{\"bool\":{\"filter\":[{\"term\":{\"status\":\"failed\"}},{\"prefix\":{\"workflowId\":\"tchap-\"}}]}}}",
-    "index": [".workflows-executions"],
+    "index": [
+      ".workflows-executions"
+    ],
     "timeField": "finishedAt",
     "timeWindowSize": 10,
     "timeWindowUnit": "m",

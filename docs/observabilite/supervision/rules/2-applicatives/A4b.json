@@ -1,0 +1,116 @@
+{
+  "_id": "07c9c5d7-e8fe-4964-ac8d-684b1c4c39b8",
+  "_commentaire": [
+    "# A4b — Événements Scalingo des apps applicatives, staging / perf (gravité par ligne)"
+  ],
+  "name": "Scalingo - Hors-Prod - Événements des apps applicatives",
+  "tags": [
+    "hors-prod",
+    "applicatif",
+    "scalingo",
+    "tchap-lignes"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nUn événement Scalingo sur une app applicative de staging ou de perf : incident ou opération d'infra.\n\n## À vérifier\n\n1. Le Discover [[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/33bed466-9d68-4789-a723-aeea34e6cd93), onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur\n2. L'activité de l'app (onglet Activity) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Dashboards\n\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Discover sessions\n\n- [[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/33bed466-9d68-4789-a723-aeea34e6cd93)\n\n## Documentation\n\n[Collecte des événements externes](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/collecte/evenements-externes/README.md)\n"
+    }
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "not service.name : (\"pass-emploi-logstash\" or \"pass-emploi-logstash-process\" or \"pass-emploi-elastic-agent\" or \"pass-emploi-heartbeat\")",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "a67a2388-a6a3-42e3-b1c4-15dc61bf5585",
+        "title": "logs-alertes-scalingo-staging-default,logs-alertes-scalingo-perf-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Alertes Scalingo - Hors-Prod",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 10,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 20,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": true,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "4cb10f00-22d9-4cf0-bda1-e288c4abb339",
+      "params": {
+        "body": {
+          "text": "**Événements Scalingo des apps hors prod** ({{context.value}})",
+          "attachments": [
+            {
+              "color": "#808080",
+              "text": "{{#context.hits}}{{_source.message}}\n{{/context.hits}}",
+              "fields": [
+                {
+                  "title": "Règle",
+                  "value": "`{{rule.name}}`",
+                  "short": true
+                },
+                {
+                  "title": "Déclenchée à",
+                  "value": "`{{date}}`",
+                  "short": true
+                },
+                {
+                  "title": "À vérifier",
+                  "value": "1. Le Discover [[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/33bed466-9d68-4789-a723-aeea34e6cd93), onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur\n2. L'activité de l'app (onglet Activity) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+                },
+                {
+                  "title": "Dashboards",
+                  "value": "[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+                },
+                {
+                  "title": "Discover sessions",
+                  "value": "[[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/33bed466-9d68-4789-a723-aeea34e6cd93)"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActiveAlert",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-staging",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}

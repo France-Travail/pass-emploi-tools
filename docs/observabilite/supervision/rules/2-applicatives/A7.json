@@ -1,0 +1,105 @@
+{
+  "_id": "52c66a2a-2ee1-4de2-bc5c-642a96395405",
+  "_commentaire": [
+    "# A7 — Erreurs du front (Warning). Remplace les 7 règles APM des services disparus.",
+    "# Nouvelle règle : absente de la prod avant le 2026-10-20, la créer avec POST",
+    "# (même corps plus \"rule_type_id\": \".es-query\" et \"consumer\": \"alerts\")."
+  ],
+  "_tchap": {
+    "ligne": "{1} : {0}"
+  },
+  "name": "Web - Prod - Erreurs du front",
+  "tags": [
+    "prod",
+    "applicatif"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nPlus de 200 erreurs JavaScript en 5 min dans l'app web conseiller de prod, d'après le RUM de l'APM (`rum-pass-emploi-web-prod`) ; les 5 plus fréquentes sont listées.\n\n## À vérifier\n\n1. Les erreurs les plus fréquentes : les lignes ci-dessus, puis l'écran, le navigateur et la pile dans [[APM] Erreurs de rum-pass-emploi-web-prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/apm/services/rum-pass-emploi-web-prod/errors)\n2. Si ce sont des appels à l'api en échec (« Failed to fetch », « Internal server error ») : les erreurs de l'api au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n3. Un déploiement récent du web : l'activité de `pass-emploi-web-prod` dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Dashboards\n\n- [[APM] Erreurs de rum-pass-emploi-web-prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/apm/services/rum-pass-emploi-web-prod/errors)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Runbook\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-applicatives.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": "FROM logs-apm.error-*\n| WHERE service.name == \"rum-pass-emploi-web-prod\"\n| EVAL erreur = SUBSTRING(error.grouping_name, 1, 120)\n| STATS erreurs = COUNT(*) BY erreur\n| INLINE STATS total = SUM(erreurs)\n| WHERE total > 200\n| SORT erreurs DESC\n| LIMIT 5"
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "groupBy": "all"
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": {
+          "text": "⚠️ **Erreurs du front — prod** — plus de 200 erreurs JavaScript en 5 min dans l'app web conseiller.",
+          "attachments": [
+            {
+              "color": "#f2c744",
+              "text": "{{#context.hits}}{{_source.erreur}} : {{_source.erreurs}}\n{{/context.hits}}",
+              "fields": [
+                {
+                  "title": "Règle",
+                  "value": "`{{rule.name}}`",
+                  "short": true
+                },
+                {
+                  "title": "Déclenchée à",
+                  "value": "`{{date}}`",
+                  "short": true
+                },
+                {
+                  "title": "À vérifier",
+                  "value": "1. Les erreurs les plus fréquentes : les lignes ci-dessus, puis l'écran, le navigateur et la pile dans [[APM] Erreurs de rum-pass-emploi-web-prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/apm/services/rum-pass-emploi-web-prod/errors)\n2. Si ce sont des appels à l'api en échec (« Failed to fetch », « Internal server error ») : les erreurs de l'api au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n3. Un déploiement récent du web : l'activité de `pass-emploi-web-prod` dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+                },
+                {
+                  "title": "Dashboards",
+                  "value": "[[APM] Erreurs de rum-pass-emploi-web-prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/apm/services/rum-pass-emploi-web-prod/errors)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+                },
+                {
+                  "title": "Runbook",
+                  "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "1h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}

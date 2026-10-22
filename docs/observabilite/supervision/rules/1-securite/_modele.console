@@ -11,7 +11,7 @@
 # sessions ») = un champ, un élément par ligne (`\n`). Chaque champ tient sur une
 # seule ligne du fichier : l'éditeur de règle de Kibana lit le body comme du JSON
 # brut, un retour à la ligne dans une chaîne l'empêche de l'afficher. Pour relire
-# les étapes, voir la définition de la règle dans ../generer-regles.py ou son
+# les étapes : le fichier <code>.json de la règle, dans ../1-securite/, ou son
 # Investigation guide.
 #
 # artifacts : l'Investigation guide et les Related dashboards (onglets de la

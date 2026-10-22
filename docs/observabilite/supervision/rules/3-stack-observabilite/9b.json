@@ -1,0 +1,128 @@
+{
+  "_id": "895bd492-e02f-4f18-b8e0-f453742c885f",
+  "_commentaire": [
+    "# 9b — Mémoire conteneur staging / perf (Warning)"
+  ],
+  "name": "Logstash - Hors-Prod - Mémoire conteneur proche de la limite Scalingo",
+  "tags": [
+    "hors-prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nMémoire conteneur Logstash staging/perf — un conteneur dépasse 95 % de sa limite Scalingo : OOM-kill imminent.\n\n## À vérifier\n\n1. La mémoire du conteneur continue-t-elle de monter : le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n2. Pourquoi : un backlog Redis à rattraper fait consommer le pipeline `process` (le dashboard [[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)) ; `LS_JAVA_OPTS` doit rester `-Xms256m -Xmx256m` (onglet *Environment* dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. Si le conteneur a été tué (OOM) : son redémarrage dans l'activité de l'app, puis le silence des logs qui suit\n\n## Dashboards\n\n- [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n- [[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Documentation\n\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash)\n"
+    },
+    "dashboards": [
+      {
+        "id": "fd40a516-c323-4e5e-91e5-1328b8b1a78d"
+      },
+      {
+        "id": "redis-28969190-0511-11e9-9c60-d582a238e2c5"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "scalingo.app: (pass-emploi-logstash-staging or pass-emploi-logstash-process-staging or pass-emploi-logstash-perf or pass-emploi-logstash-process-perf)",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "daf0b9b1-2d62-40bd-a508-51e9de307aa5",
+        "title": "logs-scalingo.container_stats-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "logs-scalingo.container_stats-default",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0.95
+    ],
+    "thresholdComparator": ">=",
+    "size": 100,
+    "aggType": "max",
+    "groupBy": "top",
+    "termSize": 10,
+    "excludeHitsFromPreviousRun": false,
+    "sourceFields": [],
+    "aggField": "scalingo.memory.pct",
+    "termField": "host.name"
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "c4a313b3-aa42-4e07-8196-c007625ce8af",
+      "params": {
+        "body": {
+          "text": "⚠️ **Mémoire conteneur Logstash staging/perf** — un conteneur dépasse 95 % de sa limite Scalingo : OOM-kill imminent.",
+          "attachments": [
+            {
+              "color": "#f2c744",
+              "fields": [
+                {
+                  "title": "Règle",
+                  "value": "`{{rule.name}}`",
+                  "short": true
+                },
+                {
+                  "title": "Déclenchée à",
+                  "value": "`{{date}}`",
+                  "short": true
+                },
+                {
+                  "title": "Conteneur",
+                  "value": "`{{context.group}}`",
+                  "short": true
+                },
+                {
+                  "title": "À vérifier",
+                  "value": "1. La mémoire du conteneur continue-t-elle de monter : le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n2. Pourquoi : un backlog Redis à rattraper fait consommer le pipeline `process` (le dashboard [[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)) ; `LS_JAVA_OPTS` doit rester `-Xms256m -Xmx256m` (onglet *Environment* dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. Si le conteneur a été tué (OOM) : son redémarrage dans l'activité de l'app, puis le silence des logs qui suit"
+                },
+                {
+                  "title": "Dashboards",
+                  "value": "[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n[[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+                },
+                {
+                  "title": "Runbook",
+                  "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash)"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "6h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-staging",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
