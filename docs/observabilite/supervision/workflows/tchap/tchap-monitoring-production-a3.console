@@ -1,4 +1,4 @@
-# Workflow Tchap de la règle a3 (API - Prod - Pic d'auth refusées), généré par generer-workflows.py
+# Workflow Tchap de la règle A3 (API - Prod - Pic d'auth refusées), vers le salon monitoring-production, généré par generer-workflows.py
 # depuis ../../rules/ : ne pas modifier à la main. Spécification : README.md.
 #
 # La règle ES|QL est en groupBy all : son action .workflows ne transmet pas les lignes du
@@ -6,10 +6,10 @@
 # écarte, comme les Workflows de salon, une alerte en attente de rétablissement.
 POST kbn:/api/workflows/workflow
 {
-  "id": "tchap-alerte-a3",
+  "id": "tchap-monitoring-production-a3",
   "yaml": """
-name: Tchap - alerte a3
-description: "API - Prod - Pic d'auth refusées"
+name: Tchap - monitoring-production - A3
+description: "Envoie les alertes de la règle « API - Prod - Pic d'auth refusées » dans le salon Tchap monitoring-production"
 enabled: true
 triggers:
   - type: alert

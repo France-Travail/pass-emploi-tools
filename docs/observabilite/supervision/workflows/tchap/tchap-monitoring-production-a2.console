@@ -1,4 +1,4 @@
-# Workflow Tchap de la règle a2 (API - Prod - Erreurs 5xx), généré par generer-workflows.py
+# Workflow Tchap de la règle A2 (API - Prod - Erreurs 5xx), vers le salon monitoring-production, généré par generer-workflows.py
 # depuis ../../rules/ : ne pas modifier à la main. Spécification : README.md.
 #
 # La règle ES|QL est en groupBy all : son action .workflows ne transmet pas les lignes du
@@ -6,10 +6,10 @@
 # écarte, comme les Workflows de salon, une alerte en attente de rétablissement.
 POST kbn:/api/workflows/workflow
 {
-  "id": "tchap-alerte-a2",
+  "id": "tchap-monitoring-production-a2",
   "yaml": """
-name: Tchap - alerte a2
-description: "API - Prod - Erreurs 5xx"
+name: Tchap - monitoring-production - A2
+description: "Envoie les alertes de la règle « API - Prod - Erreurs 5xx » dans le salon Tchap monitoring-production"
 enabled: true
 triggers:
   - type: alert

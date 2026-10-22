@@ -347,10 +347,18 @@ def bloc_uptime(nom, r, artifacts):
     return r['commentaire'] + '\nPUT kbn:/api/alerting/rule/' + r['id'] + '\n' + texte + '\n'
 
 
+# Salon Tchap d'une règle : celui qui correspond à son canal Mattermost.
+SALON_DU_CONNECTEUR = {
+    '12e46700-6e45-11ec-9757-c9700cd1bb4e': 'monitoring-production', '4cb10f00-22d9-4cf0-bda1-e288c4abb339': 'monitoring-staging',
+    'd2812573-52bf-4b48-9e54-a79a8b5b227d': 'o11y-production', 'c4a313b3-aa42-4e07-8196-c007625ce8af': 'o11y-staging',
+    'cd0b8285-1b69-4e3a-9c7c-6d35b42e7115': 'jobs-production', '3f71e705-99b5-4b37-ab14-932e28bc29b4': 'jobs-staging',
+}
+
+
 def bloc_esql(nom, r, artifacts):
     """Une seule alerte par règle (groupBy all) : son identité reste stable pendant un incident,
     le throttle Mattermost et le message Tchap à l'apparition s'appliquent. Le Workflow
-    tchap-alerte-<code en minuscules> relance la requête, ses lignes n'étant pas transmises par l'action."""
+    tchap-<salon>-<code en minuscules> relance la requête, ses lignes n'étant pas transmises par l'action."""
     regle = {
         'name': r['name'], 'tags': r['tags'], 'artifacts': artifacts, 'schedule': {'interval': r['interval']},
         'params': {
@@ -359,7 +367,7 @@ def bloc_esql(nom, r, artifacts):
             'threshold': [0], 'thresholdComparator': '>', 'size': 100, 'groupBy': 'all'},
         'actions': [
             {'group': 'query matched', 'id': r['mm'], 'params': {'body': '@@BODY@@'}, 'frequency': {'summary': False, 'notify_when': 'onThrottleInterval', 'throttle': '1h'}},
-            {'id': 'system-connector-.workflows', 'params': {'subAction': 'run', 'subActionParams': {'workflowId': 'tchap-alerte-' + nom.lower(), 'summaryMode': True, 'alertStates': {'new': True, 'ongoing': False, 'recovered': False}}}}],
+            {'id': 'system-connector-.workflows', 'params': {'subAction': 'run', 'subActionParams': {'workflowId': f"tchap-{SALON_DU_CONNECTEUR[r['mm']]}-{nom.lower()}", 'summaryMode': True, 'alertStates': {'new': True, 'ongoing': False, 'recovered': False}}}}],
     }
     texte = json.dumps(regle, ensure_ascii=False, indent=2).replace('"@@BODY@@"', '"""' + body(r) + '"""')
     texte = texte.replace('"@@ESQL@@"', '"""' + r['esql'] + '"""')

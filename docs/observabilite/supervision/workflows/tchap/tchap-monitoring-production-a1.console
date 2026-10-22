@@ -1,4 +1,4 @@
-# Workflow Tchap de la règle a1 (API - Prod - Pic d'échecs partenaire), généré par generer-workflows.py
+# Workflow Tchap de la règle A1 (API - Prod - Pic d'échecs partenaire), vers le salon monitoring-production, généré par generer-workflows.py
 # depuis ../../rules/ : ne pas modifier à la main. Spécification : README.md.
 #
 # La règle ES|QL est en groupBy all : son action .workflows ne transmet pas les lignes du
@@ -6,10 +6,10 @@
 # écarte, comme les Workflows de salon, une alerte en attente de rétablissement.
 POST kbn:/api/workflows/workflow
 {
-  "id": "tchap-alerte-a1",
+  "id": "tchap-monitoring-production-a1",
   "yaml": """
-name: Tchap - alerte a1
-description: "API - Prod - Pic d'échecs partenaire"
+name: Tchap - monitoring-production - A1
+description: "Envoie les alertes de la règle « API - Prod - Pic d'échecs partenaire » dans le salon Tchap monitoring-production"
 enabled: true
 triggers:
   - type: alert

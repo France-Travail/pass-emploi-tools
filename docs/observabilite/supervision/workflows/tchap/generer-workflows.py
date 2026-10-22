@@ -312,10 +312,13 @@ def main():
                 continue
             corps_message(regle)
             cible = w[0]['params']['subActionParams']['workflowId']
-            if cible.startswith('tchap-alerte-'):
-                esql.append((cible.removeprefix('tchap-alerte-'), rid, regle, mattermost[0]['id']))
+            salon = next((s for s in SALONS if cible == f'tchap-{s}' or cible.startswith(f'tchap-{s}-')), None)
+            if salon is None:
+                raise SystemExit(f"« {regle['name']} » vise le Workflow {cible}, qui ne correspond à aucun salon")
+            if cible != f'tchap-{salon}':
+                esql.append((salon, cible.removeprefix(f'tchap-{salon}-'), rid, regle))
                 continue
-            par_salon[cible.removeprefix('tchap-')].append((rid, regle))
+            par_salon[salon].append((rid, regle))
     for salon, regles in par_salon.items():
         cas_t = ''.join("{% when '" + rid + "' %}" + avec_retablissement(r, False) for rid, r in regles)
         cas_h = ''.join("{% when '" + rid + "' %}" + avec_retablissement(r, True) for rid, r in regles)
@@ -327,10 +330,9 @@ def main():
         open(os.path.join(ICI, f'tchap-{salon}.console'), 'w').write(sortie)
         print(f'tchap-{salon}.console : {len(regles)} règle(s), {len(sortie) // 1024} Ko')
     definitions = {k.lower(): v for k, v in definitions_regles().items()} if esql else {}
-    for code, rid, regle, connecteur in esql:
-        salon = CONNECTEUR_SALON[connecteur]
-        open(os.path.join(ICI, f'tchap-alerte-{code}.console'), 'w').write(workflow_esql(code, regle, definitions[code]['tchap'], SALONS[salon], definitions[code].get('vide', VIDE)))
-        print(f'tchap-alerte-{code}.console : salon {salon}')
+    for salon, code, rid, regle in esql:
+        open(os.path.join(ICI, f'tchap-{salon}-{code}.console'), 'w').write(workflow_esql(code, regle, definitions[code]['tchap'], salon, definitions[code].get('vide', VIDE)))
+        print(f'tchap-{salon}-{code}.console')
     jobs = jobs_suivis()
     for env, salon, index in [('prod', 'jobs-production', 'logs-prod-default'), ('staging', 'jobs-staging', 'logs-staging-default')]:
         open(os.path.join(ICI, f'rapport-jobs-{env}.console'), 'w').write(rapport(env, salon, index, jobs))
@@ -480,11 +482,6 @@ steps:
 '''
 
 
-CONNECTEUR_SALON = {
-    '12e46700-6e45-11ec-9757-c9700cd1bb4e': 'monitoring-production', '4cb10f00-22d9-4cf0-bda1-e288c4abb339': 'monitoring-staging',
-    'd2812573-52bf-4b48-9e54-a79a8b5b227d': 'o11y-production', 'c4a313b3-aa42-4e07-8196-c007625ce8af': 'o11y-staging',
-    'cd0b8285-1b69-4e3a-9c7c-6d35b42e7115': 'jobs-production', '3f71e705-99b5-4b37-ab14-932e28bc29b4': 'jobs-staging',
-}
 VIDE = "Sous le seuil à la relecture : l'incident est peut-être en train de se résorber."
 
 
@@ -518,10 +515,10 @@ def requete_esql(regle):
     return ' '.join(morceaux[:1] + [filtre] + morceaux[1:]).replace('\\', '\\\\').replace('"', '\\"')
 
 
-def workflow_esql(code, regle, gabarit, salon_id, vide=VIDE):
+def workflow_esql(code, regle, gabarit, salon, vide=VIDE):
     texte = message(regle, False, lignes_resultat(gabarit, False, vide))
     corps = message(regle, True, lignes_resultat(gabarit, True, vide))
-    return f'''# Workflow Tchap de la règle {code} ({regle['name']}), généré par generer-workflows.py
+    return f'''# Workflow Tchap de la règle {code.upper()} ({regle['name']}), vers le salon {salon}, généré par generer-workflows.py
 # depuis ../../rules/ : ne pas modifier à la main. Spécification : README.md.
 #
 # La règle ES|QL est en groupBy all : son action .workflows ne transmet pas les lignes du
@@ -529,15 +526,15 @@ def workflow_esql(code, regle, gabarit, salon_id, vide=VIDE):
 # écarte, comme les Workflows de salon, une alerte en attente de rétablissement.
 POST kbn:/api/workflows/workflow
 {{
-  "id": "tchap-alerte-{code}",
+  "id": "tchap-{salon}-{code}",
   "yaml": """
-name: Tchap - alerte {code}
-description: {json.dumps(regle['name'], ensure_ascii=False)}
+name: Tchap - {salon} - {code.upper()}
+description: {json.dumps(f"Envoie les alertes de la règle « {regle['name']} » dans le salon Tchap {salon}", ensure_ascii=False)}
 enabled: true
 triggers:
   - type: alert
 consts:
-  salon: "{salon_id}"
+  salon: "{SALONS[salon]}"
 steps:
   - name: chaque-alerte
     type: foreach

@@ -182,7 +182,7 @@ domaine, le code et le message.
 | **Fréquence**           | 1 min                                                                                                              |
 | **Sévérité**            | Warning                                                                                                            |
 | **Throttle**            | `On custom action intervals` / `Run every 1 hour` / `Run when: Query matched` (onglet Actions → Settings)          |
-| **Action**              | Connecteur Kibana **Mattermost-monitoring-production**, et Workflow `tchap-alerte-a1` (relance la requête, poste dans le salon monitoring-production) — messages dans le bloc de la règle |
+| **Action**              | Connecteur Kibana **Mattermost-monitoring-production**, et Workflow `tchap-monitoring-production-a1` (relance la requête, poste dans le salon monitoring-production) — messages dans le bloc de la règle |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message, contacts partenaires) ; runbook : [runbook d'investigation](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md) |
 
@@ -236,7 +236,7 @@ Discover « Erreurs serveur 5xx » la retrouve par son `trace.id`.
 | **Fréquence**           | 1 min                                                                                                              |
 | **Sévérité**            | Critical                                                                                                           |
 | **Throttle**            | `On custom action intervals` / `Run every 1 hour` / `Run when: Query matched` (onglet Actions → Settings)          |
-| **Action**              | Connecteur Kibana **Mattermost-monitoring-production**, et Workflow `tchap-alerte-a2` (relance la requête, poste dans le salon monitoring-production) — messages dans le bloc de la règle |
+| **Action**              | Connecteur Kibana **Mattermost-monitoring-production**, et Workflow `tchap-monitoring-production-a2` (relance la requête, poste dans le salon monitoring-production) — messages dans le bloc de la règle |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook d'investigation](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md) |
 
@@ -326,7 +326,7 @@ prod : connexion perdue, pool de connexions saturé
 | **Fréquence**           | 1 min                                                                                                              |
 | **Sévérité**            | Critical                                                                                                           |
 | **Throttle**            | `On custom action intervals` / `Run every 1 hour` / `Run when: Query matched` (onglet Actions → Settings)          |
-| **Action**              | Connecteur Kibana **Mattermost-monitoring-production**, et Workflow `tchap-alerte-a6` — messages dans le bloc de la règle |
+| **Action**              | Connecteur Kibana **Mattermost-monitoring-production**, et Workflow `tchap-monitoring-production-a6` — messages dans le bloc de la règle |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook d'investigation](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md) |
 
@@ -375,7 +375,7 @@ elles visaient des services qui n'émettent plus (`pa-back-prod`,
 | **Fréquence**           | 1 min                                                                                                              |
 | **Sévérité**            | Warning                                                                                                            |
 | **Throttle**            | `On custom action intervals` / `Run every 1 hour` / `Run when: Query matched` (onglet Actions → Settings)          |
-| **Action**              | Connecteur Kibana **Mattermost-monitoring-production**, et Workflow `tchap-alerte-a7` — messages dans le bloc de la règle |
+| **Action**              | Connecteur Kibana **Mattermost-monitoring-production**, et Workflow `tchap-monitoring-production-a7` — messages dans le bloc de la règle |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook d'investigation](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md) |
 

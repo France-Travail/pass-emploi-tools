@@ -28,7 +28,7 @@ flowchart LR
   end
 
   subgraph parregle["Workflows par règle ES|QL (générés)"]
-    WE["tchap-alerte-a1 … a7<br/>relancent la requête de la règle"]
+    WE["tchap-monitoring-production-a1 … a7<br/>relancent la requête de la règle"]
   end
 
   subgraph planifies["Workflows planifiés (générés)"]
@@ -72,7 +72,7 @@ cluster en panne.
 | [`connecteur-tchap.console`](connecteur-tchap.console) | connecteur `.http` : URL de Tchap et jeton du bot |
 | [`tchap-client.console`](tchap-client.console) | le seul Workflow qui parle à Matrix |
 | [`tchap-monitoring-production.console`](tchap-monitoring-production.console), [`tchap-monitoring-staging.console`](tchap-monitoring-staging.console), [`tchap-o11y-production.console`](tchap-o11y-production.console), [`tchap-o11y-staging.console`](tchap-o11y-staging.console), [`tchap-jobs-production.console`](tchap-jobs-production.console), [`tchap-jobs-staging.console`](tchap-jobs-staging.console) | un Workflow par salon, **générés** : ne pas les modifier à la main |
-| `tchap-alerte-a1.console`, `-a2`, `-a3`, `-a6`, `-a7` | un Workflow par règle ES\|QL, **générés** : relance la requête de la règle au moment de l'alerte et poste une ligne par résultat |
+| `tchap-monitoring-production-a1.console`, `-a2`, `-a3`, `-a6`, `-a7` | un Workflow par règle ES\|QL, nommé d'après son salon, **générés** : relance la requête de la règle au moment de l'alerte et poste une ligne par résultat |
 | [`rapport-jobs-prod.console`](rapport-jobs-prod.console), [`rapport-jobs-staging.console`](rapport-jobs-staging.console) | rapport quotidien des jobs de l'api, chaque jour à 9 h 30 (heure de Paris), **générés** |
 | [`generer-workflows.py`](generer-workflows.py) | génère les Workflows de salon depuis les règles de [`../../rules/`](../../rules/), et les rapports depuis la liste des CRON de `pass-emploi-api` (`origin/develop`) : `python3 -I generer-workflows.py` après toute modification d'une règle, d'un salon ou des CRON de l'api |
 | [`../../rules/4-rules-tchap.console`](../../rules/4-rules-tchap.console) | règle « Tchap - Envoi en échec » |
@@ -87,7 +87,7 @@ règle de chaque salon. Ordre :
 1. le titre, en couleur (celle du message Mattermost), puis « Déclenchée à » ;
 2. les lignes de détail, selon les tags de la règle (cf. [brancher une règle](#brancher-une-règle)) ;
    pour une règle ES|QL, une ligne par résultat de sa requête, relancée par son
-   Workflow `tchap-alerte-<code>` (cf. [brancher une règle](#brancher-une-règle)) ;
+   Workflow `tchap-<salon>-<code>` (cf. [brancher une règle](#brancher-une-règle)) ;
 3. les explications : « À vérifier », avec le nom des dashboards et des
    sessions en gras ;
 4. les liens, en fin de message : Dashboards, Discover sessions, Runbook…,
@@ -254,7 +254,7 @@ Intégrations (l'équipe beta.gouv n'a pas la réponse, 2026-10-14) :
    tant que la requête renvoie des lignes, donc un message à l'apparition (et un
    rappel par heure côté Mattermost). Le document d'alerte ne contient pas les
    lignes : son action `.workflows` vise son propre Workflow
-   `tchap-alerte-<code>`, qui relance la requête sur la fenêtre de la règle qui
+   `tchap-<salon>-<code>`, qui relance la requête sur la fenêtre de la règle qui
    précède le début de l'alerte (pas sur `NOW()` : quelques secondes plus tard,
    un incident juste au-dessus du seuil repasserait dessous) et écrit une ligne
    par résultat avec le gabarit `tchap` de sa définition

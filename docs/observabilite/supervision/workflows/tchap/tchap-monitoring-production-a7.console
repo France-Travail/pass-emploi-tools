@@ -1,4 +1,4 @@
-# Workflow Tchap de la règle a7 (Web - Prod - Erreurs du front), généré par generer-workflows.py
+# Workflow Tchap de la règle A7 (Web - Prod - Erreurs du front), vers le salon monitoring-production, généré par generer-workflows.py
 # depuis ../../rules/ : ne pas modifier à la main. Spécification : README.md.
 #
 # La règle ES|QL est en groupBy all : son action .workflows ne transmet pas les lignes du
@@ -6,10 +6,10 @@
 # écarte, comme les Workflows de salon, une alerte en attente de rétablissement.
 POST kbn:/api/workflows/workflow
 {
-  "id": "tchap-alerte-a7",
+  "id": "tchap-monitoring-production-a7",
   "yaml": """
-name: Tchap - alerte a7
-description: "Web - Prod - Erreurs du front"
+name: Tchap - monitoring-production - A7
+description: "Envoie les alertes de la règle « Web - Prod - Erreurs du front » dans le salon Tchap monitoring-production"
 enabled: true
 triggers:
   - type: alert
