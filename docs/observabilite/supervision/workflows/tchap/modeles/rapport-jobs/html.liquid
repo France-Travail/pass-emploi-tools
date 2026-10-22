@@ -1,17 +1,19 @@
+# Message affiché : tableau des jobs suivis, puis des jobs exécutés hors CRON, et lien vers la
+# session Discover des jobs (période : 24 dernières heures).
 <p><font data-mx-color="#808080" color="#808080">ℹ️ <strong>Rapport quotidien des jobs — @@ENV@@</strong> (24 dernières heures)</font></p><table><thead>
 <tr><th>A tourné</th><th>Sans échec</th><th>Job</th><th>Attendues</th><th>Exécutions</th><th>Échecs</th><th>Durée moyenne</th><th>Description</th></tr></thead><tbody>@@JOUR_DU_MOIS_ET_DE_LA_SEMAINE@@
-{% for j in consts.jobs %}@@STATUT_D_UN_JOB@@
-<tr><td>{{ tourne }}</td><td>{{ ok }}</td><td>{{ j.type }}</td><td>{{ att | default: '—' }}</td><td>{{ n }}</td><td>{{ e }}</td><td>{{ d }}</td><td>{{ j.description | escape }}</td></tr>
+{% for job in consts.jobs %}@@STATUT_D_UN_JOB@@
+<tr><td>{{ a_tourne }}</td><td>{{ sans_echec }}</td><td>{{ job.type }}</td><td>{{ executions_attendues | default: '—' }}</td><td>{{ executions }}</td><td>{{ echecs }}</td><td>{{ duree_moyenne }}</td><td>{{ job.description | escape }}</td></tr>
 {% endfor %}
-{% assign types = consts.jobs | map: 'type' %}
-{% for v in steps.requete.output.values %}
-{% unless types contains v[3] %}
-{% if v[1] == 0 %}
-{% assign ok = '✅' %}
+{% assign types_suivis = consts.jobs | map: 'type' %}
+{% for resultat in steps.requete.output.values %}
+{% unless types_suivis contains resultat[3] %}
+{% if resultat[1] == 0 %}
+{% assign sans_echec = '✅' %}
 {% else %}
-{% assign ok = '❌' %}
+{% assign sans_echec = '❌' %}
 {% endif %}
-<tr><td>—</td><td>{{ ok }}</td><td>{{ v[3] }}</td><td>—</td><td>{{ v[0] }}</td><td>{{ v[1] }}</td><td>{{ v[2] }} s</td><td>Hors CRON (lancé par un autre job ou un événement)</td></tr>
+<tr><td>—</td><td>{{ sans_echec }}</td><td>{{ resultat[3] }}</td><td>—</td><td>{{ resultat[0] }}</td><td>{{ resultat[1] }}</td><td>{{ resultat[2] }} s</td><td>Hors CRON (lancé par un autre job ou un événement)</td></tr>
 {% endunless %}
 {% endfor %}
 </tbody></table>

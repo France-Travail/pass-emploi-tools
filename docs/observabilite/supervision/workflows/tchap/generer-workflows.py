@@ -412,8 +412,9 @@ def jobs_suivis():
 
 
 def colle(nom):
-    """Un fragment Liquid de modeles/, écrit une instruction par ligne : recollé en une ligne."""
-    return ''.join(modele(nom).split('\n'))
+    """Un fragment Liquid de modeles/, écrit une instruction par ligne : recollé en une ligne,
+    sans ses lignes de commentaire (« # » en début de ligne)."""
+    return ''.join(l for l in modele(nom).split('\n') if not l.startswith('#'))
 
 
 def rapport(r, jobs):

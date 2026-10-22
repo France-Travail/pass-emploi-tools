@@ -1,6 +1,8 @@
-{% assign t = 'now' | date: '%s' | plus: 7200 %}
-{% assign aujourdhui_jour = t | date: '%-d' | plus: 0 %}
-{% assign aujourdhui_semaine = t | date: '%w' | plus: 0 %}
-{% assign th = t | minus: 86400 %}
-{% assign hier_jour = th | date: '%-d' | plus: 0 %}
-{% assign hier_semaine = th | date: '%w' | plus: 0 %}
+# Jour du mois et jour de la semaine, aujourd'hui et hier, à l'heure de Paris (UTC+2) :
+# un job mensuel ou hebdomadaire n'est attendu que si son jour tombe dans les 24 h du rapport.
+{% assign maintenant = 'now' | date: '%s' | plus: 7200 %}
+{% assign jour_du_mois_aujourdhui = maintenant | date: '%-d' | plus: 0 %}
+{% assign jour_de_la_semaine_aujourdhui = maintenant | date: '%w' | plus: 0 %}
+{% assign hier = maintenant | minus: 86400 %}
+{% assign jour_du_mois_hier = hier | date: '%-d' | plus: 0 %}
+{% assign jour_de_la_semaine_hier = hier | date: '%w' | plus: 0 %}

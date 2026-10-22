@@ -39,4 +39,7 @@ Le Workflow planifié chaque jour à 9 h 30 (heure de Paris), un par entrée de
 
 Les fichiers `.liquid` sont écrits **une instruction par ligne** pour être lisibles :
 le générateur recolle les lignes bout à bout, sans espace (un retour à la ligne dans
-le message s'écrit `\n`, ou `<br/>` en HTML).
+le message s'écrit `\n`, ou `<br/>` en HTML). Une ligne qui commence par `#` est un
+commentaire, retiré à la génération. Les variables Liquid portent un nom qui dit ce
+qu'elles contiennent (`job`, `executions_attendues`, `sans_echec`…) ; les colonnes du
+résultat de la requête (`resultat[0]`…) sont décrites en commentaire.
