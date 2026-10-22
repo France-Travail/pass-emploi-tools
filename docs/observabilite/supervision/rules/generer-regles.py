@@ -259,7 +259,7 @@ def verifier(steps, sessions, dashboards, nom):
     assert len(r['steps']) <= 3, r['name']
 
 def valeur_multiligne(lignes, pad):
-    return ('\\n{{!\n' + ' ' * pad + '}}').join(json.dumps(l, ensure_ascii=False)[1:-1] for l in lignes)
+    return '\\n'.join(json.dumps(l, ensure_ascii=False)[1:-1] for l in lignes)
 
 def body(r):
     pad = len('          "value": "') - 2

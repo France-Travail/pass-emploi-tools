@@ -21,11 +21,11 @@
 # jobs-staging.
 #
 # Messages Mattermost : une section (« À vérifier », « Dashboards », « Discover
-# sessions ») = un champ, un élément par ligne. Un vrai retour à la ligne est
-# interdit dans une chaîne JSON : chaque ligne finit par `\n{{!` et la suivante
-# commence par `}}`. Ce commentaire Mustache disparaît au rendu des actions de
-# règle, pas lors d'un _execute direct du connecteur (le message montre alors
-# `{{!`).
+# sessions ») = un champ, un élément par ligne (`\n`). Chaque champ tient sur une
+# seule ligne du fichier : l'éditeur de règle de Kibana lit le body comme du JSON
+# brut, un retour à la ligne dans une chaîne l'empêche de l'afficher. Pour relire
+# les étapes, voir la définition de la règle dans generer-regles.py ou son
+# Investigation guide.
 #
 # artifacts : l'Investigation guide et les Related dashboards (onglets de la
 # règle). L'API publique ne les renvoie pas dans ses réponses : les vérifier
@@ -1013,14 +1013,11 @@ PUT kbn:/api/alerting/rule/1b751543-4233-4857-8fe6-8141a7c2d040
         },
         {
           "title": "À vérifier",
-          "value": "1. Quel partenaire, et quelles erreurs : les lignes ci-dessus (domaine, nombre et types d'échecs), puis les échecs par app dans le temps dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n{{!
-                  }}2. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n{{!
-                  }}3. Le détail des appels en échec : le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293), onglet du partenaire ; si la panne vient du partenaire, le prévenir (contacts ci-dessous)"
+          "value": "1. Quel partenaire, et quelles erreurs : les lignes ci-dessus (domaine, nombre et types d'échecs), puis les échecs par app dans le temps dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n2. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n3. Le détail des appels en échec : le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293), onglet du partenaire ; si la panne vient du partenaire, le prévenir (contacts ci-dessous)"
         },
         {
           "title": "Dashboards",
-          "value": "[[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n{{!
-                  }}[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+          "value": "[[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
         },
         {
           "title": "Discover sessions",
@@ -1132,19 +1129,15 @@ PUT kbn:/api/alerting/rule/98e0103a-f809-48f2-8343-d1269213dce4
         },
         {
           "title": "À vérifier",
-          "value": "1. Quelles routes sont touchées : les lignes ci-dessus (template d'URL et nombre d'erreurs), puis le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n{{!
-                  }}2. Si un partenaire est en cause (timeout, erreur d'API) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n{{!
-                  }}3. Le motif d'une requête en erreur et son `trace.id` : le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)"
+          "value": "1. Quelles routes sont touchées : les lignes ci-dessus (template d'URL et nombre d'erreurs), puis le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n2. Si un partenaire est en cause (timeout, erreur d'API) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n3. Le motif d'une requête en erreur et son `trace.id` : le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)"
         },
         {
           "title": "Dashboards",
-          "value": "[[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n{{!
-                  }}[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+          "value": "[[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
         },
         {
           "title": "Discover sessions",
-          "value": "[[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n{{!
-                  }}[[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)"
+          "value": "[[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n[[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)"
         },
         {
           "title": "Runbook",
@@ -1253,15 +1246,11 @@ PUT kbn:/api/alerting/rule/ad326ad3-aea7-4ef8-be28-31008c4aebce
         },
         {
           "title": "À vérifier",
-          "value": "1. Un robot ou un scan en cause (volume anormal, codes hors 4xx) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Robots / scan](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6)\n{{!
-                  }}2. Si un seul fournisseur d'identité concentre les refus (France Travail Connect, Milo…) : sa disponibilité dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74) ; si tous les modes sont touchés : Keycloak ou pass-emploi-connect, dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n{{!
-                  }}3. La liste des refus, par fournisseur d'identité et par motif : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8), onglet *Field statistics*"
+          "value": "1. Un robot ou un scan en cause (volume anormal, codes hors 4xx) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Robots / scan](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6)\n2. Si un seul fournisseur d'identité concentre les refus (France Travail Connect, Milo…) : sa disponibilité dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74) ; si tous les modes sont touchés : Keycloak ou pass-emploi-connect, dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n3. La liste des refus, par fournisseur d'identité et par motif : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8), onglet *Field statistics*"
         },
         {
           "title": "Dashboards",
-          "value": "[[Pass Emploi] Diagnostic d'erreurs - Robots / scan](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6)\n{{!
-                  }}[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n{{!
-                  }}[[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)"
+          "value": "[[Pass Emploi] Diagnostic d'erreurs - Robots / scan](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n[[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)"
         },
         {
           "title": "Discover sessions",
@@ -1381,19 +1370,15 @@ PUT kbn:/api/alerting/rule/1b97f0e0-870f-498d-8dd7-1c2f9aeba665
         },
         {
           "title": "À vérifier",
-          "value": "1. Le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur\n{{!
-                  }}2. Pour un incident, l'impact sur les utilisateurs : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n{{!
-                  }}3. L'activité de l'app (onglet Activity) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+          "value": "1. Le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur\n2. Pour un incident, l'impact sur les utilisateurs : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n3. L'activité de l'app (onglet Activity) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
         },
         {
           "title": "Dashboards",
-          "value": "[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n{{!
-                  }}[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+          "value": "[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
         },
         {
           "title": "Discover sessions",
-          "value": "[[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87)\n{{!
-                  }}[[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)"
+          "value": "[[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87)\n[[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)"
         }
       ]
     }
@@ -1500,8 +1485,7 @@ PUT kbn:/api/alerting/rule/07c9c5d7-e8fe-4964-ac8d-684b1c4c39b8
         },
         {
           "title": "À vérifier",
-          "value": "1. Le Discover [[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/33bed466-9d68-4789-a723-aeea34e6cd93), onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur\n{{!
-                  }}2. L'activité de l'app (onglet Activity) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+          "value": "1. Le Discover [[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/33bed466-9d68-4789-a723-aeea34e6cd93), onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur\n2. L'activité de l'app (onglet Activity) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
         },
         {
           "title": "Dashboards",
@@ -1616,8 +1600,7 @@ PUT kbn:/api/alerting/rule/a03feacb-ddf8-4e04-af82-48f77b07a86e
         },
         {
           "title": "À vérifier",
-          "value": "1. Le Discover [[Pass Emploi] Logs de Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c0d38bba-66ef-4b68-8a10-4d786f6a9f4a), onglet « Jobs en échec » : le job, son erreur et sa stack\n{{!
-                  }}2. L'onglet « Exécutions » de [[Pass Emploi] Logs de Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c0d38bba-66ef-4b68-8a10-4d786f6a9f4a) : le job échoue-t-il à chaque exécution, ou a-t-il réussi depuis ?"
+          "value": "1. Le Discover [[Pass Emploi] Logs de Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c0d38bba-66ef-4b68-8a10-4d786f6a9f4a), onglet « Jobs en échec » : le job, son erreur et sa stack\n2. L'onglet « Exécutions » de [[Pass Emploi] Logs de Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c0d38bba-66ef-4b68-8a10-4d786f6a9f4a) : le job échoue-t-il à chaque exécution, ou a-t-il réussi depuis ?"
         },
         {
           "title": "Discover sessions",
@@ -1727,8 +1710,7 @@ PUT kbn:/api/alerting/rule/9dbcb316-60cd-481e-8717-33ffe0275e7d
         },
         {
           "title": "À vérifier",
-          "value": "1. Le Discover [[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740), onglet « Jobs en échec » : le job, son environnement, son erreur et sa stack\n{{!
-                  }}2. L'onglet « Exécutions » de [[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740) : le job échoue-t-il à chaque exécution, ou a-t-il réussi depuis ?"
+          "value": "1. Le Discover [[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740), onglet « Jobs en échec » : le job, son environnement, son erreur et sa stack\n2. L'onglet « Exécutions » de [[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740) : le job échoue-t-il à chaque exécution, ou a-t-il réussi depuis ?"
         },
         {
           "title": "Discover sessions",
@@ -1830,14 +1812,11 @@ PUT kbn:/api/alerting/rule/c9164880-1829-4847-acb1-5a70433ecbb8
         },
         {
           "title": "À vérifier",
-          "value": "1. L'état de la base PostgreSQL de `pass-emploi-api-prod` (connexions, mémoire, CPU) : son addon dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n{{!
-                  }}2. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n{{!
-                  }}3. Le type et le message de chaque erreur : le Discover [[Pass Emploi] Logs de Prod - Erreurs base de données](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c4dfc122-1edc-42b2-973d-98ac7b127211), onglet « error.type : Sequelize* »"
+          "value": "1. L'état de la base PostgreSQL de `pass-emploi-api-prod` (connexions, mémoire, CPU) : son addon dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n2. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n3. Le type et le message de chaque erreur : le Discover [[Pass Emploi] Logs de Prod - Erreurs base de données](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c4dfc122-1edc-42b2-973d-98ac7b127211), onglet « error.type : Sequelize* »"
         },
         {
           "title": "Dashboards",
-          "value": "[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n{{!
-                  }}[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+          "value": "[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
         },
         {
           "title": "Discover sessions",
@@ -1945,15 +1924,11 @@ PUT kbn:/api/alerting/rule/52c66a2a-2ee1-4de2-bc5c-642a96395405
         },
         {
           "title": "À vérifier",
-          "value": "1. Les erreurs les plus fréquentes : les lignes ci-dessus, puis l'écran, le navigateur et la pile dans [[APM] Erreurs de rum-pass-emploi-web-prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/apm/services/rum-pass-emploi-web-prod/errors)\n{{!
-                  }}2. Si ce sont des appels à l'api en échec (« Failed to fetch », « Internal server error ») : les erreurs de l'api au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n{{!
-                  }}3. Un déploiement récent du web : l'activité de `pass-emploi-web-prod` dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+          "value": "1. Les erreurs les plus fréquentes : les lignes ci-dessus, puis l'écran, le navigateur et la pile dans [[APM] Erreurs de rum-pass-emploi-web-prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/apm/services/rum-pass-emploi-web-prod/errors)\n2. Si ce sont des appels à l'api en échec (« Failed to fetch », « Internal server error ») : les erreurs de l'api au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n3. Un déploiement récent du web : l'activité de `pass-emploi-web-prod` dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
         },
         {
           "title": "Dashboards",
-          "value": "[[APM] Erreurs de rum-pass-emploi-web-prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/apm/services/rum-pass-emploi-web-prod/errors)\n{{!
-                  }}[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n{{!
-                  }}[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+          "value": "[[APM] Erreurs de rum-pass-emploi-web-prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/apm/services/rum-pass-emploi-web-prod/errors)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
         },
         {
           "title": "Runbook",
@@ -2055,20 +2030,15 @@ PUT kbn:/api/alerting/rule/44d7b9b0-6e45-11ec-9757-c9700cd1bb4e
         },
         {
           "title": "Détail",
-          "value": "URL : {{state.monitorUrl}}\n{{!
-                  }}Motif : {{state.latestErrorMessage}}\n{{!
-                  }}En panne depuis : {{state.currentTriggerStarted}}"
+          "value": "URL : {{state.monitorUrl}}\nMotif : {{state.latestErrorMessage}}\nEn panne depuis : {{state.currentTriggerStarted}}"
         },
         {
           "title": "À vérifier",
-          "value": "1. L'état de l'app `pass-emploi-api-prod` (conteneurs, crash, redémarrage) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n{{!
-                  }}2. Un déploiement, un redémarrage ou un crash au même moment : le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglets « Incidents » et « Infra »\n{{!
-                  }}3. L'impact pour les utilisateurs : les erreurs par parcours dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+          "value": "1. L'état de l'app `pass-emploi-api-prod` (conteneurs, crash, redémarrage) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n2. Un déploiement, un redémarrage ou un crash au même moment : le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglets « Incidents » et « Infra »\n3. L'impact pour les utilisateurs : les erreurs par parcours dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
         },
         {
           "title": "Dashboards",
-          "value": "[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n{{!
-                  }}[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+          "value": "[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
         },
         {
           "title": "Discover sessions",
@@ -2205,20 +2175,15 @@ PUT kbn:/api/alerting/rule/45585b60-6e45-11ec-9757-c9700cd1bb4e
         },
         {
           "title": "Détail",
-          "value": "URL : {{state.monitorUrl}}\n{{!
-                  }}Motif : {{state.latestErrorMessage}}\n{{!
-                  }}En panne depuis : {{state.currentTriggerStarted}}"
+          "value": "URL : {{state.monitorUrl}}\nMotif : {{state.latestErrorMessage}}\nEn panne depuis : {{state.currentTriggerStarted}}"
         },
         {
           "title": "À vérifier",
-          "value": "1. L'état de l'app `pass-emploi-web-prod` (conteneurs, crash, redémarrage) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n{{!
-                  }}2. Un déploiement, un redémarrage ou un crash au même moment : le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglets « Incidents » et « Infra »\n{{!
-                  }}3. L'impact pour les utilisateurs : les erreurs par parcours dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+          "value": "1. L'état de l'app `pass-emploi-web-prod` (conteneurs, crash, redémarrage) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n2. Un déploiement, un redémarrage ou un crash au même moment : le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglets « Incidents » et « Infra »\n3. L'impact pour les utilisateurs : les erreurs par parcours dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
         },
         {
           "title": "Dashboards",
-          "value": "[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n{{!
-                  }}[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+          "value": "[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
         },
         {
           "title": "Discover sessions",
@@ -2355,20 +2320,15 @@ PUT kbn:/api/alerting/rule/4439f310-6e45-11ec-9757-c9700cd1bb4e
         },
         {
           "title": "Détail",
-          "value": "URL : {{state.monitorUrl}}\n{{!
-                  }}Motif : {{state.latestErrorMessage}}\n{{!
-                  }}En panne depuis : {{state.currentTriggerStarted}}"
+          "value": "URL : {{state.monitorUrl}}\nMotif : {{state.latestErrorMessage}}\nEn panne depuis : {{state.currentTriggerStarted}}"
         },
         {
           "title": "À vérifier",
-          "value": "1. L'état de l'app `pass-emploi-connect-prod` (conteneurs, crash, redémarrage) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n{{!
-                  }}2. Un déploiement, un redémarrage ou un crash au même moment : le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglets « Incidents » et « Infra »\n{{!
-                  }}3. L'impact pour les utilisateurs : les erreurs par parcours dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+          "value": "1. L'état de l'app `pass-emploi-connect-prod` (conteneurs, crash, redémarrage) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n2. Un déploiement, un redémarrage ou un crash au même moment : le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglets « Incidents » et « Infra »\n3. L'impact pour les utilisateurs : les erreurs par parcours dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
         },
         {
           "title": "Dashboards",
-          "value": "[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n{{!
-                  }}[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+          "value": "[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
         },
         {
           "title": "Discover sessions",
@@ -2490,8 +2450,7 @@ PUT kbn:/api/alerting/rule/6dd99b60-9886-11ec-9757-c9700cd1bb4e
         },
         {
           "title": "À vérifier",
-          "value": "1. Le domaine et la date d'expiration : le titre du message\n{{!
-                  }}2. Son renouvellement automatique chez l'hébergeur du domaine ; pour une app Scalingo, l'onglet Domains de l'app dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+          "value": "1. Le domaine et la date d'expiration : le titre du message\n2. Son renouvellement automatique chez l'hébergeur du domaine ; pour une app Scalingo, l'onglet Domains de l'app dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
         },
         {
           "title": "Dashboards",
