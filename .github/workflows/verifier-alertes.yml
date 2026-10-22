@@ -33,6 +33,11 @@ jobs:
   verifier:
     name: Alertes Kibana et Workflows Tchap à jour avec leurs générateurs
     runs-on: ubuntu-latest
+    env:
+      # Feature flipping (actif seulement à « true ») : les règles gardent leurs actions
+      # Mattermost jusqu'au décommissionnement de Mattermost. À passer à « false » ce jour-là,
+      # dans le même commit que les règles régénérées sans Mattermost.
+      FEATURE_NOTIFIER_ALERTES_MATTERMOST: 'true'
     steps:
       - name: Récupérer pass-emploi-tools
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2

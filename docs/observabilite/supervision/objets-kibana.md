@@ -111,10 +111,16 @@ Modifier dans Kibana, puis réexporter par-dessus le fichier versionné :
   Toutes les règles branchées sur Tchap sont générées : modifier leur
   définition, dans `rules/generer-regles.py` ou, pour une règle définie au format
   de Kibana (SLO, stack 1a à 10, expiration du bot), dans
-  `rules/definitions-format-kibana.py`, puis `python3 -I rules/generer-regles.py --ecrire <code>` et
+  `rules/definitions-format-kibana.py`, puis
+  `FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I rules/generer-regles.py --ecrire <code>` et
   `python3 -I workflows/tchap/generer-workflows.py`, et commiter les fichiers
   générés avec la définition. Sur chaque PR, le workflow GitHub
   [`verifier-alertes.yml`](../../../.github/workflows/verifier-alertes.yml)
   échoue si un générateur a été oublié ou si une règle viole leurs contrôles
   (message absent ou en JSON invalide, salon inconnu, règle ES|QL hors
   `@timestamp`). Le déploiement dans Kibana reste manuel.
+  `FEATURE_NOTIFIER_ALERTES_MATTERMOST` suit la convention des features des apps
+  (active seulement à `true`) : à `true`, les règles gardent leurs actions
+  Mattermost ; sans elle, elles n'ont plus que leur action Tchap. Le CI la fixe
+  à `true` jusqu'au décommissionnement de Mattermost : régénérer sans elle fait
+  échouer le check de la PR.

@@ -12,7 +12,7 @@
 #
 # Blocs générés par generer-regles.py (définitions dans ce fichier Python et dans
 # definitions-format-kibana.py) : modifier la définition,
-# puis python3 -I generer-regles.py --ecrire <code> ; --verifier compare tout.
+# puis FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I generer-regles.py --ecrire <code> ; --verifier compare tout.
 # Règles ES|QL (A1, A2, A3, A6, A7) : le Workflow du salon relance leur requête.
 #
 # A4a / A4b : événements Scalingo des apps applicatives, #monitoring-production /

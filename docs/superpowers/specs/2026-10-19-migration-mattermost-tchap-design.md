@@ -420,8 +420,11 @@ de déploiement (2026-10-23 08:48 UTC).
       Fait le 2026-10-22 : les 42 règles branchées sur Tchap ont une
       définition (17 champ par champ, 25 au format de Kibana dans
       `rules/definitions-format-kibana.py`, contenu vérifié identique), et le
-      message Tchap n'est plus lu que là. Reste l'interrupteur « sans
-      Mattermost » dans `generer-regles.py`.
+      message Tchap n'est plus lu que là. Retrait de Mattermost :
+      `FEATURE_NOTIFIER_ALERTES_MATTERMOST` (convention des apps, active
+      seulement à `true` ; fixée à `true` dans le CI) ; le jour venu, régénérer
+      les règles sans elle, passer celle du CI à `false` dans le même commit,
+      redéployer, puis « Update API keys ».
 
 ## 12. Risques et points ouverts
 

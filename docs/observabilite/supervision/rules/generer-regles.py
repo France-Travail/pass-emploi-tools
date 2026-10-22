@@ -57,6 +57,19 @@ DOC_COLLECTE = f'[Collecte des événements externes]({GH}collecte/evenements-ex
 JOBS_KQL = 'service.name : "pass-emploi-api" and event.action : ("job_crashed" or "job_handler_not_found")'
 JOBS_LIGNES = '{{#context.hits}}❌ `{{_source.labels.job_type}}` : {{_source.event.action}} — {{_source.error.message}}\\n{{/context.hits}}'
 
+# Feature flipping, selon la convention des apps : active seulement si la variable vaut « true ».
+# FEATURE_NOTIFIER_ALERTES_MATTERMOST : les règles générées gardent leurs actions Mattermost.
+# Absente, elles n'ont plus que leur action Tchap (après le décommissionnement de Mattermost).
+FEATURES = {'notifierAlertesMattermost': os.environ.get('FEATURE_NOTIFIER_ALERTES_MATTERMOST') == 'true'}
+
+
+def actions_envoyees(actions):
+    """Les actions de la règle, sans ses actions Mattermost si la feature est inactive."""
+    if FEATURES['notifierAlertesMattermost']:
+        return actions
+    return [a for a in actions if a['id'] == 'system-connector-.workflows']
+
+
 RUNBOOK_APPLICATIF = ('Runbook', [f'[Investiguer un incident applicatif]({GH}runbooks/investigation-incident.md)'])
 
 REGLES = {
@@ -338,6 +351,7 @@ def bloc(nom):
     }
     if not r['workflow']:
         regle['actions'] = regle['actions'][:1]
+    regle['actions'] = actions_envoyees(regle['actions'])
     texte = json.dumps(regle, ensure_ascii=False, indent=2).replace('"@@BODY@@"', '"""' + body(r) + '"""')
     return r['commentaire'] + '\nPUT kbn:/api/alerting/rule/' + r['id'] + '\n' + texte + '\n'
 
@@ -347,6 +361,7 @@ def bloc_format_kibana(r):
     for a in regle.get('actions', []):
         if a.get('params', {}).get('body') == '@@MESSAGE@@':
             a['params']['body'] = '@@MESSAGE:' + a['group'] + '@@'
+    regle['actions'] = actions_envoyees(regle['actions'])
     texte = json.dumps(regle, ensure_ascii=False, indent=2)
     for groupe, corps in r['messages'].items():
         texte = texte.replace('"@@MESSAGE:' + groupe + '@@"', '"""' + corps + '"""')
@@ -383,6 +398,7 @@ def bloc_uptime(nom, r, artifacts):
     actions.append({'id': 'system-connector-.workflows', 'params': {'subAction': 'run', 'subActionParams': {'workflowId': 'tchap-monitoring-production', 'summaryMode': True,
                     'alertStates': {'new': True, 'ongoing': rappel, 'recovered': bool(retabli)}}}})
     regle = {'name': r['name'], 'tags': r['tags'], 'artifacts': artifacts, 'schedule': {'interval': r['interval']}, 'params': r['uptime']['params'], 'actions': actions}
+    regle['actions'] = actions_envoyees(regle['actions'])
     texte = json.dumps(regle, ensure_ascii=False, indent=2).replace('"@@BODY@@"', '"""' + body(r) + '"""')
     if retabli:
         texte = texte.replace('"@@RETABLI@@"', '"""' + messages(nom)['recovered'] + '"""')
@@ -411,6 +427,7 @@ def bloc_esql(nom, r, artifacts):
             {'group': 'query matched', 'id': r['mm'], 'params': {'body': '@@BODY@@'}, 'frequency': {'summary': False, 'notify_when': 'onThrottleInterval', 'throttle': '1h'}},
             {'id': 'system-connector-.workflows', 'params': {'subAction': 'run', 'subActionParams': {'workflowId': f"tchap-{SALON_DU_CONNECTEUR[r['mm']]}", 'summaryMode': True, 'alertStates': {'new': True, 'ongoing': False, 'recovered': False}}}}],
     }
+    regle['actions'] = actions_envoyees(regle['actions'])
     texte = json.dumps(regle, ensure_ascii=False, indent=2).replace('"@@BODY@@"', '"""' + body(r) + '"""')
     texte = texte.replace('"@@ESQL@@"', '"""' + r['esql'] + '"""')
     return r['commentaire'] + '\nPUT kbn:/api/alerting/rule/' + r['id'] + '\n' + texte + '\n'
@@ -441,6 +458,8 @@ def emplacement(lignes, nom):
 
 def main(args):
     mode = args[0] if args and args[0] in ('--verifier', '--ecrire') else None
+    if mode and not FEATURES['notifierAlertesMattermost']:
+        print('FEATURE_NOTIFIER_ALERTES_MATTERMOST absente ou différente de « true » : règles SANS action Mattermost', file=sys.stderr)
     codes = (args[1:] if mode else args) or (list(REGLES) if mode == '--verifier' else [])
     ecarts = 0
     for nom in codes:
