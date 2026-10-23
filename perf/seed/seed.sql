@@ -19,6 +19,12 @@
 --
 -- Portefeuilles de 47 jeunes (p90 mesurée, comme fond-de-charge.sql) : un
 -- conseiller unique fausserait toute requête filtrant par id_conseiller.
+--
+-- Dispositif : celui du conseiller, attribué par c % 7 parmi les dispositifs
+-- FT accompagnés (DISPOSITIFS_FT_ACCOMPAGNES côté api), et hérité par ses
+-- jeunes. Déterministe : deux tirs doivent semer la même base. Les
+-- non-accompagnés (DEMANDEUR_D_EMPLOI, ESPACE_CANDIDAT) sont exclus : ils
+-- n'ont pas de conseiller, et l'api les authentifie par un autre chemin.
 
 \if :{?pool_size}
 \else
@@ -32,6 +38,7 @@
 \ir garde-fou.sql
 
 \set portefeuille 47
+\set dispositifs '{CEJ,BRSA,AIJ,AVENIR_PRO,ACCOMPAGNEMENT_INTENSIF,ACCOMPAGNEMENT_GLOBAL,EQUIP_EMPLOI_RECRUT}'
 
 BEGIN;
 
@@ -41,7 +48,8 @@ BEGIN;
 DELETE FROM conseiller WHERE id LIKE :'pool_prefix' || 'conseiller%';
 
 INSERT INTO conseiller (
-  id, nom, prenom, email, username, structure, id_authentification, date_creation
+  id, nom, prenom, email, username, structure, dispositif, id_authentification,
+  date_creation
 )
 SELECT
   :'pool_prefix' || 'conseiller-' || c,
@@ -49,7 +57,8 @@ SELECT
   'Conseiller',
   :'pool_prefix' || 'conseiller-' || c || '@perf.local',
   :'pool_prefix' || 'conseiller-' || c,
-  'POLE_EMPLOI',
+  'FRANCE_TRAVAIL',
+  (:'dispositifs'::text[])[c % cardinality(:'dispositifs'::text[]) + 1],
   :'pool_prefix' || 'conseiller-' || c,
   now()
 FROM generate_series(0, ((:pool_size - 1) / :portefeuille)) AS c;
@@ -67,9 +76,9 @@ SELECT
   :'pool_prefix' || 'conseiller-' || (i / :portefeuille),
   now(),
   :'pool_prefix' || i || '@perf.local',
-  'POLE_EMPLOI',
+  'FRANCE_TRAVAIL',
   :'pool_prefix' || i,
-  'CEJ',
+  (:'dispositifs'::text[])[(i / :portefeuille) % cardinality(:'dispositifs'::text[]) + 1],
   now(), now(), now()
 FROM generate_series(0, :pool_size - 1) AS i;
 

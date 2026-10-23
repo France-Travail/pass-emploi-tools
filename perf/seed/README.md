@@ -84,7 +84,7 @@ Voir l'invariant dans [`docs/perf/harnais.md`](../../docs/perf/harnais.md).
 
 Des conseillers `{prefix}conseiller-{c}` portant **47 jeunes chacun** (la p90
 mesurée, comme `fond-de-charge.sql`), puis `pool_size` bénéficiaires de
-structure `POLE_EMPLOI` répartis en trois profils par `i % 20` :
+structure `FRANCE_TRAVAIL` répartis en trois profils par `i % 20` :
 
 | Profil | Part | Favoris | Alertes |
 |---|---|---|---|
@@ -96,6 +96,13 @@ Ces profils reproduisent la **forme** de la distribution de production, qui est
 à queue lourde : p50 = 0 favori, p90 = 1, p99 = 15. Un gabarit uniforme calé sur
 la p90 donnerait un pool où chaque jeune a un favori — ni le cas courant, ni le
 cas coûteux, et des tirs verts qui ne prouvent rien.
+
+Chaque conseiller porte un dispositif FT accompagné, choisi par `c % 7` (CEJ,
+BRSA, AIJ, AVENIR_PRO, ACCOMPAGNEMENT_INTENSIF, ACCOMPAGNEMENT_GLOBAL,
+EQUIP_EMPLOI_RECRUT), que ses jeunes reprennent. La règle est déterministe :
+deux seeds produisent la même base, donc deux tirs restent comparables. Le
+parcours login puis accueil est le même pour ces sept dispositifs ; les
+non-accompagnés (DEMANDEUR_D_EMPLOI, ESPACE_CANDIDAT) en sont exclus.
 
 ## Ce qui n'est pas semé, délibérément
 
