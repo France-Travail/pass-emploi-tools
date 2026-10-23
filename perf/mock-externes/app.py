@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import hashlib
 import json
@@ -6,13 +7,15 @@ import random
 import tempfile
 import time
 from urllib.parse import quote
+from uuid import uuid4
 
 import jwt
 import uvicorn
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
-from fastapi import FastAPI, Header, Request
-from fastapi.responses import RedirectResponse
+from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.responses import JSONResponse, RedirectResponse
+from pydantic import BaseModel
 
 app = FastAPI()
 
@@ -240,6 +243,37 @@ async def poleemploi_prestations():
 @app.get("/poleemploi/peconnect-rendezvousagenda/v2/listerendezvous")
 async def poleemploi_agenda():
     return []
+
+
+##################################################
+##
+##  BREVO
+##
+##  Les échecs sont portés par les données semées (marqueur dans l'email),
+##  pas par une config du mock : il reste sans état, et les attendus du
+##  verdict se comptent en SQL.
+##
+##################################################
+
+LATENCE_MAIL_MS = int(os.getenv("LATENCE_MAIL_MS", "50"))
+MARQUEUR_ECHEC_MAIL = "echec-mail"
+
+
+class Destinataire(BaseModel):
+    email: str
+
+
+class Mail(BaseModel):
+    to: list[Destinataire]
+
+
+@app.post("/brevo/v3/smtp/email")
+async def brevo_envoyer(mail: Mail):
+    # Latence avant la décision : un échec coûte le même temps qu'un succès.
+    await asyncio.sleep(LATENCE_MAIL_MS / 1000)
+    if any(MARQUEUR_ECHEC_MAIL in destinataire.email for destinataire in mail.to):
+        raise HTTPException(status_code=500, detail="échec injecté")
+    return JSONResponse(status_code=201, content={"messageId": f"<perf-{uuid4()}@mock>"})
 
 
 if __name__ == "__main__":
