@@ -60,3 +60,13 @@ jobs:
             }
             echo "::endgroup::"
           done
+
+      # Le worker de l'api, allumé par perf-job-archivage.yml, exécuterait les
+      # crons planifiés toute la nuit sur l'environnement de perf.
+      - name: Éteindre le worker de l'api
+        run: |
+          sortie="$(scalingo --region "$SCALINGO_REGION" --app pass-emploi-api-perf scale worker:0 2>&1)" || {
+            echo "$sortie"
+            echo "$sortie" | grep -qi 'no change in containers formation' || exit 1
+          }
+          echo "$sortie"
