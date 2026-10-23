@@ -60,6 +60,46 @@ cf. `docs/perf/harnais.md`) : une approximation de volume, opt-in, séparée de
 `seed.sql` pour ne jamais changer son comportement. Idempotent, garde-fou
 anti-prod partagé avec `seed.sql`.
 
+## Population de migration (scénario job d'archivage)
+
+`migration.sql` sème une population que l'archivage de migration puis le
+nettoyage des archives ciblent. Le workflow `perf-job-archivage.yml` le rejoue
+avant chaque tir, l'archivage étant destructeur.
+
+```sh
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -v taille=2000 -f migration.sql
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -v taille=2000 -f verifier-migration.sql
+psql "$DATABASE_URL" -At -f attendus-migration.sql   # une ligne JSON, lue par le verdict
+```
+
+| Paramètre | Défaut | Rôle |
+|---|---|---|
+| `taille` | `2000` | Jeunes de la population (999 999 au plus) |
+| `prefixe` | `perf-migr-` | Préfixe des ids (sans guillemets, comme `pool_prefix`) |
+| `population` | `perf-migration` | Id de la population et de son déploiement `MIGRATION` |
+| `nb_agences` | `49` | Agences citées par la population |
+| `portefeuille` | `47` | Jeunes par conseiller |
+| `inactifs_tous_les` | `5` | 1 jeune sur N sans date de dernière activité ni de connexion (`0` : aucun) |
+| `echec_mail_tous_les` | `100` | 1 jeune sur N dont le mail échoue (`0` : aucun) |
+| `echec_chat_tous_les` | `100` | 1 jeune sur N dont le chat échoue (`0` : aucun) |
+| `temoins` | `47` | Jeunes d'une agence non citée, qui doivent survivre à l'archivage |
+
+**Les échecs sont portés par les données**, que `mock-externes` lit sans état :
+`echec-mail` dans l'email du jeune, `echec-chat` dans son id. Un jeune
+`echec-chat` a donc un id différent de son sub, ce qui prouve que le nettoyage
+révoque avec le sub archivé. Les marqués mail sont tous actifs (seuls les actifs
+reçoivent le mail).
+
+**Préfixe distinct du pool.** L'archivage supprime les jeunes : avec le préfixe
+du pool, il détruirait des identités que le mock tire au login. Et connect
+révoque par `KEYS *<sub>*`, une sous-chaîne : les subs sont donc sur 6 chiffres
+(`perf-migr-000001`), sinon `perf-migr-1` ramasserait les clés de
+`perf-migr-10…`.
+
+**`structure = FRANCE_TRAVAIL`, dispositif `CEJ`**, pour le jeune comme pour le
+conseiller : c'est le modèle Profil de l'api. La population cible par agence,
+sans filtre de dispositif.
+
 ## Appariement avec `mock-externes`
 
 > ⚠️ **`pool_prefix` et `pool_size` doivent valoir exactement `POOL_PREFIX` et
@@ -125,4 +165,5 @@ donnée de prod).
 | `GARDE-FOU : la base "…" ne porte pas le marqueur` | Marqueur non posé — vérifier **qu'on vise bien la base de perf** avant de le poser |
 | Login en échec `UTILISATEUR_INEXISTANT` | `pool_prefix` / `pool_size` désalignés avec le mock |
 | `Pool : 0 jeunes en base` au vérificateur | `pool_prefix` passé avec des guillemets, ou seed joué sur une autre base que celle vérifiée |
+| `Population : N jeunes ciblés` au vérificateur de migration | `prefixe` passé avec des guillemets, ou requête de population de l'api modifiée : réaligner `verifier-migration.sql` |
 | Le tir frappe toujours les mêmes jeunes | `pool_size` plus petit que le nombre d'arrivées du tir — le workflow le refuse et affiche le minimum à poser |
