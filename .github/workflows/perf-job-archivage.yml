@@ -60,6 +60,13 @@ on:
       taille_mock:
         description: "taille_mock · taille du conteneur mock-externes-perf (mail et chat)"
         default: "M"
+      login_pendant_nettoyage:
+        description: "login_pendant_nettoyage · jouer le login Gatling à faible débit avant (référence, 2 min) puis pendant le nettoyage, et comparer les p95/p99, sans assertion. Allonge le tir"
+        type: boolean
+        default: false
+      debit_login:
+        description: "debit_login · débit des logins Gatling, par seconde, si login_pendant_nettoyage"
+        default: "1"
       arret_apres_tir:
         description: "arret_apres_tir · rescaler les apps web à 0 en fin de tir (le worker est toujours éteint)"
         type: boolean
@@ -133,6 +140,8 @@ jobs:
             echo "NB_CONNECT=${{ inputs.nb_connect || '1' }}"
             echo "TAILLE_API=${{ inputs.taille_api || 'M' }}"
             echo "TAILLE_MOCK=${{ inputs.taille_mock || 'M' }}"
+            echo "LOGIN_PENDANT_NETTOYAGE=${{ inputs.login_pendant_nettoyage == true }}"
+            echo "DEBIT_LOGIN=${{ inputs.debit_login || '1' }}"
             echo "ARRET_APRES_TIR=${{ inputs.arret_apres_tir == true }}"
           } >> "$GITHUB_ENV"
 
@@ -288,6 +297,33 @@ jobs:
              '{ligne: $ligne, controles: $controles}' > archivage.json
           cat archivage.json
 
+      # Le hold du passage « pendant » estime la durée du nettoyage : ~0,7 s
+      # par jeune (IdP mesuré en prod) plus deux appels au chat factice. Deux
+      # courses plutôt qu'une coupée en deux fenêtres : Gatling n'agrège pas
+      # par fenêtre, et un one-off tué perd son rapport.
+      - name: Préparer les logins pendant le nettoyage
+        if: env.LOGIN_PENDANT_NETTOYAGE == 'true'
+        run: |
+          hold=$(( TAILLE_POPULATION * (700 + 2 * LATENCE_CHAT_MS) / 1000 ))
+          plafond=$(( TIMEOUT_NETTOYAGE_MINUTES * 60 ))
+          [ "$hold" -le "$plafond" ] || hold="$plafond"
+          arrivees=$(( 2 * (1 + DEBIT_LOGIN) * 10 / 2 + DEBIT_LOGIN * (120 + hold) ))
+          if [ "$POOL_SIZE" -lt "$arrivees" ]; then
+            echo "::error::POOL_SIZE=$POOL_SIZE < $arrivees arrivées des deux passages de login. Agrandir le pool ou baisser debit_login."
+            exit 1
+          fi
+          echo "HOLD_LOGIN=$hold" >> "$GITHUB_ENV"
+          scalingo --region "$SCALINGO_REGION" --app gatling-perf \
+            integration-link-manual-deploy --follow "${GITHUB_REF_NAME}"
+
+      - name: Logins de référence, avant le nettoyage
+        if: env.LOGIN_PENDANT_NETTOYAGE == 'true'
+        run: |
+          make -C perf tir PROFIL=palier USERS_PER_SEC="$DEBIT_LOGIN" RAMP_DURATION_IN_SECONDS=10 \
+               HOLD_DURATION_IN_SECONDS=120 RAPPORT_STDOUT=1 > sortie-login-reference.txt 2>&1 \
+            || echo "::warning::Passage de référence en échec ou assertions non tenues (ignoré : sans seuil)"
+          sed '/---RAPPORT-GATLING-DEBUT---/,/---RAPPORT-GATLING-FIN---/d' sortie-login-reference.txt | tail -40
+
       # Sans fin d'archivage, un nettoyage lancé derrière ne jugerait rien :
       # le verdict dira « ligne absente » pour les deux.
       - name: Déclencher le nettoyage et attendre sa fin
@@ -302,7 +338,15 @@ jobs:
           code="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H "X-API-KEY: $CLE_SUPPORT" \
                   "https://$API_APP.$SCALINGO_REGION.scalingo.io/support/nettoyer-archives-jeunes/$POPULATION")"
           [ "$code" = "204" ] || { echo "::error::POST nettoyer-archives-jeunes : HTTP $code, 204 attendu"; exit 1; }
+          if [ "$LOGIN_PENDANT_NETTOYAGE" = "true" ]; then
+            make -C perf tir PROFIL=palier USERS_PER_SEC="$DEBIT_LOGIN" RAMP_DURATION_IN_SECONDS=10 \
+                 HOLD_DURATION_IN_SECONDS="$HOLD_LOGIN" RAPPORT_STDOUT=1 > sortie-login-pendant.txt 2>&1 &
+            logins=$!
+          fi
           ligne="$(perf/job/attendre-suivi-job.sh "$DATABASE_URL_PERF" NETTOYER_ARCHIVES_JEUNES "$t0" $(( TIMEOUT_NETTOYAGE_MINUTES * 60 )))"
+          if [ -n "${logins:-}" ]; then
+            wait "$logins" || echo "::warning::Passage pendant le nettoyage en échec ou assertions non tenues (ignoré : sans seuil)"
+          fi
           jq -n --argjson ligne "${ligne:-null}" '{ligne: $ligne, controles: {}}' > nettoyage.json
           cat nettoyage.json
 
@@ -339,6 +383,25 @@ jobs:
           set -o pipefail
           python3 perf/job/verdict_job.py attendus.json archivage.json nettoyage.json redis-bilan.json \
             "$SEUIL_ARCHIVAGE_MINUTES" es-stats.json | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Comparer les logins avant et pendant le nettoyage
+        if: always() && env.LOGIN_PENDANT_NETTOYAGE == 'true'
+        run: |
+          extraire() {
+            local sortie="$1" cible="$2"
+            if ! grep -qs -- '---RAPPORT-GATLING-DEBUT---' "$sortie"; then
+              echo "::warning::Pas de rapport dans $sortie"
+              return 0
+            fi
+            mkdir -p "$cible"
+            sed -n '/---RAPPORT-GATLING-DEBUT---/,/---RAPPORT-GATLING-FIN---/p' "$sortie" \
+              | sed '1d;$d' | tr -cd 'A-Za-z0-9+/=\n' | base64 -d | tar xz -C "$cible"
+            sed -i '/---RAPPORT-GATLING-DEBUT---/,/---RAPPORT-GATLING-FIN---/d' "$sortie"
+          }
+          extraire sortie-login-reference.txt perf/build/reports/login-reference
+          extraire sortie-login-pendant.txt perf/build/reports/login-pendant
+          python3 perf/job/comparer_logins.py perf/build/reports/login-reference perf/build/reports/login-pendant \
+            >> "$GITHUB_STEP_SUMMARY"
 
       - name: Requêtes ES à coller dans Kibana
         if: always() && env.T0_ARCHIVAGE != '' && env.ES_DISPONIBLE != 'true'
@@ -401,6 +464,8 @@ jobs:
             redis-avant.json
             redis-bilan.json
             es-stats.json
+            sortie-login-*.txt
+            perf/build/reports/login-*/**
             etat-scalingo.txt
             metadonnees.json
           if-no-files-found: warn

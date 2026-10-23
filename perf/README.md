@@ -306,6 +306,7 @@ les deux chaînes.
 | `bilan_redis` | `true` | Lecture du Redis de connect par un one-off, avant et après le nettoyage |
 | `taille_worker` / `nb_worker` | `M` / `1` | Conteneurs worker de l'api |
 | `taille_connect` / `nb_connect` / `taille_api` / `taille_mock` | `M` / `1` / `M` / `M` | Comme pour le tir API |
+| `login_pendant_nettoyage` / `debit_login` | `false` / `1` | Logins Gatling avant puis pendant le nettoyage, voir ci-dessous |
 | `arret_apres_tir` | `false` | Rescale les apps web à 0 en fin de tir |
 
 Les latences du mock (`LATENCE_MAIL_MS`, `LATENCE_CHAT_MS`, `MESSAGES_PAR_CHAT`)
@@ -328,6 +329,17 @@ GitHub « Performance », le résumé ajoute les lots par chaîne (nombre, en é
 p50/p95/max), la latence des `DELETE /accounts` vers connect et les erreurs par
 étape, lus par [`job/lire_logs.py`](./job/lire_logs.py). Sans eux, le résumé
 donne les trois requêtes ES|QL remplies, à coller dans Kibana.
+
+**Logins pendant le nettoyage** (`login_pendant_nettoyage`) : connect et son
+Redis sont le seul maillon réel du nettoyage, et chaque `KEYS` bloque Redis
+pour tous ses clients. L'option joue le login à `debit_login` par seconde, une
+fois 2 min avant le nettoyage (référence), puis pendant, avec un hold estimé à
+`taille × (0,7 s + 2 × LATENCE_CHAT_MS)`. Le résumé compare les p95/p99 par
+étape ([`job/comparer_logins.py`](./job/comparer_logins.py)). Deux courses, car
+Gatling n'agrège pas par fenêtre et un one-off tué perd son rapport. **Sans
+assertion** : sans débit de login de nuit connu, un seuil ne jugerait rien. Le
+pool doit couvrir les arrivées des deux passages, et le tir dure alors le temps
+du nettoyage.
 
 Le tir ne mesure **ni Firestore ni Brevo** : tous deux sont mockés. La durée du
 nettoyage est donc rapportée sans seuil.
