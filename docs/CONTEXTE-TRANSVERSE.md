@@ -138,6 +138,22 @@ dispositifs à la fois : organisation et dispositif sont deux notions distinctes
   Esprit commun : pas de `console.log` (logger), pas de `process.env` direct
   (config centralisée), pas de `any`.
 
+### Vérifications après modification de code
+
+1. **Typecheck**, tests compris (un build ne suffit pas toujours à typechecker les tests).
+2. **Lint** du repo.
+3. **Tests** concernés par la modification.
+
+Les commandes vivent dans la section « Vérifications » du `CLAUDE.md` de chaque repo, qui
+signale aussi ce qui ne tourne qu'en CI (scans sécurité), pour ne pas le tenter en local.
+
+**Sonar (SonarCloud)** : un projet par repo, clé dans `sonar-project.properties`. Après chaque
+commit, si le MCP `sonarqube` est disponible : analyser les fichiers du commit sans attendre la
+CI, consulter les issues de la PR si elle existe, remonter les issues introduites et proposer
+les correctifs sans les appliquer d'office. Si le MCP n'est pas installé, le signaler et proposer
+de le configurer ([sonarqube-mcp-server](https://github.com/SonarSource/sonarqube-mcp-server))
+plutôt que de sauter la vérification en silence.
+
 ### Commentaires — par défaut, on n'en écrit pas
 
 **Le code se documente par ses noms**, pas par des commentaires. Un commentaire
