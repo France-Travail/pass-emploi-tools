@@ -25,6 +25,7 @@ DECLARE
   nb_alertes        int;
   favoris_attendus  int;
   alertes_attendues int;
+  hors_profil       int;
 BEGIN
   SELECT count(*) INTO nb_jeunes
   FROM jeune WHERE id_authentification LIKE prefixe || '%';
@@ -55,6 +56,26 @@ BEGIN
 
   IF nb_alertes <> alertes_attendues THEN
     RAISE EXCEPTION 'Alertes : % en base, % attendues', nb_alertes, alertes_attendues;
+  END IF;
+
+  -- Même liste, même ordre que seed.sql : la répartition doit être identique
+  -- d'un seed à l'autre pour que deux tirs restent comparables.
+  SELECT count(*) INTO hors_profil
+  FROM jeune j
+  JOIN conseiller c ON c.id = j.id_conseiller
+  WHERE j.id_authentification LIKE prefixe || '%'
+    AND NOT (
+      j.structure = 'FRANCE_TRAVAIL'
+      AND c.structure = 'FRANCE_TRAVAIL'
+      AND j.dispositif = c.dispositif
+      AND c.dispositif = (ARRAY[
+        'CEJ', 'BRSA', 'AIJ', 'AVENIR_PRO', 'ACCOMPAGNEMENT_INTENSIF',
+        'ACCOMPAGNEMENT_GLOBAL', 'EQUIP_EMPLOI_RECRUT'
+      ])[substring(c.id FROM '(\d+)$')::int % 7 + 1]
+    );
+
+  IF hors_profil <> 0 THEN
+    RAISE EXCEPTION 'Profil : % jeunes hors du profil attendu (structure × dispositif)', hors_profil;
   END IF;
 
   RAISE NOTICE 'OK — % jeunes, % favoris, % alertes', nb_jeunes, nb_favoris, nb_alertes;
