@@ -10,7 +10,7 @@ HERE := $(CURDIR)
 
 .PHONY: accueilFT loginFT run compile report \
         start stop status logs mock apidb seed seed-migration fond-de-charge connect api marquer-environnement \
-        firebase-fake tir deployer
+        firebase-fake tir deployer test-outils
 
 accueilFT: .env
 	. ./.env && ./gradlew gatlingRun --simulation passemploi.test.AccueilFranceTravailSimulation
@@ -20,6 +20,14 @@ run: .env
 
 compile:
 	./gradlew compileGatlingScala
+
+# Tests des outils Python de perf/ (verdict, lecture des logs, metadonnees).
+VENV_DIR = pass-emploi-perf-venv
+
+test-outils:
+	python3 -m venv $(VENV_DIR)
+	. $(VENV_DIR)/bin/activate && pip install -q -r requirements-dev.txt
+	. $(VENV_DIR)/bin/activate && python -m pytest tests -v
 
 # Servi en HTTP plutôt qu'ouvert en file:// : un navigateur en bac à sable
 # (Flatpak, snap) reçoit le fichier via le portail de documents, qui n'expose

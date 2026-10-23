@@ -13,3 +13,4 @@ __pycache__
 *.py[oc]
 .venv
 
+perf/pass-emploi-perf-venv
