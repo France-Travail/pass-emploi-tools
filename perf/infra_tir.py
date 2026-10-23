@@ -57,6 +57,11 @@ def lire(chemin):
                     cible["conteneur"] = entree.get("SIZE")
                     cible["statut"] = entree.get("STATUS")
                     cible["nb_conteneurs"] = cible.get("nb_conteneurs", 0) + 1
+                elif entree.get("NAME", "").startswith("worker-"):
+                    worker = cible.setdefault("worker", {"nb_conteneurs": 0})
+                    worker["conteneur"] = entree.get("SIZE")
+                    worker["statut"] = entree.get("STATUS")
+                    worker["nb_conteneurs"] += 1
                 elif "GIT REF" in entetes and entree.get("GIT REF"):
                     cible.setdefault("deploiement", {
                         "git_ref": entree["GIT REF"],
