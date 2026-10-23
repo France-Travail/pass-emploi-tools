@@ -9,6 +9,8 @@
 #
 # Prérequis (environnement GitHub « Performance ») :
 #   SCALINGO_API_TOKEN   token API Scalingo
+#   ES_URL, ES_API_KEY   facultatifs : clé en lecture seule sur logs-perf-*, pour
+#                        les durées par lot et la latence IdP du rapport
 #
 # Comme perf-api.yml, ce workflow ne pose jamais le marqueur anti-prod du seed,
 # ni la config de l'api : il vérifie qu'elle vise les mocks et refuse sinon.
@@ -314,13 +316,33 @@ jobs:
           [ -s redis-bilan.json ] || { echo "::warning::Bilan Redis indisponible"; echo '{}' > redis-bilan.json; }
           cat redis-bilan.json
 
+      - name: Détecter l'accès à ES
+        env:
+          ES_API_KEY: ${{ secrets.ES_API_KEY }}
+        run: |
+          if [ -n "$ES_API_KEY" ]; then echo "ES_DISPONIBLE=true" >> "$GITHUB_ENV"; fi
+
+      - name: Lire les durées par lot et la latence IdP dans ES
+        if: always() && env.T0_ARCHIVAGE != '' && env.ES_DISPONIBLE == 'true'
+        env:
+          ES_URL: ${{ secrets.ES_URL }}
+          ES_API_KEY: ${{ secrets.ES_API_KEY }}
+        run: |
+          python3 perf/job/lire_logs.py stats archivage.json nettoyage.json "$T0_ARCHIVAGE" > es-stats.json \
+            || { echo "::warning::Lecture ES en échec"; echo '{}' > es-stats.json; }
+
       - name: Verdict
         if: always() && env.T0_ARCHIVAGE != ''
         run: |
           [ -f redis-bilan.json ] || echo '{}' > redis-bilan.json
+          [ -f nettoyage.json ] || echo '{"ligne": null}' > nettoyage.json
           set -o pipefail
           python3 perf/job/verdict_job.py attendus.json archivage.json nettoyage.json redis-bilan.json \
-            "$SEUIL_ARCHIVAGE_MINUTES" | tee -a "$GITHUB_STEP_SUMMARY"
+            "$SEUIL_ARCHIVAGE_MINUTES" es-stats.json | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Requêtes ES à coller dans Kibana
+        if: always() && env.T0_ARCHIVAGE != '' && env.ES_DISPONIBLE != 'true'
+        run: python3 perf/job/lire_logs.py requetes archivage.json nettoyage.json "$T0_ARCHIVAGE" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Rassembler les métadonnées
         if: always()
@@ -378,6 +400,7 @@ jobs:
             nettoyage.json
             redis-avant.json
             redis-bilan.json
+            es-stats.json
             etat-scalingo.txt
             metadonnees.json
           if-no-files-found: warn

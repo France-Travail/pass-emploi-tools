@@ -322,6 +322,13 @@ injectés, plus aucune clé de la population dans Redis. Suivent la durée des d
 chaînes, le `DBSIZE` et les `KEYS`. L'artefact `job-archivage-<run_id>` garde
 les JSON et `metadonnees.json`.
 
+**Durées par lot et latence IdP** : si les secrets `ES_URL` et `ES_API_KEY`
+(clé en lecture seule sur `logs-perf-*`) sont posés dans l'environnement
+GitHub « Performance », le résumé ajoute les lots par chaîne (nombre, en échec,
+p50/p95/max), la latence des `DELETE /accounts` vers connect et les erreurs par
+étape, lus par [`job/lire_logs.py`](./job/lire_logs.py). Sans eux, le résumé
+donne les trois requêtes ES|QL remplies, à coller dans Kibana.
+
 Le tir ne mesure **ni Firestore ni Brevo** : tous deux sont mockés. La durée du
 nettoyage est donc rapportée sans seuil.
 
