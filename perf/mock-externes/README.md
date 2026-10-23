@@ -6,7 +6,7 @@ réels et sont ce qu'on mesure.
 
 ```
 Gatling ──► connect-perf ──► mock-externes   (IdP France Travail)
-         └► api-perf ──────► mock-externes   (APIs partenaires FT, mail Brevo)
+         └► api-perf ──────► mock-externes   (APIs partenaires FT, mail Brevo, chat)
                           └► connect-perf    (émetteur du JWT — le vrai)
 ```
 
@@ -23,7 +23,11 @@ Gatling ──► connect-perf ──► mock-externes   (IdP France Travail)
 | `GET /poleemploi/peconnect-demarches/v1/demarches` | `api` | Démarches de l'accueil |
 | `GET /poleemploi/peconnect-gerer-prestations/v1/rendez-vous` | `api` | Prestations (vide) |
 | `GET /poleemploi/peconnect-rendezvousagenda/v2/listerendezvous` | `api` | Rendez-vous agenda (vide) |
+| `GET /chat/{idJeune}/messages` | `api` | Chat à archiver : `MESSAGES_PAR_CHAT` messages déterministes, au format de l'archive, après `LATENCE_CHAT_MS` |
+| `DELETE /chat/{idJeune}` | `api` | Suppression du chat : `204` après `LATENCE_CHAT_MS` |
 | `POST /brevo/v3/smtp/email` | `api` | Envoi de mail : `201` après `LATENCE_MAIL_MS`, `500` si un `to[].email` contient `echec-mail` |
+
+Les deux routes du chat répondent `500` si l'`idJeune` contient `echec-chat`.
 
 ## Deux principes de conception
 
@@ -60,7 +64,7 @@ Le `sub` rendu suit `{POOL_PREFIX}{i}`, avec `i` tiré dans `[0, POOL_SIZE)`.
 
 ```sh
 make start   # venv + deps + uvicorn sur :8080
-make test    # 16 tests
+make test    # 20 tests
 ```
 
 ## Déploiement Scalingo (`mock-externes-perf`)
@@ -89,6 +93,8 @@ Même mécanisme que `pass-emploi-logstash-*` (`PROJECT_DIR=logs`).
 | `POOL_PREFIX` | `perf-ft-` | Préfixe des `sub` |
 | `IDP_CLE_PRIVEE_PEM` | `$TMPDIR/mock-externes-idp.pem` | Où la clé de signature est écrite puis relue par tous les workers |
 | `LATENCE_MAIL_MS` | `50` | Latence de l'envoi de mail (p50 Brevo mesuré en prod) |
+| `LATENCE_CHAT_MS` | `100` | Latence de chaque appel au chat (lecture, suppression) |
+| `MESSAGES_PAR_CHAT` | `20` | Nombre de messages rendus par chat |
 
 ### De `pass-emploi-connect`
 
@@ -121,6 +127,7 @@ ignore la valeur de toute façon.
 | `OIDC_ISSUER_URL` | **le vrai `connect-perf`** — c'est lui l'émetteur du JWT |
 | `POLE_EMPLOI_API_BASE_URL` | `{MOCK}/poleemploi` |
 | `SENDINBLUE_API_URL` | `{MOCK}/brevo` |
+| `CHAT_MOCK_URL` | `{MOCK}/chat`. Remplace Firestore pour le nettoyage des archives ; refusée en prod par l'api |
 
 ## Diagnostic
 

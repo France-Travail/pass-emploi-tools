@@ -6,6 +6,7 @@ import os
 import random
 import tempfile
 import time
+from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
 from uuid import uuid4
 
@@ -14,7 +15,7 @@ import uvicorn
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import FastAPI, Header, HTTPException, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from pydantic import BaseModel
 
 app = FastAPI()
@@ -274,6 +275,48 @@ async def brevo_envoyer(mail: Mail):
     if any(MARQUEUR_ECHEC_MAIL in destinataire.email for destinataire in mail.to):
         raise HTTPException(status_code=500, detail="échec injecté")
     return JSONResponse(status_code=201, content={"messageId": f"<perf-{uuid4()}@mock>"})
+
+
+##################################################
+##
+##  CHAT
+##
+##  Remplace Firestore pour le nettoyage des archives : l'api appelle ces
+##  routes via CHAT_MOCK_URL. Même principe que le mail : l'échec est porté
+##  par l'id du jeune semé.
+##
+##################################################
+
+LATENCE_CHAT_MS = int(os.getenv("LATENCE_CHAT_MS", "100"))
+MESSAGES_PAR_CHAT = int(os.getenv("MESSAGES_PAR_CHAT", "20"))
+MARQUEUR_ECHEC_CHAT = "echec-chat"
+_DATE_PREMIER_MESSAGE = datetime(2026, 1, 5, 9, 0, tzinfo=timezone.utc)
+
+
+async def _attendre_puis_verifier_le_chat(id_jeune: str) -> None:
+    await asyncio.sleep(LATENCE_CHAT_MS / 1000)
+    if MARQUEUR_ECHEC_CHAT in id_jeune:
+        raise HTTPException(status_code=500, detail="échec injecté")
+
+
+@app.get("/chat/{id_jeune}/messages")
+async def chat_messages(id_jeune: str):
+    await _attendre_puis_verifier_le_chat(id_jeune)
+    return [
+        {
+            "contenu": f"Message {index} du chat de {id_jeune}",
+            "date": (_DATE_PREMIER_MESSAGE + timedelta(hours=index)).isoformat(),
+            "envoyePar": "conseiller" if index % 2 == 0 else "jeune",
+            "type": "MESSAGE",
+        }
+        for index in range(MESSAGES_PAR_CHAT)
+    ]
+
+
+@app.delete("/chat/{id_jeune}")
+async def chat_supprimer(id_jeune: str):
+    await _attendre_puis_verifier_le_chat(id_jeune)
+    return Response(status_code=204)
 
 
 if __name__ == "__main__":

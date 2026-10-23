@@ -33,6 +33,9 @@ export POLE_EMPLOI_API_BASE_URL="http://127.0.0.1:8080/poleemploi"
 # via Brevo avec la clé du .environment.
 export SENDINBLUE_API_URL="http://127.0.0.1:8080/brevo"
 
+# Chat du nettoyage des archives -> mock-externes, à la place de Firestore.
+export CHAT_MOCK_URL="http://127.0.0.1:8080/chat"
+
 # Firebase : credentials factices, pour ne pas toucher le vrai projet
 # pass-emploi-staging (FCM vers de vrais appareils de recette, quotas
 # Firestore partagés). Générés par `make firebase-fake` dans local-run/.run/.
