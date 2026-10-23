@@ -1,0 +1,402 @@
+# Scénario job : archivage de migration puis nettoyage des archives, sur
+# l'environnement de perf dédié. Sème la population, déclenche les deux routes
+# support, attend leurs lignes suivi_job et rend un verdict chiffré. Mode
+# d'emploi : perf/README.md, section « Scénario job : archivage de migration ».
+#
+# Le Redis de pass-emploi-connect-perf doit avoir été semé AVANT, depuis un
+# poste (perf/job/redis-connect.cjs semer). Ce workflow ne le sème pas : il
+# vérifie seulement, par un one-off, que les clés de la population y sont.
+#
+# Prérequis (environnement GitHub « Performance ») :
+#   SCALINGO_API_TOKEN   token API Scalingo
+#
+# Comme perf-api.yml, ce workflow ne pose jamais le marqueur anti-prod du seed,
+# ni la config de l'api : il vérifie qu'elle vise les mocks et refuse sinon.
+
+name: Perf - Job archivage de migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      taille_population:
+        description: "taille_population · jeunes de la population de migration (999 999 au plus). Le Redis doit avoir été semé avec la même taille"
+        default: "2000"
+      inactifs_tous_les:
+        description: "inactifs_tous_les · 1 jeune sur N sans activité ni connexion, donc sans mail (0 = aucun)"
+        default: "5"
+      echec_mail_tous_les:
+        description: "echec_mail_tous_les · 1 jeune sur N dont le mail échoue (0 = aucun)"
+        default: "100"
+      echec_chat_tous_les:
+        description: "echec_chat_tous_les · 1 jeune sur N dont le chat échoue au nettoyage (0 = aucun)"
+        default: "100"
+      seuil_archivage_minutes:
+        description: "seuil_archivage_minutes · durée maximale de l'archivage, jugée par le verdict (attente : 3 x le seuil)"
+        default: "15"
+      timeout_nettoyage_minutes:
+        description: "timeout_nettoyage_minutes · attente maximale du nettoyage, rapporté sans seuil"
+        default: "90"
+      bilan_redis:
+        description: "bilan_redis · lire le Redis de connect-perf par un one-off, avant (clés semées ?) et après le nettoyage (clés restantes, KEYS). Suppose le Redis déjà semé depuis un poste"
+        type: boolean
+        default: true
+      taille_worker:
+        description: "taille_worker · taille des conteneurs worker de pass-emploi-api-perf, qui exécutent les deux chaînes"
+        default: "M"
+      nb_worker:
+        description: "nb_worker · nombre de conteneurs worker de pass-emploi-api-perf"
+        default: "1"
+      taille_connect:
+        description: "taille_connect · taille du conteneur pass-emploi-connect-perf, qui révoque les accès au nettoyage"
+        default: "M"
+      nb_connect:
+        description: "nb_connect · nombre de conteneurs pass-emploi-connect-perf"
+        default: "1"
+      taille_api:
+        description: "taille_api · taille du conteneur web de pass-emploi-api-perf (reçoit seulement les deux POST)"
+        default: "M"
+      taille_mock:
+        description: "taille_mock · taille du conteneur mock-externes-perf (mail et chat)"
+        default: "M"
+      arret_apres_tir:
+        description: "arret_apres_tir · rescaler les apps web à 0 en fin de tir (le worker est toujours éteint)"
+        type: boolean
+        default: false
+
+  pull_request:
+    paths:
+      - 'perf/**'
+      - '.github/workflows/perf-job-archivage.yml'
+
+env:
+  SCALINGO_REGION: osc-secnum-fr1
+  APPS: pass-emploi-connect-perf pass-emploi-api-perf mock-externes-perf pass-emploi-logstash-perf pass-emploi-logstash-process-perf pass-emploi-elastic-agent-perf
+  API_APP: pass-emploi-api-perf
+  CONNECT_APP: pass-emploi-connect-perf
+  MOCK_APP: mock-externes-perf
+  PREFIXE: perf-migr-
+  POPULATION: perf-migration
+
+jobs:
+  tests:
+    name: Tests des outils du scénario
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Outils Python de perf/
+        run: make -C perf test-outils
+
+      - name: mock-externes
+        run: make -C perf/mock-externes test
+
+      - name: Script Redis de connect
+        run: node --test 'perf/job/*.test.cjs'
+
+  tir:
+    name: Archivage puis nettoyage
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    environment: Performance
+    # Même groupe que perf-api.yml, le réveil et l'extinction : environnement
+    # unique, et un tir interrompu laisserait le worker allumé.
+    concurrency:
+      group: perf-environnement-dedie
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Normaliser les paramètres du tir
+        run: |
+          {
+            echo "TAILLE_POPULATION=${{ inputs.taille_population || '2000' }}"
+            echo "INACTIFS_TOUS_LES=${{ inputs.inactifs_tous_les || '5' }}"
+            echo "ECHEC_MAIL_TOUS_LES=${{ inputs.echec_mail_tous_les || '100' }}"
+            echo "ECHEC_CHAT_TOUS_LES=${{ inputs.echec_chat_tous_les || '100' }}"
+            echo "SEUIL_ARCHIVAGE_MINUTES=${{ inputs.seuil_archivage_minutes || '15' }}"
+            echo "TIMEOUT_NETTOYAGE_MINUTES=${{ inputs.timeout_nettoyage_minutes || '90' }}"
+            echo "BILAN_REDIS=${{ inputs.bilan_redis != false }}"
+            echo "TAILLE_WORKER=${{ inputs.taille_worker || 'M' }}"
+            echo "NB_WORKER=${{ inputs.nb_worker || '1' }}"
+            echo "TAILLE_CONNECT=${{ inputs.taille_connect || 'M' }}"
+            echo "NB_CONNECT=${{ inputs.nb_connect || '1' }}"
+            echo "TAILLE_API=${{ inputs.taille_api || 'M' }}"
+            echo "TAILLE_MOCK=${{ inputs.taille_mock || 'M' }}"
+            echo "ARRET_APRES_TIR=${{ inputs.arret_apres_tir == true }}"
+          } >> "$GITHUB_ENV"
+
+      - name: Vérifier les secrets requis
+        env:
+          SCALINGO_API_TOKEN: ${{ secrets.SCALINGO_API_TOKEN }}
+        run: |
+          [ -n "$SCALINGO_API_TOKEN" ] || { echo "::error::Secret SCALINGO_API_TOKEN manquant (environnement Performance)"; exit 1; }
+
+      - name: Installer le CLI Scalingo
+        run: |
+          for essai in 1 2 3; do
+            curl -fsSL -O https://cli-dl.scalingo.com/install.sh && bash install.sh && exit 0
+            echo "Installation du CLI en échec, nouvelle tentative dans 15s ($essai/3)"
+            sleep 15
+          done
+          echo "::error::Impossible d'installer le CLI Scalingo après 3 tentatives"
+          exit 1
+
+      - name: Se connecter à Scalingo
+        run: scalingo login --api-token "${{ secrets.SCALINGO_API_TOKEN }}"
+
+      # Même scaler() que perf-api.yml (tolérance « no change », retries sur
+      # « is scaling » et les 5xx de l'API Scalingo). Le worker est allumé ici
+      # seulement : c'est lui qui exécute les chaînes, et il est éteint en fin
+      # de tir.
+      - name: Réveiller les apps
+        run: |
+          scaler() {
+            local app="$1" cible="$2" essai
+            for essai in 1 2 3 4 5; do
+              sortie="$(scalingo --region "$SCALINGO_REGION" --app "$app" scale "$cible" 2>&1)" && { echo "$sortie"; return 0; }
+              echo "$sortie"
+              echo "$sortie" | grep -qi 'no change in containers formation' && return 0
+              if [ "$essai" -lt 5 ] && echo "$sortie" | grep -qiE 'is scaling|context deadline exceeded|Client.Timeout|timeout|EOF|connection reset|502|503|504'; then
+                echo "Échec transitoire de l'API Scalingo : nouvelle tentative dans 15s ($essai/5)"
+                sleep 15
+                continue
+              fi
+              return 1
+            done
+            echo "::error::5 tentatives de scale échouées sur $app"
+            return 1
+          }
+          for spec in "$CONNECT_APP|web:$NB_CONNECT:$TAILLE_CONNECT" "$API_APP|web:1:$TAILLE_API" "$API_APP|worker:$NB_WORKER:$TAILLE_WORKER" "$MOCK_APP|web:1:$TAILLE_MOCK" "pass-emploi-logstash-perf|web:1"; do
+            app="${spec%%|*}"; cible="${spec##*|}"
+            echo "::group::$app $cible"
+            scaler "$app" "$cible" || { echo "::endgroup::"; exit 1; }
+            echo "::endgroup::"
+          done
+
+      - name: Attendre que les apps répondent
+        run: |
+          sondes="$CONNECT_APP|/health $API_APP|/health $MOCK_APP|/idp/protocol/openid-connect/certs"
+          for sonde in $sondes; do
+            app="${sonde%%|*}"; chemin="${sonde##*|}"
+            url="https://$app.$SCALINGO_REGION.scalingo.io$chemin"
+            echo "Sonde $url"
+            for essai in $(seq 1 30); do
+              code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$url" || true)"
+              if [ "$code" = "200" ]; then echo "  $app OK après $essai essai(s)"; break; fi
+              if [ "$essai" = "30" ]; then echo "::error::$app ne répond pas (dernier code HTTP : $code)"; exit 1; fi
+              sleep 10
+            done
+          done
+
+      # On vérifie sans jamais poser, comme pour le marqueur : une config posée
+      # par le workflow masquerait qu'elle manque sur l'app. Sans ces URL,
+      # l'archivage enverrait de vrais mails via Brevo (la clé est sur l'app) et
+      # le nettoyage appellerait le vrai Firestore.
+      - name: Vérifier la config de pass-emploi-api-perf
+        run: |
+          lire() { scalingo --region "$SCALINGO_REGION" --app "$API_APP" env-get "$1" 2>/dev/null || true; }
+          mock="https://$MOCK_APP.$SCALINGO_REGION.scalingo.io"
+          erreurs=0
+          [ "$(lire SENDINBLUE_API_URL)" = "$mock/brevo" ] || { echo "::error::SENDINBLUE_API_URL doit valoir $mock/brevo"; erreurs=1; }
+          [ "$(lire CHAT_MOCK_URL)" = "$mock/chat" ] || { echo "::error::CHAT_MOCK_URL doit valoir $mock/chat"; erreurs=1; }
+          lire OIDC_ISSUER_API_URL | grep -q "$CONNECT_APP" || { echo "::error::OIDC_ISSUER_API_URL doit viser $CONNECT_APP"; erreurs=1; }
+          if [ -n "$(lire MATTERMOST_JOBS_WEBHOOK_URL)" ]; then
+            echo "::warning::MATTERMOST_JOBS_WEBHOOK_URL est posée sur $API_APP : un nettoyage avec échecs injectés y notifiera"
+          fi
+          exit "$erreurs"
+
+      - name: Lire la config de mock-externes
+        run: |
+          lire() { v="$(scalingo --region "$SCALINGO_REGION" --app "$MOCK_APP" env-get "$1" 2>/dev/null || true)"; echo "${v:-$2}"; }
+          {
+            echo "POOL_SIZE=$(lire POOL_SIZE 50)"
+            echo "POOL_PREFIX=$(lire POOL_PREFIX perf-ft-)"
+            echo "LATENCE_MAIL_MS=$(lire LATENCE_MAIL_MS 50)"
+            echo "LATENCE_CHAT_MS=$(lire LATENCE_CHAT_MS 100)"
+            echo "MESSAGES_PAR_CHAT=$(lire MESSAGES_PAR_CHAT 20)"
+          } >> "$GITHUB_ENV"
+
+      - name: Installer psql
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+
+      - name: Récupérer l'URL de la base et la clé support
+        run: |
+          url="$(scalingo --region "$SCALINGO_REGION" --app "$API_APP" env-get DATABASE_URL)"
+          echo "::add-mask::$url"
+          echo "DATABASE_URL_PERF=$url" >> "$GITHUB_ENV"
+          cle="$(scalingo --region "$SCALINGO_REGION" --app "$API_APP" env-get API_KEY_SUPPORT | jq -r '.[0]')"
+          [ -n "$cle" ] && [ "$cle" != "null" ] || { echo "::error::API_KEY_SUPPORT absente de $API_APP"; exit 1; }
+          echo "::add-mask::$cle"
+          echo "CLE_SUPPORT=$cle" >> "$GITHUB_ENV"
+
+      # Le pool donne à la table jeune un volume réaliste pour la requête de
+      # population, qui la parcourt entière.
+      - name: Semer le pool et la population de migration
+        run: |
+          psql "$DATABASE_URL_PERF" -v ON_ERROR_STOP=1 \
+               -v pool_size="$POOL_SIZE" -v pool_prefix="$POOL_PREFIX" -f perf/seed/seed.sql
+          psql "$DATABASE_URL_PERF" -v ON_ERROR_STOP=1 \
+               -v pool_size="$POOL_SIZE" -v pool_prefix="$POOL_PREFIX" -f perf/seed/verifier.sql
+          parametres=(-v taille="$TAILLE_POPULATION" -v prefixe="$PREFIXE" -v population="$POPULATION"
+                      -v inactifs_tous_les="$INACTIFS_TOUS_LES" -v echec_mail_tous_les="$ECHEC_MAIL_TOUS_LES"
+                      -v echec_chat_tous_les="$ECHEC_CHAT_TOUS_LES")
+          psql "$DATABASE_URL_PERF" -v ON_ERROR_STOP=1 "${parametres[@]}" -f perf/seed/migration.sql
+          psql "$DATABASE_URL_PERF" -v ON_ERROR_STOP=1 "${parametres[@]}" -f perf/seed/verifier-migration.sql
+          psql "$DATABASE_URL_PERF" -At -v ON_ERROR_STOP=1 "${parametres[@]}" \
+               -f perf/seed/attendus-migration.sql > attendus.json
+          cat attendus.json
+
+      # La dernière ligne JSON de la sortie : le TTY du one-off peut ajouter des
+      # \r et des lignes de log avant elle.
+      - name: Vérifier que le Redis de connect est semé
+        if: env.BILAN_REDIS == 'true'
+        run: |
+          scalingo --region "$SCALINGO_REGION" --app "$CONNECT_APP" run --silent \
+            --file perf/job/redis-connect.cjs \
+            "node /tmp/uploads/redis-connect.cjs bilan --prefixe $PREFIXE" \
+            | tr -d '\r' | grep '^{' | tail -1 > redis-avant.json
+          cat redis-avant.json
+          attendues=$(( 2 * TAILLE_POPULATION ))
+          trouvees="$(jq -r '.cles_population_restantes' redis-avant.json)"
+          if [ "$trouvees" != "$attendues" ]; then
+            echo "::error::$trouvees clés de la population dans le Redis de $CONNECT_APP, $attendues attendues. Le semer depuis un poste avant le tir (perf/README.md), avec --taille $TAILLE_POPULATION et moins de 3 jours d'avance (TTL)."
+            exit 1
+          fi
+
+      - name: Déclencher l'archivage et attendre sa fin
+        run: |
+          t0="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "T0_ARCHIVAGE=$t0" >> "$GITHUB_ENV"
+          code="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H "X-API-KEY: $CLE_SUPPORT" \
+                  "https://$API_APP.$SCALINGO_REGION.scalingo.io/support/archiver-jeunes-migration/$POPULATION")"
+          [ "$code" = "204" ] || { echo "::error::POST archiver-jeunes-migration : HTTP $code, 204 attendu"; exit 1; }
+          ligne="$(perf/job/attendre-suivi-job.sh "$DATABASE_URL_PERF" ARCHIVER_JEUNES_MIGRATION "$t0" $(( 3 * SEUIL_ARCHIVAGE_MINUTES * 60 )))"
+          controles="$(psql "$DATABASE_URL_PERF" -At -v ON_ERROR_STOP=1 -v prefixe="$PREFIXE" -v population="$POPULATION" \
+                       -f perf/job/controles-archivage.sql)"
+          jq -n --argjson ligne "${ligne:-null}" --argjson controles "$controles" \
+             '{ligne: $ligne, controles: $controles}' > archivage.json
+          cat archivage.json
+
+      # Sans fin d'archivage, un nettoyage lancé derrière ne jugerait rien :
+      # le verdict dira « ligne absente » pour les deux.
+      - name: Déclencher le nettoyage et attendre sa fin
+        run: |
+          if [ "$(jq -r '.ligne != null' archivage.json)" != "true" ]; then
+            echo '{"ligne": null, "controles": {}}' > nettoyage.json
+            echo "::warning::Archivage non terminé : nettoyage non déclenché"
+            exit 0
+          fi
+          t0="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          echo "T0_NETTOYAGE=$t0" >> "$GITHUB_ENV"
+          code="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H "X-API-KEY: $CLE_SUPPORT" \
+                  "https://$API_APP.$SCALINGO_REGION.scalingo.io/support/nettoyer-archives-jeunes/$POPULATION")"
+          [ "$code" = "204" ] || { echo "::error::POST nettoyer-archives-jeunes : HTTP $code, 204 attendu"; exit 1; }
+          ligne="$(perf/job/attendre-suivi-job.sh "$DATABASE_URL_PERF" NETTOYER_ARCHIVES_JEUNES "$t0" $(( TIMEOUT_NETTOYAGE_MINUTES * 60 )))"
+          jq -n --argjson ligne "${ligne:-null}" '{ligne: $ligne, controles: {}}' > nettoyage.json
+          cat nettoyage.json
+
+      - name: Bilan du Redis de connect
+        if: always() && env.BILAN_REDIS == 'true' && env.T0_NETTOYAGE != ''
+        run: |
+          scalingo --region "$SCALINGO_REGION" --app "$CONNECT_APP" run --silent \
+            --file perf/job/redis-connect.cjs \
+            "node /tmp/uploads/redis-connect.cjs bilan --prefixe $PREFIXE" \
+            | tr -d '\r' | grep '^{' | tail -1 > redis-bilan.json || true
+          [ -s redis-bilan.json ] || { echo "::warning::Bilan Redis indisponible"; echo '{}' > redis-bilan.json; }
+          cat redis-bilan.json
+
+      - name: Verdict
+        if: always() && env.T0_ARCHIVAGE != ''
+        run: |
+          [ -f redis-bilan.json ] || echo '{}' > redis-bilan.json
+          set -o pipefail
+          python3 perf/job/verdict_job.py attendus.json archivage.json nettoyage.json redis-bilan.json \
+            "$SEUIL_ARCHIVAGE_MINUTES" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Rassembler les métadonnées
+        if: always()
+        run: |
+          for app in $APPS; do
+            echo "### $app" >> etat-scalingo.txt
+            scalingo --region "$SCALINGO_REGION" --app "$app" ps >> etat-scalingo.txt 2>&1 || true
+            scalingo --region "$SCALINGO_REGION" --app "$app" deployments 2>&1 | head -4 >> etat-scalingo.txt || true
+            echo "### addons $app" >> etat-scalingo.txt
+            scalingo --region "$SCALINGO_REGION" --app "$app" addons >> etat-scalingo.txt 2>&1 || true
+          done
+          lire_json() { [ -s "$1" ] && cat "$1" || echo 'null'; }
+          jq -n \
+            --arg fin "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg t0_archivage "${T0_ARCHIVAGE:-}" --arg t0_nettoyage "${T0_NETTOYAGE:-}" \
+            --arg taille "$TAILLE_POPULATION" --arg inactifs "$INACTIFS_TOUS_LES" \
+            --arg echec_mail "$ECHEC_MAIL_TOUS_LES" --arg echec_chat "$ECHEC_CHAT_TOUS_LES" \
+            --arg latence_mail "${LATENCE_MAIL_MS:-}" --arg latence_chat "${LATENCE_CHAT_MS:-}" \
+            --arg messages_par_chat "${MESSAGES_PAR_CHAT:-}" \
+            --argjson redis_avant "$(lire_json redis-avant.json)" \
+            --argjson redis_apres "$(lire_json redis-bilan.json)" \
+            --argjson archivage "$(lire_json archivage.json)" \
+            --argjson nettoyage "$(lire_json nettoyage.json)" \
+            --arg taille_api "$TAILLE_API" --arg taille_worker "$TAILLE_WORKER" --arg nb_worker "$NB_WORKER" \
+            --arg taille_connect "$TAILLE_CONNECT" --arg nb_connect "$NB_CONNECT" --arg taille_mock "$TAILLE_MOCK" \
+            --arg seuil "$SEUIL_ARCHIVAGE_MINUTES" \
+            --arg seed_sha "$(git log -1 --format=%h -- perf/seed)" \
+            --arg population "$POPULATION" \
+            --arg run "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
+            --arg verdict '${{ job.status }}' \
+            '{scenario: "archivage-migration",
+              fenetre: {t0_archivage: $t0_archivage, fin_archivage: $archivage.ligne.date_execution,
+                        t0_nettoyage: $t0_nettoyage, fin_nettoyage: $nettoyage.ligne.date_execution, fin: $fin},
+              charge: {taille_population: $taille, inactifs_tous_les: $inactifs,
+                       echec_mail_tous_les: $echec_mail, echec_chat_tous_les: $echec_chat,
+                       latences_mock: {mail_ms: $latence_mail, chat_ms: $latence_chat, messages_par_chat: $messages_par_chat},
+                       redis: {dbsize_avant: $redis_avant.dbsize, dbsize_apres: $redis_apres.dbsize},
+                       taille_demandee: {api: $taille_api, worker: $taille_worker, connect: $taille_connect, mock: $taille_mock},
+                       nb_demande: {api: "1", worker: $nb_worker, connect: $nb_connect, mock: "1"}},
+              seuils: {archivage_minutes: $seuil},
+              donnees: {seed_sha: $seed_sha, population: $population},
+              job_run_id: {archivage: $archivage.ligne.job_run_id, nettoyage: $nettoyage.ligne.job_run_id},
+              run: $run, verdict: $verdict}' > metadonnees.json
+          python3 perf/infra_tir.py etat-scalingo.txt metadonnees.json
+          cat metadonnees.json
+
+      - name: Archiver
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: job-archivage-${{ github.run_id }}
+          path: |
+            attendus.json
+            archivage.json
+            nettoyage.json
+            redis-avant.json
+            redis-bilan.json
+            etat-scalingo.txt
+            metadonnees.json
+          if-no-files-found: warn
+          retention-days: 90
+
+      # Le worker n'est jamais laissé allumé : il exécuterait les crons planifiés
+      # sur l'environnement de perf, la nuit comprise.
+      - name: Éteindre le worker
+        if: always()
+        run: |
+          sortie="$(scalingo --region "$SCALINGO_REGION" --app "$API_APP" scale worker:0 2>&1)" || {
+            echo "$sortie"
+            echo "$sortie" | grep -qi 'no change in containers formation' || exit 1
+          }
+          echo "$sortie"
+
+      - name: Éteindre les apps
+        if: always() && env.ARRET_APRES_TIR == 'true'
+        run: |
+          for app in $APPS; do
+            scalingo --region "$SCALINGO_REGION" --app "$app" scale web:0
+          done

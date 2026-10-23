@@ -236,6 +236,103 @@ sed -n '/---RAPPORT-GATLING-DEBUT---/,/---RAPPORT-GATLING-FIN---/p' tir.b64 \
 > Le workflow **ne restaure aucune image de base** : la base ne contient que le
 > pool semé. Les chiffres valident la chaîne, pas un p95 de production.
 
+## Scénario job : archivage de migration
+
+`Actions → Perf - Job archivage de migration → Run workflow`. Le workflow
+réveille les apps et le **worker** de l'api, sème le pool puis la population de
+migration ([`seed/README.md`](./seed/README.md)), lance l'archivage, attend sa
+ligne `suivi_job`, lance le nettoyage, attend la sienne, puis rend un verdict
+([`job/verdict_job.py`](./job/verdict_job.py)). Le worker est éteint en fin de
+tir, quoi qu'il arrive.
+
+### Avant le tir : semer le Redis de connect, depuis un poste
+
+Le workflow ne sème pas le Redis de `pass-emploi-connect-perf` : il vérifie
+seulement que les `2 × taille_population` clés de la population y sont, et
+refuse sinon. Le seed écrit un fond de clés `oidc:` au `DBSIZE` de prod
+(974 199), plus deux tokens par jeune de la population, avec un TTL de 3 jours :
+le semer moins de 3 jours avant le tir. `ioredis` est pris dans un checkout de
+`pass-emploi-connect`, d'où le répertoire courant.
+
+Par tunnel (deux terminaux) :
+
+```sh
+scalingo --region osc-secnum-fr1 --app pass-emploi-connect-perf db-tunnel SCALINGO_REDIS_URL
+
+cd ../pass-emploi-connect
+URL="$(scalingo --region osc-secnum-fr1 --app pass-emploi-connect-perf env-get SCALINGO_REDIS_URL \
+       | sed -E 's#@[^/@]+$#@127.0.0.1:10000#')"
+node ../pass-emploi-tools/perf/job/redis-connect.cjs semer --url "$URL" \
+     --fond 1000000 --longueur 60 --prefixe perf-migr- --taille 2000 --ttl 259200
+```
+
+Ou par un one-off, qui lit `REDIS_URL` sur l'app (depuis la racine de ce repo) :
+
+```sh
+scalingo --region osc-secnum-fr1 --app pass-emploi-connect-perf run --file perf/job/redis-connect.cjs \
+  "node /tmp/uploads/redis-connect.cjs semer --fond 1000000 --longueur 60 --prefixe perf-migr- --taille 2000 --ttl 259200"
+```
+
+La commande rend `{"dbsize": …}`. `bilan --prefixe perf-migr-` rend `DBSIZE`,
+les clés de la population restantes et le résumé des `KEYS` lus dans le
+`SLOWLOG` (128 dernières entrées). Le plan Redis de connect-perf doit tenir
+~250 Mo (≥ 512 Mo), et viser celui de la prod pour un coût de `KEYS` fidèle.
+
+**Limite connue** : la longueur des clés de fond (60 caractères) est supposée,
+faute de mesure en prod. Le coût du `KEYS` mesuré est donc un ordre de grandeur.
+
+### Config manuelle de `pass-emploi-api-perf`
+
+Le workflow la vérifie et refuse de tirer si elle manque. Il ne la pose jamais.
+
+| Variable | Valeur |
+|---|---|
+| `SENDINBLUE_API_URL` | `https://mock-externes-perf.osc-secnum-fr1.scalingo.io/brevo` (sinon : vrais mails via Brevo) |
+| `CHAT_MOCK_URL` | `https://mock-externes-perf.osc-secnum-fr1.scalingo.io/chat` (sinon : vrai Firestore) |
+| `OIDC_ISSUER_API_URL`, `OIDC_API_KEY` | `pass-emploi-connect-perf` et sa clé : c'est lui qui révoque les accès |
+| `MATTERMOST_JOBS_WEBHOOK_URL` | absente, sinon les échecs injectés y sont notifiés (avertissement seulement) |
+
+Le process `worker` du Procfile de l'api doit exister : c'est lui qui exécute
+les deux chaînes.
+
+### Inputs
+
+| Input | Défaut | Ce qu'il change |
+|---|---|---|
+| `taille_population` | `2000` | Jeunes archivés, puis nettoyés. Le Redis doit avoir été semé avec la même taille |
+| `inactifs_tous_les` / `echec_mail_tous_les` / `echec_chat_tous_les` | `5` / `100` / `100` | Part d'inactifs et d'échecs injectés, portés par les données semées |
+| `seuil_archivage_minutes` | `15` | Durée maximale de l'archivage (attente : 3 × le seuil) |
+| `timeout_nettoyage_minutes` | `90` | Attente maximale du nettoyage, rapporté sans seuil |
+| `bilan_redis` | `true` | Lecture du Redis de connect par un one-off, avant et après le nettoyage |
+| `taille_worker` / `nb_worker` | `M` / `1` | Conteneurs worker de l'api |
+| `taille_connect` / `nb_connect` / `taille_api` / `taille_mock` | `M` / `1` / `M` / `M` | Comme pour le tir API |
+| `arret_apres_tir` | `false` | Rescale les apps web à 0 en fin de tir |
+
+Les latences du mock (`LATENCE_MAIL_MS`, `LATENCE_CHAT_MS`, `MESSAGES_PAR_CHAT`)
+se lisent sur `mock-externes-perf`, comme `POOL_SIZE`.
+
+### Lire le résultat
+
+Le résumé du run donne deux tableaux de constats. Archivage : `termine`,
+`nbTraites` = population, `nbEchecs` = 0, `nbEchecsMail` = échecs injectés,
+durée ≤ seuil, jeunes supprimés, témoins intacts, une archive par jeune.
+Nettoyage : `termine`, `nbTraites` = population − échecs chat,
+`nbTraites + nbEchecs` = population, `nbEchecsIdp` = 0, `nbEchecsChat` = échecs
+injectés, plus aucune clé de la population dans Redis. Suivent la durée des deux
+chaînes, le `DBSIZE` et les `KEYS`. L'artefact `job-archivage-<run_id>` garde
+les JSON et `metadonnees.json`.
+
+Le tir ne mesure **ni Firestore ni Brevo** : tous deux sont mockés. La durée du
+nettoyage est donc rapportée sans seuil.
+
+| Symptôme | Cause probable |
+|---|---|
+| `nbEchecsIdp` = population | `OIDC_ISSUER_API_URL` ou `OIDC_API_KEY` faux sur api-perf |
+| `nbEchecsIdp` > 0 sans être la population | Timeout de 5 s de l'api dépassé par un `KEYS` lent : regarder les `KEYS` du bilan |
+| `nbEchecsMail` = 0 alors que des échecs sont injectés | Le mail avale ses erreurs HTTP côté api |
+| `ligne suivi_job` absente | Worker éteint, chaîne plantée, ou chaîne déjà en cours (`chaine deja en cours`) |
+| Refus « clés de la population dans le Redis » | Redis non semé, semé avec une autre taille, ou TTL expiré |
+
 ## Run with docker
 
 ### Build
