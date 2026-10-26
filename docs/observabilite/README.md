@@ -21,7 +21,7 @@ format ──► collecte ──► process ──► stockage ──► exploit
 
 | Étape | logs | metriques | traces |
 |---|---|---|---|
-| **format** — ce que l'app émet | [format/logs](format/logs/README.md) ; événements reçus par webhook : [format/webhooks](format/webhooks/correspondance-ecs.md) | — | — |
+| **format** — ce que l'app émet | [format/logs](format/logs/README.md) ; événements reçus par webhook : [format/webhooks](format/webhooks/conventions.md) | — | — |
 | **collecte** — transport jusqu'au premier buffer | [collecte/logs](collecte/logs/README.md) | [collecte/metriques](collecte/metriques/README.md) | [collecte/traces](collecte/traces/README.md) |
 | **process** — transformation avant indexation | [process/logs](process/logs/README.md) | — (écriture directe) | — (APM Server) |
 | **stockage** — data streams, mapping, rétention | [stockage/logs](stockage/logs/README.md) | [stockage/metriques](stockage/metriques/README.md) | [stockage/traces](stockage/traces/README.md) |
@@ -39,7 +39,7 @@ Principes et import des templates ES : [stockage/README.md](stockage/README.md).
 | [supervision/alertes-stack-observabilite.md](supervision/alertes-stack-observabilite.md) | Alertes sur notre infra de télémétrie (Logstash, Redis, agents Fleet, événements Scalingo de la stack) |
 | [supervision/alertes-securite.md](supervision/alertes-securite.md) | Alertes sur les vulnérabilités des dépendances (CVE Dependabot) |
 | [collecte/webhooks/README.md](collecte/webhooks/README.md) | Collecte par webhook : événements envoyés directement à Elasticsearch par les notifiers Scalingo et par `security-alerts.yml` (CVE Dependabot) |
-| [format/webhooks/correspondance-ecs.md](format/webhooks/correspondance-ecs.md) | Correspondance entre le payload de chaque webhook et les champs ECS, gabarit de la ligne `message`, rejets |
+| [format/webhooks/conventions.md](format/webhooks/conventions.md) | Correspondance entre le payload de chaque webhook et les champs ECS, gabarit de la ligne `message`, rejets |
 | [supervision/objets-kibana.md](supervision/objets-kibana.md) | Inventaire des dashboards, sessions Discover, SLO et règles versionnés, et comment les importer |
 | [runbooks/investigation-incident.md](runbooks/investigation-incident.md) | Enquêter sur un incident applicatif (KQL par `user.id`, `trace.id`…) |
 | [runbooks/runbook-logstash.md](runbooks/runbook-logstash.md) | Diagnostiquer une panne de la chaîne de logs (5 scénarios + playbook) |

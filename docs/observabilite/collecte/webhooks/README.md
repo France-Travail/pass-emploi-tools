@@ -44,7 +44,7 @@ transformation en champs ECS se fait dans un **ingest pipeline**.
 | Fichier                                                                                                        | Contenu                                                                                                                                                                                                    |
 |----------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`stockage/logs/`](../../stockage/logs/README.md) `2-component-templates.console`, `3-index-templates.console` | mapping et templates des 4 data streams (logsdb, `default_pipeline`, failure store), création à l'avance des data streams ; rétention : les briques `logs-<env>-retention-custom` existantes               |
-| [`supervision/pipelines/webhooks/`](../../supervision/pipelines/webhooks/README.md)                            | les ingest pipelines (transformation en champs ECS) et l'accès en écriture des émetteurs ; ce que font les pipelines : [correspondance-ecs.md](../../format/webhooks/correspondance-ecs.md) |
+| [`supervision/pipelines/webhooks/`](../../supervision/pipelines/webhooks/README.md)                            | les ingest pipelines (transformation en champs ECS) et l'accès en écriture des émetteurs ; ce que font les pipelines : [correspondance-ecs.md](../../format/webhooks/conventions.md) |
 | [`supervision/discovers/webhooks/`](../../supervision/discovers/webhooks/)                                     | sessions Discover des événements, des CVE et des rejets                                                                                                                                                    |
 
 **Un événement = une ligne de notification.** Les règles ne comptent que les
@@ -59,7 +59,7 @@ ouvertes : V1 les notifie donc à chaque passage.
 
 La correspondance champ par champ (payload de la source → champ ECS → règle de
 transformation), le gabarit de la ligne `message`, les catégories et émojis, et
-les causes de rejet : **[correspondance-ecs.md](../../format/webhooks/correspondance-ecs.md)**.
+les causes de rejet : **[format/webhooks/conventions.md](../../format/webhooks/conventions.md)**.
 
 En résumé : chaque pipeline pose `event.provider` (`scalingo` | `github`),
 `event.kind`, `event.action`, `event.id`, `service.name` et `message`, la ligne
@@ -150,7 +150,7 @@ python3 -I docs/observabilite/supervision/pipelines/webhooks/verifier-parite.py 
 
 ## Points ouverts
 
-- **Noms des `type` de crash et de déploiement** : non capturés (cf. [table des actions](../../format/webhooks/correspondance-ecs.md#table-des-actions)).
+- **Noms des `type` de crash et de déploiement** : non capturés (cf. [table des actions](../../format/webhooks/conventions.md#table-des-actions)).
 - **Événements au format Slack** : seules les variables sont constatées. Un
   autre type dans ce format passe par le même pipeline et sort en ℹ️
   `scalingo_<libellé>` ; un format encore différent part au failure store

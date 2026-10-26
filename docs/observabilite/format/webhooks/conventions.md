@@ -1,4 +1,4 @@
-# Webhooks : correspondance avec les champs ECS
+# Conventions ECS des webhooks : correspondance avec les champs ECS
 
 Comment chaque ingest pipeline transforme le payload d'une source externe
 (notifier Scalingo, alerte Dependabot) en document ECS : quel champ source donne
