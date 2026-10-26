@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import hashlib
 import json
@@ -12,7 +13,7 @@ import uvicorn
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import FastAPI, Header, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
 app = FastAPI()
 
@@ -240,6 +241,23 @@ async def poleemploi_prestations():
 @app.get("/poleemploi/peconnect-rendezvousagenda/v2/listerendezvous")
 async def poleemploi_agenda():
     return []
+
+
+##################################################
+##
+##  BREVO
+##
+##################################################
+
+# Ordre de grandeur d'un envoi Brevo : l'archivage envoie le mail jeune par
+# jeune, cette latence pèse sur la durée du job.
+LATENCE_MAIL_S = 0.05
+
+
+@app.post("/brevo/v3/smtp/email")
+async def brevo_envoyer():
+    await asyncio.sleep(LATENCE_MAIL_S)
+    return JSONResponse(status_code=201, content={"messageId": "<perf@mock>"})
 
 
 if __name__ == "__main__":

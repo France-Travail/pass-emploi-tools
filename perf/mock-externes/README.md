@@ -23,6 +23,7 @@ Gatling ──► connect-perf ──► mock-externes   (IdP France Travail)
 | `GET /poleemploi/peconnect-demarches/v1/demarches` | `api` | Démarches de l'accueil |
 | `GET /poleemploi/peconnect-gerer-prestations/v1/rendez-vous` | `api` | Prestations (vide) |
 | `GET /poleemploi/peconnect-rendezvousagenda/v2/listerendezvous` | `api` | Rendez-vous agenda (vide) |
+| `POST /brevo/v3/smtp/email` | `api` | Envoi de mail : `201` après 50 ms, sans rien envoyer |
 
 ## Deux principes de conception
 
@@ -59,7 +60,7 @@ Le `sub` rendu suit `{POOL_PREFIX}{i}`, avec `i` tiré dans `[0, POOL_SIZE)`.
 
 ```sh
 make start   # venv + deps + uvicorn sur :8080
-make test    # 11 tests
+make test    # 12 tests
 ```
 
 ## Déploiement Scalingo (`mock-externes-perf`)
@@ -118,6 +119,7 @@ ignore la valeur de toute façon.
 |---|---|
 | `OIDC_ISSUER_URL` | **le vrai `connect-perf`** — c'est lui l'émetteur du JWT |
 | `POLE_EMPLOI_API_BASE_URL` | `{MOCK}/poleemploi` |
+| `SENDINBLUE_API_URL` | `{MOCK}/brevo` — sinon l'api envoie de vrais mails |
 
 ## Diagnostic
 
