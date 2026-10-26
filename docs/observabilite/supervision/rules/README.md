@@ -81,8 +81,7 @@ aux règles sans Mattermost et signale donc des différences.
 Feature flipping, selon la convention des apps : **active seulement si elle vaut
 `true`**.
 
-- `true` : les règles générées gardent leurs actions Mattermost (jusqu'au
-  décommissionnement de Mattermost, le 1er novembre 2026) ;
+- `true` : les règles générées gardent leurs actions Mattermost ;
 - absente : elles n'ont plus que leur action Tchap. Les messages Tchap ne changent pas.
 
 Le CI la fixe à `true`. Le jour de la bascule : régénérer sans elle, passer celle

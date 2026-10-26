@@ -87,8 +87,8 @@ Sur un cluster vide, l'en-tête de chaque fichier indique comment transformer le
 `Authorization: ApiKey …`, plutôt que Dev Tools avec sa session) : chaque règle
 créée ou modifiée tourne avec **cette clé**, sans clé à elle
 (`api_key_created_by_user: true`). Quand la clé expire, la règle échoue en
-`security_exception` à chaque exécution, et personne n'est prévenu (constaté le
-2026-10-20 : 8 règles muettes pendant 6 h). Juste après le déploiement, depuis
+`security_exception` à chaque exécution, et personne n'est prévenu (déjà arrivé :
+8 règles muettes pendant 6 h). Juste après le déploiement, depuis
 une session Kibana : *Stack Management* → *Rules*, sélectionner toutes les
 règles, action **Update API keys**. Chaque règle reçoit une clé à elle, au nom
 de ce compte, sans expiration. Vérifier ensuite qu'aucune règle active ne

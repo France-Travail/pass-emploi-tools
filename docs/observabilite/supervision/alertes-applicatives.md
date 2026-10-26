@@ -201,7 +201,7 @@ FROM logs-prod-default
 **Calibrage** (2026-10-20, 30 jours, par tranche de 5 min) : Milo p99 = 85,
 max = 3 352 (le 2026-10-08 à 13 h 20, timeouts et 429) ; France Travail
 p99 = 209, max = 852 (des 500 et des timeouts chroniques). Seuil fixé à 100
-(décision de l'équipe, 2026-10-20) : au-dessus, Milo 15 heures sur 10 jours,
+par l'équipe : au-dessus, Milo 15 heures sur 10 jours,
 France Travail 20 heures sur 9 jours, soit au plus 35 heures d'alerte en
 30 jours (81 avec un seuil de 50). Les autres partenaires ne dépassent jamais 18.
 ```
@@ -521,13 +521,11 @@ Aucun changement de pipeline ni de données ; réversible.
 
 Des **Elasticsearch query rules (KQL)** sur les logs de l'api
 (`logs-<env>-default`) : `job_crashed` (le handler a levé une exception) et
-`job_handler_not_found`, posés par le worker. Elles notifient les canaux
-Mattermost des jobs (`jobs-production`, `jobs-staging`), où `SuiviJobService`
-poste aujourd'hui le résultat des jobs ; une ligne par échec :
-`❌ <job> : job_crashed — <message d'erreur>`. Pas encore de salon Tchap des
-jobs : pas d'action Tchap.
+`job_handler_not_found`, posés par le worker. Elles notifient les salons des
+jobs (`jobs-production`, `jobs-staging`) ; une ligne par échec :
+`❌ <job> : job_crashed — <message d'erreur>`.
 
-**Version dégradée** (décision du 2026-10-19) : uniquement à partir des logs
+**Version dégradée** : uniquement à partir des logs
 existants, sans modifier l'api. Ce que les notifications de `SuiviJobService`
 donnent et que A5a / A5b ne donnent pas :
 

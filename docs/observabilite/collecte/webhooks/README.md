@@ -1,7 +1,7 @@
 # Collecte par webhook (Scalingo, GitHub)
 
 Les événements émis hors des apps qui arrivent **par webhook** : un appel HTTP
-direct de l'émetteur à l'API Elasticsearch, sans agent ni Logstash. Aujourd'hui :
+direct de l'émetteur à l'API Elasticsearch, sans agent ni Logstash. Les sources :
 les notifiers des apps Scalingo (crash, redémarrage, arrêt, déploiement, seuils
 RAM/CPU…) et les CVE remontées par Dependabot via
 [`security-alerts.yml`](../../../../.github/workflows/security-alerts.yml).
@@ -15,12 +15,6 @@ et lus par des Kibana Rules rangées par périmètre :
 | Événements Scalingo des apps de la stack (Logstash, Elastic Agent, Heartbeat) | 6a, 6b dans les [alertes de la stack](../../supervision/alertes-stack-observabilite.md) |
 | CVE Dependabot                                                                | V1 dans les [alertes de sécurité](../../supervision/alertes-securite.md)                |
 | Événements rejetés (failure store)                                            | 14 dans les [alertes de la stack](../../supervision/alertes-stack-observabilite.md)     |
-
-> **Statut** : validé de bout en bout sur une pile Elasticsearch + Kibana 9.4.7
-> locale (pipelines, droits, failure store, règles, messages rendus). Stockage,
-> pipelines et accès déployés sur Elastic Cloud le 2026-10-14, notifiers
-> Scalingo le 2026-10-19 ; envoi de `security-alerts.yml` : à la fusion des PR
-> de chaque repo (cf. [mise en service](#mise-en-service)).
 
 ## La chaîne
 
@@ -165,15 +159,16 @@ store. Lecture seule ; code de sortie non nul au moindre écart.
 
 ```bash
 # ES_URL : l'endpoint Elasticsearch ; ES_API_KEY : une clé API qui peut lire les data streams logs-alertes-*
-python3 -I docs/observabilite/supervision/pipelines/webhooks/verifier-parite.py --depuis 2026-10-19T17:00:00Z
+python3 -I docs/observabilite/supervision/pipelines/webhooks/verifier-parite.py --depuis <date ISO 8601, par exemple 2026-10-19T17:00:00Z>
 ```
 
-## Points ouverts
+## Limites connues
 
-- **Noms des `type` de crash et de déploiement** : non capturés (cf. [table des actions](../../format/webhooks/conventions.md#table-des-actions)).
-- **Événements au format Slack** : seules les variables sont constatées. Un
-  autre type dans ce format passe par le même pipeline et sort en ℹ️
-  `scalingo_<libellé>` ; un format encore différent part au failure store
+- **Noms des `type` de crash et de déploiement** : jamais observés sur un
+  événement réel, repris du catalogue Scalingo (cf. [table des actions](../../format/webhooks/conventions.md#table-des-actions)).
+- **Événements au format Slack** : seules les modifications de variables ont été
+  observées. Un autre type dans ce format passe par le même pipeline et sort en
+  ℹ️ `scalingo_<libellé>` ; un format encore différent part au failure store
   (règle 14).
 - **Identifiants dans l'URL du notifier** : visibles de tous les collaborateurs
   de l'app Scalingo. Acceptable parce que l'utilisateur ne peut qu'ajouter des

@@ -38,7 +38,7 @@ modifier, modifier leur source (cf. leur en-tête et le mode d'emploi).
 
 ## Où arrivent les alertes
 
-Dans les canaux Mattermost de monitoring jusqu'au 1er novembre 2026, puis dans
-les salons Tchap (`monitoring-*`, `o11y-*`, `jobs-*`) : cf.
+Dans les canaux `monitoring-*`, `o11y-*` et `jobs-*`, qui portent le même nom
+dans Mattermost et dans Tchap : cf.
 [workflows/tchap/README.md](workflows/tchap/README.md). AutoOps alerte en direct
 (disque, indexation) : cf. [alertes de la stack](alertes-stack-observabilite.md).

@@ -129,8 +129,7 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
    60 jours plus tard et **toutes** les notifications Tchap s'arrêtent.
    Noter la date de renouvellement dans l'agenda de l'équipe.
    **Un seul bot pour tous les salons** : il lit et poste dans tous les salons
-   où on l'invite. Adresse `@francetravail.fr` confirmée par l'équipe beta.gouv
-   le 2026-10-14 (Julien Bouquillon).
+   où on l'invite. Adresse `@francetravail.fr` confirmée par l'équipe beta.gouv.
 2. **Serveur du bot** : Tchap répartit les comptes sur plusieurs serveurs selon
    le domaine de l'email. Le vérifier avant tout :
    ```bash
@@ -142,11 +141,10 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
    remplacer l'URL partout : connecteur, `curl` ci-dessous, connecteurs AutoOps
    des [alertes 11 et 12](../../alertes-stack-observabilite.md#alerte-11--disque-des-nœuds-elasticsearch-autoops).
 3. **Salons** : `monitoring-production`, `monitoring-staging`, `o11y-production`,
-   `o11y-staging`, `jobs-production` et `jobs-staging` (créés le 2026-10-19),
+   `o11y-staging`, `jobs-production` et `jobs-staging`,
    **privés et non chiffrés**.
    - **Non chiffrés** : le bot ne sait pas chiffrer. Tchap n'impose pas le
-     chiffrement d'un salon de bot (équipe beta.gouv, Julien Bouquillon,
-     2026-10-13), les messages respectent les
+     chiffrement d'un salon de bot (confirmé par l'équipe beta.gouv), les messages respectent les
      [CGU](https://tchap.numerique.gouv.fr/cgu) : pas de donnée sensible ni
      classifiée.
    - **Privés**, sur invitation, pas en forum public : les messages listent nos
@@ -168,17 +166,17 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
    curl -s -X POST "https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/<id du salon encodé>/join" -H "Authorization: Bearer <jeton>"
    ```
    La connexion se fait par l'**identifiant Matrix** du bot, pas par son email
-   (`m.id.thirdparty` est refusé : « Unsupported login identifier », constaté
-   le 2026-10-20). Tchap le dérive de l'email en remplaçant `@` par `-` :
-   `bot-pass-emploi-francetravail.fr`, à confirmer dans Tchap après
+   (`m.id.thirdparty` est refusé : « Unsupported login identifier »). Tchap le dérive de l'email en remplaçant `@` par `-` :
+   `bot-pass-emploi-francetravail.fr` : le vérifier dans Tchap après
    l'inscription. La réponse donne le jeton (`access_token`), à ranger dans le
    coffre de l'équipe : il **n'expire pas** (ni `expires_in_ms` ni
-   `refresh_token`, constaté le 2026-10-20). Garder aussi `user_id`, à
+   `refresh_token`). Garder aussi `user_id`, à
    reporter dans le document d'expiration (étape 7), et `device_id`, pour
    révoquer la session.
 5. **Kibana**, dans Dev Tools : rejouer [`../../connecteurs/tchap.console`](../../connecteurs/tchap.console) en
-   remplaçant `<jeton-du-bot>`, puis `tchap-client.console`, puis les 4
-   `tchap-<salon>.console` tels quels (ils portent l'ID de leur salon).
+   remplaçant `<jeton-du-bot>`, puis `tchap-client.console`, puis les 6
+   `generated/tchap-<salon>.console` et les 2 `generated/tchap-jobs-<env>-rapport.console`
+   tels quels (ils portent l'ID de leur salon).
 6. **Test** : poster dans chaque salon depuis Dev Tools.
    ```
    POST kbn:/api/workflows/workflow/tchap-client/run
@@ -190,21 +188,20 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
    en remplaçant `<identifiant-du-bot>` par le `user_id` de l'étape 4 et
    `<date-expiration>` par la date d'inscription du bot + 11 mois + 60 jours.
 
-**Questions ouvertes**, à poser à l'équipe Tchap dans le salon Bots et
-Intégrations (l'équipe beta.gouv n'a pas la réponse, 2026-10-14) :
-- la durée de vie du jeton et des sessions inactives. Tchap délègue son
-  authentification au Matrix Authentication Service (`auth.agent.tchap.gouv.fr`),
-  où elles se règlent côté serveur ; la connexion par mot de passe reste
-  acceptée. Un bot qui alerte rarement pourrait voir sa session expirer ;
-- l'acceptation durable du `POST …/send/m.room.message` sans `txnId`, dont
-  dépendent les alertes AutoOps. À tester soi-même dès que le compte existe,
-  dans un salon de test :
-  ```bash
-  curl -s -X POST "https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/<id du salon encodé>/send/m.room.message" \
-    -H "Authorization: Bearer <jeton>" -H 'Content-Type: application/json' -d '{"msgtype":"m.text","body":"test POST"}'
-  ```
-  Lancée deux fois, la commande doit renvoyer deux `event_id` différents et
-  poster deux messages.
+8. **AutoOps** : les alertes 11 et 12 postent par `POST …/send/m.room.message`
+   sans `txnId`. Le vérifier avec le compte du bot, dans un salon de test :
+   ```bash
+   curl -s -X POST "https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/<id du salon encodé>/send/m.room.message" \
+     -H "Authorization: Bearer <jeton>" -H 'Content-Type: application/json' -d '{"msgtype":"m.text","body":"test POST"}'
+   ```
+   Lancée deux fois, la commande doit renvoyer deux `event_id` différents et
+   poster deux messages.
+
+**Limite connue** : Tchap ne documente pas la durée de vie des sessions
+inactives, réglée côté serveur par son Matrix Authentication Service
+(`auth.agent.tchap.gouv.fr`). Si la session du bot expire, chaque envoi échoue
+et la règle « Tchap - Envoi en échec » se déclenche : se reconnecter (étape 4)
+et mettre à jour le jeton du connecteur.
 
 ## Brancher une règle
 
@@ -222,7 +219,7 @@ Intégrations (l'équipe beta.gouv n'a pas la réponse, 2026-10-14) :
    - `ongoing: false` pour une règle à seuil (DLQ, 5xx, SLO…) : un message
      quand l'alerte apparaît, aucun tant qu'elle dure. L'action `.workflows`
      **ignore toute fréquence** (`frequency`, throttle, créneau quotidien :
-     acceptée par l'API, effacée sans erreur, constaté le 2026-10-19) : les
+     acceptée par l'API, effacée sans erreur) : les
      relances toutes les 6 h et le bilan de 9 h 30 de Mattermost n'ont pas
      d'équivalent dans Tchap ; l'alerte reste visible dans Kibana.
    - `ongoing: true` pour une règle d'événements (`excludeHitsFromPreviousRun` :
@@ -287,7 +284,7 @@ de la règle et raison brute de Kibana).
 
 ## Pièges
 
-- **Pare-feu devant Tchap** (constaté le 2026-10-20) : il rejette certains
+- **Pare-feu devant Tchap** : il rejette certains
   messages par une page HTML 403, sans erreur Matrix, selon un score où des
   éléments anodins s'additionnent : un `=` et un lien ; plusieurs liens HTML
   `<a>` ; un lien `<a>` et une couleur. D'où des messages sans aucun lien
@@ -310,8 +307,8 @@ de la règle et raison brute de Kibana).
   `foreach:` posée sur `workflow.execute` est ignorée sans erreur.
 - Les Workflows exigent la licence **Enterprise**.
 - L'action `.workflows` transmet aussi les alertes **en attente de
-  rétablissement** d'une règle qui bagote (*flapping*, constaté en test le
-  2026-10-19) ; le connecteur Mattermost, non. D'où le filtre `where_exp` du
+  rétablissement** d'une règle qui bagote (*flapping*, constaté en test) ;
+  le connecteur Mattermost, non. D'où le filtre `where_exp` du
   `foreach` des Workflows de salon : ne pas le retirer.
 - Le compte du bot **expire s'il n'est pas renouvelé** chaque année (lien reçu
   par email 11 mois après l'inscription) : toutes les notifications s'arrêtent.

@@ -4,11 +4,12 @@ Les alertes sur **notre infra de télémétrie** (Logstash, Redis, agents Fleet,
 elles signalent que la chaîne de logs et de métriques est en panne ou aveugle,
 pas que les utilisateurs sont touchés. Les pannes visibles des utilisateurs sont
 dans [alertes-applicatives](alertes-applicatives.md). Hors alertes 11 et 12
-(AutoOps), ce sont des **Kibana Rules** qui notifient via Mattermost
-(`#o11y-production`, `#o11y-staging`).
+(AutoOps), ce sont des **Kibana Rules** qui notifient les canaux
+`o11y-production` et `o11y-staging` (même nom dans Mattermost et dans Tchap).
 
-> ⚠️ **Mattermost est décommissionné le 1er novembre 2026.** Les Kibana Rules
-> migrent vers Tchap par les [Workflows Tchap](workflows/tchap/README.md). Les
+> Les Kibana Rules notifient Tchap par les [Workflows Tchap](workflows/tchap/README.md),
+> et Mattermost tant que leurs actions Mattermost ne sont pas retirées
+> (cf. [`FEATURE_NOTIFIER_ALERTES_MATTERMOST`](rules/README.md#feature_notifier_alertes_mattermost)). Les
 > alertes émises hors Kibana, **11 et 12 (AutoOps)**, postent directement dans
 > Tchap, par un connecteur Webhook AutoOps en `POST` (cf. leur section,
 > [ADR-004](../../decisions/ADR-004-notifications-tchap-kibana-workflows.md#alertes-émises-hors-kibana-autoops)).
@@ -510,7 +511,7 @@ throttle. Scalingo n'envoie `app_crashed` qu'aux 2ᵉ, 5ᵉ et 12ᵉ crashs, et
 Hors-Prod - Événements Scalingo** et les Discover **Logs Hors-Prod** de Logstash
 Process.
 
-**Payload Scalingo** (capture réelle d'un redémarrage, 2026-09-23) :
+**Payload Scalingo** (capture réelle d'un redémarrage) :
 ```json
 {
   "id": "6ab3fc9805b3851e56c0404f",
@@ -916,8 +917,7 @@ version).
 }
 ```
 
-**Connecteur Tchap** (à créer avant le 1er novembre 2026, en plus du connecteur
-Mattermost jusqu'à cette date ; même filtre) : type **Webhook**, nom
+**Connecteur Tchap** (même filtre que l'ancien connecteur Mattermost) : type **Webhook**, nom
 `Tchap o11y-production - Monitoring disque et santé Elasticsearch`, méthode `POST`, URL
 `https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/%21GcUrxqTFizBjxwmsBO%3Aagent.dinum.tchap.gouv.fr/send/m.room.message`
 (ID du salon `o11y-production`, encodé),
@@ -989,7 +989,7 @@ entrant que l'alerte 11 (secret : ne pas la versionner), méthode `POST`, en-tê
 `Content-Type: application/json`. Tester avec **Run to test** avant **Save** : les
 variables `${…}` arrivent non remplies au test, c'est normal.
 
-> **Constaté sur le premier événement réel** (management queue, 2026-10-14) :
+> **Constaté sur un événement réel** (management queue) :
 > toutes les variables sont remplies. AutoOps envoie un message à l'ouverture
 > (`OPENED`, `${END_TIME}` vaut alors `N/A`) puis un à la clôture
 > (`RESOLVED`). Les heures sont en UTC (`+0000`). `${MESSAGE}` contient des
@@ -1019,8 +1019,7 @@ variables `${…}` arrivent non remplies au test, c'est normal.
 }
 ```
 
-**Connecteur Tchap** (à créer avant le 1er novembre 2026, en plus du connecteur
-Mattermost jusqu'à cette date ; même filtre) : type **Webhook**, nom
+**Connecteur Tchap** (même filtre que l'ancien connecteur Mattermost) : type **Webhook**, nom
 `Tchap o11y-production - Monitoring indexation Elasticsearch`, méthode `POST`, URL
 `https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/%21GcUrxqTFizBjxwmsBO%3Aagent.dinum.tchap.gouv.fr/send/m.room.message`
 (ID du salon `o11y-production`, encodé),

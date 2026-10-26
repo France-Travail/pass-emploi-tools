@@ -20,7 +20,7 @@ Le Workflow qui reçoit les alertes des règles d'un salon et poste leur message
 | Fichier | Quand | Repères |
 |---|---|---|
 | `workflow.console` | pour chacun des salons de `../salons.json` | `@@SALON@@` (nom du salon), `@@ID_SALON@@` (son identifiant Tchap), `@@TEXTE@@` et `@@HTML@@` (le message de chaque règle, construit par le générateur depuis les fichiers JSON des règles), `@@SI_ESQL_…@@` (cf. ci-dessous) |
-| `etape-esql.yaml` | à la place de `@@SI_ESQL_ETAPE@@`, **seulement** si une règle du salon est en ES\|QL `groupBy: all` (aujourd'hui : `monitoring-production`) | l'étape qui relance la requête de la règle, lue dans l'alerte, pour obtenir ses lignes de résultat |
+| `etape-esql.yaml` | à la place de `@@SI_ESQL_ETAPE@@`, **seulement** si une règle du salon est en ES\|QL `groupBy: all` | l'étape qui relance la requête de la règle, lue dans l'alerte, pour obtenir ses lignes de résultat |
 | `commentaire-esql.console` | à la place de `@@SI_ESQL_COMMENTAIRE@@`, dans les mêmes conditions | le commentaire qui explique cette étape |
 
 ## `rapport-jobs/` : le rapport quotidien des jobs, `tchap-jobs-<env>-rapport.console`

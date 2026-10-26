@@ -42,7 +42,7 @@ Pipelines, dans l'ordre d'exécution :
 
 ### Payload attendu
 
-Enveloppe des notifiers webhook, vérifiée sur des captures réelles le 2026-09-23 :
+Enveloppe des notifiers webhook, vérifiée sur des captures réelles :
 
 ```json
 {"id": "…", "created_at": "2026-09-23T14:02:11.000Z", "type": "restart",
@@ -95,10 +95,10 @@ dans la matrice.
 | `deployment` | `app_deployed` | — | — |
 | autre (dont le [format Slack](#format-slack)) | `scalingo_<type>` | — | ✅ (`scalingo_variables_bulk_edited`, `scalingo_variable_removed`) |
 
-✅ = constaté sur un événement réel. Les autres noms viennent du catalogue
-Scalingo et sont **à confirmer à la première occurrence** : si un crash arrive
-sous un autre `type`, il sort en `scalingo_<type>` et en `infra`. L'ajouter
-alors à la table `actions` du pipeline `ingest-alertes-scalingo` (et à
+✅ = observé sur un événement réel. Les autres noms viennent du catalogue
+Scalingo, sans avoir été observés : un crash qui arrive sous un autre `type`
+sort en `scalingo_<type>` et en `infra`, donc sans 🚨. Dans ce cas, ajouter ce
+`type` à la table `actions` du pipeline `ingest-alertes-scalingo` (et à
 `failures` si c'est un échec, à `arrets` si c'est un incident), puis ici.
 
 ### Catégorie et émoji
@@ -145,7 +145,7 @@ Exemples (tests des pipelines) :
 ### Format Slack
 
 Le même notifier webhook envoie certains événements au format qu'il poste dans
-Mattermost : constaté le 2026-10-19 pour les modifications de variables, alors
+Mattermost : c'est le cas des modifications de variables, alors
 que les redémarrages, scalings et alertes arrivent au format habituel.
 
 ```json
