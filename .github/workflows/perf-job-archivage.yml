@@ -1,0 +1,133 @@
+# Scénario job : archivage de migration sur l'environnement de perf dédié.
+# Réveil, seed, déclenchement de la route support, attente de la ligne
+# suivi_job, verdict. Mode d'emploi : perf/README.md.
+#
+# Prérequis : ceux de perf-api.yml (environnement GitHub « Performance »,
+# SCALINGO_API_TOKEN, marqueur anti-prod posé à la main sur la base).
+
+name: Perf - Job archivage de migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      nb_jeunes:
+        description: "nb_jeunes · jeunes de la population de migration"
+        default: "2000"
+
+env:
+  SCALINGO_REGION: osc-secnum-fr1
+  API_APP: pass-emploi-api-perf
+  MOCK_APP: mock-externes-perf
+  POPULATION: perf-migration
+  NB_JEUNES: ${{ inputs.nb_jeunes || '2000' }}
+  SEUIL_SECONDES: 900
+
+jobs:
+  archivage:
+    name: Archivage de migration
+    runs-on: ubuntu-latest
+    environment: Performance
+    concurrency:
+      group: perf-environnement-dedie
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Installer psql et le CLI Scalingo, se connecter
+        env:
+          SCALINGO_API_TOKEN: ${{ secrets.SCALINGO_API_TOKEN }}
+        run: |
+          [[ "$NB_JEUNES" =~ ^[1-9][0-9]*$ ]] || { echo "::error::nb_jeunes doit être un entier positif"; exit 1; }
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends postgresql-client
+          for essai in 1 2 3; do
+            curl -fsSL -O https://cli-dl.scalingo.com/install.sh && bash install.sh && break
+            [ "$essai" = 3 ] && { echo "::error::Installation du CLI Scalingo en échec"; exit 1; }
+            sleep 15
+          done
+          scalingo login --api-token "$SCALINGO_API_TOKEN"
+
+      - name: Refuser si l'api n'envoie pas ses mails au mock
+        run: |
+          attendu="https://$MOCK_APP.$SCALINGO_REGION.scalingo.io/brevo"
+          url="$(scalingo --region "$SCALINGO_REGION" --app "$API_APP" env-get SENDINBLUE_API_URL || true)"
+          [ "$url" = "$attendu" ] || { echo "::error::SENDINBLUE_API_URL de $API_APP vaut « $url », $attendu attendu : de vrais mails partiraient"; exit 1; }
+
+      # Tolérances et retries décalqués de perf-api.yml (« Réveiller les apps »).
+      # Worker en M x 1, défauts de l'api dans perf-api.yml : la formation de
+      # prod n'est versionnée nulle part.
+      - name: Réveiller l'api, son worker et mock-externes
+        run: |
+          scaler() {
+            local app="$1" essai; shift
+            for essai in 1 2 3 4 5; do
+              sortie="$(scalingo --region "$SCALINGO_REGION" --app "$app" scale "$@" 2>&1)" && { echo "$sortie"; return 0; }
+              echo "$sortie"
+              echo "$sortie" | grep -qi 'no change in containers formation' && return 0
+              if [ "$essai" -lt 5 ] && echo "$sortie" | grep -qiE 'is scaling|context deadline exceeded|Client.Timeout|timeout|EOF|connection reset|502|503|504'; then
+                sleep 15
+                continue
+              fi
+              return 1
+            done
+            return 1
+          }
+          scaler "$API_APP" web:1 worker:1:M
+          scaler "$MOCK_APP" web:1
+          for url in "https://$API_APP.$SCALINGO_REGION.scalingo.io/health" "https://$MOCK_APP.$SCALINGO_REGION.scalingo.io/idp/protocol/openid-connect/certs"; do
+            for essai in $(seq 1 30); do
+              [ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$url" || true)" = 200 ] && continue 2
+              sleep 10
+            done
+            echo "::error::$url ne répond pas"; exit 1
+          done
+
+      - name: Lire la base et la clé support de l'api
+        run: |
+          url="$(scalingo --region "$SCALINGO_REGION" --app "$API_APP" env-get DATABASE_URL)"
+          cle="$(scalingo --region "$SCALINGO_REGION" --app "$API_APP" env-get API_KEY_SUPPORT | jq -r '.[0]')"
+          [ -n "$cle" ] && [ "$cle" != null ] || { echo "::error::API_KEY_SUPPORT absente de $API_APP"; exit 1; }
+          echo "::add-mask::$url"
+          echo "::add-mask::$cle"
+          { echo "DATABASE_URL_PERF=$url"; echo "CLE_SUPPORT=$cle"; } >> "$GITHUB_ENV"
+
+      - name: Semer la population de migration
+        run: psql "$DATABASE_URL_PERF" -v ON_ERROR_STOP=1 -v nb_jeunes="$NB_JEUNES" -f perf/seed/migration.sql
+
+      # Heure de la base, pas du runner : la ligne suivi_job est datée par elle.
+      - name: Déclencher l'archivage
+        run: |
+          echo "DEBUT=$(psql "$DATABASE_URL_PERF" -At -c 'SELECT now()')" >> "$GITHUB_ENV"
+          code="$(curl -sS -o /dev/null -w '%{http_code}' -X POST -H "X-API-KEY: $CLE_SUPPORT" \
+                  "https://$API_APP.$SCALINGO_REGION.scalingo.io/support/archiver-jeunes-migration/$POPULATION")"
+          [ "$code" = 204 ] || { echo "::error::POST archiver-jeunes-migration : HTTP $code, 204 attendu"; exit 1; }
+
+      # Attente jusqu'à 2 x le seuil : un tir lent rend quand même sa durée.
+      - name: Attendre la fin du job et rendre le verdict
+        run: |
+          for _ in $(seq 1 120); do
+            ligne="$(psql "$DATABASE_URL_PERF" -At -F ' ' -v ON_ERROR_STOP=1 -v debut="$DEBUT" <<'SQL'
+          SELECT
+            round(extract(epoch FROM date_execution - :'debut'::timestamptz) + temps_execution / 1000.0),
+            coalesce(resultat->>'nbTraites', '-'),
+            coalesce(resultat->>'nbEchecs', '-'),
+            (SELECT count(*) FROM jeune WHERE id LIKE 'perf-migr-%')
+          FROM suivi_job
+          WHERE job_type = 'ARCHIVER_JEUNES_MIGRATION'
+            AND date_execution >= :'debut'::timestamptz
+            AND resultat ? 'termine'
+          ORDER BY date_execution
+          LIMIT 1
+          SQL
+            )"
+            [ -n "$ligne" ] && break
+            sleep 15
+          done
+          [ -n "$ligne" ] || { echo "::error::Aucune ligne suivi_job ARCHIVER_JEUNES_MIGRATION après 30 min"; exit 1; }
+          read -r duree traites echecs restants <<< "$ligne"
+          echo "Archivage de $NB_JEUNES jeunes : ${duree}s, $traites traités, $echecs échecs, $restants jeunes restants" | tee -a "$GITHUB_STEP_SUMMARY"
+          ok=0
+          [ "$duree" -le "$SEUIL_SECONDES" ] || { echo "::error::Durée ${duree}s > ${SEUIL_SECONDES}s"; ok=1; }
+          [ "$echecs" = 0 ] || { echo "::error::$echecs échecs, 0 attendu"; ok=1; }
+          [ "$traites" = "$NB_JEUNES" ] || { echo "::error::$traites jeunes traités, $NB_JEUNES attendus"; ok=1; }
+          [ "$restants" = 0 ] || { echo "::error::$restants jeunes de la population encore en base"; ok=1; }
+          exit "$ok"
