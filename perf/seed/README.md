@@ -60,6 +60,8 @@ cf. `docs/perf/harnais.md`) : une approximation de volume, opt-in, séparée de
 `seed.sql` pour ne jamais changer son comportement. Idempotent, garde-fou
 anti-prod partagé avec `seed.sql`.
 
+`migration.sql` sème la population du scénario d'archivage de migration, cf. [`perf/README.md`](../README.md).
+
 ## Appariement avec `mock-externes`
 
 > ⚠️ **`pool_prefix` et `pool_size` doivent valoir exactement `POOL_PREFIX` et

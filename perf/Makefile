@@ -9,7 +9,7 @@ RUN_DIR := local-run/.run
 HERE := $(CURDIR)
 
 .PHONY: accueilFT loginFT run compile report \
-        start stop status logs mock apidb seed fond-de-charge connect api marquer-environnement \
+        start stop status logs mock apidb seed seed-migration fond-de-charge connect api marquer-environnement \
         firebase-fake tir deployer
 
 accueilFT: .env
@@ -137,6 +137,10 @@ seed:
 	     -v ON_ERROR_STOP=1 -f seed/seed.sql
 	psql "postgresql://passemploi:passemploi@localhost:55432/passemploidb" \
 	     -v ON_ERROR_STOP=1 -f seed/verifier.sql
+
+seed-migration:
+	psql "postgresql://passemploi:passemploi@localhost:55432/passemploidb" \
+	     -v ON_ERROR_STOP=1 -f seed/migration.sql
 
 # Hors de `start` : inutile pour valider le parcours en local, seulement pour
 # tester le harnais contre un volume proche de la prod (cf. seed/fond-de-charge.sql).
