@@ -10,7 +10,7 @@ La chaîne complète et l'ordre de mise en service : [collecte par webhook](../.
 
 Ce que font ces pipelines, champ par champ (payload de chaque source → champ
 ECS, gabarit de la ligne `message`, rejets) :
-[correspondance avec les champs ECS](../../../collecte/webhooks/correspondance-ecs.md).
+[correspondance avec les champs ECS](../../../format/webhooks/correspondance-ecs.md).
 
 | Fichier | Contenu |
 |---|---|
@@ -27,7 +27,7 @@ environnement les appellent), puis les autres. Les `_simulate` en fin de
 fichier doivent donner les résultats annoncés en commentaire.
 
 Modifier un pipeline : reporter le changement dans
-[`correspondance-ecs.md`](../../../collecte/webhooks/correspondance-ecs.md) dans la même PR, puis le
+[`correspondance-ecs.md`](../../../format/webhooks/correspondance-ecs.md) dans la même PR, puis le
 rejouer en `_simulate` avant de l'appliquer.
 
 Les data streams, leurs mappings et leur rétention :

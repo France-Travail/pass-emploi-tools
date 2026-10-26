@@ -4,11 +4,11 @@ Comment chaque ingest pipeline transforme le payload d'une source externe
 (notifier Scalingo, alerte Dependabot) en document ECS : quel champ source donne
 quel champ ECS, avec quelle règle, et comment se construit la ligne `message`
 que les règles et Tchap affichent. C'est l'équivalent, pour ces sources, des
-[conventions des logs ECS](../../format/logs/conventions.md) pour les logs des apps.
+[conventions des logs ECS](../logs/conventions.md) pour les logs des apps.
 
 Ce fichier décrit **ce que font les pipelines** de [`pipelines/`](../../supervision/pipelines/webhooks/) :
 toute modification d'un pipeline se reporte ici dans la même PR, et inversement.
-La chaîne, les accès et la mise en service : [README](README.md).
+La chaîne, les accès et la mise en service : [README](../../collecte/webhooks/README.md).
 
 ## Principes communs à toutes les sources
 
@@ -18,7 +18,7 @@ La chaîne, les accès et la mise en service : [README](README.md).
 | Payload brut gardé | Tout le payload est déplacé sous `<source>.*` (`scalingo.*`, `github.*`), en `dynamic: false` : lisible dans le document, **non indexé** (on ne cherche pas dedans). Seule exception : l'email de l'auteur Scalingo, supprimé. |
 | Champs ECS indexés | Uniquement ceux des tableaux ci-dessous. Mappings : `logs-alertes@mappings` (`event.id`, `.kind`, `.provider`, `.reason`) et `logs-alertes-<source>@mappings`, dans [`stockage/logs/2-component-templates.console`](../../stockage/logs/2-component-templates.console) ; le reste suit `ecs@mappings` (`labels.*` en keyword). |
 | `event.provider` | Le nom de la source : `scalingo`, `github`. |
-| `event.action` | Verbe au passé, snake_case, comme pour les logs (cf. [taxonomie](../../format/logs/conventions.md#taxonomie-eventaction)). Un type inconnu de la source n'est pas rejeté : il sort en `<source>_<type>`. |
+| `event.action` | Verbe au passé, snake_case, comme pour les logs (cf. [taxonomie](../logs/conventions.md#taxonomie-eventaction)). Un type inconnu de la source n'est pas rejeté : il sort en `<source>_<type>`. |
 | `message` | **La ligne de notification** de l'événement, en texte brut, construite par le pipeline. Les règles et les Workflows Tchap l'affichent telle quelle, une ligne par document (tag `tchap-lignes`). C'est la seule différence assumée avec les logs ECS des apps, où `message` = `event.action` : ici, un document = une notification. |
 | Rejet | Un document qui n'a pas la forme attendue de sa source est **rejeté** (processeur `fail` ou erreur d'un processeur) et part dans le failure store de son data stream (`<data stream>::failures`), que lit la règle 14. Il n'est jamais indexé à moitié. |
 | Données personnelles | Ni email ni valeur de variable d'environnement : `user.name` porte l'identifiant de l'auteur, `labels.details` les **noms** des variables. |
