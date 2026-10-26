@@ -1,0 +1,39 @@
+# Rapport quotidien des jobs de pass-emploi-api (@@ENV@@), chaque jour à 9 h 30
+# (heure de Paris), dans le salon Tchap @@SALON@@. Généré par generer-workflows.py
+# depuis la liste des CRON de pass-emploi-api (origin/develop) : ne pas modifier à
+# la main. Spécification : ../../../alertes-applicatives.md.
+POST kbn:/api/workflows/workflow
+{
+  "id": "tchap-@@SALON@@-rapport",
+  "yaml": """
+name: Tchap - @@SALON@@ - rapport quotidien des jobs
+description: Exécutions des jobs de pass-emploi-api sur 24 h, dans le salon Tchap @@SALON@@
+enabled: true
+triggers:
+  - type: scheduled
+    with:
+      rrule:
+        freq: DAILY
+        interval: 1
+        tzid: Europe/Paris
+        byhour: [9]
+        byminute: [30]
+consts:
+  salon: "@@ID_SALON@@"
+  jobs:
+@@JOBS@@
+steps:
+  - name: requete
+    type: elasticsearch.esql.query
+    with:
+      query: "@@REQUETE@@"
+  - name: envoyer
+    type: workflow.execute
+    with:
+      workflow-id: tchap-client
+      inputs:
+        salon: "{{ consts.salon }}"
+        texte: "@@TEXTE@@"
+        html: "@@HTML@@"
+"""
+}

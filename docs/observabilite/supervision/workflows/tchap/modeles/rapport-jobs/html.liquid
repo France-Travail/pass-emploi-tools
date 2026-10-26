@@ -1,0 +1,20 @@
+# Message affiché : tableau des jobs suivis, puis des jobs exécutés hors CRON, et lien vers la
+# session Discover des jobs (période : 24 dernières heures).
+<p><font data-mx-color="#808080" color="#808080">ℹ️ <strong>Rapport quotidien des jobs — @@ENV@@</strong> (24 dernières heures)</font></p><table><thead>
+<tr><th>A tourné</th><th>Sans échec</th><th>Job</th><th>Attendues</th><th>Exécutions</th><th>Échecs</th><th>Durée moyenne</th><th>Description</th></tr></thead><tbody>@@JOUR_DU_MOIS_ET_DE_LA_SEMAINE@@
+{% for job in consts.jobs %}@@STATUT_D_UN_JOB@@
+<tr><td>{{ a_tourne }}</td><td>{{ sans_echec }}</td><td>{{ job.type }}</td><td>{{ executions_attendues | default: '—' }}</td><td>{{ executions }}</td><td>{{ echecs }}</td><td>{{ duree_moyenne }}</td><td>{{ job.description | escape }}</td></tr>
+{% endfor %}
+{% assign types_suivis = consts.jobs | map: 'type' %}
+{% for resultat in steps.requete.output.values %}
+{% unless types_suivis contains resultat[3] %}
+{% if resultat[1] == 0 %}
+{% assign sans_echec = '✅' %}
+{% else %}
+{% assign sans_echec = '❌' %}
+{% endif %}
+<tr><td>—</td><td>{{ sans_echec }}</td><td>{{ resultat[3] }}</td><td>—</td><td>{{ resultat[0] }}</td><td>{{ resultat[1] }}</td><td>{{ resultat[2] }} s</td><td>Hors CRON (lancé par un autre job ou un événement)</td></tr>
+{% endunless %}
+{% endfor %}
+</tbody></table>
+<p><strong>Liens</strong><br/>[Pass Emploi] Logs de @@LIBELLE_ENV@@ - Jobs - https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/@@SESSION_JOBS@@?_g=%28time%3A%28from%3Anow-24h%2Cto%3Anow%29%29</p>

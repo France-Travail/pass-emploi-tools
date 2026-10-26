@@ -21,7 +21,7 @@ format ──► collecte ──► process ──► stockage ──► exploit
 
 | Étape | logs | metriques | traces |
 |---|---|---|---|
-| **format** — ce que l'app émet | [format/logs](format/logs/README.md) | — | — |
+| **format** — ce que l'app émet | [format/logs](format/logs/README.md) ; événements reçus par webhook : [format/webhooks](format/webhooks/conventions.md) | — | — |
 | **collecte** — transport jusqu'au premier buffer | [collecte/logs](collecte/logs/README.md) | [collecte/metriques](collecte/metriques/README.md) | [collecte/traces](collecte/traces/README.md) |
 | **process** — transformation avant indexation | [process/logs](process/logs/README.md) | — (écriture directe) | — (APM Server) |
 | **stockage** — data streams, mapping, rétention | [stockage/logs](stockage/logs/README.md) | [stockage/metriques](stockage/metriques/README.md) | [stockage/traces](stockage/traces/README.md) |
@@ -32,21 +32,27 @@ Principes et import des templates ES : [stockage/README.md](stockage/README.md).
 
 | Fichier | Usage |
 |---|---|
-| [routine-surveillance.md](routine-surveillance.md) | Ce qu'on regarde régulièrement : reporting métier, santé tech, dashboards |
+| [routine-surveillance.md](routine-surveillance.md) | Ce qu'on regarde sans attendre une alerte : chaque jour (5 min), chaque semaine (15 min), reporting métier |
+| [supervision/README.md](supervision/README.md) | Index de la supervision : les pages à lire (SLO, alertes, inventaire) et les objets Kibana à déployer (règles, Workflows Tchap, SLO, dashboards, sessions Discover, connecteurs) |
 | [supervision/sli-slo.md](supervision/sli-slo.md) | Les promesses de service (I1-I5, seuil commun) et leurs requêtes |
-| [supervision/alertes-applicatives.md](supervision/alertes-applicatives.md) | Alertes sur les pannes visibles des utilisateurs (partenaires, 5xx, auth) |
-| [supervision/alertes-stack-observabilite.md](supervision/alertes-stack-observabilite.md) | Alertes sur notre infra de télémétrie (Logstash, Redis, agents Fleet) |
+| [supervision/alertes-applicatives.md](supervision/alertes-applicatives.md) | Alertes sur les pannes visibles des utilisateurs (partenaires, 5xx, auth, événements Scalingo des apps) |
+| [supervision/alertes-stack-observabilite.md](supervision/alertes-stack-observabilite.md) | Alertes sur notre infra de télémétrie (Logstash, Redis, agents Fleet, événements Scalingo de la stack) |
+| [supervision/alertes-securite.md](supervision/alertes-securite.md) | Alertes sur les vulnérabilités des dépendances (CVE Dependabot) |
+| [collecte/webhooks/README.md](collecte/webhooks/README.md) | Collecte par webhook : événements envoyés directement à Elasticsearch par les notifiers Scalingo et par `security-alerts.yml` (CVE Dependabot) |
+| [format/webhooks/conventions.md](format/webhooks/conventions.md) | Correspondance entre le payload de chaque webhook et les champs ECS, gabarit de la ligne `message`, rejets |
 | [supervision/objets-kibana.md](supervision/objets-kibana.md) | Inventaire des dashboards, sessions Discover, SLO et règles versionnés, et comment les importer |
 | [runbooks/investigation-incident.md](runbooks/investigation-incident.md) | Enquêter sur un incident applicatif (KQL par `user.id`, `trace.id`…) |
 | [runbooks/runbook-logstash.md](runbooks/runbook-logstash.md) | Diagnostiquer une panne de la chaîne de logs (5 scénarios + playbook) |
 | [runbooks/runbook-ilm.md](runbooks/runbook-ilm.md) | Corriger un index qui n'applique pas sa rétention ILM (alerte 10) |
 | [runbooks/runbook-disque-elasticsearch.md](runbooks/runbook-disque-elasticsearch.md) | Libérer de la place quand un nœud Elasticsearch se remplit (alerte 11) |
+| [runbooks/runbook-tchap-expiration-bot.md](runbooks/runbook-tchap-expiration-bot.md) | Renouveler le compte du bot Tchap avant qu'il n'expire, ou le rétablir |
 | [post-mortems/](post-mortems/) | Récits d'incidents : [5xx Logstash (06/2026)](post-mortems/postmortem-2026-06-logstash-5xx.md), [blackout logs (07/2026)](post-mortems/postmortem-2026-07-blackout-logs.md), [agent UNENROLLED (09/2026)](post-mortems/postmortem-2026-09-unenrolled-elastic-agent.md) |
 
 ## Décisions d'architecture
 
 - [ADR-002 — Migration du buffer Logstash : PQ disque → Redis](../decisions/ADR-002-buffer-redis-logstash.md)
 - [ADR-003 — Pertinence de l'usage des Log Drains Scalingo](../decisions/ADR-003-usage-log-drain-scalingo.md)
+- [ADR-004 — Notifications d'alertes vers Tchap par les Workflows Kibana](../decisions/ADR-004-notifications-tchap-kibana-workflows.md)
 
 Tirs de charge applicatifs (harnais, scénarios, instrumentation requise) :
 [docs/perf/](../perf/README.md).

@@ -1,0 +1,43 @@
+# Workflow tchap-client : le seul qui parle à Matrix. Appelé par les Workflows
+# de salon (tchap-<salon>). Spécification : README.md.
+#
+# Le txnId de Matrix doit changer à chaque message : un txnId déjà vu est pris
+# pour une nouvelle tentative et le message n'est pas posté. execution.id est
+# unique par appel.
+# Mise à jour : PUT kbn:/api/workflows/workflow/tchap-client avec {"yaml": …}.
+POST kbn:/api/workflows/workflow
+{
+  "id": "tchap-client",
+  "yaml": """
+name: Tchap - Client
+description: Poste un message dans un salon Tchap
+enabled: true
+triggers:
+  - type: manual
+inputs:
+  - name: salon
+    type: string
+    required: true
+    description: ID du salon (!…:agent.tchap.gouv.fr)
+  - name: texte
+    type: string
+    required: true
+    description: Message en texte brut
+  - name: html
+    type: string
+    required: true
+    description: Message en HTML, déjà échappé
+steps:
+  - name: envoyer
+    type: http
+    connector-id: a81b2350-0d23-4358-b984-2c18ceef8601
+    with:
+      method: PUT
+      path: /_matrix/client/v3/rooms/{{ inputs.salon | url_encode }}/send/m.room.message/{{ execution.id }}
+      body:
+        msgtype: m.text
+        body: "{{ inputs.texte }}"
+        format: org.matrix.custom.html
+        formatted_body: "{{ inputs.html }}"
+"""
+}

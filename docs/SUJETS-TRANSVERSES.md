@@ -39,6 +39,7 @@
   (index par étape × télémétrie) — [`format/logs/conventions.md`](./observabilite/format/logs/conventions.md)
   (format, nommage, redaction, « ne jamais logger une exception brute »),
   [`format/logs/couverture-api.md`](./observabilite/format/logs/couverture-api.md) (ce qui est tracé côté api),
+  [`format/webhooks/conventions.md`](observabilite/format/webhooks/conventions.md) (champs ECS des événements reçus par webhook : Scalingo, Dependabot),
   [`stockage/logs/README.md`](./observabilite/stockage/logs/README.md) (data streams, templates, ILM),
   [`routine-surveillance.md`](./observabilite/routine-surveillance.md) (dashboards, reporting),
   [`runbooks/investigation-incident.md`](./observabilite/runbooks/investigation-incident.md) (KQL d'enquête).

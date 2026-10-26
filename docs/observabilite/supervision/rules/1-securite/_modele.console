@@ -1,0 +1,21 @@
+# Règles Kibana des alertes de sécurité. Spécification : ../../alertes-securite.md.
+#
+# À rejouer dans Dev Tools, après les sessions Discover de
+# ../../discovers/webhooks/. PUT met à jour une règle existante ; sur un
+# cluster vide, la créer avec POST kbn:/api/alerting/rule/<id> et le même corps
+# plus "rule_type_id": ".es-query" et "consumer": "alerts".
+# Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
+# ../../objets-kibana.md#slo-et-règles-console.
+#
+# Messages Mattermost : une section (« À vérifier », « Dashboards », « Discover
+# sessions ») = un champ, un élément par ligne (`\n`). Chaque champ tient sur une
+# seule ligne du fichier : l'éditeur de règle de Kibana lit le body comme du JSON
+# brut, un retour à la ligne dans une chaîne l'empêche de l'afficher. Pour relire
+# les étapes : le fichier <code>.json de la règle, dans ../1-securite/, ou son
+# Investigation guide.
+#
+# artifacts : l'Investigation guide et les Related dashboards (onglets de la
+# règle). L'API publique ne les renvoie pas dans ses réponses : les vérifier
+# dans l'interface.
+
+@@REGLE V1@@

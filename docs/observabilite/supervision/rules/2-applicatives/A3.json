@@ -1,0 +1,114 @@
+{
+  "_id": "ad326ad3-aea7-4ef8-be28-31008c4aebce",
+  "_commentaire": [
+    "# A3 — Pic d'authentifications refusées (Critical)"
+  ],
+  "_tchap": {
+    "ligne": "{0} refus en 10 min, contre {2} d'habitude à cette heure",
+    "vide": "Plus de pic de refus à la relecture : il est peut-être en train de se résorber."
+  },
+  "name": "API - Prod - Pic d'auth refusées",
+  "tags": [
+    "prod",
+    "applicatif"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nPic d'authentifications refusées — prod — plus de 3 × la normale sur 10 min : IDP ou Keycloak probablement en cause.\n\n## À vérifier\n\n1. Un robot ou un scan en cause (volume anormal, codes hors 4xx) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Robots / scan](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6)\n2. Si un seul fournisseur d'identité concentre les refus (France Travail Connect, Milo…) : sa disponibilité dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74) ; si tous les modes sont touchés : Keycloak ou pass-emploi-connect, dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n3. La liste des refus, par fournisseur d'identité et par motif : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8), onglet *Field statistics*\n\n## Dashboards\n\n- [[Pass Emploi] Diagnostic d'erreurs - Robots / scan](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n- [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n\n## Runbook\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-applicatives.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6"
+      },
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      },
+      {
+        "id": "014dae91-507a-44de-b782-72e5eddbab74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": "FROM logs-prod-default\n| WHERE event.action == \"auth_failed\"\n| EVAL recent = @timestamp >= NOW() - 10 minutes,\n       meme_heure = @timestamp < NOW() - 1 day\n                AND DATE_EXTRACT(\"HOUR_OF_DAY\", @timestamp) == DATE_EXTRACT(\"HOUR_OF_DAY\", NOW())\n| STATS refus = COUNT(*) WHERE recent, historique = COUNT(*) WHERE meme_heure\n| EVAL reference = ROUND(historique / 42.0, 1)\n| WHERE refus >= 20 AND refus > 3 * reference\n| EVAL reference = REPLACE(TO_STRING(reference), \"[.]\", \",\")"
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 8,
+    "timeWindowUnit": "d",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "groupBy": "all"
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": {
+          "text": "🚨 **Pic d'authentifications refusées — prod** — plus de 3 × la normale sur 10 min : IDP ou Keycloak probablement en cause.",
+          "attachments": [
+            {
+              "color": "#d00000",
+              "text": "{{#context.hits}}{{_source.refus}} refus en 10 min, contre {{_source.reference}} d'habitude à cette heure\n{{/context.hits}}",
+              "fields": [
+                {
+                  "title": "Règle",
+                  "value": "`{{rule.name}}`",
+                  "short": true
+                },
+                {
+                  "title": "Déclenchée à",
+                  "value": "`{{date}}`",
+                  "short": true
+                },
+                {
+                  "title": "À vérifier",
+                  "value": "1. Un robot ou un scan en cause (volume anormal, codes hors 4xx) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Robots / scan](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6)\n2. Si un seul fournisseur d'identité concentre les refus (France Travail Connect, Milo…) : sa disponibilité dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74) ; si tous les modes sont touchés : Keycloak ou pass-emploi-connect, dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n3. La liste des refus, par fournisseur d'identité et par motif : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8), onglet *Field statistics*"
+                },
+                {
+                  "title": "Dashboards",
+                  "value": "[[Pass Emploi] Diagnostic d'erreurs - Robots / scan](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n[[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)"
+                },
+                {
+                  "title": "Discover sessions",
+                  "value": "[[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)"
+                },
+                {
+                  "title": "Runbook",
+                  "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "1h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}

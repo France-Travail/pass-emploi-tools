@@ -1,0 +1,8 @@
+{
+  "monitoring-production": "!wYxfADtvOcuPbjTOBU:agent.dinum.tchap.gouv.fr",
+  "monitoring-staging": "!ZfOFaCZYUWPLIxrYsx:agent.dinum.tchap.gouv.fr",
+  "o11y-production": "!GcUrxqTFizBjxwmsBO:agent.dinum.tchap.gouv.fr",
+  "o11y-staging": "!EGmOEFBsJoXIngQOvU:agent.dinum.tchap.gouv.fr",
+  "jobs-production": "!vZkZkmTRLjAJTdkonL:agent.dinum.tchap.gouv.fr",
+  "jobs-staging": "!SmJcAqcZyoguQAJTho:agent.dinum.tchap.gouv.fr"
+}

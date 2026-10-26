@@ -17,6 +17,11 @@ passée à un logger (`toEcsError(e)` d'abord). Lire
 | [conventions.md](conventions.md) | Socle transverse : taxonomie `event.action`, `outcome`/`level`, redaction, archi `rootLogger`, patterns d'instrumentation, décisions durables |
 | [couverture-api.md](couverture-api.md) | Spécifique pass-emploi-api : taxonomie, couverture, validation E2E RDV Milo, limites connues |
 
+Les événements **émis hors des apps** (notifiers Scalingo, CVE Dependabot) ne
+suivent pas ce format à la source : leur ingest pipeline les transforme en champs
+ECS. Correspondance champ par champ :
+[format/webhooks/conventions](../webhooks/conventions.md).
+
 Contraintes imposées par l'aval : une ligne ne doit pas dépasser **16 Ko**
 (troncature du drain, cf. [collecte/logs/drain-scalingo](../../collecte/logs/drain-scalingo.md)) ;
 tout champ ECS custom doit être déclaré dans `pass-emploi-logs@mappings`

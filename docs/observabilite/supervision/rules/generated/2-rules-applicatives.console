@@ -1,0 +1,2513 @@
+# ⚠️ FICHIER GÉNÉRÉ par ../generer-regles.py : NE PAS LE MODIFIER, il serait écrasé.
+# À modifier à la place, dans ../2-applicatives/ :
+#   - une règle : son fichier <code>.json (le JSON de la règle Kibana) ;
+#   - le texte autour des règles (commentaires, autres requêtes) : _modele.console.
+# Puis : FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I ../generer-regles.py
+#        python3 -I ../../workflows/tchap/generer-workflows.py
+# La CI de chaque PR vérifie que ce fichier correspond à ses sources.
+# Ce fichier se colle tel quel dans Kibana → Dev Tools. Mode d'emploi : ../README.md.
+#
+# Règles Kibana des alertes applicatives, notifiées dans #monitoring-production
+# (connecteur Mattermost-monitoring-production). Spécification : ../../alertes-applicatives.md.
+#
+# À rejouer dans Dev Tools, après ../../slo/1-slos.console. PUT met à jour une règle
+# existante ; sur un cluster vide, la créer avec POST kbn:/api/alerting/rule/<id>
+# et le même corps plus "rule_type_id" et "consumer" (slo.rules.burnRate / slo pour
+# Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
+# ../../objets-kibana.md#slo-et-règles-console.
+# S2 et S3, .es-query / alerts pour A1 à A7, A4a, A4b, A5a et A5b,
+# xpack.uptime.alerts.monitorStatus / uptime pour A10 à A12,
+# xpack.uptime.alerts.tlsCertificate / uptime pour A13).
+#
+# Règles ES|QL (A1, A2, A3, A6, A7) : le Workflow du salon relance leur requête.
+#
+# A4a / A4b : événements Scalingo des apps applicatives, #monitoring-production /
+# Mattermost-monitoring-staging ; Tchap via les Workflows de salon.
+# A5a / A5b : jobs en échec, Mattermost-jobs-production / -staging
+# (../../connecteurs/mattermost-jobs.console, à créer avant) ; Tchap jobs-production /
+# jobs-staging.
+#
+# Messages Mattermost : une section (« À vérifier », « Dashboards », « Discover
+# sessions ») = un champ, un élément par ligne (`\n`). Chaque champ tient sur une
+# seule ligne du fichier : l'éditeur de règle de Kibana lit le body comme du JSON
+# brut, un retour à la ligne dans une chaîne l'empêche de l'afficher. Pour relire
+# les étapes : le fichier <code>.json de la règle, dans ../2-applicatives/, ou son
+# Investigation guide.
+#
+# artifacts : l'Investigation guide et les Related dashboards (onglets de la
+# règle). L'API publique ne les renvoie pas dans ses réponses : les vérifier
+# dans l'interface.
+#
+# S2, S3 — SLO burn rate. Seuls Critical (slo.burnRate.alert) et High notifient.
+#
+# maxBurnRateThreshold = 1 / (1 - objectif) : burn rate à 100 % d'échecs.
+#
+# Invité et conseiller départemental : quelques tentatives par jour, un seul échec
+# sur 1 h vaut 100 % d'échecs. Une seule fenêtre, longue, qui exige plusieurs
+# échecs : invité ≥ 20 % d'échecs sur 72 h (~18 tentatives), conseiller
+# départemental ≥ 20 % sur 168 h (~10 tentatives).
+
+PUT kbn:/api/alerting/rule/e41ef1d8-efd8-449b-b2a5-6fff758c8939
+{
+  "name": "SLO - Prod - API — latence des parcours critiques",
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nSLO menacé — latence des parcours critiques (prod) : la marge d'erreur du SLO se consomme trop vite.\n\n**Promesse** : 99 % des requêtes des parcours critiques répondent en moins de 500 ms (authentification) ou 2,5 s (parcours avec un partenaire), sur 30 jours glissants.\n\n## À vérifier\n\n1. Quel parcours ralentit, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Si un partenaire répond lentement ou échoue (France Travail, Milo…) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n3. Si l'api répond en erreur : le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n\n## Dashboards\n\n- [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n- [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n\n## Documentation\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14"
+      },
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "tags": [
+    "prod",
+    "slo"
+  ],
+  "params": {
+    "sloId": "6c55ac3b-8b07-400c-89f8-0e46865166b2",
+    "windows": [
+      {
+        "id": "alert",
+        "actionGroup": "slo.burnRate.alert",
+        "burnRateThreshold": 14.4,
+        "maxBurnRateThreshold": 100.0,
+        "longWindow": {
+          "value": 1,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 5,
+          "unit": "m"
+        }
+      },
+      {
+        "id": "high",
+        "actionGroup": "slo.burnRate.high",
+        "burnRateThreshold": 6,
+        "maxBurnRateThreshold": 100.0,
+        "longWindow": {
+          "value": 6,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 30,
+          "unit": "m"
+        }
+      },
+      {
+        "id": "medium",
+        "actionGroup": "slo.burnRate.medium",
+        "burnRateThreshold": 3,
+        "maxBurnRateThreshold": 100.0,
+        "longWindow": {
+          "value": 24,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 2,
+          "unit": "h"
+        }
+      },
+      {
+        "id": "low",
+        "actionGroup": "slo.burnRate.low",
+        "burnRateThreshold": 1,
+        "maxBurnRateThreshold": 100.0,
+        "longWindow": {
+          "value": 72,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 6,
+          "unit": "h"
+        }
+      }
+    ]
+  },
+  "actions": [
+    {
+      "group": "slo.burnRate.alert",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **SLO menacé — latence des parcours critiques (prod)**",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "Promesse",
+          "value": "99 % des requêtes des parcours critiques répondent en moins de 500 ms (authentification) ou 2,5 s (parcours avec un partenaire), sur 30 jours glissants."
+        },
+        {
+          "title": "Parcours / mode",
+          "value": "`{{context.sloInstanceId}}`",
+          "short": true
+        },
+        {
+          "title": "Ce qui se passe",
+          "value": "Sur {{context.longWindow.duration}}, les requêtes trop lentes consomment la marge d'erreur du mois {{context.longWindow.burnRate}} fois plus vite que prévu ({{context.shortWindow.burnRate}} fois sur les {{context.shortWindow.duration}} les plus récentes). À ce rythme, elle est épuisée en {{#EvalMath}} round(30 / {{context.longWindow.burnRate}}, 1) {{/EvalMath}} jours."
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Quel parcours ralentit, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Si un partenaire répond lentement ou échoue (France Travail, Milo…) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n3. Si l'api répond en erreur : le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n[[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)"
+        },
+        {
+          "title": "Marge d'erreur",
+          "value": "[Budget d'erreur et historique du SLO]({{context.viewInAppUrl}})"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "group": "slo.burnRate.high",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **SLO menacé — latence des parcours critiques (prod)**",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "Promesse",
+          "value": "99 % des requêtes des parcours critiques répondent en moins de 500 ms (authentification) ou 2,5 s (parcours avec un partenaire), sur 30 jours glissants."
+        },
+        {
+          "title": "Parcours / mode",
+          "value": "`{{context.sloInstanceId}}`",
+          "short": true
+        },
+        {
+          "title": "Ce qui se passe",
+          "value": "Sur {{context.longWindow.duration}}, les requêtes trop lentes consomment la marge d'erreur du mois {{context.longWindow.burnRate}} fois plus vite que prévu ({{context.shortWindow.burnRate}} fois sur les {{context.shortWindow.duration}} les plus récentes). À ce rythme, elle est épuisée en {{#EvalMath}} round(30 / {{context.longWindow.burnRate}}, 1) {{/EvalMath}} jours."
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Quel parcours ralentit, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Si un partenaire répond lentement ou échoue (France Travail, Milo…) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n3. Si l'api répond en erreur : le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n[[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)"
+        },
+        {
+          "title": "Marge d'erreur",
+          "value": "[Budget d'erreur et historique du SLO]({{context.viewInAppUrl}})"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+PUT kbn:/api/alerting/rule/72914c41-01ed-4ce7-ae68-a1b5eb445773
+{
+  "name": "SLO - Prod - Login — réussite jeune France Travail",
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nSLO menacé — connexion des jeunes France Travail (prod) : la marge d'erreur du SLO se consomme trop vite.\n\n**Promesse** : 85 % des connexions des jeunes France Travail aboutissent, hors refus métier, sur 30 jours glissants.\n\n## À vérifier\n\n1. Quel mode de connexion échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Le motif des connexions refusées (fournisseur d'identité, Keycloak) : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n3. Si un fournisseur d'identité ou un partenaire est en panne : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Dashboards\n\n- [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n\n## Documentation\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14"
+      },
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "tags": [
+    "prod",
+    "slo"
+  ],
+  "params": {
+    "sloId": "ec53b7e4-604e-4e33-a4df-ace9e4aea01b",
+    "windows": [
+      {
+        "id": "alert",
+        "actionGroup": "slo.burnRate.alert",
+        "burnRateThreshold": 3,
+        "maxBurnRateThreshold": 6.67,
+        "longWindow": {
+          "value": 1,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 5,
+          "unit": "m"
+        }
+      },
+      {
+        "id": "high",
+        "actionGroup": "slo.burnRate.high",
+        "burnRateThreshold": 2,
+        "maxBurnRateThreshold": 6.67,
+        "longWindow": {
+          "value": 6,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 30,
+          "unit": "m"
+        }
+      },
+      {
+        "id": "medium",
+        "actionGroup": "slo.burnRate.medium",
+        "burnRateThreshold": 1.5,
+        "maxBurnRateThreshold": 6.67,
+        "longWindow": {
+          "value": 24,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 2,
+          "unit": "h"
+        }
+      },
+      {
+        "id": "low",
+        "actionGroup": "slo.burnRate.low",
+        "burnRateThreshold": 1,
+        "maxBurnRateThreshold": 6.67,
+        "longWindow": {
+          "value": 72,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 6,
+          "unit": "h"
+        }
+      }
+    ]
+  },
+  "actions": [
+    {
+      "group": "slo.burnRate.alert",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **SLO menacé — connexion des jeunes France Travail (prod)**",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "Promesse",
+          "value": "85 % des connexions des jeunes France Travail aboutissent, hors refus métier, sur 30 jours glissants."
+        },
+        {
+          "title": "Ce qui se passe",
+          "value": "Sur {{context.longWindow.duration}}, les connexions en échec consomment la marge d'erreur du mois {{context.longWindow.burnRate}} fois plus vite que prévu ({{context.shortWindow.burnRate}} fois sur les {{context.shortWindow.duration}} les plus récentes). À ce rythme, elle est épuisée en {{#EvalMath}} round(30 / {{context.longWindow.burnRate}}, 1) {{/EvalMath}} jours."
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Quel mode de connexion échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Le motif des connexions refusées (fournisseur d'identité, Keycloak) : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n3. Si un fournisseur d'identité ou un partenaire est en panne : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)"
+        },
+        {
+          "title": "Marge d'erreur",
+          "value": "[Budget d'erreur et historique du SLO]({{context.viewInAppUrl}})"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "group": "slo.burnRate.high",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **SLO menacé — connexion des jeunes France Travail (prod)**",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "Promesse",
+          "value": "85 % des connexions des jeunes France Travail aboutissent, hors refus métier, sur 30 jours glissants."
+        },
+        {
+          "title": "Ce qui se passe",
+          "value": "Sur {{context.longWindow.duration}}, les connexions en échec consomment la marge d'erreur du mois {{context.longWindow.burnRate}} fois plus vite que prévu ({{context.shortWindow.burnRate}} fois sur les {{context.shortWindow.duration}} les plus récentes). À ce rythme, elle est épuisée en {{#EvalMath}} round(30 / {{context.longWindow.burnRate}}, 1) {{/EvalMath}} jours."
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Quel mode de connexion échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Le motif des connexions refusées (fournisseur d'identité, Keycloak) : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n3. Si un fournisseur d'identité ou un partenaire est en panne : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)"
+        },
+        {
+          "title": "Marge d'erreur",
+          "value": "[Budget d'erreur et historique du SLO]({{context.viewInAppUrl}})"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+PUT kbn:/api/alerting/rule/ca02fee2-9d18-46bd-b2b9-dd96d8a6d593
+{
+  "name": "SLO - Prod - Login — réussite par mode d'authentification",
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nSLO menacé — connexion par mode d'authentification (prod) : la marge d'erreur du SLO se consomme trop vite.\n\n**Promesse** : 99 % des connexions aboutissent, pour chaque mode d'authentification, hors refus métier, sur 30 jours glissants.\n\n## À vérifier\n\n1. Quel mode de connexion échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Le motif des connexions refusées (fournisseur d'identité, Keycloak) : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n3. Si un fournisseur d'identité ou un partenaire est en panne : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Dashboards\n\n- [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n\n## Documentation\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14"
+      },
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "tags": [
+    "prod",
+    "slo"
+  ],
+  "params": {
+    "sloId": "9afea251-1cf9-423f-a374-ca43c3e751ac",
+    "windows": [
+      {
+        "id": "alert",
+        "actionGroup": "slo.burnRate.alert",
+        "burnRateThreshold": 14.4,
+        "maxBurnRateThreshold": 100.0,
+        "longWindow": {
+          "value": 1,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 5,
+          "unit": "m"
+        }
+      },
+      {
+        "id": "high",
+        "actionGroup": "slo.burnRate.high",
+        "burnRateThreshold": 6,
+        "maxBurnRateThreshold": 100.0,
+        "longWindow": {
+          "value": 6,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 30,
+          "unit": "m"
+        }
+      },
+      {
+        "id": "medium",
+        "actionGroup": "slo.burnRate.medium",
+        "burnRateThreshold": 3,
+        "maxBurnRateThreshold": 100.0,
+        "longWindow": {
+          "value": 24,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 2,
+          "unit": "h"
+        }
+      },
+      {
+        "id": "low",
+        "actionGroup": "slo.burnRate.low",
+        "burnRateThreshold": 1,
+        "maxBurnRateThreshold": 100.0,
+        "longWindow": {
+          "value": 72,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 6,
+          "unit": "h"
+        }
+      }
+    ]
+  },
+  "actions": [
+    {
+      "group": "slo.burnRate.alert",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **SLO menacé — connexion par mode d'authentification (prod)**",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "Promesse",
+          "value": "99 % des connexions aboutissent, pour chaque mode d'authentification, hors refus métier, sur 30 jours glissants."
+        },
+        {
+          "title": "Parcours / mode",
+          "value": "`{{context.sloInstanceId}}`",
+          "short": true
+        },
+        {
+          "title": "Ce qui se passe",
+          "value": "Sur {{context.longWindow.duration}}, les connexions en échec consomment la marge d'erreur du mois {{context.longWindow.burnRate}} fois plus vite que prévu ({{context.shortWindow.burnRate}} fois sur les {{context.shortWindow.duration}} les plus récentes). À ce rythme, elle est épuisée en {{#EvalMath}} round(30 / {{context.longWindow.burnRate}}, 1) {{/EvalMath}} jours."
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Quel mode de connexion échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Le motif des connexions refusées (fournisseur d'identité, Keycloak) : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n3. Si un fournisseur d'identité ou un partenaire est en panne : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)"
+        },
+        {
+          "title": "Marge d'erreur",
+          "value": "[Budget d'erreur et historique du SLO]({{context.viewInAppUrl}})"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "group": "slo.burnRate.high",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **SLO menacé — connexion par mode d'authentification (prod)**",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "Promesse",
+          "value": "99 % des connexions aboutissent, pour chaque mode d'authentification, hors refus métier, sur 30 jours glissants."
+        },
+        {
+          "title": "Parcours / mode",
+          "value": "`{{context.sloInstanceId}}`",
+          "short": true
+        },
+        {
+          "title": "Ce qui se passe",
+          "value": "Sur {{context.longWindow.duration}}, les connexions en échec consomment la marge d'erreur du mois {{context.longWindow.burnRate}} fois plus vite que prévu ({{context.shortWindow.burnRate}} fois sur les {{context.shortWindow.duration}} les plus récentes). À ce rythme, elle est épuisée en {{#EvalMath}} round(30 / {{context.longWindow.burnRate}}, 1) {{/EvalMath}} jours."
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Quel mode de connexion échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Le motif des connexions refusées (fournisseur d'identité, Keycloak) : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n3. Si un fournisseur d'identité ou un partenaire est en panne : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)"
+        },
+        {
+          "title": "Marge d'erreur",
+          "value": "[Budget d'erreur et historique du SLO]({{context.viewInAppUrl}})"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+PUT kbn:/api/alerting/rule/8c760b1b-5859-410e-9a0d-829fb0499412
+{
+  "name": "SLO - Prod - Login — réussite invité",
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nSLO menacé — connexion en mode invité (prod) : la marge d'erreur du SLO se consomme trop vite.\n\n**Promesse** : 90 % des connexions en mode invité aboutissent, hors refus métier, sur 30 jours glissants.\n\n## À vérifier\n\n1. Quel mode de connexion échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Le motif des connexions refusées (fournisseur d'identité, Keycloak) : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n3. Si un fournisseur d'identité ou un partenaire est en panne : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Dashboards\n\n- [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n\n## Documentation\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14"
+      },
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "tags": [
+    "prod",
+    "slo"
+  ],
+  "params": {
+    "sloId": "3d00217c-87b8-45f5-882c-3338bb60750c",
+    "windows": [
+      {
+        "id": "high",
+        "actionGroup": "slo.burnRate.high",
+        "burnRateThreshold": 2,
+        "maxBurnRateThreshold": 10.0,
+        "longWindow": {
+          "value": 72,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 6,
+          "unit": "h"
+        }
+      }
+    ]
+  },
+  "actions": [
+    {
+      "group": "slo.burnRate.high",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **SLO menacé — connexion en mode invité (prod)**",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "Promesse",
+          "value": "90 % des connexions en mode invité aboutissent, hors refus métier, sur 30 jours glissants."
+        },
+        {
+          "title": "Ce qui se passe",
+          "value": "Sur {{context.longWindow.duration}}, les connexions en échec consomment la marge d'erreur du mois {{context.longWindow.burnRate}} fois plus vite que prévu ({{context.shortWindow.burnRate}} fois sur les {{context.shortWindow.duration}} les plus récentes). À ce rythme, elle est épuisée en {{#EvalMath}} round(30 / {{context.longWindow.burnRate}}, 1) {{/EvalMath}} jours."
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Quel mode de connexion échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Le motif des connexions refusées (fournisseur d'identité, Keycloak) : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n3. Si un fournisseur d'identité ou un partenaire est en panne : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)"
+        },
+        {
+          "title": "Marge d'erreur",
+          "value": "[Budget d'erreur et historique du SLO]({{context.viewInAppUrl}})"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+PUT kbn:/api/alerting/rule/00f15660-40ba-4fb1-a59d-6345ce07c360
+{
+  "name": "SLO - Prod - Login — réussite conseiller départemental",
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nSLO menacé — connexion des conseillers départementaux (prod) : la marge d'erreur du SLO se consomme trop vite.\n\n**Promesse** : 95 % des connexions des conseillers départementaux aboutissent, hors refus métier, sur 30 jours glissants.\n\n## À vérifier\n\n1. Quel mode de connexion échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Le motif des connexions refusées (fournisseur d'identité, Keycloak) : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n3. Si un fournisseur d'identité ou un partenaire est en panne : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Dashboards\n\n- [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n\n## Documentation\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14"
+      },
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "tags": [
+    "prod",
+    "slo"
+  ],
+  "params": {
+    "sloId": "61f38008-cb75-41de-aadc-0a65d2cb7a0d",
+    "windows": [
+      {
+        "id": "high",
+        "actionGroup": "slo.burnRate.high",
+        "burnRateThreshold": 4,
+        "maxBurnRateThreshold": 20.0,
+        "longWindow": {
+          "value": 168,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 12,
+          "unit": "h"
+        }
+      }
+    ]
+  },
+  "actions": [
+    {
+      "group": "slo.burnRate.high",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **SLO menacé — connexion des conseillers départementaux (prod)**",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "Promesse",
+          "value": "95 % des connexions des conseillers départementaux aboutissent, hors refus métier, sur 30 jours glissants."
+        },
+        {
+          "title": "Ce qui se passe",
+          "value": "Sur {{context.longWindow.duration}}, les connexions en échec consomment la marge d'erreur du mois {{context.longWindow.burnRate}} fois plus vite que prévu ({{context.shortWindow.burnRate}} fois sur les {{context.shortWindow.duration}} les plus récentes). À ce rythme, elle est épuisée en {{#EvalMath}} round(30 / {{context.longWindow.burnRate}}, 1) {{/EvalMath}} jours."
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Quel mode de connexion échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Le motif des connexions refusées (fournisseur d'identité, Keycloak) : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n3. Si un fournisseur d'identité ou un partenaire est en panne : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)"
+        },
+        {
+          "title": "Marge d'erreur",
+          "value": "[Budget d'erreur et historique du SLO]({{context.viewInAppUrl}})"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# A1 — Pic d'échecs partenaire (Warning). Remplace aussi les 3 règles « 🔌 Partenaires » (5xx, timeouts, 429).
+PUT kbn:/api/alerting/rule/1b751543-4233-4857-8fe6-8141a7c2d040
+{
+  "name": "API - Prod - Pic d'échecs partenaire",
+  "tags": [
+    "prod",
+    "applicatif"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nPlus de 100 appels de l'api vers un même partenaire ont échoué en 5 min (5xx, 429, 4xx ou timeout / réseau), d'après les logs `external_api_call`. Nos propres services et les statistiques ne sont pas comptés.\n\n## À vérifier\n\n1. Quel partenaire, et quelles erreurs : les lignes ci-dessus (domaine, nombre et types d'échecs), puis les échecs par app dans le temps dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n2. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n3. Le détail des appels en échec : le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293), onglet du partenaire ; si la panne vient du partenaire, le prévenir (contacts ci-dessous)\n\n## Dashboards\n\n- [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n\n## Contacts partenaires\n\n- [Partenariats (Notion), qui prévenir chez le partenaire en panne](https://app.notion.com/p/Partenariats-2077bd17c27a812a8700e489fe8ca506)\n\n## Runbook\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-applicatives.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "014dae91-507a-44de-b782-72e5eddbab74"
+      },
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": """FROM logs-prod-default
+| WHERE event.action == "external_api_call" AND event.outcome == "failure" AND url.domain IS NOT NULL
+| WHERE NOT url.domain LIKE "*pass-emploi.beta.gouv.fr" AND url.domain != "stats.beta.gouv.fr"
+| EVAL type = CASE(http.response.status_code == 429, "429", http.response.status_code >= 500, "5xx", http.response.status_code >= 400, "4xx", "timeout / réseau")
+| STATS echecs = COUNT(*), types = VALUES(type) BY partenaire = url.domain
+| WHERE echecs > 100
+| EVAL types = MV_CONCAT(types, ", ")
+| SORT echecs DESC"""
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "groupBy": "all"
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "⚠️ **Pic d'échecs partenaire — prod** — plus de 100 appels en échec vers un partenaire en 5 min.",
+  "attachments": [
+    {
+      "color": "#f2c744",
+      "text": "{{#context.hits}}`{{_source.partenaire}}` : {{_source.echecs}} échecs ({{_source.types}})\n{{/context.hits}}",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Quel partenaire, et quelles erreurs : les lignes ci-dessus (domaine, nombre et types d'échecs), puis les échecs par app dans le temps dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n2. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n3. Le détail des appels en échec : le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293), onglet du partenaire ; si la panne vient du partenaire, le prévenir (contacts ci-dessous)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)"
+        },
+        {
+          "title": "Contacts partenaires",
+          "value": "[Partenariats (Notion), qui prévenir chez le partenaire en panne](https://app.notion.com/p/Partenariats-2077bd17c27a812a8700e489fe8ca506)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "1h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# A2 — Erreurs serveur 5xx (Critical)
+PUT kbn:/api/alerting/rule/98e0103a-f809-48f2-8343-d1269213dce4
+{
+  "name": "API - Prod - Erreurs 5xx",
+  "tags": [
+    "prod",
+    "applicatif"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nPlus de 50 requêtes de l'api ou de connect ont répondu en erreur serveur (5xx) en 5 min, d'après l'APM, par template d'URL.\n\n## À vérifier\n\n1. Quelles routes sont touchées : les lignes ci-dessus (template d'URL et nombre d'erreurs), puis le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n2. Si un partenaire est en cause (timeout, erreur d'API) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n3. Le motif d'une requête en erreur et son `trace.id` : le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n\n## Dashboards\n\n- [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n- [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n\n## Runbook\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-applicatives.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "014dae91-507a-44de-b782-72e5eddbab74"
+      },
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": """FROM metrics-apm.transaction.1m-*
+| WHERE service.name IN ("pass-emploi-api-prod", "pass-emploi-connect-prod") AND transaction.result == "HTTP 5xx"
+| STATS erreurs = COUNT(transaction.duration.summary) BY service = service.name, template = transaction.name
+| INLINE STATS total = SUM(erreurs)
+| WHERE total > 50
+| SORT erreurs DESC
+| LIMIT 10"""
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "groupBy": "all"
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **Erreurs 5xx — prod** — plus de 50 requêtes en erreur serveur en 5 min.",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "text": "{{#context.hits}}`{{_source.service}}` {{_source.template}} : {{_source.erreurs}}\n{{/context.hits}}",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Quelles routes sont touchées : les lignes ci-dessus (template d'URL et nombre d'erreurs), puis le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n2. Si un partenaire est en cause (timeout, erreur d'API) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n3. Le motif d'une requête en erreur et son `trace.id` : le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n[[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "1h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# A3 — Pic d'authentifications refusées (Critical)
+PUT kbn:/api/alerting/rule/ad326ad3-aea7-4ef8-be28-31008c4aebce
+{
+  "name": "API - Prod - Pic d'auth refusées",
+  "tags": [
+    "prod",
+    "applicatif"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nPic d'authentifications refusées — prod — plus de 3 × la normale sur 10 min : IDP ou Keycloak probablement en cause.\n\n## À vérifier\n\n1. Un robot ou un scan en cause (volume anormal, codes hors 4xx) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Robots / scan](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6)\n2. Si un seul fournisseur d'identité concentre les refus (France Travail Connect, Milo…) : sa disponibilité dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74) ; si tous les modes sont touchés : Keycloak ou pass-emploi-connect, dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n3. La liste des refus, par fournisseur d'identité et par motif : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8), onglet *Field statistics*\n\n## Dashboards\n\n- [[Pass Emploi] Diagnostic d'erreurs - Robots / scan](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n- [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n\n## Runbook\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-applicatives.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6"
+      },
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      },
+      {
+        "id": "014dae91-507a-44de-b782-72e5eddbab74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": """FROM logs-prod-default
+| WHERE event.action == "auth_failed"
+| EVAL recent = @timestamp >= NOW() - 10 minutes,
+       meme_heure = @timestamp < NOW() - 1 day
+                AND DATE_EXTRACT("HOUR_OF_DAY", @timestamp) == DATE_EXTRACT("HOUR_OF_DAY", NOW())
+| STATS refus = COUNT(*) WHERE recent, historique = COUNT(*) WHERE meme_heure
+| EVAL reference = ROUND(historique / 42.0, 1)
+| WHERE refus >= 20 AND refus > 3 * reference
+| EVAL reference = REPLACE(TO_STRING(reference), "[.]", ",")"""
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 8,
+    "timeWindowUnit": "d",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "groupBy": "all"
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **Pic d'authentifications refusées — prod** — plus de 3 × la normale sur 10 min : IDP ou Keycloak probablement en cause.",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "text": "{{#context.hits}}{{_source.refus}} refus en 10 min, contre {{_source.reference}} d'habitude à cette heure\n{{/context.hits}}",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Un robot ou un scan en cause (volume anormal, codes hors 4xx) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Robots / scan](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6)\n2. Si un seul fournisseur d'identité concentre les refus (France Travail Connect, Milo…) : sa disponibilité dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74) ; si tous les modes sont touchés : Keycloak ou pass-emploi-connect, dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n3. La liste des refus, par fournisseur d'identité et par motif : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8), onglet *Field statistics*"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Pass Emploi] Diagnostic d'erreurs - Robots / scan](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n[[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "1h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# A4a — Événements Scalingo des apps applicatives, prod (gravité par ligne)
+PUT kbn:/api/alerting/rule/1b97f0e0-870f-498d-8dd7-1c2f9aeba665
+{
+  "name": "Scalingo - Prod - Événements des apps applicatives",
+  "tags": [
+    "prod",
+    "applicatif",
+    "scalingo",
+    "tchap-lignes"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nUn événement Scalingo sur une app applicative de prod : incident (🚨 crash, redémarrage ou arrêt ; ⚠️ seuil dépassé) ou opération d'infra (ℹ️ déploiement, variable, scaling…).\n\n## À vérifier\n\n1. Le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur\n2. Pour un incident, l'impact sur les utilisateurs : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n3. L'activité de l'app (onglet Activity) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Dashboards\n\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Discover sessions\n\n- [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87)\n- [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n\n## Documentation\n\n[Collecte des événements externes](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/collecte/webhooks/README.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "not service.name : (\"pass-emploi-logstash\" or \"pass-emploi-logstash-process\" or \"pass-emploi-elastic-agent\" or \"pass-emploi-heartbeat\")",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "d327d85c-91ea-4092-867f-08a940504c96",
+        "title": "logs-alertes-scalingo-prod-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Alertes Scalingo - Prod",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 20,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": true,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "**Événements Scalingo des apps de prod** ({{context.value}})",
+  "attachments": [
+    {
+      "color": "#808080",
+      "text": "{{#context.hits}}{{_source.message}}\n{{/context.hits}}",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur\n2. Pour un incident, l'impact sur les utilisateurs : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n3. L'activité de l'app (onglet Activity) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87)\n[[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActiveAlert",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# A4b — Événements Scalingo des apps applicatives, staging / perf (gravité par ligne)
+PUT kbn:/api/alerting/rule/07c9c5d7-e8fe-4964-ac8d-684b1c4c39b8
+{
+  "name": "Scalingo - Hors-Prod - Événements des apps applicatives",
+  "tags": [
+    "hors-prod",
+    "applicatif",
+    "scalingo",
+    "tchap-lignes"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nUn événement Scalingo sur une app applicative de staging ou de perf : incident ou opération d'infra.\n\n## À vérifier\n\n1. Le Discover [[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/33bed466-9d68-4789-a723-aeea34e6cd93), onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur\n2. L'activité de l'app (onglet Activity) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Dashboards\n\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Discover sessions\n\n- [[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/33bed466-9d68-4789-a723-aeea34e6cd93)\n\n## Documentation\n\n[Collecte des événements externes](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/collecte/webhooks/README.md)\n"
+    }
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "not service.name : (\"pass-emploi-logstash\" or \"pass-emploi-logstash-process\" or \"pass-emploi-elastic-agent\" or \"pass-emploi-heartbeat\")",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "a67a2388-a6a3-42e3-b1c4-15dc61bf5585",
+        "title": "logs-alertes-scalingo-staging-default,logs-alertes-scalingo-perf-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Alertes Scalingo - Hors-Prod",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 10,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 20,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": true,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "4cb10f00-22d9-4cf0-bda1-e288c4abb339",
+      "params": {
+        "body": """{
+  "text": "**Événements Scalingo des apps hors prod** ({{context.value}})",
+  "attachments": [
+    {
+      "color": "#808080",
+      "text": "{{#context.hits}}{{_source.message}}\n{{/context.hits}}",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Le Discover [[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/33bed466-9d68-4789-a723-aeea34e6cd93), onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur\n2. L'activité de l'app (onglet Activity) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/33bed466-9d68-4789-a723-aeea34e6cd93)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActiveAlert",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-staging",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# A5a — Jobs en échec, prod (version dégradée : un job qui plante ou introuvable ; un job
+# qui rapporte un échec sans planter n'est pas vu, cf. ../../alertes-applicatives.md)
+PUT kbn:/api/alerting/rule/a03feacb-ddf8-4e04-af82-48f77b07a86e
+{
+  "name": "API - Prod - Jobs en échec",
+  "tags": [
+    "prod",
+    "applicatif",
+    "jobs"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nUn job de l'api de prod a planté (`job_crashed`) ou n'a pas de handler (`job_handler_not_found`).\n\n## À vérifier\n\n1. Le Discover [[Pass Emploi] Logs de Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c0d38bba-66ef-4b68-8a10-4d786f6a9f4a), onglet « Jobs en échec » : le job, son erreur et sa stack\n2. L'onglet « Exécutions » de [[Pass Emploi] Logs de Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c0d38bba-66ef-4b68-8a10-4d786f6a9f4a) : le job échoue-t-il à chaque exécution, ou a-t-il réussi depuis ?\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c0d38bba-66ef-4b68-8a10-4d786f6a9f4a)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-applicatives.md)\n"
+    }
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "service.name : \"pass-emploi-api\" and event.action : (\"job_crashed\" or \"job_handler_not_found\")",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "0208fbaf-2541-4ba2-b405-af62cebd9de7",
+        "title": "logs-prod-default,logs-router-prod-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Logs apps prod",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 20,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": true,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "cd0b8285-1b69-4e3a-9c7c-6d35b42e7115",
+      "params": {
+        "body": """{
+  "text": "**Jobs en échec — prod** ({{context.value}})",
+  "attachments": [
+    {
+      "color": "#808080",
+      "text": "{{#context.hits}}❌ `{{_source.labels.job_type}}` : {{_source.event.action}} — {{_source.error.message}}\n{{/context.hits}}",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Le Discover [[Pass Emploi] Logs de Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c0d38bba-66ef-4b68-8a10-4d786f6a9f4a), onglet « Jobs en échec » : le job, son erreur et sa stack\n2. L'onglet « Exécutions » de [[Pass Emploi] Logs de Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c0d38bba-66ef-4b68-8a10-4d786f6a9f4a) : le job échoue-t-il à chaque exécution, ou a-t-il réussi depuis ?"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Logs de Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c0d38bba-66ef-4b68-8a10-4d786f6a9f4a)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActiveAlert",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-jobs-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# A5b — Jobs en échec, staging / perf (même version dégradée que A5a)
+PUT kbn:/api/alerting/rule/9dbcb316-60cd-481e-8717-33ffe0275e7d
+{
+  "name": "API - Hors-Prod - Jobs en échec",
+  "tags": [
+    "hors-prod",
+    "applicatif",
+    "jobs"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nUn job de l'api de staging ou de perf a planté (`job_crashed`) ou n'a pas de handler (`job_handler_not_found`).\n\n## À vérifier\n\n1. Le Discover [[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740), onglet « Jobs en échec » : le job, son environnement, son erreur et sa stack\n2. L'onglet « Exécutions » de [[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740) : le job échoue-t-il à chaque exécution, ou a-t-il réussi depuis ?\n\n## Discover sessions\n\n- [[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-applicatives.md)\n"
+    }
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "service.name : \"pass-emploi-api\" and event.action : (\"job_crashed\" or \"job_handler_not_found\")",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "9ef69e58-9ad1-43e4-87e1-cf1a68e38c09",
+        "title": "logs-staging-default,logs-perf-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Logs apps hors prod",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 10,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 20,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": true,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "3f71e705-99b5-4b37-ab14-932e28bc29b4",
+      "params": {
+        "body": """{
+  "text": "**Jobs en échec — hors prod** ({{context.value}})",
+  "attachments": [
+    {
+      "color": "#808080",
+      "text": "{{#context.hits}}❌ `{{_source.labels.job_type}}` ({{_source.service.environment}}) : {{_source.event.action}} — {{_source.error.message}}\n{{/context.hits}}",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Le Discover [[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740), onglet « Jobs en échec » : le job, son environnement, son erreur et sa stack\n2. L'onglet « Exécutions » de [[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740) : le job échoue-t-il à chaque exécution, ou a-t-il réussi depuis ?"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActiveAlert",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-jobs-staging",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# A6 — Erreurs base de données (Critical). Remplace « 🏠 API - erreurs DB ».
+# Nouvelle règle : absente de la prod avant le 2026-10-20, la créer avec POST
+# (même corps plus "rule_type_id": ".es-query" et "consumer": "alerts").
+PUT kbn:/api/alerting/rule/c9164880-1829-4847-acb1-5a70433ecbb8
+{
+  "name": "API - Prod - Erreurs base de données",
+  "tags": [
+    "prod",
+    "applicatif"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nPlus de 20 erreurs de base de données (`error.type` Sequelize*) en 5 min dans les logs de prod : connexion perdue, pool de connexions saturé, contrainte violée.\n\n## À vérifier\n\n1. L'état de la base PostgreSQL de `pass-emploi-api-prod` (connexions, mémoire, CPU) : son addon dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n2. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n3. Le type et le message de chaque erreur : le Discover [[Pass Emploi] Logs de Prod - Erreurs base de données](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c4dfc122-1edc-42b2-973d-98ac7b127211), onglet « error.type : Sequelize* »\n\n## Dashboards\n\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Erreurs base de données](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c4dfc122-1edc-42b2-973d-98ac7b127211)\n\n## Runbook\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-applicatives.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": """FROM logs-prod-default
+| WHERE error.type LIKE "Sequelize*"
+| EVAL message = SUBSTRING(error.message, 1, 120)
+| STATS erreurs = COUNT(*), types = VALUES(error.type), exemples = VALUES(message) BY service = service.name
+| WHERE erreurs > 20
+| EVAL types = MV_CONCAT(types, ", "), exemples = MV_CONCAT(MV_SLICE(exemples, 0, 1), " / ")"""
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "groupBy": "all"
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **Erreurs base de données — prod** — plus de 20 erreurs de base de données en 5 min.",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "text": "{{#context.hits}}`{{_source.service}}` : {{_source.erreurs}} erreurs ({{_source.types}}) — {{_source.exemples}}\n{{/context.hits}}",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. L'état de la base PostgreSQL de `pass-emploi-api-prod` (connexions, mémoire, CPU) : son addon dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n2. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n3. Le type et le message de chaque erreur : le Discover [[Pass Emploi] Logs de Prod - Erreurs base de données](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c4dfc122-1edc-42b2-973d-98ac7b127211), onglet « error.type : Sequelize* »"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Logs de Prod - Erreurs base de données](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c4dfc122-1edc-42b2-973d-98ac7b127211)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "1h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# A7 — Erreurs du front (Warning). Remplace les 7 règles APM des services disparus.
+# Nouvelle règle : absente de la prod avant le 2026-10-20, la créer avec POST
+# (même corps plus "rule_type_id": ".es-query" et "consumer": "alerts").
+PUT kbn:/api/alerting/rule/52c66a2a-2ee1-4de2-bc5c-642a96395405
+{
+  "name": "Web - Prod - Erreurs du front",
+  "tags": [
+    "prod",
+    "applicatif"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nPlus de 200 erreurs JavaScript en 5 min dans l'app web conseiller de prod, d'après le RUM de l'APM (`rum-pass-emploi-web-prod`) ; les 5 plus fréquentes sont listées.\n\n## À vérifier\n\n1. Les erreurs les plus fréquentes : les lignes ci-dessus, puis l'écran, le navigateur et la pile dans [[APM] Erreurs de rum-pass-emploi-web-prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/apm/services/rum-pass-emploi-web-prod/errors)\n2. Si ce sont des appels à l'api en échec (« Failed to fetch », « Internal server error ») : les erreurs de l'api au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n3. Un déploiement récent du web : l'activité de `pass-emploi-web-prod` dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Dashboards\n\n- [[APM] Erreurs de rum-pass-emploi-web-prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/apm/services/rum-pass-emploi-web-prod/errors)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Runbook\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-applicatives.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": """FROM logs-apm.error-*
+| WHERE service.name == "rum-pass-emploi-web-prod"
+| EVAL erreur = SUBSTRING(error.grouping_name, 1, 120)
+| STATS erreurs = COUNT(*) BY erreur
+| INLINE STATS total = SUM(erreurs)
+| WHERE total > 200
+| SORT erreurs DESC
+| LIMIT 5"""
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "groupBy": "all"
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "⚠️ **Erreurs du front — prod** — plus de 200 erreurs JavaScript en 5 min dans l'app web conseiller.",
+  "attachments": [
+    {
+      "color": "#f2c744",
+      "text": "{{#context.hits}}{{_source.erreur}} : {{_source.erreurs}}\n{{/context.hits}}",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Les erreurs les plus fréquentes : les lignes ci-dessus, puis l'écran, le navigateur et la pile dans [[APM] Erreurs de rum-pass-emploi-web-prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/apm/services/rum-pass-emploi-web-prod/errors)\n2. Si ce sont des appels à l'api en échec (« Failed to fetch », « Internal server error ») : les erreurs de l'api au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n3. Un déploiement récent du web : l'activité de `pass-emploi-web-prod` dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[APM] Erreurs de rum-pass-emploi-web-prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/apm/services/rum-pass-emploi-web-prod/errors)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "1h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# A10 — API injoignable — prod (pass-emploi-api) (Critical) : moniteur Heartbeat `pa-back-prod-status` (https://api.pass-emploi.beta.gouv.fr/health).
+# Règle Uptime existante : type et paramètres inchangés, PUT met à jour son message.
+PUT kbn:/api/alerting/rule/44d7b9b0-6e45-11ec-9757-c9700cd1bb4e
+{
+  "name": "API - Prod - Disponibilité",
+  "tags": [
+    "prod",
+    "applicatif",
+    "uptime"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nLe moniteur Heartbeat `pa-back-prod-status` n'obtient plus de réponse 200 de https://api.pass-emploi.beta.gouv.fr/health : l'api est injoignable pour les utilisateurs.\n\n## À vérifier\n\n1. L'état de l'app `pass-emploi-api-prod` (conteneurs, crash, redémarrage) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n2. Un déploiement, un redémarrage ou un crash au même moment : le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglets « Incidents » et « Infra »\n3. L'impact pour les utilisateurs : les erreurs par parcours dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Dashboards\n\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87)\n\n## Runbook\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-applicatives.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "filters": {
+      "monitor.type": [],
+      "observer.geo.name": [],
+      "tags": [],
+      "url.port": []
+    },
+    "isAutoGenerated": true,
+    "numTimes": 1,
+    "search": "monitor.id : pa-back-prod-status ",
+    "shouldCheckAvailability": false,
+    "shouldCheckStatus": true,
+    "timerangeCount": 1,
+    "timerangeUnit": "m",
+    "availability": {
+      "range": 30,
+      "rangeUnit": "d",
+      "threshold": "99"
+    }
+  },
+  "actions": [
+    {
+      "group": "xpack.uptime.alerts.actionGroups.monitorStatus",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **API injoignable — prod (pass-emploi-api)**",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "text": "",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "Détail",
+          "value": "URL : {{state.monitorUrl}}\nMotif : {{state.latestErrorMessage}}\nEn panne depuis : {{state.currentTriggerStarted}}"
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. L'état de l'app `pass-emploi-api-prod` (conteneurs, crash, redémarrage) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n2. Un déploiement, un redémarrage ou un crash au même moment : le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglets « Incidents » et « Infra »\n3. L'impact pour les utilisateurs : les erreurs par parcours dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "group": "recovered",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "✅ **API de nouveau joignable — prod (pass-emploi-api)**",
+  "attachments": [
+    {
+      "color": "#36a64f",
+      "text": "",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Rétablie à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "Détail",
+          "value": "URL : https://api.pass-emploi.beta.gouv.fr/health"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": true
+          }
+        }
+      }
+    }
+  ]
+}
+
+# A11 — Application web conseiller injoignable — prod (pass-emploi-web) (Critical) : moniteur Heartbeat `pa-web-prod-status` (https://web.pass-emploi.beta.gouv.fr/api/health).
+# Règle Uptime existante : type et paramètres inchangés, PUT met à jour son message.
+PUT kbn:/api/alerting/rule/45585b60-6e45-11ec-9757-c9700cd1bb4e
+{
+  "name": "Web - Prod - Disponibilité",
+  "tags": [
+    "prod",
+    "applicatif",
+    "uptime"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nLe moniteur Heartbeat `pa-web-prod-status` n'obtient plus de réponse 200 de https://web.pass-emploi.beta.gouv.fr/api/health : l'application web conseiller est injoignable pour les utilisateurs.\n\n## À vérifier\n\n1. L'état de l'app `pass-emploi-web-prod` (conteneurs, crash, redémarrage) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n2. Un déploiement, un redémarrage ou un crash au même moment : le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglets « Incidents » et « Infra »\n3. L'impact pour les utilisateurs : les erreurs par parcours dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Dashboards\n\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87)\n\n## Runbook\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-applicatives.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "filters": {
+      "monitor.type": [],
+      "observer.geo.name": [],
+      "tags": [],
+      "url.port": []
+    },
+    "isAutoGenerated": true,
+    "numTimes": 1,
+    "search": "monitor.id : pa-web-prod-status ",
+    "shouldCheckAvailability": false,
+    "shouldCheckStatus": true,
+    "timerangeCount": 1,
+    "timerangeUnit": "m"
+  },
+  "actions": [
+    {
+      "group": "xpack.uptime.alerts.actionGroups.monitorStatus",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **Application web conseiller injoignable — prod (pass-emploi-web)**",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "text": "",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "Détail",
+          "value": "URL : {{state.monitorUrl}}\nMotif : {{state.latestErrorMessage}}\nEn panne depuis : {{state.currentTriggerStarted}}"
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. L'état de l'app `pass-emploi-web-prod` (conteneurs, crash, redémarrage) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n2. Un déploiement, un redémarrage ou un crash au même moment : le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglets « Incidents » et « Infra »\n3. L'impact pour les utilisateurs : les erreurs par parcours dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "group": "recovered",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "✅ **Application web conseiller de nouveau joignable — prod (pass-emploi-web)**",
+  "attachments": [
+    {
+      "color": "#36a64f",
+      "text": "",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Rétablie à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "Détail",
+          "value": "URL : https://web.pass-emploi.beta.gouv.fr/api/health"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": true
+          }
+        }
+      }
+    }
+  ]
+}
+
+# A12 — Service d'authentification injoignable — prod (pass-emploi-connect) (Critical) : moniteur Heartbeat `pass-emploi-connect-status` (https://id.pass-emploi.beta.gouv.fr/health).
+# Règle Uptime existante : type et paramètres inchangés, PUT met à jour son message.
+PUT kbn:/api/alerting/rule/4439f310-6e45-11ec-9757-c9700cd1bb4e
+{
+  "name": "Connect - Prod - Disponibilité",
+  "tags": [
+    "prod",
+    "applicatif",
+    "uptime"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nLe moniteur Heartbeat `pass-emploi-connect-status` n'obtient plus de réponse 200 de https://id.pass-emploi.beta.gouv.fr/health : le service d'authentification est injoignable pour les utilisateurs.\n\n## À vérifier\n\n1. L'état de l'app `pass-emploi-connect-prod` (conteneurs, crash, redémarrage) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n2. Un déploiement, un redémarrage ou un crash au même moment : le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglets « Incidents » et « Infra »\n3. L'impact pour les utilisateurs : les erreurs par parcours dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Dashboards\n\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87)\n\n## Runbook\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-applicatives.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "filters": {
+      "monitor.type": [],
+      "observer.geo.name": [],
+      "tags": [],
+      "url.port": []
+    },
+    "isAutoGenerated": true,
+    "numTimes": 1,
+    "search": "monitor.id : pass-emploi-connect-status ",
+    "shouldCheckAvailability": false,
+    "shouldCheckStatus": true,
+    "timerangeCount": 1,
+    "timerangeUnit": "m"
+  },
+  "actions": [
+    {
+      "group": "xpack.uptime.alerts.actionGroups.monitorStatus",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **Service d'authentification injoignable — prod (pass-emploi-connect)**",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "text": "",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "Détail",
+          "value": "URL : {{state.monitorUrl}}\nMotif : {{state.latestErrorMessage}}\nEn panne depuis : {{state.currentTriggerStarted}}"
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. L'état de l'app `pass-emploi-connect-prod` (conteneurs, crash, redémarrage) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n2. Un déploiement, un redémarrage ou un crash au même moment : le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglets « Incidents » et « Infra »\n3. L'impact pour les utilisateurs : les erreurs par parcours dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "group": "recovered",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "✅ **Service d'authentification de nouveau joignable — prod (pass-emploi-connect)**",
+  "attachments": [
+    {
+      "color": "#36a64f",
+      "text": "",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Rétablie à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "Détail",
+          "value": "URL : https://id.pass-emploi.beta.gouv.fr/health"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": true
+          }
+        }
+      }
+    }
+  ]
+}
+
+# A13 — Certificat TLS bientôt expiré (Warning), un message par certificat et par jour.
+# Règle Uptime existante : type et paramètres inchangés, PUT met à jour son message.
+PUT kbn:/api/alerting/rule/6dd99b60-9886-11ec-9757-c9700cd1bb4e
+{
+  "name": "TLS - Certificat bientôt expiré",
+  "tags": [
+    "prod",
+    "applicatif",
+    "uptime"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nUn certificat TLS d'un domaine surveillé par Heartbeat expire bientôt : sans renouvellement, les navigateurs et les apps refuseront la connexion.\n\n## À vérifier\n\n1. Le domaine et la date d'expiration : le titre du message\n2. Son renouvellement automatique chez l'hébergeur du domaine ; pour une app Scalingo, l'onglet Domains de l'app dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Dashboards\n\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-applicatives.md)\n"
+    }
+  },
+  "schedule": {
+    "interval": "1d"
+  },
+  "params": {},
+  "actions": [
+    {
+      "group": "xpack.uptime.alerts.actionGroups.tlsCertificate",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "⚠️ **Certificat TLS bientôt expiré** — {{state.commonName}} : {{state.summary}}",
+  "attachments": [
+    {
+      "color": "#f2c744",
+      "text": "",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "Détail",
+          "value": "Émetteur : {{state.issuer}}"
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Le domaine et la date d'expiration : le titre du message\n2. Son renouvellement automatique chez l'hébergeur du domaine ; pour une app Scalingo, l'onglet Domains de l'app dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActiveAlert",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}

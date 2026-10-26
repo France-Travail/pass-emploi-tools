@@ -1,0 +1,13 @@
+      - name: si-esql
+        type: if
+        condition: "${{ foreach.item.kibana.alert.rule.parameters.searchType == 'esqlQuery' and foreach.item.kibana.alert.rule.parameters.groupBy == 'all' }}"
+        steps:
+          - name: requete
+            type: elasticsearch.esql.query
+            with:
+              query: "{{ foreach.item.kibana.alert.rule.parameters.esqlQuery.esql }}"
+              filter:
+                range:
+                  "@timestamp":
+                    gte: "{{ foreach.item.kibana.alert.start }}||-{{ foreach.item.kibana.alert.rule.parameters.timeWindowSize }}{{ foreach.item.kibana.alert.rule.parameters.timeWindowUnit }}"
+                    lte: "{{ foreach.item.kibana.alert.start }}"

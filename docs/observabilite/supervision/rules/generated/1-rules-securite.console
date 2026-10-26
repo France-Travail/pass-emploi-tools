@@ -1,0 +1,139 @@
+# ⚠️ FICHIER GÉNÉRÉ par ../generer-regles.py : NE PAS LE MODIFIER, il serait écrasé.
+# À modifier à la place, dans ../1-securite/ :
+#   - une règle : son fichier <code>.json (le JSON de la règle Kibana) ;
+#   - le texte autour des règles (commentaires, autres requêtes) : _modele.console.
+# Puis : FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I ../generer-regles.py
+#        python3 -I ../../workflows/tchap/generer-workflows.py
+# La CI de chaque PR vérifie que ce fichier correspond à ses sources.
+# Ce fichier se colle tel quel dans Kibana → Dev Tools. Mode d'emploi : ../README.md.
+#
+# Règles Kibana des alertes de sécurité. Spécification : ../../alertes-securite.md.
+#
+# À rejouer dans Dev Tools, après les sessions Discover de
+# ../../discovers/webhooks/. PUT met à jour une règle existante ; sur un
+# cluster vide, la créer avec POST kbn:/api/alerting/rule/<id> et le même corps
+# plus "rule_type_id": ".es-query" et "consumer": "alerts".
+# Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
+# ../../objets-kibana.md#slo-et-règles-console.
+#
+# Messages Mattermost : une section (« À vérifier », « Dashboards », « Discover
+# sessions ») = un champ, un élément par ligne (`\n`). Chaque champ tient sur une
+# seule ligne du fichier : l'éditeur de règle de Kibana lit le body comme du JSON
+# brut, un retour à la ligne dans une chaîne l'empêche de l'afficher. Pour relire
+# les étapes : le fichier <code>.json de la règle, dans ../1-securite/, ou son
+# Investigation guide.
+#
+# artifacts : l'Investigation guide et les Related dashboards (onglets de la
+# règle). L'API publique ne les renvoie pas dans ses réponses : les vérifier
+# dans l'interface.
+
+# V1 — CVE high/critical encore ouvertes, à chaque passage de security-alerts.yml (Critical)
+PUT kbn:/api/alerting/rule/67846c2c-45d1-45be-89f5-ce9a340240a0
+{
+  "name": "GitHub - CVE high ou critical ouverte",
+  "tags": [
+    "critical",
+    "prod",
+    "securite",
+    "tchap-lignes"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nUne CVE high ou critical est encore ouverte sur un repo (alertes Dependabot envoyées par `security-alerts.yml`).\n\n## À vérifier\n\n1. Le Discover [[Pass Emploi] Alertes externes - CVE Dependabot](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/ece3e409-0679-4bcb-a675-ae7dfb092c19), liste les CVE ouvertes par repo avec leur score\n2. Les alertes Dependabot du repo concerné, à traiter selon leur sévérité : [[GitHub] Alertes Dependabot - pass-emploi-api](https://github.com/France-Travail/pass-emploi-api/security/dependabot), [[GitHub] Alertes Dependabot - pass-emploi-web](https://github.com/France-Travail/pass-emploi-web/security/dependabot), [[GitHub] Alertes Dependabot - pass-emploi-connect](https://github.com/France-Travail/pass-emploi-connect/security/dependabot)\n\n## Dashboards\n\n- [[GitHub] Alertes Dependabot - pass-emploi-api](https://github.com/France-Travail/pass-emploi-api/security/dependabot)\n- [[GitHub] Alertes Dependabot - pass-emploi-web](https://github.com/France-Travail/pass-emploi-web/security/dependabot)\n- [[GitHub] Alertes Dependabot - pass-emploi-connect](https://github.com/France-Travail/pass-emploi-connect/security/dependabot)\n\n## Discover sessions\n\n- [[Pass Emploi] Alertes externes - CVE Dependabot](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/ece3e409-0679-4bcb-a675-ae7dfb092c19)\n\n## Documentation\n\n[Alertes de sécurité](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-securite.md)\n"
+    }
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "vulnerability.severity : (\"high\" or \"critical\")",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "8a589b67-53bc-407d-9d76-c68b41271bbe",
+        "title": "logs-alertes-github-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Alertes GitHub - CVE",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 10,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 20,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": true,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
+      "params": {
+        "body": """{
+  "text": "🚨 **CVE high/critical ouvertes** ({{context.value}})",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "text": "{{#context.hits}}• [{{_source.service.name}}]({{_source.labels.dependabot_url}}) : **{{_source.vulnerability.id}}** — {{_source.package.name}} ({{_source.vulnerability.severity}}) : {{_source.vulnerability.description}} — [Voir]({{_source.vulnerability.reference}})\n{{/context.hits}}",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Le Discover [[Pass Emploi] Alertes externes - CVE Dependabot](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/ece3e409-0679-4bcb-a675-ae7dfb092c19), liste les CVE ouvertes par repo avec leur score\n2. Les alertes Dependabot du repo concerné (lien sur le nom du repo de chaque CVE), à traiter selon leur sévérité"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Alertes externes - CVE Dependabot](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/ece3e409-0679-4bcb-a675-ae7dfb092c19)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActiveAlert",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}

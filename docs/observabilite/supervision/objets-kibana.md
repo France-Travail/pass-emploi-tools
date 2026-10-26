@@ -7,15 +7,18 @@ se rejoue à l'identique sur un cluster vide. Deux formats :
   leurs data views et tags), importé par la page *Saved objects* ;
 - **`.console`** : requêtes Dev Tools (SLO, règles d'alerte, ILM et templates).
 
-Les identifiants sont conservés à l'import : les messages Mattermost des alertes
+Les identifiants sont conservés à l'import : les messages des alertes (Mattermost, Tchap)
 et cette doc pointent vers les objets par leur id.
 
 ## Dashboards
 
 | Dashboard | Fichier | Usage |
 |---|---|---|
-| [[Pass Emploi] SLO de PROD](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14) | [`dashboards/dashboard-slo.ndjson`](dashboards/dashboard-slo.ndjson) | statut des SLO, cf. [routine](../routine-surveillance.md#promesses-utilisateurs-slo) |
+| [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14) | [`dashboards/dashboard-slo.ndjson`](dashboards/dashboard-slo.ndjson) | statut des SLO, cf. [routine](../routine-surveillance.md#promesses-utilisateurs-slo) |
 | [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d) | [`dashboards/dashboard-supervision-stack-observabilite.ndjson`](dashboards/dashboard-supervision-stack-observabilite.ndjson) | chaîne de logs, cf. [routine](../routine-surveillance.md#santé-de-la-stack-dobservabilité) |
+| [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74) | [`dashboards/dashboard-diagnostic-erreurs.ndjson`](dashboards/dashboard-diagnostic-erreurs.ndjson) | point d'entrée du diagnostic d'erreurs : taux d'échec, échecs par app, échecs Router contre App ; oriente vers les deux suivants |
+| [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74) | [`dashboards/dashboard-diagnostic-erreurs.ndjson`](dashboards/dashboard-diagnostic-erreurs.ndjson) | erreurs applicatives : top erreurs par app, routes en échec, échecs et pannes de transport partenaires, messages d'erreur |
+| [[Pass Emploi] Diagnostic d'erreurs - Robots / scan](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6) | [`dashboards/dashboard-diagnostic-erreurs.ndjson`](dashboards/dashboard-diagnostic-erreurs.ndjson) | bruit des robots et scanners : 404, IP, user agents, 401 |
 
 ## Sessions Discover
 
@@ -24,22 +27,34 @@ les logs à examiner.
 
 | Session | Fichier | Alerte | Contenu |
 |---|---|---|---|
-| [[Pass Emploi] Logs de PROD - Failure partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293) | [`discovers/applicatives/discover-session-prod-erreurs-partenaires.ndjson`](discovers/applicatives/discover-session-prod-erreurs-partenaires.ndjson) | A1 | `external_api_call` en échec, un onglet par famille de clients : Milo, France Travail, `*ApiClient`, OIDC |
+| [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293) | [`discovers/applicatives/discover-session-prod-erreurs-partenaires.ndjson`](discovers/applicatives/discover-session-prod-erreurs-partenaires.ndjson) | A1 | `external_api_call` en échec, un onglet par famille de clients : Milo, France Travail, `*ApiClient`, OIDC |
 | [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73) | [`discovers/applicatives/discover-session-prod-erreurs-5xx.ndjson`](discovers/applicatives/discover-session-prod-erreurs-5xx.ndjson) | A2 | `request_failed` de l'api, motif et `trace.id` |
 | [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8) | [`discovers/applicatives/discover-session-prod-erreurs-authentification.ndjson`](discovers/applicatives/discover-session-prod-erreurs-authentification.ndjson) | A3 | `auth_failed` ; répartition par IDP dans l'onglet *Field statistics* |
+| [[Pass Emploi] Logs de Prod - Erreurs base de données](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c4dfc122-1edc-42b2-973d-98ac7b127211) | [`discovers/applicatives/discover-session-prod-erreurs-base-de-donnees.ndjson`](discovers/applicatives/discover-session-prod-erreurs-base-de-donnees.ndjson) | A6 | erreurs Sequelize de tous les logs de prod, réparties par `error.type` |
 | [[Pass Emploi] Logs de Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/97e2d85f-7bd2-49df-86b3-2ffc290bbe69) | [`discovers/stack-observabilite/discover-session-prod-logstash-process-rejet-dlq.ndjson`](discovers/stack-observabilite/discover-session-prod-logstash-process-rejet-dlq.ndjson) | 1a | logs non indexés pour une cause non détectée par Logstash (DLQ), prod |
 | [[Pass Emploi] Logs Hors-Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/e5bec6b4-0ae3-47b1-8bb5-2e9bf77493a4) | [`discovers/stack-observabilite/discover-session-hors-prod-logstash-process-rejet-dlq.ndjson`](discovers/stack-observabilite/discover-session-hors-prod-logstash-process-rejet-dlq.ndjson) | 1b | idem, staging et perf |
-| [[Pass Emploi] Logs de PROD - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17) | [`discovers/stack-observabilite/discover-session-prod-logstash-process-traitement-failures.ndjson`](discovers/stack-observabilite/discover-session-prod-logstash-process-traitement-failures.ndjson) | 2a | logs non indexés à cause d'une erreur de transformation détectée par Logstash, prod |
+| [[Pass Emploi] Logs de Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17) | [`discovers/stack-observabilite/discover-session-prod-logstash-process-traitement-failures.ndjson`](discovers/stack-observabilite/discover-session-prod-logstash-process-traitement-failures.ndjson) | 2a | logs non indexés à cause d'une erreur de transformation détectée par Logstash, prod |
 | [[Pass Emploi] Logs Hors-Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/716175ed-b2a0-4fe1-8f9d-1892d04dbe92) | [`discovers/stack-observabilite/discover-session-hors-prod-logstash-process-traitement-failures.ndjson`](discovers/stack-observabilite/discover-session-hors-prod-logstash-process-traitement-failures.ndjson) | 2b | idem, staging et perf |
 | [[Pass Emploi] Historique ILM - Index hors rétention](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/3f3c69ef-e515-4be4-b679-eff837c92ecb) | [`discovers/stack-observabilite/discover-session-elasticsearch-index-hors-retention-ilm.ndjson`](discovers/stack-observabilite/discover-session-elasticsearch-index-hors-retention-ilm.ndjson) | 10 | index de nos flux en échec ILM ou sur une policy par défaut, d'après l'historique ILM |
+| [[Pass Emploi] Logs de Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c0d38bba-66ef-4b68-8a10-4d786f6a9f4a) | [`discovers/applicatives/discover-session-prod-jobs.ndjson`](discovers/applicatives/discover-session-prod-jobs.ndjson) | A5a | onglets « Jobs en échec » (`job_crashed`, erreur, stack) et « Exécutions » (`job_completed` par job, statut, durée) |
+| [[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740) | [`discovers/applicatives/discover-session-hors-prod-jobs.ndjson`](discovers/applicatives/discover-session-hors-prod-jobs.ndjson) | A5b | idem, staging et perf |
+| [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87) | [`discovers/webhooks/discover-session-prod-alertes-scalingo.ndjson`](discovers/webhooks/discover-session-prod-alertes-scalingo.ndjson) | A4a, 6a | événements des notifiers Scalingo de prod : onglets « Incidents » (`labels.categorie : incident`) et « Infra » |
+| [[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/33bed466-9d68-4789-a723-aeea34e6cd93) | [`discovers/webhooks/discover-session-hors-prod-alertes-scalingo.ndjson`](discovers/webhooks/discover-session-hors-prod-alertes-scalingo.ndjson) | A4b, 6b | idem, staging et perf |
+| [[Pass Emploi] Alertes externes - CVE Dependabot](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/ece3e409-0679-4bcb-a675-ae7dfb092c19) | [`discovers/webhooks/discover-session-prod-alertes-github-cve.ndjson`](discovers/webhooks/discover-session-prod-alertes-github-cve.ndjson) | V1 | CVE high et critical ouvertes, par repo, avec leur score |
+| [[Pass Emploi] Alertes externes - Rejets (failure store)](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/861dbdf4-5086-498b-aff6-4d9d68ceb1f4) | [`discovers/webhooks/discover-session-alertes-externes-rejets.ndjson`](discovers/webhooks/discover-session-alertes-externes-rejets.ndjson) | 14 | payloads Scalingo et GitHub rejetés : `error.type`, `error.message`, `document.index` |
 
 ## Requêtes Dev Tools
 
 | Fichier | Contenu |
 |---|---|
 | [`slo/1-slos.console`](slo/1-slos.console) | les SLO, cf. [sli-slo](sli-slo.md) |
-| [`rules/1-rules-applicatives.console`](rules/1-rules-applicatives.console) | règles S2, S3 et A1 à A3, cf. [alertes applicatives](alertes-applicatives.md) |
-| [`rules/2-rules-stack-observabilite.console`](rules/2-rules-stack-observabilite.console) | règles 1 à 5 et 7 à 9, cf. [alertes de la stack](alertes-stack-observabilite.md) |
+| [`connecteurs/mattermost-jobs.console`](connecteurs/mattermost-jobs.console) | connecteurs Mattermost des canaux jobs (A5a, A5b) |
+| [`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console) | règles S2, S3, A1 à A3, A4a, A4b, A5a et A5b, cf. [alertes applicatives](alertes-applicatives.md) |
+| [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console) | règles 1 à 10 et 14, cf. [alertes de la stack](alertes-stack-observabilite.md) |
+| [`rules/generated/1-rules-securite.console`](rules/generated/1-rules-securite.console) | règle V1, cf. [alertes de sécurité](alertes-securite.md) |
+| [`rules/generated/4-rules-tchap.console`](rules/generated/4-rules-tchap.console) | règle « Tchap - Envoi en échec », sans action |
+| [`rules/generated/5-rules-tchap-expiration-bot.console`](rules/generated/5-rules-tchap-expiration-bot.console) | règle « Tchap - Expiration du compte bot » et l'index de sa date, cf. [runbook](../runbooks/runbook-tchap-expiration-bot.md) |
+| [`workflows/tchap/`](workflows/tchap/README.md) | connecteur Tchap et Workflows de notification (tchap-client, un par salon) |
 
 Les rétentions (ILM, templates) sont dans [`stockage/`](../stockage/README.md#import--ordre-et-portée).
 
@@ -61,9 +76,29 @@ remplace aussi ses réglages d'affichage, sans effet sur les données.
 ### SLO et règles (`.console`)
 
 Copier le fichier dans Dev Tools et exécuter les requêtes, dans l'ordre :
-`slo/1-slos.console`, puis `rules/1-rules-applicatives.console`, puis
-`rules/2-rules-stack-observabilite.console`. Sur un cluster vide, l'en-tête de
-chaque fichier indique comment transformer les `PUT` en `POST` de création.
+`slo/1-slos.console`, puis `rules/generated/2-rules-applicatives.console`, puis
+`rules/generated/3-rules-stack-observabilite.console`, puis `rules/generated/1-rules-securite.console`.
+Sur un cluster vide, l'en-tête de chaque fichier indique comment transformer les
+`PUT` en `POST` de création. Les règles sur les événements Scalingo et GitHub
+(A4a, A4b, 6a, 6b, 14, V1) supposent leur collecte en place : cf. sa
+[mise en service](../collecte/webhooks/README.md#mise-en-service).
+
+**Après un déploiement par l'API avec une clé API** (script, `curl` avec
+`Authorization: ApiKey …`, plutôt que Dev Tools avec sa session) : chaque règle
+créée ou modifiée tourne avec **cette clé**, sans clé à elle
+(`api_key_created_by_user: true`). Quand la clé expire, la règle échoue en
+`security_exception` à chaque exécution, et personne n'est prévenu (déjà arrivé :
+8 règles muettes pendant 6 h). Juste après le déploiement, depuis
+une session Kibana : *Stack Management* → *Rules*, sélectionner toutes les
+règles, action **Update API keys**. Chaque règle reçoit une clé à elle, au nom
+de ce compte, sans expiration. Vérifier ensuite qu'aucune règle active ne
+tourne plus avec la clé de l'appelant :
+```
+GET kbn:/api/alerting/rules/_find?per_page=200&filter=alert.attributes.enabled:true
+```
+Dans la réponse, aucune règle ne doit avoir `"api_key_created_by_user": true`
+(le champ n'est pas filtrable). Une règle modifiée dans Dev Tools ou dans
+l'interface reçoit directement une clé à elle.
 
 ## Modifier un objet
 
@@ -71,5 +106,30 @@ Modifier dans Kibana, puis réexporter par-dessus le fichier versionné :
 
 - **dashboard ou session Discover** : page *Saved objects*, sélectionner l'objet,
   **Export** avec *Include related objects* ;
-- **règle d'alerte** : modifier d'abord le tableau et le body dans
-  `alertes-*.md`, puis le `PUT` du `.console` correspondant, et le rejouer.
+- **règle d'alerte** (mode d'emploi détaillé : [`rules/README.md`](rules/README.md)) :
+  les fichiers de `rules/generated/` et de
+  `workflows/tchap/generated/` sont **générés** (ils le disent en tête) : ne pas
+  les modifier, ils seraient écrasés et le check de la PR échouerait. Modifier
+  la source, dans `rules/<n>-<périmètre>/` :
+  - la règle : son fichier `<code>.json` (le JSON de la règle Kibana, son message
+    lisible en objet JSON) ;
+  - le texte autour des règles (commentaires, autres requêtes) : `_modele.console`,
+    où `@@REGLE <code>@@` marque la place de chaque règle ;
+  - le tableau de la page `alertes-*.md` correspondante, si le seuil ou le
+    principe change.
+
+  Puis régénérer et commiter le tout :
+  ```bash
+  FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I rules/generer-regles.py
+  python3 -I workflows/tchap/generer-workflows.py
+  ```
+  Déployer ensuite le bloc de `rules/generated/` dans Dev Tools (manuellement).
+  Sur chaque PR, le workflow GitHub
+  [`elastic-rules-and-workflows-checks.yml`](../../../.github/workflows/elastic-rules-and-workflows-checks.yml)
+  échoue si un fichier généré ne correspond plus à ses sources, ou si une règle
+  viole les contrôles des générateurs (message absent ou en JSON invalide,
+  salon inconnu, règle ES|QL hors `@timestamp`).
+  `FEATURE_NOTIFIER_ALERTES_MATTERMOST` suit la convention des features des apps
+  (active seulement à `true`) : à `true`, les règles gardent leurs actions
+  Mattermost ; sans elle, elles n'ont plus que leur action Tchap. Le CI la fixe
+  à `true` jusqu'au décommissionnement de Mattermost.

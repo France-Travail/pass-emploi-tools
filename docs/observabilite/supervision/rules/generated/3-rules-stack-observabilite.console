@@ -1,0 +1,2917 @@
+# ⚠️ FICHIER GÉNÉRÉ par ../generer-regles.py : NE PAS LE MODIFIER, il serait écrasé.
+# À modifier à la place, dans ../3-stack-observabilite/ :
+#   - une règle : son fichier <code>.json (le JSON de la règle Kibana) ;
+#   - le texte autour des règles (commentaires, autres requêtes) : _modele.console.
+# Puis : FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I ../generer-regles.py
+#        python3 -I ../../workflows/tchap/generer-workflows.py
+# La CI de chaque PR vérifie que ce fichier correspond à ses sources.
+# Ce fichier se colle tel quel dans Kibana → Dev Tools. Mode d'emploi : ../README.md.
+#
+# Règles Kibana de la stack d'observabilité, notifiées dans #o11y-production
+# (Mattermost-o11y-production) et #o11y-staging (Mattermost-o11y-staging).
+# Spécification et calibrage : ../../alertes-stack-observabilite.md.
+#
+# À rejouer dans Dev Tools. PUT met à jour une règle existante ; sur un cluster
+# vide, la créer avec POST kbn:/api/alerting/rule/<id> et le même corps plus
+# "rule_type_id": ".es-query" et "consumer": "alerts".
+# Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
+# ../../objets-kibana.md#slo-et-règles-console.
+#
+# PUT ne change pas l'état activé / désactivé d'une règle. Les data views sont
+# embarquées dans la règle (searchConfiguration.index) : leur id ne renvoie à
+# aucune data view enregistrée.
+#
+# Messages Mattermost : une section (« À vérifier », « Dashboards », « Discover
+# sessions ») = un champ, un élément par ligne (`\n`). Chaque champ tient sur une
+# seule ligne du fichier : l'éditeur de règle de Kibana lit le body comme du JSON
+# brut, un retour à la ligne dans une chaîne l'empêche de l'afficher. Pour relire
+# les étapes : le fichier <code>.json de la règle, dans ../3-stack-observabilite/, ou son
+# Investigation guide.
+#
+# artifacts : l'Investigation guide et les Related dashboards (onglets de la
+# règle). L'API publique ne les renvoie pas dans ses réponses : les vérifier
+# dans l'interface.
+
+# 1a — DLQ prod (Critical)
+PUT kbn:/api/alerting/rule/fe53ada2-2c8b-42eb-930c-bae4286b7893
+{
+  "name": "Logstash - Prod - Détection présence event dans DLQ",
+  "tags": [
+    "prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nLogs de prod non indexés : échec de process Logstash indéterminé — des logs de prod ne sont pas consultables dans Kibana, sans erreur détectée par Logstash.\n\n## À vérifier\n\n1. Pourquoi Elasticsearch a refusé ces logs : le Discover [[Pass Emploi] Logs de Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/97e2d85f-7bd2-49df-86b3-2ffc290bbe69) donne le motif de chaque rejet (mapping, document trop gros…) et l'app d'origine\n2. Si des rejets arrivent encore : le débit et les erreurs de l'output Elasticsearch dans le dashboard [[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)\n3. Corriger le mapping ou le pipeline selon le motif (runbook, scénario 3)\n\n## Dashboards\n\n- [[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/97e2d85f-7bd2-49df-86b3-2ffc290bbe69)\n\n## Documentation\n\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)\n"
+    },
+    "dashboards": [
+      {
+        "id": "logstash-4bbf4a50-6ece-11ee-910d-eb0006359086"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "b5459fcf-9a0c-45d9-8ab0-f812cf7ddbb3",
+        "title": "logs-logstash-dlq-prod-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Logs Logstash Prod - Dead Letter Queue",
+        "allowHidden": true,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": false,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
+      "params": {
+        "body": """{
+  "text": "🚨 **Logs de prod non indexés : échec de process Logstash indéterminé** — des logs de prod ne sont pas consultables dans Kibana, sans erreur détectée par Logstash.",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Pourquoi Elasticsearch a refusé ces logs : le Discover [[Pass Emploi] Logs de Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/97e2d85f-7bd2-49df-86b3-2ffc290bbe69) donne le motif de chaque rejet (mapping, document trop gros…) et l'app d'origine\n2. Si des rejets arrivent encore : le débit et les erreurs de l'output Elasticsearch dans le dashboard [[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)\n3. Corriger le mapping ou le pipeline selon le motif (runbook, scénario 3)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Logs de Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/97e2d85f-7bd2-49df-86b3-2ffc290bbe69)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "6h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# 1b — DLQ staging / perf (Warning)
+PUT kbn:/api/alerting/rule/b100ff40-7409-4859-ac44-755ad2401f03
+{
+  "name": "Logstash - Hors-Prod - Détection présence event dans DLQ",
+  "tags": [
+    "hors-prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nLogs hors prod non indexés : échec de process Logstash indéterminé — des logs de staging/perf ne sont pas consultables dans Kibana, sans erreur détectée par Logstash.\n\n## À vérifier\n\n1. Pourquoi Elasticsearch a refusé ces logs : le Discover [[Pass Emploi] Logs Hors-Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/e5bec6b4-0ae3-47b1-8bb5-2e9bf77493a4) donne le motif de chaque rejet (mapping, document trop gros…) et l'app d'origine\n2. Si des rejets arrivent encore : le débit et les erreurs de l'output Elasticsearch dans le dashboard [[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)\n3. Corriger le mapping ou le pipeline selon le motif (runbook, scénario 3)\n\n## Dashboards\n\n- [[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs Hors-Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/e5bec6b4-0ae3-47b1-8bb5-2e9bf77493a4)\n\n## Documentation\n\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)\n"
+    },
+    "dashboards": [
+      {
+        "id": "logstash-4bbf4a50-6ece-11ee-910d-eb0006359086"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "3bdd37f9-03a0-4247-94fd-6e6252d21a47",
+        "title": "logs-logstash-dlq-staging-default,logs-logstash-dlq-perf-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Logs Logstash Hors-Prod - Dead Letter Queue",
+        "allowHidden": true,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": false,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "c4a313b3-aa42-4e07-8196-c007625ce8af",
+      "params": {
+        "body": """{
+  "text": "⚠️ **Logs hors prod non indexés : échec de process Logstash indéterminé** — des logs de staging/perf ne sont pas consultables dans Kibana, sans erreur détectée par Logstash.",
+  "attachments": [
+    {
+      "color": "#f2c744",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Pourquoi Elasticsearch a refusé ces logs : le Discover [[Pass Emploi] Logs Hors-Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/e5bec6b4-0ae3-47b1-8bb5-2e9bf77493a4) donne le motif de chaque rejet (mapping, document trop gros…) et l'app d'origine\n2. Si des rejets arrivent encore : le débit et les erreurs de l'output Elasticsearch dans le dashboard [[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)\n3. Corriger le mapping ou le pipeline selon le motif (runbook, scénario 3)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Logs Hors-Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/e5bec6b4-0ae3-47b1-8bb5-2e9bf77493a4)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "6h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-staging",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# 2a — Erreurs prod (Warning, bilan quotidien)
+PUT kbn:/api/alerting/rule/dd107070-c841-4580-9923-db2ef37c795d
+{
+  "name": "Logstash - Prod - Détection erreurs pipeline process",
+  "tags": [
+    "prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nLogs de prod non indexés : erreur de transformation Logstash — bilan des 24 h — … logs de prod ne sont pas consultables dans Kibana.\n\n## À vérifier\n\n1. Quels logs n'ont pas pu être transformés : le Discover [[Pass Emploi] Logs de Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17) — `tags` donne l'étape en échec, `message` le log d'origine\n2. Quelle app les émet, et depuis quand : la répartition par `service.name` (onglet *Field statistics*) du même Discover\n3. Corriger le filtre Logstash concerné (`logs/` de pass-emploi-tools), puis vérifier que les erreurs cessent dans le même Discover\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17)\n\n## Documentation\n\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)\n"
+    }
+  },
+  "schedule": {
+    "interval": "1h"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "c0721d04-4dc0-4a2f-a89c-dddb02382e1e",
+        "title": "logs-logstash-errors-prod-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Logs Logstash Prod - Index erreurs de traitement Pipeline process",
+        "allowHidden": true,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 24,
+    "timeWindowUnit": "h",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": false,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
+      "params": {
+        "body": """{
+  "text": "⚠️ **Logs de prod non indexés : erreur de transformation Logstash — bilan des 24 h** — {{context.value}} logs de prod ne sont pas consultables dans Kibana.",
+  "attachments": [
+    {
+      "color": "#f2c744",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Quels logs n'ont pas pu être transformés : le Discover [[Pass Emploi] Logs de Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17) — `tags` donne l'étape en échec, `message` le log d'origine\n2. Quelle app les émet, et depuis quand : la répartition par `service.name` (onglet *Field statistics*) du même Discover\n3. Corriger le filtre Logstash concerné (`logs/` de pass-emploi-tools), puis vérifier que les erreurs cessent dans le même Discover"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Logs de Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActiveAlert",
+        "throttle": null
+      },
+      "alerts_filter": {
+        "timeframe": {
+          "days": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "timezone": "Europe/Paris",
+          "hours": {
+            "start": "09:30",
+            "end": "10:30"
+          }
+        }
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# 2b — Erreurs staging / perf (Warning)
+PUT kbn:/api/alerting/rule/ede49ade-b4ee-4cbb-9dd2-28078e189f7b
+{
+  "name": "Logstash - Hors-Prod - Détection erreurs pipeline process",
+  "tags": [
+    "hors-prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nLogs hors prod non indexés : erreur de transformation Logstash — des logs de staging/perf ne sont pas consultables dans Kibana.\n\n## À vérifier\n\n1. Quels logs n'ont pas pu être transformés : le Discover [[Pass Emploi] Logs Hors-Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/716175ed-b2a0-4fe1-8f9d-1892d04dbe92) — `tags` donne l'étape en échec, `message` le log d'origine\n2. Quelle app les émet, et depuis quand : la répartition par `service.name` (onglet *Field statistics*) du même Discover\n3. Corriger le filtre Logstash concerné (`logs/` de pass-emploi-tools), puis vérifier que les erreurs cessent dans le même Discover\n\n## Discover sessions\n\n- [[Pass Emploi] Logs Hors-Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/716175ed-b2a0-4fe1-8f9d-1892d04dbe92)\n\n## Documentation\n\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)\n"
+    }
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "1ed38454-c7e7-4726-9db4-434106a710d4",
+        "title": "logs-logstash-errors-staging-default,logs-logstash-errors-perf-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Logs Logstash Hors-Prod - Index erreurs de traitement Pipeline process",
+        "allowHidden": true,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": false,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "c4a313b3-aa42-4e07-8196-c007625ce8af",
+      "params": {
+        "body": """{
+  "text": "⚠️ **Logs hors prod non indexés : erreur de transformation Logstash** — des logs de staging/perf ne sont pas consultables dans Kibana.",
+  "attachments": [
+    {
+      "color": "#f2c744",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Quels logs n'ont pas pu être transformés : le Discover [[Pass Emploi] Logs Hors-Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/716175ed-b2a0-4fe1-8f9d-1892d04dbe92) — `tags` donne l'étape en échec, `message` le log d'origine\n2. Quelle app les émet, et depuis quand : la répartition par `service.name` (onglet *Field statistics*) du même Discover\n3. Corriger le filtre Logstash concerné (`logs/` de pass-emploi-tools), puis vérifier que les erreurs cessent dans le même Discover"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Logs Hors-Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/716175ed-b2a0-4fe1-8f9d-1892d04dbe92)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "6h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-staging",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# 3a — Absence dans `logs-prod-default`
+PUT kbn:/api/alerting/rule/139c93c3-b744-4bd7-8274-bb88f77305c7
+{
+  "name": "Logstash - Prod - Détection absence ingestion logs applicatifs",
+  "tags": [
+    "prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nSilence Logstash — aucun log dans `logs-prod-default` depuis 5 min. Drain en quarantaine ou Logstash crashé.\n\n## À vérifier\n\n1. Logstash reçoit-il encore des logs : les débits d'entrée et de sortie dans le dashboard [[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)\n2. Une seule source ou toute l'ingestion : si les logs du router arrivent toujours (pas d'alerte de silence de leur côté), le drain d'une app est en quarantaine ; sinon, Logstash est arrêté ou a redémarré (son activité dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. L'agent qui remonte les métriques de Logstash fonctionne-t-il : le dashboard [[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824), sinon les débits ci-dessus sont aveugles\n\n## Dashboards\n\n- [[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n- [[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824)\n\n## Documentation\n\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash)\n"
+    },
+    "dashboards": [
+      {
+        "id": "logstash-79270240-48ee-11ee-8cb5-99927777c522"
+      },
+      {
+        "id": "elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "2m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "42d38a6d-609d-4f7b-b93c-10737cc4dc5f",
+        "title": "logs-prod-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "logs-prod-default",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": "<=",
+    "size": 100,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": false,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
+      "params": {
+        "body": """{
+  "text": "🚨 **Silence Logstash** — aucun log dans `logs-prod-default` depuis 5 min. Drain en quarantaine ou Logstash crashé.",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Logstash reçoit-il encore des logs : les débits d'entrée et de sortie dans le dashboard [[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)\n2. Une seule source ou toute l'ingestion : si les logs du router arrivent toujours (pas d'alerte de silence de leur côté), le drain d'une app est en quarantaine ; sinon, Logstash est arrêté ou a redémarré (son activité dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. L'agent qui remonte les métriques de Logstash fonctionne-t-il : le dashboard [[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824), sinon les débits ci-dessus sont aveugles"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "6h"
+      }
+    },
+    {
+      "group": "recovered",
+      "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
+      "params": {
+        "body": """{
+  "text": "✅ **Silence Logstash résolu** — les logs sont revenus dans `logs-prod-default`.",
+  "attachments": [
+    {
+      "color": "#2eb886",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Logstash reçoit-il encore des logs : les débits d'entrée et de sortie dans le dashboard [[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)\n2. Une seule source ou toute l'ingestion : si les logs du router arrivent toujours (pas d'alerte de silence de leur côté), le drain d'une app est en quarantaine ; sinon, Logstash est arrêté ou a redémarré (son activité dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. L'agent qui remonte les métriques de Logstash fonctionne-t-il : le dashboard [[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824), sinon les débits ci-dessus sont aveugles"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# 3b — Absence dans `logs-router-prod-default`
+PUT kbn:/api/alerting/rule/6c2a2a83-9c40-4f40-af8d-911402932417
+{
+  "name": "Logstash - Prod - Détection absence ingestion logs router",
+  "tags": [
+    "prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nSilence Logstash — aucun log router dans `logs-router-prod-default` depuis 5 min. Drain en quarantaine ou Logstash crashé.\n\n## À vérifier\n\n1. Logstash reçoit-il encore des logs : les débits d'entrée et de sortie dans le dashboard [[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)\n2. Une seule source ou toute l'ingestion : si les logs applicatifs arrivent toujours (pas d'alerte de silence de leur côté), le drain d'une app est en quarantaine ; sinon, Logstash est arrêté ou a redémarré (son activité dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. L'agent qui remonte les métriques de Logstash fonctionne-t-il : le dashboard [[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824), sinon les débits ci-dessus sont aveugles\n\n## Dashboards\n\n- [[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n- [[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824)\n\n## Documentation\n\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash)\n"
+    },
+    "dashboards": [
+      {
+        "id": "logstash-79270240-48ee-11ee-8cb5-99927777c522"
+      },
+      {
+        "id": "elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "2m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "5044caf1-8ad5-456a-a48c-1783c51160c5",
+        "title": "logs-router-prod-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "logs-router-prod-default",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": "<=",
+    "size": 100,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": false,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
+      "params": {
+        "body": """{
+  "text": "🚨 **Silence Logstash** — aucun log router dans `logs-router-prod-default` depuis 5 min. Drain en quarantaine ou Logstash crashé.",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Logstash reçoit-il encore des logs : les débits d'entrée et de sortie dans le dashboard [[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)\n2. Une seule source ou toute l'ingestion : si les logs applicatifs arrivent toujours (pas d'alerte de silence de leur côté), le drain d'une app est en quarantaine ; sinon, Logstash est arrêté ou a redémarré (son activité dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. L'agent qui remonte les métriques de Logstash fonctionne-t-il : le dashboard [[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824), sinon les débits ci-dessus sont aveugles"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "6h"
+      }
+    },
+    {
+      "group": "recovered",
+      "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
+      "params": {
+        "body": """{
+  "text": "✅ **Silence Logstash résolu** — les logs router sont revenus dans `logs-router-prod-default`.",
+  "attachments": [
+    {
+      "color": "#2eb886",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Logstash reçoit-il encore des logs : les débits d'entrée et de sortie dans le dashboard [[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)\n2. Une seule source ou toute l'ingestion : si les logs applicatifs arrivent toujours (pas d'alerte de silence de leur côté), le drain d'une app est en quarantaine ; sinon, Logstash est arrêté ou a redémarré (son activité dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. L'agent qui remonte les métriques de Logstash fonctionne-t-il : le dashboard [[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824), sinon les débits ci-dessus sont aveugles"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# 3c — Absence dans `logs-staging-default` / `logs-perf-default`
+PUT kbn:/api/alerting/rule/32b686a2-659f-4b57-b583-e6aedaeea5f5
+{
+  "name": "Logstash - Hors-Prod - Détection absence ingestion logs applicatifs",
+  "tags": [
+    "hors-prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nSilence Logstash — aucun log dans `logs-staging-default` ou `logs-perf-default` depuis 5 min. Drain en quarantaine ou Logstash crashé.\n\n## À vérifier\n\n1. Logstash reçoit-il encore des logs : les débits d'entrée et de sortie dans le dashboard [[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)\n2. Une seule source ou toute l'ingestion : si les logs du router arrivent toujours (pas d'alerte de silence de leur côté), le drain d'une app est en quarantaine ; sinon, Logstash est arrêté ou a redémarré (son activité dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. L'agent qui remonte les métriques de Logstash fonctionne-t-il : le dashboard [[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824), sinon les débits ci-dessus sont aveugles\n\n## Dashboards\n\n- [[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n- [[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824)\n\n## Documentation\n\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash)\n"
+    },
+    "dashboards": [
+      {
+        "id": "logstash-79270240-48ee-11ee-8cb5-99927777c522"
+      },
+      {
+        "id": "elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "53398744-ca2c-4a5e-9130-17396d3143e0",
+        "title": "logs-staging-default,logs-perf-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Logs Logstash Hors-Prod - Index applicatifs",
+        "allowHidden": true,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": "<=",
+    "size": 100,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": false,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "c4a313b3-aa42-4e07-8196-c007625ce8af",
+      "params": {
+        "body": """{
+  "text": "⚠️ **Silence Logstash** — aucun log dans `logs-staging-default` ou `logs-perf-default` depuis 5 min. Drain en quarantaine ou Logstash crashé.",
+  "attachments": [
+    {
+      "color": "#f2c744",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Logstash reçoit-il encore des logs : les débits d'entrée et de sortie dans le dashboard [[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)\n2. Une seule source ou toute l'ingestion : si les logs du router arrivent toujours (pas d'alerte de silence de leur côté), le drain d'une app est en quarantaine ; sinon, Logstash est arrêté ou a redémarré (son activité dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. L'agent qui remonte les métriques de Logstash fonctionne-t-il : le dashboard [[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824), sinon les débits ci-dessus sont aveugles"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "6h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-staging",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# 3d — Absence dans `logs-router-staging-default` / `logs-router-perf-default`
+PUT kbn:/api/alerting/rule/f181937f-c75f-4232-bfa4-221997d1cfe1
+{
+  "name": "Logstash - Hors-Prod - Détection absence ingestion logs router",
+  "tags": [
+    "hors-prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nSilence Logstash — aucun log router dans `logs-router-staging-default` ou `logs-router-perf-default` depuis 5 min. Drain en quarantaine ou Logstash crashé.\n\n## À vérifier\n\n1. Logstash reçoit-il encore des logs : les débits d'entrée et de sortie dans le dashboard [[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)\n2. Une seule source ou toute l'ingestion : si les logs applicatifs arrivent toujours (pas d'alerte de silence de leur côté), le drain d'une app est en quarantaine ; sinon, Logstash est arrêté ou a redémarré (son activité dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. L'agent qui remonte les métriques de Logstash fonctionne-t-il : le dashboard [[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824), sinon les débits ci-dessus sont aveugles\n\n## Dashboards\n\n- [[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n- [[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824)\n\n## Documentation\n\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash)\n"
+    },
+    "dashboards": [
+      {
+        "id": "logstash-79270240-48ee-11ee-8cb5-99927777c522"
+      },
+      {
+        "id": "elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "d67448bc-e25f-4c2d-bd28-acf2c1861b2b",
+        "title": "logs-router-staging-default,logs-router-perf-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Logs Logstash Hors-Prod - Index router",
+        "allowHidden": true,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": "<=",
+    "size": 100,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": false,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "c4a313b3-aa42-4e07-8196-c007625ce8af",
+      "params": {
+        "body": """{
+  "text": "⚠️ **Silence Logstash** — aucun log router dans `logs-router-staging-default` ou `logs-router-perf-default` depuis 5 min. Drain en quarantaine ou Logstash crashé.",
+  "attachments": [
+    {
+      "color": "#f2c744",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Logstash reçoit-il encore des logs : les débits d'entrée et de sortie dans le dashboard [[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)\n2. Une seule source ou toute l'ingestion : si les logs applicatifs arrivent toujours (pas d'alerte de silence de leur côté), le drain d'une app est en quarantaine ; sinon, Logstash est arrêté ou a redémarré (son activité dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. L'agent qui remonte les métriques de Logstash fonctionne-t-il : le dashboard [[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824), sinon les débits ci-dessus sont aveugles"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "6h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-staging",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# 4a — Backpressure prod (Critical)
+PUT kbn:/api/alerting/rule/204d560c-b6a6-4b5c-b4af-8d1fa6ce345c
+{
+  "name": "Logstash - Prod - Détection backpressure ingest (inputs bloqués)",
+  "tags": [
+    "prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nBackpressure Logstash prod — le pipeline `ingest` a au moins un thread HTTP bloqué en continu depuis 15 min (`queue_backpressure ≥ 1`) : l'écriture dans Redis ne suit plus, le drain Scalingo attend.\n\n## À vérifier\n\n1. Où le pipeline `ingest` du nœud bloque : le temps passé à pousser dans la file, dans le dashboard [[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)\n2. Redis répond-il : le statut et la mémoire de l'add-on Redis dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps), puis le temps d'écriture de l'output `redis` dans le dashboard [[Metrics Logstash] Output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-fe17b800-6eb4-11ee-86f6-d7074508d975)\n3. Les entrées refusent-elles des logs (429 renvoyés aux drains) : le dashboard [[Metrics Logstash] Input plugin Info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-8f8c78a0-6e9e-11ee-86f6-d7074508d975), et l'état de toute la chaîne dans le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n\n## Dashboards\n\n- [[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n- [[Metrics Logstash] Output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-fe17b800-6eb4-11ee-86f6-d7074508d975)\n- [[Metrics Logstash] Input plugin Info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-8f8c78a0-6e9e-11ee-86f6-d7074508d975)\n- [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n\n## Documentation\n\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch)\n"
+    },
+    "dashboards": [
+      {
+        "id": "logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc"
+      },
+      {
+        "id": "logstash-fe17b800-6eb4-11ee-86f6-d7074508d975"
+      },
+      {
+        "id": "logstash-8f8c78a0-6e9e-11ee-86f6-d7074508d975"
+      },
+      {
+        "id": "fd40a516-c323-4e5e-91e5-1328b8b1a78d"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "2m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "logstash.pipeline.name: ingest and logstash.pipeline.host.name: pass-emploi-logstash-prod-*",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "68ab5f84-55a4-43b9-9e7d-c6154919c39d",
+        "title": "metrics-logstash.pipeline-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "metrics-logstash.pipeline-default",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 15,
+    "timeWindowUnit": "m",
+    "threshold": [
+      1
+    ],
+    "thresholdComparator": ">=",
+    "size": 100,
+    "aggType": "min",
+    "groupBy": "top",
+    "termSize": 10,
+    "excludeHitsFromPreviousRun": false,
+    "sourceFields": [],
+    "aggField": "logstash.pipeline.total.flow.queue_backpressure.current",
+    "termField": "logstash.pipeline.host.name"
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
+      "params": {
+        "body": """{
+  "text": "🚨 **Backpressure Logstash prod** — le pipeline `ingest` a au moins un thread HTTP bloqué en continu depuis 15 min (`queue_backpressure ≥ 1`) : l'écriture dans Redis ne suit plus, le drain Scalingo attend.",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "Nœud",
+          "value": "`{{context.group}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Où le pipeline `ingest` du nœud bloque : le temps passé à pousser dans la file, dans le dashboard [[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)\n2. Redis répond-il : le statut et la mémoire de l'add-on Redis dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps), puis le temps d'écriture de l'output `redis` dans le dashboard [[Metrics Logstash] Output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-fe17b800-6eb4-11ee-86f6-d7074508d975)\n3. Les entrées refusent-elles des logs (429 renvoyés aux drains) : le dashboard [[Metrics Logstash] Input plugin Info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-8f8c78a0-6e9e-11ee-86f6-d7074508d975), et l'état de toute la chaîne dans le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Metrics Logstash] Output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-fe17b800-6eb4-11ee-86f6-d7074508d975)\n[[Metrics Logstash] Input plugin Info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-8f8c78a0-6e9e-11ee-86f6-d7074508d975)\n[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "6h"
+      }
+    },
+    {
+      "group": "recovered",
+      "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
+      "params": {
+        "body": """{
+  "text": "✅ **Backpressure Logstash prod résolue** — le pipeline `ingest` n'a plus de thread bloqué en continu.",
+  "attachments": [
+    {
+      "color": "#2eb886",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Où le pipeline `ingest` du nœud bloque : le temps passé à pousser dans la file, dans le dashboard [[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)\n2. Redis répond-il : le statut et la mémoire de l'add-on Redis dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps), puis le temps d'écriture de l'output `redis` dans le dashboard [[Metrics Logstash] Output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-fe17b800-6eb4-11ee-86f6-d7074508d975)\n3. Les entrées refusent-elles des logs (429 renvoyés aux drains) : le dashboard [[Metrics Logstash] Input plugin Info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-8f8c78a0-6e9e-11ee-86f6-d7074508d975), et l'état de toute la chaîne dans le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Metrics Logstash] Output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-fe17b800-6eb4-11ee-86f6-d7074508d975)\n[[Metrics Logstash] Input plugin Info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-8f8c78a0-6e9e-11ee-86f6-d7074508d975)\n[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# 4b — Backpressure staging / perf (Warning)
+PUT kbn:/api/alerting/rule/da91356c-39dc-4033-bc47-83421974a049
+{
+  "name": "Logstash - Hors-Prod - Détection backpressure ingest (inputs bloqués)",
+  "tags": [
+    "hors-prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nBackpressure Logstash staging/perf — le pipeline `ingest` a au moins un thread HTTP bloqué en continu depuis 15 min (`queue_backpressure ≥ 1`).\n\n## À vérifier\n\n1. Où le pipeline `ingest` du nœud bloque : le temps passé à pousser dans la file, dans le dashboard [[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)\n2. Redis répond-il : le statut et la mémoire de l'add-on Redis dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps), puis le temps d'écriture de l'output `redis` dans le dashboard [[Metrics Logstash] Output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-fe17b800-6eb4-11ee-86f6-d7074508d975)\n3. Les entrées refusent-elles des logs (429 renvoyés aux drains) : le dashboard [[Metrics Logstash] Input plugin Info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-8f8c78a0-6e9e-11ee-86f6-d7074508d975), et l'état de toute la chaîne dans le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n\n## Dashboards\n\n- [[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n- [[Metrics Logstash] Output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-fe17b800-6eb4-11ee-86f6-d7074508d975)\n- [[Metrics Logstash] Input plugin Info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-8f8c78a0-6e9e-11ee-86f6-d7074508d975)\n- [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n\n## Documentation\n\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch)\n"
+    },
+    "dashboards": [
+      {
+        "id": "logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc"
+      },
+      {
+        "id": "logstash-fe17b800-6eb4-11ee-86f6-d7074508d975"
+      },
+      {
+        "id": "logstash-8f8c78a0-6e9e-11ee-86f6-d7074508d975"
+      },
+      {
+        "id": "fd40a516-c323-4e5e-91e5-1328b8b1a78d"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "logstash.pipeline.name: ingest and logstash.pipeline.host.name: (pass-emploi-logstash-staging-* OR pass-emploi-logstash-perf-*)",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "32bb011e-69e0-42ed-9dc6-479f2c0e9ee0",
+        "title": "metrics-logstash.pipeline-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "metrics-logstash.pipeline-default",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 15,
+    "timeWindowUnit": "m",
+    "threshold": [
+      1
+    ],
+    "thresholdComparator": ">=",
+    "size": 100,
+    "aggType": "min",
+    "groupBy": "top",
+    "termSize": 10,
+    "excludeHitsFromPreviousRun": false,
+    "sourceFields": [],
+    "aggField": "logstash.pipeline.total.flow.queue_backpressure.current",
+    "termField": "logstash.pipeline.host.name"
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "c4a313b3-aa42-4e07-8196-c007625ce8af",
+      "params": {
+        "body": """{
+  "text": "⚠️ **Backpressure Logstash staging/perf** — le pipeline `ingest` a au moins un thread HTTP bloqué en continu depuis 15 min (`queue_backpressure ≥ 1`).",
+  "attachments": [
+    {
+      "color": "#f2c744",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "Nœud",
+          "value": "`{{context.group}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Où le pipeline `ingest` du nœud bloque : le temps passé à pousser dans la file, dans le dashboard [[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)\n2. Redis répond-il : le statut et la mémoire de l'add-on Redis dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps), puis le temps d'écriture de l'output `redis` dans le dashboard [[Metrics Logstash] Output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-fe17b800-6eb4-11ee-86f6-d7074508d975)\n3. Les entrées refusent-elles des logs (429 renvoyés aux drains) : le dashboard [[Metrics Logstash] Input plugin Info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-8f8c78a0-6e9e-11ee-86f6-d7074508d975), et l'état de toute la chaîne dans le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Metrics Logstash] Output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-fe17b800-6eb4-11ee-86f6-d7074508d975)\n[[Metrics Logstash] Input plugin Info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-8f8c78a0-6e9e-11ee-86f6-d7074508d975)\n[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "6h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-staging",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# 5a — Heap élevé prod (Critical)
+PUT kbn:/api/alerting/rule/f8ff266d-84dc-4673-b95c-c3d32bf2ff04
+{
+  "name": "Logstash - Prod - Détection heap JVM élevé",
+  "tags": [
+    "prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nHeap JVM Logstash prod — le heap reste au-dessus de 90 % depuis 15 min : le GC ne libère plus, pauses stop-the-world et `OutOfMemoryError` en vue.\n\n## À vérifier\n\n1. Le heap du nœud redescend-il, et le GC suit-il : le dashboard [[Metrics Logstash] Single Node Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9d450b10-4680-11ee-9ddc-919f87fe352d)\n2. La configuration mémoire : `LS_JAVA_OPTS` de l'app doit valoir `-Xms256m -Xmx256m` (onglet *Environment* dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. L'effet sur l'ingestion (débit, backlog Redis) : le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n\n## Dashboards\n\n- [[Metrics Logstash] Single Node Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9d450b10-4680-11ee-9ddc-919f87fe352d)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n- [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n\n## Documentation\n\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-2--gel-gc-jvm)\n"
+    },
+    "dashboards": [
+      {
+        "id": "logstash-9d450b10-4680-11ee-9ddc-919f87fe352d"
+      },
+      {
+        "id": "fd40a516-c323-4e5e-91e5-1328b8b1a78d"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "2m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "host.name: (pass-emploi-logstash-prod-* OR pass-emploi-logstash-process-prod-*)",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "6be9c433-8597-4041-b40c-0e5ee1d69962",
+        "title": "metrics-logstash.node-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "metrics-logstash.node-default",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 15,
+    "timeWindowUnit": "m",
+    "threshold": [
+      90
+    ],
+    "thresholdComparator": ">=",
+    "size": 100,
+    "aggType": "min",
+    "groupBy": "top",
+    "termSize": 10,
+    "excludeHitsFromPreviousRun": false,
+    "sourceFields": [],
+    "aggField": "logstash.node.stats.jvm.mem.heap_used_percent",
+    "termField": "host.name"
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
+      "params": {
+        "body": """{
+  "text": "🚨 **Heap JVM Logstash prod** — le heap reste au-dessus de 90 % depuis 15 min : le GC ne libère plus, pauses stop-the-world et `OutOfMemoryError` en vue.",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "Nœud",
+          "value": "`{{context.group}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Le heap du nœud redescend-il, et le GC suit-il : le dashboard [[Metrics Logstash] Single Node Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9d450b10-4680-11ee-9ddc-919f87fe352d)\n2. La configuration mémoire : `LS_JAVA_OPTS` de l'app doit valoir `-Xms256m -Xmx256m` (onglet *Environment* dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. L'effet sur l'ingestion (débit, backlog Redis) : le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Metrics Logstash] Single Node Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9d450b10-4680-11ee-9ddc-919f87fe352d)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-2--gel-gc-jvm)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "6h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# 5b — Heap élevé staging / perf (Warning)
+PUT kbn:/api/alerting/rule/9f9c07f9-07a9-40a3-a882-4a701e81b83c
+{
+  "name": "Logstash - Hors-Prod - Détection heap JVM élevé",
+  "tags": [
+    "hors-prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nHeap JVM Logstash staging/perf — le heap reste au-dessus de 90 % depuis 15 min : le GC ne libère plus.\n\n## À vérifier\n\n1. Le heap du nœud redescend-il, et le GC suit-il : le dashboard [[Metrics Logstash] Single Node Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9d450b10-4680-11ee-9ddc-919f87fe352d)\n2. La configuration mémoire : `LS_JAVA_OPTS` de l'app doit valoir `-Xms256m -Xmx256m` (onglet *Environment* dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. L'effet sur l'ingestion (débit, backlog Redis) : le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n\n## Dashboards\n\n- [[Metrics Logstash] Single Node Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9d450b10-4680-11ee-9ddc-919f87fe352d)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n- [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n\n## Documentation\n\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-2--gel-gc-jvm)\n"
+    },
+    "dashboards": [
+      {
+        "id": "logstash-9d450b10-4680-11ee-9ddc-919f87fe352d"
+      },
+      {
+        "id": "fd40a516-c323-4e5e-91e5-1328b8b1a78d"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "host.name: (pass-emploi-logstash-staging-* OR pass-emploi-logstash-process-staging-* OR pass-emploi-logstash-perf-* OR pass-emploi-logstash-process-perf-*)",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "c48fcb9d-2448-42b5-8430-4e55e64b2750",
+        "title": "metrics-logstash.node-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "metrics-logstash.node-default",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 15,
+    "timeWindowUnit": "m",
+    "threshold": [
+      90
+    ],
+    "thresholdComparator": ">=",
+    "size": 100,
+    "aggType": "min",
+    "groupBy": "top",
+    "termSize": 10,
+    "excludeHitsFromPreviousRun": false,
+    "sourceFields": [],
+    "aggField": "logstash.node.stats.jvm.mem.heap_used_percent",
+    "termField": "host.name"
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "c4a313b3-aa42-4e07-8196-c007625ce8af",
+      "params": {
+        "body": """{
+  "text": "⚠️ **Heap JVM Logstash staging/perf** — le heap reste au-dessus de 90 % depuis 15 min : le GC ne libère plus.",
+  "attachments": [
+    {
+      "color": "#f2c744",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "Nœud",
+          "value": "`{{context.group}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Le heap du nœud redescend-il, et le GC suit-il : le dashboard [[Metrics Logstash] Single Node Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9d450b10-4680-11ee-9ddc-919f87fe352d)\n2. La configuration mémoire : `LS_JAVA_OPTS` de l'app doit valoir `-Xms256m -Xmx256m` (onglet *Environment* dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. L'effet sur l'ingestion (débit, backlog Redis) : le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Metrics Logstash] Single Node Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9d450b10-4680-11ee-9ddc-919f87fe352d)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-2--gel-gc-jvm)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "6h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-staging",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# 6a — Événements Scalingo des apps de la stack, prod (gravité par ligne)
+PUT kbn:/api/alerting/rule/c16f2ab5-6103-4f69-bdc3-b4a10a38deb0
+{
+  "name": "Scalingo - Prod - Événements des apps de la stack",
+  "tags": [
+    "prod",
+    "o11y",
+    "scalingo",
+    "tchap-lignes"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nUn événement Scalingo sur une app de la stack d'observabilité de prod (Logstash, Elastic Agent, Heartbeat) : incident ou opération d'infra.\n\n## À vérifier\n\n1. Le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur\n2. Pour un incident sur une app Logstash, l'impact sur l'ingestion : le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d), puis les Discover [[Pass Emploi] Logs de Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/97e2d85f-7bd2-49df-86b3-2ffc290bbe69) et [[Pass Emploi] Logs de Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17) (logs non indexés)\n3. Les métriques (onglet Metrics) et l'activité (onglet Activity) de l'app dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Dashboards\n\n- [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Discover sessions\n\n- [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87)\n- [[Pass Emploi] Logs de Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/97e2d85f-7bd2-49df-86b3-2ffc290bbe69)\n- [[Pass Emploi] Logs de Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17)\n\n## Documentation\n\n[Alertes de la stack d'observabilité](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-stack-observabilite.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "fd40a516-c323-4e5e-91e5-1328b8b1a78d"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "service.name : (\"pass-emploi-logstash\" or \"pass-emploi-logstash-process\" or \"pass-emploi-elastic-agent\" or \"pass-emploi-heartbeat\")",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "d327d85c-91ea-4092-867f-08a940504c96",
+        "title": "logs-alertes-scalingo-prod-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Alertes Scalingo - Prod",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 20,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": true,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
+      "params": {
+        "body": """{
+  "text": "**Événements Scalingo des apps de la stack, prod** ({{context.value}})",
+  "attachments": [
+    {
+      "color": "#808080",
+      "text": "{{#context.hits}}{{_source.message}}\n{{/context.hits}}",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur\n2. Pour un incident sur une app Logstash, l'impact sur l'ingestion : le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d), puis les Discover [[Pass Emploi] Logs de Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/97e2d85f-7bd2-49df-86b3-2ffc290bbe69) et [[Pass Emploi] Logs de Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17) (logs non indexés)\n3. Les métriques (onglet Metrics) et l'activité (onglet Activity) de l'app dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87)\n[[Pass Emploi] Logs de Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/97e2d85f-7bd2-49df-86b3-2ffc290bbe69)\n[[Pass Emploi] Logs de Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActiveAlert",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# 6b — Événements Scalingo des apps de la stack, staging / perf (gravité par ligne)
+# Nouvelle règle : absente de la prod avant le 2026-10-19, la créer avec POST
+# (même corps plus "rule_type_id": ".es-query" et "consumer": "alerts").
+PUT kbn:/api/alerting/rule/5d1f7c2a-9b3e-4f6a-8c1d-2e7b4a9f0c63
+{
+  "name": "Scalingo - Hors-Prod - Événements des apps de la stack",
+  "tags": [
+    "hors-prod",
+    "o11y",
+    "scalingo",
+    "tchap-lignes"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nUn événement Scalingo sur une app de la stack d'observabilité de staging ou de perf : incident ou opération d'infra.\n\n## À vérifier\n\n1. Le Discover [[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/33bed466-9d68-4789-a723-aeea34e6cd93), onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur\n2. Pour un incident sur une app Logstash, l'impact sur l'ingestion : le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d), puis les Discover [[Pass Emploi] Logs Hors-Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/e5bec6b4-0ae3-47b1-8bb5-2e9bf77493a4) et [[Pass Emploi] Logs Hors-Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/716175ed-b2a0-4fe1-8f9d-1892d04dbe92) (logs non indexés)\n3. Les métriques (onglet Metrics) et l'activité (onglet Activity) de l'app dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Dashboards\n\n- [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Discover sessions\n\n- [[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/33bed466-9d68-4789-a723-aeea34e6cd93)\n- [[Pass Emploi] Logs Hors-Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/e5bec6b4-0ae3-47b1-8bb5-2e9bf77493a4)\n- [[Pass Emploi] Logs Hors-Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/716175ed-b2a0-4fe1-8f9d-1892d04dbe92)\n\n## Documentation\n\n[Alertes de la stack d'observabilité](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-stack-observabilite.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "fd40a516-c323-4e5e-91e5-1328b8b1a78d"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "service.name : (\"pass-emploi-logstash\" or \"pass-emploi-logstash-process\" or \"pass-emploi-elastic-agent\" or \"pass-emploi-heartbeat\")",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "a67a2388-a6a3-42e3-b1c4-15dc61bf5585",
+        "title": "logs-alertes-scalingo-staging-default,logs-alertes-scalingo-perf-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Alertes Scalingo - Hors-Prod",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 10,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 20,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": true,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "c4a313b3-aa42-4e07-8196-c007625ce8af",
+      "params": {
+        "body": """{
+  "text": "**Événements Scalingo des apps de la stack, hors prod** ({{context.value}})",
+  "attachments": [
+    {
+      "color": "#808080",
+      "text": "{{#context.hits}}{{_source.message}}\n{{/context.hits}}",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Le Discover [[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/33bed466-9d68-4789-a723-aeea34e6cd93), onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur\n2. Pour un incident sur une app Logstash, l'impact sur l'ingestion : le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d), puis les Discover [[Pass Emploi] Logs Hors-Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/e5bec6b4-0ae3-47b1-8bb5-2e9bf77493a4) et [[Pass Emploi] Logs Hors-Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/716175ed-b2a0-4fe1-8f9d-1892d04dbe92) (logs non indexés)\n3. Les métriques (onglet Metrics) et l'activité (onglet Activity) de l'app dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/33bed466-9d68-4789-a723-aeea34e6cd93)\n[[Pass Emploi] Logs Hors-Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/e5bec6b4-0ae3-47b1-8bb5-2e9bf77493a4)\n[[Pass Emploi] Logs Hors-Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/716175ed-b2a0-4fe1-8f9d-1892d04dbe92)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActiveAlert",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-staging",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# 7a — Backlog Redis prod (Critical)
+PUT kbn:/api/alerting/rule/07a8ee68-4994-4d70-b9a5-3d47f08297a5
+{
+  "name": "Redis - Prod - Backlog logstash:ingest anormal",
+  "tags": [
+    "prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nBacklog Redis prod — la liste `logstash:ingest` reste au-dessus de 1 000 événements depuis 15 min. Le pipeline `process` ne consomme plus Redis (redémarrage ou blocage de `pass-emploi-logstash-process-prod`, ou backpressure ES sévère).\n\n## À vérifier\n\n1. Le backlog grossit-il encore : le graphe *Lists length* de `logstash:ingest` dans le dashboard [[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)\n2. Pourquoi le pipeline `process` ne consomme plus : les logs de `pass-emploi-logstash-process-prod` dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps) — `Redis::ConnectionError` ou `ECONNRESET`, coupure Redis ; rien, Elasticsearch ralentit l'écriture\n3. Si Elasticsearch ralentit : les erreurs et la latence de l'output Elasticsearch dans le dashboard [[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086), et le pipeline `process` dans le dashboard [[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)\n\n## Dashboards\n\n- [[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n- [[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)\n- [[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)\n\n## Documentation\n\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-5--backlog-redis-logstashingest)\n"
+    },
+    "dashboards": [
+      {
+        "id": "redis-28969190-0511-11e9-9c60-d582a238e2c5"
+      },
+      {
+        "id": "logstash-4bbf4a50-6ece-11ee-910d-eb0006359086"
+      },
+      {
+        "id": "logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "2m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "redis.key.name: \"logstash:ingest\" and agent.name: pass-emploi-elastic-agent-prod-*",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "4b443837-1547-4239-a69a-3e0da528546d",
+        "title": "metrics-redis.key-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "metrics-redis.key-default",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 15,
+    "timeWindowUnit": "m",
+    "threshold": [
+      1000
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "aggType": "min",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": false,
+    "sourceFields": [],
+    "aggField": "redis.key.length"
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
+      "params": {
+        "body": """{
+  "text": "🚨 **Backlog Redis prod** — la liste `logstash:ingest` reste au-dessus de 1 000 événements depuis 15 min. Le pipeline `process` ne consomme plus Redis (redémarrage ou blocage de `pass-emploi-logstash-process-prod`, ou backpressure ES sévère).",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Le backlog grossit-il encore : le graphe *Lists length* de `logstash:ingest` dans le dashboard [[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)\n2. Pourquoi le pipeline `process` ne consomme plus : les logs de `pass-emploi-logstash-process-prod` dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps) — `Redis::ConnectionError` ou `ECONNRESET`, coupure Redis ; rien, Elasticsearch ralentit l'écriture\n3. Si Elasticsearch ralentit : les erreurs et la latence de l'output Elasticsearch dans le dashboard [[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086), et le pipeline `process` dans le dashboard [[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)\n[[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-5--backlog-redis-logstashingest)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "6h"
+      }
+    },
+    {
+      "group": "recovered",
+      "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
+      "params": {
+        "body": """{
+  "text": "✅ **Backlog Redis prod résorbé** — la liste `logstash:ingest` est redescendue sous 1 000 événements. Le pipeline `process` a reconnecté et vide le backlog.",
+  "attachments": [
+    {
+      "color": "#2eb886",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Le backlog grossit-il encore : le graphe *Lists length* de `logstash:ingest` dans le dashboard [[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)\n2. Pourquoi le pipeline `process` ne consomme plus : les logs de `pass-emploi-logstash-process-prod` dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps) — `Redis::ConnectionError` ou `ECONNRESET`, coupure Redis ; rien, Elasticsearch ralentit l'écriture\n3. Si Elasticsearch ralentit : les erreurs et la latence de l'output Elasticsearch dans le dashboard [[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086), et le pipeline `process` dans le dashboard [[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)\n[[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# 7b — Backlog Redis staging / perf (Warning)
+PUT kbn:/api/alerting/rule/720d949a-f73f-43e5-bc46-ff22c7b96cfb
+{
+  "name": "Redis - Hors-Prod - Backlog logstash:ingest anormal",
+  "tags": [
+    "hors-prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nBacklog Redis staging/perf — la liste `logstash:ingest` reste au-dessus de 1 000 événements depuis 15 min. Le pipeline `process` ne consomme plus Redis.\n\n## À vérifier\n\n1. Le backlog grossit-il encore : le graphe *Lists length* de `logstash:ingest` dans le dashboard [[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)\n2. Pourquoi le pipeline `process` ne consomme plus : les logs de `pass-emploi-logstash-process-staging` ou `-perf` dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps) — `Redis::ConnectionError` ou `ECONNRESET`, coupure Redis ; rien, Elasticsearch ralentit l'écriture\n3. Si Elasticsearch ralentit : les erreurs et la latence de l'output Elasticsearch dans le dashboard [[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086), et le pipeline `process` dans le dashboard [[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)\n\n## Dashboards\n\n- [[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n- [[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)\n- [[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)\n\n## Documentation\n\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-5--backlog-redis-logstashingest)\n"
+    },
+    "dashboards": [
+      {
+        "id": "redis-28969190-0511-11e9-9c60-d582a238e2c5"
+      },
+      {
+        "id": "logstash-4bbf4a50-6ece-11ee-910d-eb0006359086"
+      },
+      {
+        "id": "logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "redis.key.name: \"logstash:ingest\" and agent.name: (pass-emploi-elastic-agent-staging-* or pass-emploi-elastic-agent-perf-*)",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "06af5e9b-8030-4f22-a35d-dad32f6ffea1",
+        "title": "metrics-redis.key-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "metrics-redis.key-default",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 15,
+    "timeWindowUnit": "m",
+    "threshold": [
+      1000
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "aggType": "min",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": false,
+    "sourceFields": [],
+    "aggField": "redis.key.length"
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "c4a313b3-aa42-4e07-8196-c007625ce8af",
+      "params": {
+        "body": """{
+  "text": "⚠️ **Backlog Redis staging/perf** — la liste `logstash:ingest` reste au-dessus de 1 000 événements depuis 15 min. Le pipeline `process` ne consomme plus Redis.",
+  "attachments": [
+    {
+      "color": "#f2c744",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Le backlog grossit-il encore : le graphe *Lists length* de `logstash:ingest` dans le dashboard [[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)\n2. Pourquoi le pipeline `process` ne consomme plus : les logs de `pass-emploi-logstash-process-staging` ou `-perf` dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps) — `Redis::ConnectionError` ou `ECONNRESET`, coupure Redis ; rien, Elasticsearch ralentit l'écriture\n3. Si Elasticsearch ralentit : les erreurs et la latence de l'output Elasticsearch dans le dashboard [[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086), et le pipeline `process` dans le dashboard [[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Metrics Logstash] Elasticsearch output plugin info](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-4bbf4a50-6ece-11ee-910d-eb0006359086)\n[[Metrics Logstash] Logstash Single Pipeline View](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-bc1a8050-5ee1-11ee-8e78-bf6865bc3ffc)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-5--backlog-redis-logstashingest)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "6h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-staging",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# 8a — Elastic Agent en défaut prod (Critical)
+PUT kbn:/api/alerting/rule/bbb9d642-f012-4747-8154-49162245a364
+{
+  "name": "Elastic Agent - Prod - Agent en défaut",
+  "tags": [
+    "prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nElastic Agent en défaut — prod — les alertes Logstash/Redis (4, 5, 7) peuvent être aveugles.\n\n## À vérifier\n\n1. Quel agent, et dans quel état : le « Détail » ci-dessus, puis le dashboard [[Elastic Agent] Concerning Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-0600ffa0-6b5e-11ed-98de-67bdecd21824)\n2. Selon l'état : *offline*, l'app Scalingo de l'agent est arrêtée ou a redémarré (le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)) ; *unenrolled*, l'agent a été recréé sans `ELASTIC_AGENT_ID_SUFFIX` (post-mortem du 11/09) ; *unhealthy* ou erreurs d'output, les composants en erreur dans Fleet → Agents\n3. Les métriques reprennent-elles après correction : le dashboard [[Elastic Agent] Agent metrics](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-f47f18cc-9c7d-4278-b2ea-a6dee816d395)\n\n## Dashboards\n\n- [[Elastic Agent] Concerning Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-0600ffa0-6b5e-11ed-98de-67bdecd21824)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n- [[Elastic Agent] Agent metrics](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-f47f18cc-9c7d-4278-b2ea-a6dee816d395)\n\n## Documentation\n\n- [Fleet → Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/fleet/agents)\n- [Pilotage des agents](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/pilotage.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "elastic_agent-0600ffa0-6b5e-11ed-98de-67bdecd21824"
+      },
+      {
+        "id": "elastic_agent-f47f18cc-9c7d-4278-b2ea-a6dee816d395"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": """FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*
+| EVAL host = COALESCE(hostname, agent.name)
+| WHERE host LIKE "*-prod-*"
+| WHERE health_status IN ("offline", "unenrolled", "unhealthy")
+     OR beat.stats.libbeat.output.write.errors IS NOT NULL
+| STATS statuts = VALUES(health_status),
+        erreurs = MAX(TO_LONG(beat.stats.libbeat.output.write.errors))
+                - MIN(TO_LONG(beat.stats.libbeat.output.write.errors))
+  BY host, component.id
+| STATS statuts = VALUES(statuts), erreurs_output = MAX(erreurs) BY host
+| WHERE statuts IS NOT NULL OR erreurs_output > 25"""
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "aggType": "count",
+    "groupBy": "row",
+    "termSize": 5,
+    "sourceFields": [],
+    "excludeHitsFromPreviousRun": false
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
+      "params": {
+        "body": """{
+  "text": "🚨 **Elastic Agent en défaut — prod** — les alertes Logstash/Redis (4, 5, 7) peuvent être aveugles.",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "Détail",
+          "value": "{{context.message}}"
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Quel agent, et dans quel état : le « Détail » ci-dessus, puis le dashboard [[Elastic Agent] Concerning Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-0600ffa0-6b5e-11ed-98de-67bdecd21824)\n2. Selon l'état : *offline*, l'app Scalingo de l'agent est arrêtée ou a redémarré (le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)) ; *unenrolled*, l'agent a été recréé sans `ELASTIC_AGENT_ID_SUFFIX` (post-mortem du 11/09) ; *unhealthy* ou erreurs d'output, les composants en erreur dans Fleet → Agents\n3. Les métriques reprennent-elles après correction : le dashboard [[Elastic Agent] Agent metrics](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-f47f18cc-9c7d-4278-b2ea-a6dee816d395)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Elastic Agent] Concerning Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-0600ffa0-6b5e-11ed-98de-67bdecd21824)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Elastic Agent] Agent metrics](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-f47f18cc-9c7d-4278-b2ea-a6dee816d395)"
+        },
+        {
+          "title": "Fleet",
+          "value": "[Fleet → Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/fleet/agents)"
+        },
+        {
+          "title": "Doc",
+          "value": "[Pilotage des agents](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/pilotage.md)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "6h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# 8b — Elastic Agent en défaut staging (Warning)
+PUT kbn:/api/alerting/rule/8d593176-8752-4369-a37f-6b42fa3890b2
+{
+  "name": "Elastic Agent - Staging - Agent en défaut",
+  "tags": [
+    "hors-prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nElastic Agent en défaut — staging — les alertes Logstash/Redis (4, 5, 7) peuvent être aveugles.\n\n## À vérifier\n\n1. Quel agent, et dans quel état : le « Détail » ci-dessus, puis le dashboard [[Elastic Agent] Concerning Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-0600ffa0-6b5e-11ed-98de-67bdecd21824)\n2. Selon l'état : *offline*, l'app Scalingo de l'agent est arrêtée ou a redémarré (le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)) ; *unenrolled*, l'agent a été recréé sans `ELASTIC_AGENT_ID_SUFFIX` (post-mortem du 11/09) ; *unhealthy* ou erreurs d'output, les composants en erreur dans Fleet → Agents\n3. Les métriques reprennent-elles après correction : le dashboard [[Elastic Agent] Agent metrics](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-f47f18cc-9c7d-4278-b2ea-a6dee816d395)\n\n## Dashboards\n\n- [[Elastic Agent] Concerning Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-0600ffa0-6b5e-11ed-98de-67bdecd21824)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n- [[Elastic Agent] Agent metrics](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-f47f18cc-9c7d-4278-b2ea-a6dee816d395)\n\n## Documentation\n\n- [Fleet → Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/fleet/agents)\n- [Pilotage des agents](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/pilotage.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "elastic_agent-0600ffa0-6b5e-11ed-98de-67bdecd21824"
+      },
+      {
+        "id": "elastic_agent-f47f18cc-9c7d-4278-b2ea-a6dee816d395"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": """FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*
+| EVAL host = COALESCE(hostname, agent.name)
+| WHERE host LIKE "*-staging-*"
+| WHERE health_status IN ("offline", "unenrolled", "unhealthy")
+     OR beat.stats.libbeat.output.write.errors IS NOT NULL
+| STATS statuts = VALUES(health_status),
+        erreurs = MAX(TO_LONG(beat.stats.libbeat.output.write.errors))
+                - MIN(TO_LONG(beat.stats.libbeat.output.write.errors))
+  BY host, component.id
+| STATS statuts = VALUES(statuts), erreurs_output = MAX(erreurs) BY host
+| WHERE statuts IS NOT NULL OR erreurs_output > 25"""
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "aggType": "count",
+    "groupBy": "row",
+    "termSize": 5,
+    "sourceFields": [],
+    "excludeHitsFromPreviousRun": false
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "c4a313b3-aa42-4e07-8196-c007625ce8af",
+      "params": {
+        "body": """{
+  "text": "⚠️ **Elastic Agent en défaut — staging** — les alertes Logstash/Redis (4, 5, 7) peuvent être aveugles.",
+  "attachments": [
+    {
+      "color": "#f2c744",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "Détail",
+          "value": "{{context.message}}"
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Quel agent, et dans quel état : le « Détail » ci-dessus, puis le dashboard [[Elastic Agent] Concerning Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-0600ffa0-6b5e-11ed-98de-67bdecd21824)\n2. Selon l'état : *offline*, l'app Scalingo de l'agent est arrêtée ou a redémarré (le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)) ; *unenrolled*, l'agent a été recréé sans `ELASTIC_AGENT_ID_SUFFIX` (post-mortem du 11/09) ; *unhealthy* ou erreurs d'output, les composants en erreur dans Fleet → Agents\n3. Les métriques reprennent-elles après correction : le dashboard [[Elastic Agent] Agent metrics](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-f47f18cc-9c7d-4278-b2ea-a6dee816d395)"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Elastic Agent] Concerning Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-0600ffa0-6b5e-11ed-98de-67bdecd21824)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Elastic Agent] Agent metrics](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-f47f18cc-9c7d-4278-b2ea-a6dee816d395)"
+        },
+        {
+          "title": "Fleet",
+          "value": "[Fleet → Agents](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/fleet/agents)"
+        },
+        {
+          "title": "Doc",
+          "value": "[Pilotage des agents](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/pilotage.md)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "6h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-staging",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# 9a — Mémoire conteneur prod (Critical)
+PUT kbn:/api/alerting/rule/3c65ffd4-165f-4d0b-b820-24be398f19fd
+{
+  "name": "Logstash - Prod - Mémoire conteneur proche de la limite Scalingo",
+  "tags": [
+    "prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nMémoire conteneur Logstash prod — un conteneur dépasse 95 % de sa limite Scalingo : OOM-kill et redémarrage imminents.\n\n## À vérifier\n\n1. La mémoire du conteneur continue-t-elle de monter : le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n2. Pourquoi : un backlog Redis à rattraper fait consommer le pipeline `process` (le dashboard [[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)) ; `LS_JAVA_OPTS` doit rester `-Xms256m -Xmx256m` (onglet *Environment* dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. Si le conteneur a été tué (OOM) : son redémarrage dans l'activité de l'app, puis le silence des logs qui suit\n\n## Dashboards\n\n- [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n- [[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Documentation\n\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash)\n"
+    },
+    "dashboards": [
+      {
+        "id": "fd40a516-c323-4e5e-91e5-1328b8b1a78d"
+      },
+      {
+        "id": "redis-28969190-0511-11e9-9c60-d582a238e2c5"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "scalingo.app: (pass-emploi-logstash-prod or pass-emploi-logstash-process-prod)",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "5a233d4a-ef9c-4d0b-812d-ddcf52007731",
+        "title": "logs-scalingo.container_stats-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "logs-scalingo.container_stats-default",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0.95
+    ],
+    "thresholdComparator": ">=",
+    "size": 100,
+    "aggType": "max",
+    "groupBy": "top",
+    "termSize": 10,
+    "excludeHitsFromPreviousRun": false,
+    "sourceFields": [],
+    "aggField": "scalingo.memory.pct",
+    "termField": "host.name"
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
+      "params": {
+        "body": """{
+  "text": "🚨 **Mémoire conteneur Logstash prod** — un conteneur dépasse 95 % de sa limite Scalingo : OOM-kill et redémarrage imminents.",
+  "attachments": [
+    {
+      "color": "#d00000",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "Conteneur",
+          "value": "`{{context.group}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. La mémoire du conteneur continue-t-elle de monter : le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n2. Pourquoi : un backlog Redis à rattraper fait consommer le pipeline `process` (le dashboard [[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)) ; `LS_JAVA_OPTS` doit rester `-Xms256m -Xmx256m` (onglet *Environment* dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. Si le conteneur a été tué (OOM) : son redémarrage dans l'activité de l'app, puis le silence des logs qui suit"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n[[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "6h"
+      }
+    },
+    {
+      "group": "recovered",
+      "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
+      "params": {
+        "body": """{
+  "text": "✅ **Mémoire conteneur Logstash prod** — tous les conteneurs sont repassés sous 95 % de leur limite.",
+  "attachments": [
+    {
+      "color": "#2eb886",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. La mémoire du conteneur continue-t-elle de monter : le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n2. Pourquoi : un backlog Redis à rattraper fait consommer le pipeline `process` (le dashboard [[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)) ; `LS_JAVA_OPTS` doit rester `-Xms256m -Xmx256m` (onglet *Environment* dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. Si le conteneur a été tué (OOM) : son redémarrage dans l'activité de l'app, puis le silence des logs qui suit"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n[[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActionGroupChange",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# 9b — Mémoire conteneur staging / perf (Warning)
+PUT kbn:/api/alerting/rule/895bd492-e02f-4f18-b8e0-f453742c885f
+{
+  "name": "Logstash - Hors-Prod - Mémoire conteneur proche de la limite Scalingo",
+  "tags": [
+    "hors-prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nMémoire conteneur Logstash staging/perf — un conteneur dépasse 95 % de sa limite Scalingo : OOM-kill imminent.\n\n## À vérifier\n\n1. La mémoire du conteneur continue-t-elle de monter : le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n2. Pourquoi : un backlog Redis à rattraper fait consommer le pipeline `process` (le dashboard [[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)) ; `LS_JAVA_OPTS` doit rester `-Xms256m -Xmx256m` (onglet *Environment* dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. Si le conteneur a été tué (OOM) : son redémarrage dans l'activité de l'app, puis le silence des logs qui suit\n\n## Dashboards\n\n- [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n- [[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Documentation\n\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash)\n"
+    },
+    "dashboards": [
+      {
+        "id": "fd40a516-c323-4e5e-91e5-1328b8b1a78d"
+      },
+      {
+        "id": "redis-28969190-0511-11e9-9c60-d582a238e2c5"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "scalingo.app: (pass-emploi-logstash-staging or pass-emploi-logstash-process-staging or pass-emploi-logstash-perf or pass-emploi-logstash-process-perf)",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "daf0b9b1-2d62-40bd-a508-51e9de307aa5",
+        "title": "logs-scalingo.container_stats-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "logs-scalingo.container_stats-default",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0.95
+    ],
+    "thresholdComparator": ">=",
+    "size": 100,
+    "aggType": "max",
+    "groupBy": "top",
+    "termSize": 10,
+    "excludeHitsFromPreviousRun": false,
+    "sourceFields": [],
+    "aggField": "scalingo.memory.pct",
+    "termField": "host.name"
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "c4a313b3-aa42-4e07-8196-c007625ce8af",
+      "params": {
+        "body": """{
+  "text": "⚠️ **Mémoire conteneur Logstash staging/perf** — un conteneur dépasse 95 % de sa limite Scalingo : OOM-kill imminent.",
+  "attachments": [
+    {
+      "color": "#f2c744",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "Conteneur",
+          "value": "`{{context.group}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. La mémoire du conteneur continue-t-elle de monter : le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n2. Pourquoi : un backlog Redis à rattraper fait consommer le pipeline `process` (le dashboard [[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)) ; `LS_JAVA_OPTS` doit rester `-Xms256m -Xmx256m` (onglet *Environment* dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. Si le conteneur a été tué (OOM) : son redémarrage dans l'activité de l'app, puis le silence des logs qui suit"
+        },
+        {
+          "title": "Dashboards",
+          "value": "[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n[[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onThrottleInterval",
+        "throttle": "6h"
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-staging",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# 10 — ILM en échec ou policy sans suppression (Warning, bilan quotidien)
+PUT kbn:/api/alerting/rule/fb66693b-f17a-4cd0-baf5-113e7e153604
+{
+  "name": "Elasticsearch - ILM en échec ou policy sans suppression",
+  "tags": [
+    "elasticsearch",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nRétention ILM — bilan des 24 h — des index n'appliquent pas leur rétention : étape ILM en échec ou policy par défaut sans suppression.\n\n## À vérifier\n\n1. Quels index n'appliquent pas leur rétention : le Discover [[Pass Emploi] Historique ILM - Index hors rétention](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/3f3c69ef-e515-4be4-b679-eff837c92ecb)\n2. Si l'index porte une policy d'Elastic par défaut (`logs@lifecycle`, `metrics@lifecycle`) : il ne sera jamais supprimé, lui rattacher la policy de l'équipe (runbook ILM)\n3. Si une étape ILM a échoué (`success` à `false`) : lire l'erreur de l'étape, corriger, puis relancer ILM sur l'index (runbook ILM)\n\n## Discover sessions\n\n- [[Pass Emploi] Historique ILM - Index hors rétention](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/3f3c69ef-e515-4be4-b679-eff837c92ecb)\n\n## Documentation\n\n- [Runbook ILM](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-ilm.md)\n"
+    }
+  },
+  "schedule": {
+    "interval": "1h"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": """FROM .ds-ilm-history-7-*
+| WHERE index LIKE "*.ds-logs-*" OR index LIKE "*.ds-metrics-*"
+     OR index LIKE "*.ds-traces-*" OR index LIKE "*.ds-heartbeat-*"
+| EVAL policy_par_defaut = policy IN ("logs", "metrics", "logs@lifecycle", "metrics@lifecycle", "metricbeat")
+                           OR policy LIKE "*-default_policy"
+| WHERE success == false OR policy_par_defaut
+| STATS index_en_echec = COUNT_DISTINCT(index) WHERE success == false,
+        index_policy_par_defaut = COUNT_DISTINCT(index) WHERE policy_par_defaut,
+        policies = VALUES(policy), exemples = VALUES(index)
+| WHERE index_en_echec > 0 OR index_policy_par_defaut > 0
+| EVAL exemples = MV_SLICE(exemples, 0, 9)"""
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 24,
+    "timeWindowUnit": "h",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "aggType": "count",
+    "groupBy": "row",
+    "termSize": 5,
+    "sourceFields": [],
+    "excludeHitsFromPreviousRun": false
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
+      "params": {
+        "body": """{
+  "text": "⚠️ **Rétention ILM — bilan des 24 h** — des index n'appliquent pas leur rétention : étape ILM en échec ou policy par défaut sans suppression.",
+  "attachments": [
+    {
+      "color": "#f2c744",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "Détail",
+          "value": "{{context.message}}"
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Quels index n'appliquent pas leur rétention : le Discover [[Pass Emploi] Historique ILM - Index hors rétention](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/3f3c69ef-e515-4be4-b679-eff837c92ecb)\n2. Si l'index porte une policy d'Elastic par défaut (`logs@lifecycle`, `metrics@lifecycle`) : il ne sera jamais supprimé, lui rattacher la policy de l'équipe (runbook ILM)\n3. Si une étape ILM a échoué (`success` à `false`) : lire l'erreur de l'étape, corriger, puis relancer ILM sur l'index (runbook ILM)"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Historique ILM - Index hors rétention](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/3f3c69ef-e515-4be4-b679-eff837c92ecb)"
+        },
+        {
+          "title": "Runbook",
+          "value": "[Runbook ILM](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-ilm.md)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActiveAlert",
+        "throttle": null
+      },
+      "alerts_filter": {
+        "timeframe": {
+          "days": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7
+          ],
+          "timezone": "Europe/Paris",
+          "hours": {
+            "start": "09:30",
+            "end": "10:30"
+          }
+        }
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# 14 — Événement externe rejeté par son pipeline ou par Elasticsearch (Warning). L'émetteur
+# reçoit 201 même quand le document part au failure store.
+PUT kbn:/api/alerting/rule/ae398f47-0ed9-427e-a090-cf774acc7d16
+{
+  "name": "Événements externes - Payload rejeté (failure store)",
+  "tags": [
+    "warning",
+    "prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nUne notification Scalingo ou GitHub a été rejetée par son ingest pipeline et rangée dans le failure store : l'alerte qu'elle portait n'a pas été levée.\n\n## À vérifier\n\n1. Le Discover [[Pass Emploi] Alertes externes - Rejets (failure store)](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/861dbdf4-5086-498b-aff6-4d9d68ceb1f4) : `error.type` et `error.message` donnent le motif du rejet\n2. Le payload d'origine (`document.source`) : adapter le pipeline, puis le rejouer en `_simulate`\n\n## Discover sessions\n\n- [[Pass Emploi] Alertes externes - Rejets (failure store)](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/861dbdf4-5086-498b-aff6-4d9d68ceb1f4)\n\n## Documentation\n\n[Collecte des événements externes](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/collecte/webhooks/README.md)\n"
+    }
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "0f25bbf6-abdf-41f9-8bab-4a4911c13ebc",
+        "title": "logs-alertes-scalingo-prod-default::failures,logs-alertes-scalingo-staging-default::failures,logs-alertes-scalingo-perf-default::failures,logs-alertes-github-default::failures",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Alertes externes - rejets (failure store)",
+        "allowHidden": true,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 10,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 20,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": true,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
+      "params": {
+        "body": """{
+  "text": "⚠️ **Événements externes rejetés — des notifications Scalingo ou GitHub ne sont pas arrivées dans Kibana : leur émetteur a pourtant reçu un succès** ({{context.value}})",
+  "attachments": [
+    {
+      "color": "#ffa500",
+      "text": "{{#context.hits}}• `{{_source.error.type}}` : {{_source.error.message}}\n{{/context.hits}}",
+      "fields": [
+        {
+          "title": "Règle",
+          "value": "`{{rule.name}}`",
+          "short": true
+        },
+        {
+          "title": "Déclenchée à",
+          "value": "`{{date}}`",
+          "short": true
+        },
+        {
+          "title": "À vérifier",
+          "value": "1. Le Discover [[Pass Emploi] Alertes externes - Rejets (failure store)](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/861dbdf4-5086-498b-aff6-4d9d68ceb1f4) : `error.type` et `error.message` donnent le motif du rejet\n2. Le payload d'origine (`document.source`) : adapter le pipeline, puis le rejouer en `_simulate`"
+        },
+        {
+          "title": "Discover sessions",
+          "value": "[[Pass Emploi] Alertes externes - Rejets (failure store)](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/861dbdf4-5086-498b-aff6-4d9d68ceb1f4)"
+        }
+      ]
+    }
+  ]
+}"""
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActiveAlert",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
