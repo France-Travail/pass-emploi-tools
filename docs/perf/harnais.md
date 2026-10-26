@@ -128,7 +128,8 @@ de rupture. La lecture d'un escalier se fait sur le rapport HTML, par seconde.
   prod — pas de jointures réelles, pas la distribution croisée entre tables
   qu'un restore de snapshot donnerait. La taille des tables et la pression sur
   les index s'en approchent, elles ne les reproduisent pas.
-- **Le périmètre est le parcours accueil FT.** Web conseiller, jobs et crons,
+- **Le périmètre est le parcours accueil FT et le job d'archivage de migration.**
+  Web conseiller, autres jobs et crons,
   messagerie, notification push massive et parcours MILO sont hors périmètre v1
   — tous de vrais scénarios de charge, que l'architecture accueille sans
   redécoupage.
