@@ -6,9 +6,9 @@ quel champ ECS, avec quelle règle, et comment se construit la ligne `message`
 que les règles et Tchap affichent. C'est l'équivalent, pour ces sources, des
 [conventions des logs ECS](../logs/conventions.md) pour les logs des apps.
 
-Ce fichier décrit **ce que font les pipelines** de [`pipelines/`](../../supervision/pipelines/webhooks/) :
+Ce fichier décrit **ce que font les pipelines** de [`supervision/pipelines/webhooks/`](../../supervision/pipelines/webhooks/README.md) :
 toute modification d'un pipeline se reporte ici dans la même PR, et inversement.
-La chaîne, les accès et la mise en service : [README](../../collecte/webhooks/README.md).
+La chaîne, les accès et la mise en service : [collecte par webhook](../../collecte/webhooks/README.md).
 
 ## Principes communs à toutes les sources
 
@@ -249,7 +249,7 @@ Exemple : `pass-emploi-api : CVE-2026-00000 — axios (high) : Exemple de vulné
 1. Choisir le data stream (`logs-alertes-<source>[-<env>]-default`), puis
    créer ses templates et son failure store
    ([`stockage/logs/`](../../stockage/logs/README.md)).
-2. Écrire son pipeline dans [`pipelines/`](../../supervision/pipelines/webhooks/), avec ses `_simulate` sur
+2. Écrire son pipeline dans [`supervision/pipelines/webhooks/`](../../supervision/pipelines/webhooks/README.md), avec ses `_simulate` sur
    des captures réelles. Il doit poser au moins `@timestamp`, `event.provider`,
    `event.kind`, `event.action`, `event.id`, `service.name` et `message`, et
    ranger le payload brut sous `<source>.*` en `dynamic: false`.
