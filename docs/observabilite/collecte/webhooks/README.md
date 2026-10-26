@@ -24,14 +24,34 @@ et lus par des Kibana Rules rangées par périmètre :
 
 ## La chaîne
 
-```
-Notifier webhook Scalingo ──► logs-alertes-scalingo-<env>-default ──┐
-  (Basic Auth dans l'URL)       pipeline ingest-alertes-scalingo-<env>-default
-                                                                     ├──► Kibana Rules (A4a/A4b, 6a/6b, V1)
-security-alerts.yml (curl) ──► logs-alertes-github-default ─────────┘
-  (API Key)                     pipeline ingest-alertes-github-default
+```mermaid
+flowchart LR
+  subgraph emetteurs["Émetteurs"]
+    direction TB
+    SC["Notifiers webhook Scalingo<br/>(Basic Auth dans l'URL)"]
+    GH["security-alerts.yml (curl)<br/>(clé API)"]
+  end
 
-document rejeté par son pipeline ──► <data stream>::failures ──► règle 14
+  subgraph elasticsearch["Elasticsearch"]
+    direction TB
+    PS["pipeline ingest-alertes-scalingo-&lt;env&gt;-default"]
+    PG["pipeline ingest-alertes-github-default"]
+    DS["logs-alertes-scalingo-&lt;env&gt;-default"]
+    DG["logs-alertes-github-default"]
+    FS["&lt;data stream&gt;::failures"]
+  end
+
+  subgraph regles["Règles Kibana"]
+    direction TB
+    R["A4a / A4b, 6a / 6b, V1"]
+    R14["14 (rejets)"]
+  end
+
+  SC --> PS --> DS --> R
+  GH --> PG --> DG --> R
+  PS -- "document rejeté" --> FS
+  PG -- "document rejeté" --> FS
+  FS --> R14
 ```
 
 Un data stream par source, et par environnement pour Scalingo, comme
