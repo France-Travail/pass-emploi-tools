@@ -8,6 +8,34 @@ les canaux de monitoring (cf. [alertes applicatives](supervision/alertes-applica
 qu'aucune alerte ne signale. Pour enquêter sur un incident :
 [runbook d'investigation](runbooks/investigation-incident.md).
 
+> **⚠️ Du 1er novembre 2026 à la mise en service du bot Tchap**
+>
+> Mattermost s'arrête le 1er novembre, et le compte du bot Tchap attend son
+> adresse e-mail, demandée mais pas encore créée. Entre les deux, **aucune
+> alerte n'arrive dans une messagerie**. Les règles continuent de tourner et
+> leurs alertes se déclenchent, mais on ne les voit que dans Kibana.
+>
+> Pendant cette période, on remplace la lecture des canaux par :
+>
+> 1. **Les règles en alerte, matin, midi et soir, chaque jour ouvré** :
+>    [Kibana → Rules](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/management/insightsAndAlerting/triggersActions/rules),
+>    filtre *Last response* = *Active*. Ouvrir une règle pour lire ses alertes
+>    et sa raison, puis suivre les étapes « À vérifier » de son Investigation
+>    guide, qui reprend le message qu'elle aurait posté.
+> 2. **Les jobs, chaque matin**, à la place du rapport de 9 h 30 : le Discover
+>    [[Pass Emploi] Logs de Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c0d38bba-66ef-4b68-8a10-4d786f6a9f4a),
+>    onglets « Jobs en échec » et « Exécutions », sur les dernières 24 h.
+> 3. **AutoOps, chaque matin** (alertes 11 et 12, disque et indexation) : la
+>    page AutoOps du déploiement dans Elastic Cloud, qui ne prévient plus
+>    Mattermost.
+>
+> Le point 1 de la routine quotidienne ci-dessous, « Tchap - Envoi en échec »,
+> ne s'applique pas encore : rien n'est envoyé.
+>
+> **Fin de la période** : à la mise en service du bot (cf.
+> [Workflows Tchap, mise en service](supervision/workflows/tchap/README.md#mise-en-service)),
+> vérifier qu'une alerte de chaque salon arrive dans Tchap, puis retirer cet encadré.
+
 ## Chaque jour (5 min)
 
 1. **Kibana → Alerts** : les alertes en cours. Surtout **« Tchap - Envoi en
