@@ -1082,7 +1082,7 @@ Une ligne par rejet : `error.type` et `error.message`.
 1. Le Discover **[Pass Emploi] Alertes externes - Rejets (failure store)** :
    `error.type` et `error.message` donnent le motif du rejet.
 2. Le payload d'origine (`document.source`) : adapter le pipeline (cf.
-   [correspondance ECS](pipelines/webhooks/correspondance-ecs.md), rubriques « Rejets »),
+   [correspondance ECS](../collecte/webhooks/correspondance-ecs.md), rubriques « Rejets »),
    puis le rejouer en `_simulate`.
 
 ---

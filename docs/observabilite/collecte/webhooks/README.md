@@ -9,12 +9,12 @@ Ils sont écrits dans un data stream par source, transformés en champs ECS par 
 ingest pipeline ([`supervision/pipelines/webhooks/`](../../supervision/pipelines/webhooks/README.md)),
 et lus par des Kibana Rules rangées par périmètre :
 
-| Données | Alertes |
-|---|---|
-| Événements Scalingo des apps applicatives | A4a, A4b dans les [alertes applicatives](../../supervision/alertes-applicatives.md) |
+| Données                                                                       | Alertes                                                                                 |
+|-------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
+| Événements Scalingo des apps applicatives                                     | A4a, A4b dans les [alertes applicatives](../../supervision/alertes-applicatives.md)     |
 | Événements Scalingo des apps de la stack (Logstash, Elastic Agent, Heartbeat) | 6a, 6b dans les [alertes de la stack](../../supervision/alertes-stack-observabilite.md) |
-| CVE Dependabot | V1 dans les [alertes de sécurité](../../supervision/alertes-securite.md) |
-| Événements rejetés (failure store) | 14 dans les [alertes de la stack](../../supervision/alertes-stack-observabilite.md) |
+| CVE Dependabot                                                                | V1 dans les [alertes de sécurité](../../supervision/alertes-securite.md)                |
+| Événements rejetés (failure store)                                            | 14 dans les [alertes de la stack](../../supervision/alertes-stack-observabilite.md)     |
 
 > **Statut** : validé de bout en bout sur une pile Elasticsearch + Kibana 9.4.7
 > locale (pipelines, droits, failure store, règles, messages rendus). Stockage,
@@ -41,11 +41,11 @@ et chaque émetteur n'écrit que dans les siens.
 Aucun agent à héberger : les émetteurs appellent l'API Elasticsearch, la
 transformation en champs ECS se fait dans un **ingest pipeline**.
 
-| Fichier | Contenu |
-|---|---|
-| [`stockage/logs/`](../../stockage/logs/README.md) `2-component-templates.console`, `3-index-templates.console` | mapping et templates des 4 data streams (logsdb, `default_pipeline`, failure store), création à l'avance des data streams ; rétention : les briques `logs-<env>-retention-custom` existantes |
-| [`supervision/pipelines/webhooks/`](../../supervision/pipelines/webhooks/README.md) | les ingest pipelines (transformation en champs ECS) et l'accès en écriture des émetteurs ; ce que font les pipelines : [correspondance-ecs.md](../../supervision/pipelines/webhooks/correspondance-ecs.md) |
-| [`supervision/discovers/webhooks/`](../../supervision/discovers/webhooks/) | sessions Discover des événements, des CVE et des rejets |
+| Fichier                                                                                                        | Contenu                                                                                                                                                                                                    |
+|----------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`stockage/logs/`](../../stockage/logs/README.md) `2-component-templates.console`, `3-index-templates.console` | mapping et templates des 4 data streams (logsdb, `default_pipeline`, failure store), création à l'avance des data streams ; rétention : les briques `logs-<env>-retention-custom` existantes               |
+| [`supervision/pipelines/webhooks/`](../../supervision/pipelines/webhooks/README.md)                            | les ingest pipelines (transformation en champs ECS) et l'accès en écriture des émetteurs ; ce que font les pipelines : [correspondance-ecs.md](correspondance-ecs.md) |
+| [`supervision/discovers/webhooks/`](../../supervision/discovers/webhooks/)                                     | sessions Discover des événements, des CVE et des rejets                                                                                                                                                    |
 
 **Un événement = une ligne de notification.** Les règles ne comptent que les
 documents arrivés depuis leur exécution précédente (`excludeHitsFromPreviousRun`)
@@ -59,7 +59,7 @@ ouvertes : V1 les notifie donc à chaque passage.
 
 La correspondance champ par champ (payload de la source → champ ECS → règle de
 transformation), le gabarit de la ligne `message`, les catégories et émojis, et
-les causes de rejet : **[correspondance-ecs.md](../../supervision/pipelines/webhooks/correspondance-ecs.md)**.
+les causes de rejet : **[correspondance-ecs.md](correspondance-ecs.md)**.
 
 En résumé : chaque pipeline pose `event.provider` (`scalingo` | `github`),
 `event.kind`, `event.action`, `event.id`, `service.name` et `message`, la ligne
@@ -127,10 +127,10 @@ Tchap listent telle quelle. Le payload brut est gardé sous `scalingo.*` ou
    (*Settings* → *Secrets and variables* → *Actions* → *Variables*), transmise
    en entrée `envoi-mattermost` / `envoi-elasticsearch` :
 
-   | Variable du repo | Absente (défaut) | `false` |
-   |---|---|---|
-   | `CVE_ENVOI_MATTERMOST` | message Mattermost, si le secret `MATTERMOST_WEBHOOK_URL` existe | pas de message Mattermost |
-   | `CVE_ENVOI_ELASTICSEARCH` | CVE envoyées, si `ELASTIC_URL` et `ELASTIC_ALERTES_GITHUB_API_KEY` existent | pas d'envoi |
+   | Variable du repo          | Absente (défaut)                                                            | `false`                   |
+   |---------------------------|-----------------------------------------------------------------------------|---------------------------|
+   | `CVE_ENVOI_MATTERMOST`    | message Mattermost, si le secret `MATTERMOST_WEBHOOK_URL` existe            | pas de message Mattermost |
+   | `CVE_ENVOI_ELASTICSEARCH` | CVE envoyées, si `ELASTIC_URL` et `ELASTIC_ALERTES_GITHUB_API_KEY` existent | pas d'envoi               |
 
    Pendant la migration, V1 poste déjà les CVE dans `#monitoring-production` :
    `CVE_ENVOI_MATTERMOST=false` supprime le doublon de l'envoi direct. Avec les
@@ -138,19 +138,19 @@ Tchap listent telle quelle. Le payload brut est gardé sous `scalingo.*` ou
 
 Pendant la migration vers Tchap, les notifiers `Mattermost*` sont
 **désactivés, jamais supprimés**, une fois la parité constatée :
-[`verifier-parite.py`](verifier-parite.py) compare, app par app, l'historique
+[`verifier-parite.py`](../../supervision/pipelines/webhooks/verifier-parite.py) compare, app par app, l'historique
 Scalingo (`scalingo timeline`, limité aux événements sélectionnés dans le
 notifier Elastic) aux documents reçus depuis une date, et liste le failure
 store. Lecture seule ; code de sortie non nul au moindre écart.
 
 ```bash
-set -a; . ~/.config/pass-emploi/elastic-claude.env; set +a   # ES_URL, ES_API_KEY
-python3 -I verifier-parite.py --depuis 2026-10-19T17:00:00Z
+# ES_URL : l'endpoint Elasticsearch ; ES_API_KEY : une clé API qui peut lire les data streams logs-alertes-*
+python3 -I docs/observabilite/supervision/pipelines/webhooks/verifier-parite.py --depuis 2026-10-19T17:00:00Z
 ```
 
 ## Points ouverts
 
-- **Noms des `type` de crash et de déploiement** : non capturés (cf. [table des actions](../../supervision/pipelines/webhooks/correspondance-ecs.md#table-des-actions)).
+- **Noms des `type` de crash et de déploiement** : non capturés (cf. [table des actions](correspondance-ecs.md#table-des-actions)).
 - **Événements au format Slack** : seules les variables sont constatées. Un
   autre type dans ce format passe par le même pipeline et sort en ℹ️
   `scalingo_<libellé>` ; un format encore différent part au failure store

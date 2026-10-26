@@ -20,7 +20,7 @@ passée à un logger (`toEcsError(e)` d'abord). Lire
 Les événements **émis hors des apps** (notifiers Scalingo, CVE Dependabot) ne
 suivent pas ce format à la source : leur ingest pipeline les transforme en champs
 ECS. Correspondance champ par champ :
-[supervision/pipelines/webhooks/correspondance-ecs](../../supervision/pipelines/webhooks/correspondance-ecs.md).
+[collecte/webhooks/correspondance-ecs](../../collecte/webhooks/correspondance-ecs.md).
 
 Contraintes imposées par l'aval : une ligne ne doit pas dépasser **16 Ko**
 (troncature du drain, cf. [collecte/logs/drain-scalingo](../../collecte/logs/drain-scalingo.md)) ;

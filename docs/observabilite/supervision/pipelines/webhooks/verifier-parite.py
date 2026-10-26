@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Parité notifiers Scalingo → Elasticsearch, avant de désactiver les notifiers Mattermost*.
+r"""Parité notifiers Scalingo → Elasticsearch, avant de désactiver les notifiers Mattermost*.
 
 Pour chaque app qui a un notifier « Elastic … », compare son historique Scalingo
 (scalingo timeline) aux documents de logs-alertes-scalingo-<env>-default sur la
 même période, puis liste le failure store. Lecture seule.
 
 Usage :
-    set -a; . ~/.config/pass-emploi/elastic-claude.env; set +a   # ES_URL, ES_API_KEY
-    python3 -I verifier-parite.py --depuis 2026-10-19T17:00:00Z [--app pass-emploi-api-prod]
+    ES_URL=<endpoint Elasticsearch> ES_API_KEY=<clé API en lecture sur logs-alertes-*> \
+    python3 -I docs/observabilite/supervision/pipelines/webhooks/verifier-parite.py --depuis 2026-10-19T17:00:00Z [--app pass-emploi-api-prod]
 """
 import argparse, base64, datetime, json, os, re, subprocess, sys, time, urllib.request
 
