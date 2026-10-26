@@ -31,6 +31,10 @@ Spécificités api :
   logs émis avant l'interceptor (les guards : `auth_failed`, 401/403 de
   `OidcAuthGuard`), de **toutes les réponses en erreur** (`request_completed`
   en 4xx, `request_failed`), et des jobs worker, qui n'ont pas de requête.
+- **`http.route`** (nom OpenTelemetry, absent d'ECS) sur `request_completed` /
+  `request_failed` : modèle de route Express (`/v2/jeunes/:idJeune/actions`),
+  succès comme erreurs. **Absent = aucune route n'a répondu** (URL inconnue,
+  scan) — `not http.route: *` isole les robots, à distinguer d'un 404 métier.
 - **`external_api_call`** via Template Method `ExternalApiClient` +
   `ExternalApiLoggerService`.
 - **Bodies** : `http.request.body.content` (entrant via pino-http, sortant via

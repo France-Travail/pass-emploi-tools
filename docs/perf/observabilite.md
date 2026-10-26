@@ -39,13 +39,10 @@ Règle de choix du mécanisme :
   à la conception de l'app (logs applicatifs mobiles vs analytics produit).
 
 **Point dur connu** : un flux non authentifié n'a ni `user.id` ni `trace.id`
-(limite documentée dans [investigation-incident.md](../observabilite/runbooks/investigation-incident.md)). Or le funnel
-d'entrée est précisément pré-authentification — et le **mode invité le reste
-toujours**. Il faut un **identifiant de corrélation** dès le premier écran
-(ex. `installationId` mobile), propagé sur tous les événements du funnel.
-À raccorder au chantier [mode invité](../app-jeune/utilisateurs-authentification.md)
-(l'identifiant d'observabilité et l'identifiant fonctionnel de l'invité peuvent
-être le même sujet).
+(limite documentée dans [investigation-incident.md](../observabilite/runbooks/investigation-incident.md)). Or le
+tuto d'entrée et le début du login sont pré-authentification. Il faut un
+**identifiant de corrélation** dès le premier écran (ex. `installationId`
+mobile), propagé sur tous les événements du funnel.
 
 ## Mise en œuvre
 

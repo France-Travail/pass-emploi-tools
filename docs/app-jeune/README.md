@@ -1,80 +1,54 @@
-# Chantier « App Jeune » — routeur
+# App Jeune — invariants
 
-> **Statut : WIP.** Chantier de réflexion transverse ouvert le 2026-07-02, mené
-> en continu (comme le chantier logs). Doc de référence versionnée ; la couche
-> exploratoire / débats non tranchés vit en notes de travail et remonte ici une
-> fois stabilisée.
->
-> Ce fichier est un **routeur** : la vision, le cadre d'analyse commun, et
-> l'index des sous-chantiers. Le détail vit dans les sous-docs.
+L'app s'ouvre à tous les jeunes, y compris non accompagnés et non inscrits.
+Ce qui suit ne doit pas casser quand on y ajoute un public ou une fonctionnalité.
 
-## Vision
+## Publics et authentification
 
-L'application CEJ / Pass Emploi évolue vers une **nouvelle app destinée à tous
-les jeunes de France**, pour faciliter et accélérer leur autonomie vers l'emploi
-— au sens large : emploi, mais aussi social, logement, etc.
+- **Trois notions à ne pas confondre** : le public (qui il est pour le produit),
+  le mode d'authentification (comment il prouve son identité), la
+  représentation dans l'API (comment on range ses droits). Plusieurs publics
+  partagent un même mode ; mélanger les trois est la dette historique du modèle.
+- **Côté France Travail, un seul mode d'authentification.** Le public est décidé
+  par la porte d'entrée choisie au login, pas par l'IDP.
+- **Le public est un état, pas une identité.** Un jeune pris en accompagnement,
+  ou dont le conseiller s'en va, change de public sans changer d'identifiant ni
+  perdre ses données.
 
-Conséquence structurante : on élargit très fortement la population d'utilisateurs.
-On passe de « bénéficiaires accompagnés rattachés à une structure » à un spectre
-qui inclut des **jeunes non accompagnés, non inscrits, voire anonymes (mode
-invité)**. Cet élargissement casse plusieurs hypothèses du modèle actuel — d'où
-ce chantier.
+## Droits
 
-## Cadre d'analyse commun : 3 couches à ne pas confondre
+- **Les droits se déduisent de trois questions** : le jeune a-t-il un conseiller
+  chez nous ? un dossier de demandeur d'emploi France Travail ? relève-t-il
+  d'une Mission Locale ? Jamais du mode d'authentification.
+- **Le compteur d'heures est propre à la Mission Locale**, et au seul CEJ.
+- **Sans conseiller chez nous, pas de messagerie.** Les bénéficiaires dont le
+  conseiller part sur une autre application la perdent pour cette raison, pas
+  par une restriction propre à leur public.
 
-Le code actuel a tendance à **mélanger** ces trois notions (en particulier via
-l'enum `Core.Structure` qui porte à la fois un dispositif et une structure
-d'appartenance). Tout le chantier consiste à les **séparer** et à tracer les
-flèches entre elles.
+## Invité
 
-1. **Public fonctionnel** — le « qui », vu produit : le parcours / dispositif
-   (CEJ MILO, RSA rénové, lycéen NEET non inscrit…). Maille métier.
-2. **Mode d'authentification technique** — le « comment il prouve son
-   identité » : quel IDP, quel flow (OIDC MILO, FT Connect, mode invité…).
-   Beaucoup plus **plat** que la couche 1 : plusieurs publics partagent un même
-   mode.
-3. **Représentation dans l'API** — le « comment je le range pour gérer ses
-   droits » : `Authentification.Type`, `Core.Structure`, entité `Jeune`, et les
-   **nouvelles entités/attributs** à introduire (notamment pour l'invité).
+- **Un invité est authentifié, sous une identité pseudonyme** : il a un jeton
+  comme les autres, ce n'est pas un appelant anonyme.
+- **Son identifiant est fabriqué par le serveur**, jamais fourni par le client :
+  sinon il serait forgeable, donc usurpable. Seul son refresh token le rattache
+  à son appareil.
+- **Une fonctionnalité ne s'ouvre à l'invité qu'explicitement.** Le mécanisme
+  d'autorisation ne le garantit pas de lui-même : toute nouvelle route doit
+  vérifier qu'elle rejette l'invité s'il n'y a pas droit.
 
-> **Fait d'architecture clé (à garder en tête partout).** Côté
-> `pass-emploi-connect`, pour les bénéficiaires France Travail, le mode
-> d'authentification est **unique** (FT Connect). La `structure` n'est **pas** un
-> claim renvoyé par l'IDP : elle est **décidée par la porte d'entrée** choisie au
-> login (query param `type` : `cej`, `aij`, `brsa`…), et assignée par le
-> contrôleur. Autrement dit, la couche 1 est portée par l'app, pas par l'IDP.
+## Plan d'action
 
-## Sous-chantiers
-
-| Sous-chantier | Doc | Statut |
-|---|---|---|
-| Nouveaux utilisateurs / authentification | [`utilisateurs-authentification.md`](./utilisateurs-authentification.md) | WIP — matrice publics→modes posée ; **mode invité livré** (couche 3 renseignée) ; transition invité→inscrit et candidat FT non accompagné à instruire |
-| Parcours & fonctionnalités | [`parcours-fonctionnalites.md`](./parcours-fonctionnalites.md) | WIP — parcours d'entrée, pages, matrice profils→accès posés ; typologie et règle de détermination à trancher |
-| Plan d'action | [`plan-action.md`](./plan-action.md) | WIP — **domaine et référentiel Grist livrés** (générateur derrière un port, plan persisté pour les connectés) ; générateur encore le **POC** externe, internalisation à venir |
-
-> **Performances / montée en charge** : sujet transverse à part entière (il
-> dépasse l'app jeune et survit à la MES), traité dans le
-> [chantier perf](../perf/README.md). La MES de l'app jeune en est le premier
-> jalon dimensionnant.
-
-## Historique
-
-- **2026-09-23** — plan d'action : sortie de l'archi proxy. Le plan a un
-  **domaine** (`domain/plan-action/`), le générateur passe derrière le port
-  `PlanAction.Generateur`, et le référentiel des solutions devient **notre
-  donnée**, importée d'un document Grist par un cron mensuel. Les identifiants
-  du plan, des objectifs et des tâches sont désormais les nôtres — ce qui rend
-  une tâche cochable et le générateur remplaçable sans migration.
-- **2026-07-28** — sous-chantier « Plan d'action » ouvert : archi proxy
-  `pass-emploi-api` → service de génération externe (POC), mapping de contrat,
-  trace analytique. Mise à jour des deux autres sous-chantiers suite à la
-  livraison du **mode invité** (connect + api) et à l'implémentation du
-  questionnaire invité côté mobile.
-- **2026-07-10** — sous-chantier « Parcours & fonctionnalités » ouvert :
-  parcours d'entrée (tuto → authent → questionnaire → plan d'action), pages de
-  l'app, matrice profils→accès (première capture produit, à fiabiliser).
-- **2026-07-06** — le sujet performances est sorti du chantier (périmètre plus
-  large que l'app jeune) et promu sujet transverse : [`docs/perf/`](../perf/README.md).
-- **2026-07-02** — ouverture du chantier. Cadre 3 couches posé. Matrice
-  publics→modes (couches 1→2) rédigée à partir de l'existant `pass-emploi-api`
-  (`Core.Structure`) et `pass-emploi-connect` (IDP bénéficiaires).
+- **Le générateur ne rend que des identifiants de solutions**, jamais de
+  contenu. Libellés et liens viennent de notre référentiel, et un identifiant
+  inconnu est écarté : le pire cas est un plan plus pauvre, jamais un plan faux.
+- **Ce n'est pas l'IA qui décide à quoi un jeune a droit** : l'éligibilité est
+  une règle déterministe.
+- **Un identifiant venu du générateur n'est jamais une clé chez nous.** Plan,
+  objectifs et tâches ont nos propres identifiants : c'est ce qui rend le
+  générateur remplaçable sans migration.
+- **Le référentiel ne s'écrit que par sa synchronisation**, jamais en effet de
+  bord d'une génération. Une solution retirée est **désactivée, jamais
+  supprimée** : les plans déjà sauvegardés y font référence.
+- **Le mobile ne parle jamais au générateur.** Le contrat du générateur peut
+  changer sans livraison sur les stores, et son secret reste côté serveur.
+- **L'invité garde son plan sur son appareil** ; le jeune connecté l'a côté API.
