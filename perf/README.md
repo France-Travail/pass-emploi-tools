@@ -236,6 +236,20 @@ sed -n '/---RAPPORT-GATLING-DEBUT---/,/---RAPPORT-GATLING-FIN---/p' tir.b64 \
 > Le workflow **ne restaure aucune image de base** : la base ne contient que le
 > pool semé. Les chiffres valident la chaîne, pas un p95 de production.
 
+## Scénario job : archivage de migration
+
+`Actions → Perf - Job archivage de migration → Run workflow`, un seul input :
+`nb_jeunes` (défaut `2000`). Le workflow refuse de tirer si
+`SENDINBLUE_API_URL` de `pass-emploi-api-perf` ne vise pas
+`mock-externes-perf/brevo`, réveille l'api (web, worker `M` x 1) et le mock,
+sème [`seed/migration.sql`](./seed/migration.sql), appelle
+`POST /support/archiver-jeunes-migration/perf-migration` puis attend la ligne
+`suivi_job` de fin, 30 min au plus.
+
+**Verdict** : durée ≤ 15 min, `nbEchecs = 0`, `nbTraites = nb_jeunes`, et plus
+aucun jeune `perf-migr-` en base. Le worker reste allumé jusqu'à l'extinction
+de 20h. En local, `make seed-migration` sème la même population sur l'apidb.
+
 ## Run with docker
 
 ### Build
