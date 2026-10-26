@@ -26,7 +26,7 @@
 
 | #  | Décision | Raison |
 |----|----------|--------|
-| D1 | **Séparer la collecte des alertes.** La chaîne technique (data streams `logs-alertes-*`, pipelines, accès des émetteurs, failure store, notifiers Scalingo, envoi de `security-alerts.yml`) est documentée dans `collecte/evenements-externes/`. Les règles rejoignent leur périmètre | Une règle se range selon ce qu'elle surveille, pas selon le chemin de ses données |
+| D1 | **Séparer la collecte des alertes.** La chaîne technique (data streams `logs-alertes-*`, pipelines, accès des émetteurs, failure store, notifiers Scalingo, envoi de `security-alerts.yml`) est documentée dans `collecte/webhooks/`. Les règles rejoignent leur périmètre | Une règle se range selon ce qu'elle surveille, pas selon le chemin de ses données |
 | D2 | **Les numéros X disparaissent.** Trois familles : applicative (`alertes-applicatives.md`), sécurité (`alertes-securite.md`, nouveau), stack d'observabilité (`alertes-stack-observabilite.md`) | Choix de l'utilisateur ; une famille = un fichier de doc et un fichier de règles |
 | D3 | **Convention `{n}a` = prod, `{n}b` = staging/perf** | Convention déjà en place (3a/3b, 9a/9b…) |
 | D4 | **Une règle Scalingo par périmètre et par environnement**, qui liste tous les événements de ses apps (crash, arrêt, seuil, déploiement, variable…) | Un notifier Mattermost actuel est déjà un flux unique par app ; une règle par type d'événement serait inmaintenable |
@@ -196,7 +196,7 @@ conventions le 2026-10-19) et cités **en plus** des sessions existantes :
 | # | Étape | Dépend de |
 |---|-------|-----------|
 | 0 | ✅ Dashboards de diagnostic versionnés et mis aux conventions ; **réimport en prod** (écrasement des conflits) | — |
-| 1 | ✅ (Plan 1, 2026-10-19, sauf la revue §7 des autres règles : Plan 2) **Réorganisation** : revue des étapes d'investigation (§7) de toutes les règles ; collecte dans `collecte/evenements-externes/`, `alertes-securite.md`, A4a/A4b, 6a/6b, V1, 14 avec IDs conservés, pipeline (catégorie, émoji), sessions par catégorie ; suppression de `alertes-externes.md` (contenu réparti) et de `3-rules-alertes-externes.console` | — |
+| 1 | ✅ (Plan 1, 2026-10-19, sauf la revue §7 des autres règles : Plan 2) **Réorganisation** : revue des étapes d'investigation (§7) de toutes les règles ; collecte dans `collecte/webhooks/`, `alertes-securite.md`, A4a/A4b, 6a/6b, V1, 14 avec IDs conservés, pipeline (catégorie, émoji), sessions par catégorie ; suppression de `alertes-externes.md` (contenu réparti) et de `3-rules-alertes-externes.console` | — |
 | 2 | ✅ (2026-10-19, sans Tchap, cf. §10) Mise à jour en prod : `PUT` des 5 règles, création de 6b, pipeline, sessions ; `PUT` des Workflows de salon là où ils existent (filtre du bagotement, §13) | 1 |
 | 3 | ✅ (2026-10-19, cf. §10 ; parité à vérifier en réel) Notifiers Elasticsearch sur toutes les apps de §3 (même sélection que Mattermost) ; vérification en réel par catégorie | 2 |
 | 4 | ✅ (2026-10-19, testé sur api ; fusion des 3 branches en attente, cf. §10) `security-alerts.yml` : envoi vers Elasticsearch en plus de Mattermost ; secret dans les 4 repos | 2 |

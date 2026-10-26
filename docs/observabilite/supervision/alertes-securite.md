@@ -4,7 +4,7 @@ Les alertes sur les **vulnérabilités des dépendances** de nos repos : les CVE
 remontées par Dependabot, que le workflow GitHub Actions
 [`security-alerts.yml`](../../../.github/workflows/security-alerts.yml) envoie
 dans `logs-alertes-github-default` (cf.
-[collecte des événements externes](../collecte/evenements-externes/README.md)).
+[collecte par webhook](../collecte/webhooks/README.md)).
 Elles signalent un risque à traiter, pas une panne.
 
 ## Récapitulatif
@@ -15,7 +15,7 @@ Elles signalent un risque à traiter, pas une panne.
 
 **Création** : rejouer [`rules/generated/1-rules-securite.console`](rules/generated/1-rules-securite.console)
 dans Dev Tools, après les sessions Discover de
-[`discovers/evenements-externes/`](discovers/evenements-externes/).
+[`discovers/webhooks/`](discovers/webhooks/).
 
 ## V1 — CVE high ou critical ouverte (Critical)
 
@@ -51,5 +51,5 @@ notification.
 
 > **Pendant la migration** : `security-alerts.yml` garde son envoi direct vers
 > Mattermost tant que son envoi vers Elasticsearch n'est pas en place (cf.
-> [mise en service](../collecte/evenements-externes/README.md#mise-en-service),
+> [mise en service](../collecte/webhooks/README.md#mise-en-service),
 > étape GitHub Actions).

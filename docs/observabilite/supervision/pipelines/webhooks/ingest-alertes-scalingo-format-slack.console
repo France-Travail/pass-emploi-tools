@@ -1,7 +1,7 @@
 # Remet au format habituel {id, created_at, type, app_name, user, type_data} un
 # événement qu'un notifier webhook Scalingo envoie au format Slack. Appelé par
 # ingest-alertes-scalingo-<env>-default, avant leurs vérifications.
-# Spécification : ../README.md.
+# Spécification : README.md.
 #
 # Constaté le 2026-10-19 sur pass-emploi-logstash-perf : le même notifier
 # webhook envoie les redémarrages au format habituel, mais les modifications de

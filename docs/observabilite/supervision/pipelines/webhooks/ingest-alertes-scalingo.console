@@ -1,6 +1,6 @@
 # Pipeline commun aux notifiers Scalingo : transforme l'événement en champs ECS.
 # Appelé par ingest-alertes-scalingo-<env>-default, jamais directement en
-# default_pipeline. Spécification : ../README.md.
+# default_pipeline. Spécification : README.md.
 #
 # À rejouer avant les pipelines par environnement. Enveloppe commune, vérifiée
 # sur 3 captures réelles : {id, created_at, type, app_id, app_name, user,

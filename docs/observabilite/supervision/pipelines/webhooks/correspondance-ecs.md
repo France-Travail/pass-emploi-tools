@@ -1,14 +1,14 @@
-# Événements externes : correspondance avec les champs ECS
+# Webhooks : correspondance avec les champs ECS
 
 Comment chaque ingest pipeline transforme le payload d'une source externe
 (notifier Scalingo, alerte Dependabot) en document ECS : quel champ source donne
 quel champ ECS, avec quelle règle, et comment se construit la ligne `message`
 que les règles et Tchap affichent. C'est l'équivalent, pour ces sources, des
-[conventions des logs ECS](../../format/logs/conventions.md) pour les logs des apps.
+[conventions des logs ECS](../../../format/logs/conventions.md) pour les logs des apps.
 
-Ce fichier décrit **ce que font les pipelines** de [`pipelines/`](pipelines/) :
+Ce fichier décrit **ce que font les pipelines** de [`pipelines/`](./) :
 toute modification d'un pipeline se reporte ici dans la même PR, et inversement.
-La chaîne, les accès et la mise en service : [README](README.md).
+La chaîne, les accès et la mise en service : [README](../../../collecte/webhooks/README.md).
 
 ## Principes communs à toutes les sources
 
@@ -16,9 +16,9 @@ La chaîne, les accès et la mise en service : [README](README.md).
 |---|---|
 | Un data stream par source | `logs-alertes-<source>-<env>-default` (Scalingo, un par environnement) ou `logs-alertes-<source>-default` (GitHub). Le pipeline est le `default_pipeline` du data stream : l'émetteur n'a rien à préciser. |
 | Payload brut gardé | Tout le payload est déplacé sous `<source>.*` (`scalingo.*`, `github.*`), en `dynamic: false` : lisible dans le document, **non indexé** (on ne cherche pas dedans). Seule exception : l'email de l'auteur Scalingo, supprimé. |
-| Champs ECS indexés | Uniquement ceux des tableaux ci-dessous. Mappings : `logs-alertes@mappings` (`event.id`, `.kind`, `.provider`, `.reason`) et `logs-alertes-<source>@mappings`, dans [`stockage/logs/2-component-templates.console`](../../stockage/logs/2-component-templates.console) ; le reste suit `ecs@mappings` (`labels.*` en keyword). |
+| Champs ECS indexés | Uniquement ceux des tableaux ci-dessous. Mappings : `logs-alertes@mappings` (`event.id`, `.kind`, `.provider`, `.reason`) et `logs-alertes-<source>@mappings`, dans [`stockage/logs/2-component-templates.console`](../../../stockage/logs/2-component-templates.console) ; le reste suit `ecs@mappings` (`labels.*` en keyword). |
 | `event.provider` | Le nom de la source : `scalingo`, `github`. |
-| `event.action` | Verbe au passé, snake_case, comme pour les logs (cf. [taxonomie](../../format/logs/conventions.md#taxonomie-eventaction)). Un type inconnu de la source n'est pas rejeté : il sort en `<source>_<type>`. |
+| `event.action` | Verbe au passé, snake_case, comme pour les logs (cf. [taxonomie](../../../format/logs/conventions.md#taxonomie-eventaction)). Un type inconnu de la source n'est pas rejeté : il sort en `<source>_<type>`. |
 | `message` | **La ligne de notification** de l'événement, en texte brut, construite par le pipeline. Les règles et les Workflows Tchap l'affichent telle quelle, une ligne par document (tag `tchap-lignes`). C'est la seule différence assumée avec les logs ECS des apps, où `message` = `event.action` : ici, un document = une notification. |
 | Rejet | Un document qui n'a pas la forme attendue de sa source est **rejeté** (processeur `fail` ou erreur d'un processeur) et part dans le failure store de son data stream (`<data stream>::failures`), que lit la règle 14. Il n'est jamais indexé à moitié. |
 | Données personnelles | Ni email ni valeur de variable d'environnement : `user.name` porte l'identifiant de l'auteur, `labels.details` les **noms** des variables. |
@@ -106,7 +106,7 @@ alors à la table `actions` du pipeline `ingest-alertes-scalingo` (et à
 
 La catégorie se déduit de l'émoji : `infra` si ℹ️, sinon `incident`. Elle
 permet de filtrer l'infra hors des salons de monitoring (cf.
-[alertes applicatives](../../supervision/alertes-applicatives.md)).
+[alertes applicatives](../../alertes-applicatives.md)).
 
 ### Gabarit du message
 
@@ -181,7 +181,7 @@ Pipeline : `ingest-alertes-github-default`, pipeline par défaut du data stream.
 ### Payload attendu
 
 Un document par alerte, envoyé par
-[`security-alerts.yml`](../../../../.github/workflows/security-alerts.yml) dans
+[`security-alerts.yml`](../../../../../.github/workflows/security-alerts.yml) dans
 un `_bulk` : l'objet renvoyé par `GET /repos/{owner}/{repo}/dependabot/alerts`
 de l'API REST GitHub, plus `repository` (nom court du repo), ajouté par le
 workflow.
@@ -248,12 +248,12 @@ Exemple : `pass-emploi-api : CVE-2026-00000 — axios (high) : Exemple de vulné
 
 1. Choisir le data stream (`logs-alertes-<source>[-<env>]-default`), puis
    créer ses templates et son failure store
-   ([`stockage/logs/`](../../stockage/logs/README.md)).
-2. Écrire son pipeline dans [`pipelines/`](pipelines/), avec ses `_simulate` sur
+   ([`stockage/logs/`](../../../stockage/logs/README.md)).
+2. Écrire son pipeline dans [`pipelines/`](./), avec ses `_simulate` sur
    des captures réelles. Il doit poser au moins `@timestamp`, `event.provider`,
    `event.kind`, `event.action`, `event.id`, `service.name` et `message`, et
    ranger le payload brut sous `<source>.*` en `dynamic: false`.
 3. Ajouter sa section ici : payload attendu, matrice, gabarit du message, rejets.
 4. Créer son accès en écriture seule
-   ([`security/acces-alertes-externes.console`](security/acces-alertes-externes.console))
+   ([`acces-webhooks.console`](acces-webhooks.console))
    et sa règle, puis ajouter son failure store à la règle 14.

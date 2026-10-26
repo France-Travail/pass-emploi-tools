@@ -442,7 +442,7 @@ A2 et A7 lisent l'APM, A1 et A6 les logs.
 
 Des **Elasticsearch query rules (KQL)** sur les événements des notifiers
 Scalingo, collectés dans `logs-alertes-scalingo-<env>-default` (cf.
-[collecte des événements externes](../collecte/evenements-externes/README.md)).
+[collecte par webhook](../collecte/webhooks/README.md)).
 Elles remplacent le fil d'activité que les notifiers `Mattermost*` publiaient
 directement : **une règle par environnement**, qui liste chaque événement sur
 une ligne, préfixée de sa gravité :
@@ -471,7 +471,7 @@ Chaque exécution ne compte que les documents arrivés depuis la précédente
 throttle.
 
 **Création** : rejouer [`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console),
-après les sessions Discover de [`discovers/evenements-externes/`](discovers/evenements-externes/).
+après les sessions Discover de [`discovers/webhooks/`](discovers/webhooks/).
 
 ### A4a — Événements Scalingo des apps applicatives, prod
 

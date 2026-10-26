@@ -1,5 +1,5 @@
 # Pipeline par défaut de logs-alertes-github-default. Spécification :
-# ../README.md.
+# README.md.
 #
 # Un document par alerte, tel que renvoyé par
 # GET /repos/{owner}/{repo}/dependabot/alerts, plus "repository" (nom court du

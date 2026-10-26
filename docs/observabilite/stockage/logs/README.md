@@ -13,7 +13,7 @@ de ce dossier : [stockage/README](../README.md#import--ordre-et-portée).
 | `logs-logstash-errors-*-default` | events en erreur de **traitement** Logstash (`_jsonparsefailure`, `_mutate_error`, `_rubyexception`…) |
 | `logs-logstash-dlq-*-default` | events **rejetés par ES** (conflit de mapping), relus depuis la Dead Letter Queue |
 | `logs-apm.error-default` | errors non catchées remontées par l'APM (cf. [collecte/traces](../../collecte/traces/README.md)) |
-| `logs-alertes-scalingo-{prod,staging,perf}-default` | événements des notifiers Scalingo, écrits sans Logstash (cf. [collecte des événements externes](../../collecte/evenements-externes/README.md)) |
+| `logs-alertes-scalingo-{prod,staging,perf}-default` | événements des notifiers Scalingo, écrits sans Logstash (cf. [collecte par webhook](../../collecte/webhooks/README.md)) |
 | `logs-alertes-github-default` | CVE Dependabot remontées par `security-alerts.yml` (idem) |
 
 Les index `logs-logstash-*` sont les index de diagnostic de la chaîne elle-même :

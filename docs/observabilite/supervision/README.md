@@ -28,6 +28,7 @@ Deux sortes de contenus, rangés séparément :
 | [slo/](slo/) | les SLO (`1-slos.console`) | [sli-slo.md](sli-slo.md), [objets Kibana](objets-kibana.md#slo-et-règles-console) |
 | [rules/](rules/) | les règles d'alerte : une règle = un fichier JSON par périmètre, et les fichiers générés à coller dans Dev Tools (`rules/generated/`) | [rules/README.md](rules/README.md) |
 | [workflows/tchap/](workflows/tchap/) | l'envoi des alertes dans Tchap : `tchap-client`, et les Workflows générés par salon (`workflows/tchap/generated/`) | [workflows/tchap/README.md](workflows/tchap/README.md) |
+| [pipelines/webhooks/](pipelines/webhooks/) | les ingest pipelines qui transforment les événements reçus par webhook (Scalingo, Dependabot) en champs ECS, et l'accès de leurs émetteurs | [pipelines/webhooks/README.md](pipelines/webhooks/README.md) |
 | [connecteurs/](connecteurs/) | les connecteurs Kibana à créer : Tchap, Mattermost des jobs | en-tête de chaque fichier |
 | [dashboards/](dashboards/) | les dashboards (`.ndjson`) | [objets Kibana](objets-kibana.md#dashboards) |
 | [discovers/](discovers/) | les sessions Discover (`.ndjson`), citées par les alertes | [objets Kibana](objets-kibana.md#sessions-discover) |

@@ -1,10 +1,13 @@
-# Collecte des événements externes (Scalingo, GitHub)
+# Collecte par webhook (Scalingo, GitHub)
 
-Les événements **émis hors d'Elastic** : les notifiers des apps Scalingo
-(crash, redémarrage, arrêt, déploiement, seuils RAM/CPU…) et les CVE remontées
-par Dependabot via [`security-alerts.yml`](../../../../.github/workflows/security-alerts.yml).
+Les événements émis hors des apps qui arrivent **par webhook** : un appel HTTP
+direct de l'émetteur à l'API Elasticsearch, sans agent ni Logstash. Aujourd'hui :
+les notifiers des apps Scalingo (crash, redémarrage, arrêt, déploiement, seuils
+RAM/CPU…) et les CVE remontées par Dependabot via
+[`security-alerts.yml`](../../../../.github/workflows/security-alerts.yml).
 Ils sont écrits dans un data stream par source, transformés en champs ECS par un
-ingest pipeline, et lus par des Kibana Rules rangées par périmètre :
+ingest pipeline ([`supervision/pipelines/webhooks/`](../../supervision/pipelines/webhooks/README.md)),
+et lus par des Kibana Rules rangées par périmètre :
 
 | Données | Alertes |
 |---|---|
@@ -15,9 +18,9 @@ ingest pipeline, et lus par des Kibana Rules rangées par périmètre :
 
 > **Statut** : validé de bout en bout sur une pile Elasticsearch + Kibana 9.4.7
 > locale (pipelines, droits, failure store, règles, messages rendus). Stockage,
-> pipelines et accès déployés sur Elastic Cloud le 2026-10-14 ; notifiers
-> Scalingo et envoi de `security-alerts.yml` : en cours (cf.
-> [mise en service](#mise-en-service)).
+> pipelines et accès déployés sur Elastic Cloud le 2026-10-14, notifiers
+> Scalingo le 2026-10-19 ; envoi de `security-alerts.yml` : à la fusion des PR
+> de chaque repo (cf. [mise en service](#mise-en-service)).
 
 ## La chaîne
 
@@ -41,13 +44,8 @@ transformation en champs ECS se fait dans un **ingest pipeline**.
 | Fichier | Contenu |
 |---|---|
 | [`stockage/logs/`](../../stockage/logs/README.md) `2-component-templates.console`, `3-index-templates.console` | mapping et templates des 4 data streams (logsdb, `default_pipeline`, failure store), création à l'avance des data streams ; rétention : les briques `logs-<env>-retention-custom` existantes |
-| [`pipelines/ingest-alertes-scalingo.console`](pipelines/ingest-alertes-scalingo.console) | transformation commune des événements Scalingo, et ses `_simulate` sur les captures réelles |
-| [`pipelines/ingest-alertes-scalingo-format-slack.console`](pipelines/ingest-alertes-scalingo-format-slack.console) | remet au format habituel un événement envoyé au format Slack (cf. [format Slack](correspondance-ecs.md#format-slack)) |
-| [`pipelines/ingest-alertes-scalingo-<env>-default.console`](pipelines/) | pipeline par défaut de chaque data stream Scalingo : vérifie l'enveloppe et l'environnement, puis appelle le pipeline commun |
-| [`pipelines/ingest-alertes-github-default.console`](pipelines/ingest-alertes-github-default.console) | transformation des alertes Dependabot |
-| [`correspondance-ecs.md`](correspondance-ecs.md) | correspondance entre le payload de chaque source et les champs ECS, gabarit du `message`, rejets |
-| [`security/acces-alertes-externes.console`](security/acces-alertes-externes.console) | rôle et utilisateur Scalingo, API Key GitHub |
-| [`supervision/discovers/evenements-externes/`](../../supervision/discovers/evenements-externes/) | sessions Discover des événements, des CVE et des rejets |
+| [`supervision/pipelines/webhooks/`](../../supervision/pipelines/webhooks/README.md) | les ingest pipelines (transformation en champs ECS) et l'accès en écriture des émetteurs ; ce que font les pipelines : [correspondance-ecs.md](../../supervision/pipelines/webhooks/correspondance-ecs.md) |
+| [`supervision/discovers/webhooks/`](../../supervision/discovers/webhooks/) | sessions Discover des événements, des CVE et des rejets |
 
 **Un événement = une ligne de notification.** Les règles ne comptent que les
 documents arrivés depuis leur exécution précédente (`excludeHitsFromPreviousRun`)
@@ -61,7 +59,7 @@ ouvertes : V1 les notifie donc à chaque passage.
 
 La correspondance champ par champ (payload de la source → champ ECS → règle de
 transformation), le gabarit de la ligne `message`, les catégories et émojis, et
-les causes de rejet : **[correspondance-ecs.md](correspondance-ecs.md)**.
+les causes de rejet : **[correspondance-ecs.md](../../supervision/pipelines/webhooks/correspondance-ecs.md)**.
 
 En résumé : chaque pipeline pose `event.provider` (`scalingo` | `github`),
 `event.kind`, `event.action`, `event.id`, `service.name` et `message`, la ligne
@@ -78,16 +76,16 @@ Tchap listent telle quelle. Le payload brut est gardé sous `scalingo.*` ou
    `3-index-templates.console`, **y compris la création des 4 data streams et
    de leur failure store** qui suit les templates : sans elle, les règles
    tombent en erreur tant qu'aucun document n'est arrivé.
-2. **Pipelines** : rejouer [`pipelines/ingest-alertes-scalingo.console`](pipelines/ingest-alertes-scalingo.console)
-   et [`pipelines/ingest-alertes-scalingo-format-slack.console`](pipelines/ingest-alertes-scalingo-format-slack.console)
+2. **Pipelines** : rejouer [`ingest-alertes-scalingo.console`](../../supervision/pipelines/webhooks/ingest-alertes-scalingo.console)
+   et [`ingest-alertes-scalingo-format-slack.console`](../../supervision/pipelines/webhooks/ingest-alertes-scalingo-format-slack.console)
    en premier, puis les trois `ingest-alertes-scalingo-<env>-default.console` et
    `ingest-alertes-github-default.console`. Les `_simulate` en fin de fichier
    doivent donner les résultats annoncés en commentaire.
-3. **Accès** : rejouer [`security/acces-alertes-externes.console`](security/acces-alertes-externes.console)
+3. **Accès** : rejouer [`acces-webhooks.console`](../../supervision/pipelines/webhooks/acces-webhooks.console)
    en remplaçant `<mot-de-passe-généré>` par un mot de passe alphanumérique,
    rangé dans le coffre de l'équipe. Copier le champ `encoded` de l'API Key.
 4. **Sessions Discover** : importer les `.ndjson` de
-   [`supervision/discovers/evenements-externes/`](../../supervision/discovers/evenements-externes/)
+   [`supervision/discovers/webhooks/`](../../supervision/discovers/webhooks/)
    (cf. [importer](../../supervision/objets-kibana.md#importer)), **avant** les
    règles : leurs liens pointent vers ces sessions par leur id.
 5. **Règles** : A4a, A4b ([`2-rules-applicatives.console`](../../supervision/rules/generated/2-rules-applicatives.console)),
@@ -152,7 +150,7 @@ python3 -I verifier-parite.py --depuis 2026-10-19T17:00:00Z
 
 ## Points ouverts
 
-- **Noms des `type` de crash et de déploiement** : non capturés (cf. [table des actions](correspondance-ecs.md#table-des-actions)).
+- **Noms des `type` de crash et de déploiement** : non capturés (cf. [table des actions](../../supervision/pipelines/webhooks/correspondance-ecs.md#table-des-actions)).
 - **Événements au format Slack** : seules les variables sont constatées. Un
   autre type dans ce format passe par le même pipeline et sort en ℹ️
   `scalingo_<libellé>` ; un format encore différent part au failure store

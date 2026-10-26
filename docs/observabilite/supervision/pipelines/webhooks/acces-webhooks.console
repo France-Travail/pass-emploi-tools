@@ -1,5 +1,5 @@
-# Accès en écriture des émetteurs d'alertes externes, un accès par source.
-# Spécification : ../README.md.
+# Accès en écriture des émetteurs de webhooks, un accès par source.
+# Spécification : README.md.
 #
 # Un émetteur ne peut qu'ajouter des documents aux data streams de SA source :
 # ni lire, ni modifier, ni supprimer, ni écrire chez l'autre source.

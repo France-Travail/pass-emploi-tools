@@ -460,8 +460,8 @@ opérations d'infra.
 
 Des **Elasticsearch query rules (KQL)** sur les événements des notifiers
 Scalingo, collectés dans `logs-alertes-scalingo-<env>-default` (cf.
-[collecte des événements externes](../collecte/evenements-externes/README.md),
-dont la [mise en service](../collecte/evenements-externes/README.md#mise-en-service)
+[collecte par webhook](../collecte/webhooks/README.md),
+dont la [mise en service](../collecte/webhooks/README.md#mise-en-service)
 des notifiers). Une règle par environnement, qui liste chaque événement sur une
 ligne, préfixée de sa gravité (niveaux des anciennes X1 à X3) : en prod, 🚨
 crash, redémarrage ou arrêt, ⚠️ seuil dépassé ; en staging / perf, ⚠️ pour
@@ -1082,7 +1082,7 @@ Une ligne par rejet : `error.type` et `error.message`.
 1. Le Discover **[Pass Emploi] Alertes externes - Rejets (failure store)** :
    `error.type` et `error.message` donnent le motif du rejet.
 2. Le payload d'origine (`document.source`) : adapter le pipeline (cf.
-   [correspondance ECS](../collecte/evenements-externes/correspondance-ecs.md), rubriques « Rejets »),
+   [correspondance ECS](pipelines/webhooks/correspondance-ecs.md), rubriques « Rejets »),
    puis le rejouer en `_simulate`.
 
 ---

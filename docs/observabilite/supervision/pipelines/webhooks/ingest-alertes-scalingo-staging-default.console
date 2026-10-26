@@ -1,14 +1,14 @@
-# Pipeline par défaut de logs-alertes-scalingo-prod-default. Spécification :
-# ../README.md. À rejouer après ingest-alertes-scalingo.console et
+# Pipeline par défaut de logs-alertes-scalingo-staging-default. Spécification :
+# README.md. À rejouer après ingest-alertes-scalingo.console et
 # ingest-alertes-scalingo-format-slack.console.
 #
-# Vérifie que le document est bien un événement Scalingo d'une app de prod, puis
+# Vérifie que le document est bien un événement Scalingo d'une app de staging, puis
 # délègue la transformation au pipeline commun. Un document rejeté part dans le
 # failure store du data stream (règle 14) : un notifier mal configuré (mauvais
 # data stream dans son URL) se voit au lieu de polluer les alertes d'un autre env.
-PUT _ingest/pipeline/ingest-alertes-scalingo-prod-default
+PUT _ingest/pipeline/ingest-alertes-scalingo-staging-default
 {
-  "description": "Notifiers Scalingo des apps de prod → ECS",
+  "description": "Notifiers Scalingo des apps de staging → ECS",
   "processors": [
     {
       "pipeline": {
@@ -29,21 +29,21 @@ PUT _ingest/pipeline/ingest-alertes-scalingo-prod-default
     },
     {
       "fail": {
-        "if": "ctx.service?.environment != 'prod'",
-        "message": "App {{{scalingo.app_name}}} envoyée vers logs-alertes-scalingo-prod-default : corriger l'URL de son notifier"
+        "if": "ctx.service?.environment != 'staging'",
+        "message": "App {{{scalingo.app_name}}} envoyée vers logs-alertes-scalingo-staging-default : corriger l'URL de son notifier"
       }
     }
   ]
 }
 
-# TESTS — app de prod → indexée ; app de staging → erreur « corriger l'URL de
+# TESTS — app de staging → indexée ; app de prod → erreur « corriger l'URL de
 # son notifier » ; payload d'une autre source → erreur « Pas un événement de
 # notifier Scalingo » (failure store en réel).
-POST _ingest/pipeline/ingest-alertes-scalingo-prod-default/_simulate
+POST _ingest/pipeline/ingest-alertes-scalingo-staging-default/_simulate
 {
   "docs": [
-    { "_source": {"id":"test-prod","created_at":"2026-10-12T08:00:00.000Z","type":"restart","app_id":"test","app_name":"pass-emploi-api-prod","user":{"username":"scalingo-platform"},"type_data":{"scope":["web"],"reason":"user_restart"}} },
     { "_source": {"id":"test-staging","created_at":"2026-10-12T08:00:00.000Z","type":"restart","app_id":"test","app_name":"pass-emploi-api-staging","user":{"username":"scalingo-platform"},"type_data":{"scope":["web"],"reason":"user_restart"}} },
+    { "_source": {"id":"test-prod","created_at":"2026-10-12T08:00:00.000Z","type":"restart","app_id":"test","app_name":"pass-emploi-api-prod","user":{"username":"scalingo-platform"},"type_data":{"scope":["web"],"reason":"user_restart"}} },
     { "_source": {"message":"payload sans source connue"} }
   ]
 }

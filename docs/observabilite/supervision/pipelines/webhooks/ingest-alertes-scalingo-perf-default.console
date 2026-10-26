@@ -1,5 +1,5 @@
 # Pipeline par défaut de logs-alertes-scalingo-perf-default. Spécification :
-# ../README.md. À rejouer après ingest-alertes-scalingo.console et
+# README.md. À rejouer après ingest-alertes-scalingo.console et
 # ingest-alertes-scalingo-format-slack.console.
 #
 # Vérifie que le document est bien un événement Scalingo d'une app de perf, puis

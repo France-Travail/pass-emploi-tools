@@ -176,7 +176,7 @@ PUT _component_template/logs-apm.error@custom
 # logs-alertes-scalingo-<env>-default (notifiers Scalingo) et
 # logs-alertes-github-default (CVE Dependabot). Rétention : les briques
 # logs-<env>-retention-custom ci-dessus, comme les logs applicatifs du même env.
-# Champs posés par les ingest pipelines de ../../collecte/evenements-externes/pipelines/.
+# Champs posés par les ingest pipelines de ../../supervision/pipelines/webhooks/.
 PUT _component_template/logs-alertes@mappings
 {
   "template": {
