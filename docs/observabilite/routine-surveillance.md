@@ -35,6 +35,7 @@ qu'aucune alerte ne signale. Pour enquêter sur un incident :
 > **Fin de la période** : à la mise en service du bot (cf.
 > [Workflows Tchap, mise en service](supervision/workflows/tchap/README.md#mise-en-service)),
 > vérifier qu'une alerte de chaque salon arrive dans Tchap, puis retirer cet encadré.
+> Suivi : ticket Notion « Tchap — Accoster les alertes Kibana aux salons Tchap ».
 
 ## Chaque jour (5 min)
 

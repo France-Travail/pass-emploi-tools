@@ -7,8 +7,12 @@
 > tout ce qui poste dans Mattermost doit arriver dans Tchap avant le
 > **décommissionnement de Mattermost, le 1er novembre 2026**.
 >
-> Artefact de travail : il sert de liste de contrôle jusqu'au 1er novembre. La
-> doc de référence reste celle des périmètres (`alertes-*.md`) et de la collecte.
+> Artefact de travail, gardé **par exception** aux règles de documentation (une
+> spec ne se versionne pas) : la migration se fait en plusieurs étapes, tickets
+> Notion et branches, et cette spec en garde le contexte d'une étape à l'autre.
+> **À supprimer quand le plan de migration est achevé** (bascule faite, actions
+> Mattermost retirées, suites reportées en tickets). La doc de référence reste
+> celle des périmètres (`alertes-*.md`) et de la collecte.
 
 ## 1. Problème
 

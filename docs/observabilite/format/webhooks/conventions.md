@@ -6,6 +6,11 @@ quel champ ECS, avec quelle règle, et comment se construit la ligne `message`
 que les règles et Tchap affichent. C'est l'équivalent, pour ces sources, des
 [conventions des logs ECS](../logs/conventions.md) pour les logs des apps.
 
+Cette matrice redit volontairement ce que font les pipelines, **par exception**
+à la règle « un fait, un endroit » : ECS et l'organisation des configurations
+Elastic du repo sont peu familiers à l'équipe, qui a besoin de lire la
+correspondance sans lire le Painless des pipelines, comme pour les logs.
+
 Ce fichier décrit **ce que font les pipelines** de [`supervision/pipelines/webhooks/`](../../supervision/pipelines/webhooks/README.md) :
 toute modification d'un pipeline se reporte ici dans la même PR, et inversement.
 La chaîne, les accès et la mise en service : [collecte par webhook](../../collecte/webhooks/README.md).
