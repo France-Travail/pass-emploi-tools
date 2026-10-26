@@ -39,6 +39,7 @@ Principes et import des templates ES : [stockage/README.md](stockage/README.md).
 | [supervision/alertes-stack-observabilite.md](supervision/alertes-stack-observabilite.md) | Alertes sur notre infra de télémétrie (Logstash, Redis, agents Fleet, événements Scalingo de la stack) |
 | [supervision/alertes-securite.md](supervision/alertes-securite.md) | Alertes sur les vulnérabilités des dépendances (CVE Dependabot) |
 | [collecte/evenements-externes/README.md](collecte/evenements-externes/README.md) | Collecte des événements émis hors Elastic (notifiers Scalingo, CVE Dependabot) |
+| [collecte/evenements-externes/correspondance-ecs.md](collecte/evenements-externes/correspondance-ecs.md) | Correspondance entre le payload de chaque source externe et les champs ECS, gabarit de la ligne `message`, rejets |
 | [supervision/objets-kibana.md](supervision/objets-kibana.md) | Inventaire des dashboards, sessions Discover, SLO et règles versionnés, et comment les importer |
 | [runbooks/investigation-incident.md](runbooks/investigation-incident.md) | Enquêter sur un incident applicatif (KQL par `user.id`, `trace.id`…) |
 | [runbooks/runbook-logstash.md](runbooks/runbook-logstash.md) | Diagnostiquer une panne de la chaîne de logs (5 scénarios + playbook) |

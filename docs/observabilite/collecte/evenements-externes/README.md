@@ -42,9 +42,10 @@ transformation en champs ECS se fait dans un **ingest pipeline**.
 |---|---|
 | [`stockage/logs/`](../../stockage/logs/README.md) `2-component-templates.console`, `3-index-templates.console` | mapping et templates des 4 data streams (logsdb, `default_pipeline`, failure store), création à l'avance des data streams ; rétention : les briques `logs-<env>-retention-custom` existantes |
 | [`pipelines/ingest-alertes-scalingo.console`](pipelines/ingest-alertes-scalingo.console) | transformation commune des événements Scalingo, et ses `_simulate` sur les captures réelles |
-| [`pipelines/ingest-alertes-scalingo-format-slack.console`](pipelines/ingest-alertes-scalingo-format-slack.console) | remet au format habituel un événement envoyé au format Slack (cf. [Scalingo](#scalingo)) |
+| [`pipelines/ingest-alertes-scalingo-format-slack.console`](pipelines/ingest-alertes-scalingo-format-slack.console) | remet au format habituel un événement envoyé au format Slack (cf. [format Slack](correspondance-ecs.md#format-slack)) |
 | [`pipelines/ingest-alertes-scalingo-<env>-default.console`](pipelines/) | pipeline par défaut de chaque data stream Scalingo : vérifie l'enveloppe et l'environnement, puis appelle le pipeline commun |
 | [`pipelines/ingest-alertes-github-default.console`](pipelines/ingest-alertes-github-default.console) | transformation des alertes Dependabot |
+| [`correspondance-ecs.md`](correspondance-ecs.md) | correspondance entre le payload de chaque source et les champs ECS, gabarit du `message`, rejets |
 | [`security/acces-alertes-externes.console`](security/acces-alertes-externes.console) | rôle et utilisateur Scalingo, API Key GitHub |
 | [`supervision/discovers/evenements-externes/`](../../supervision/discovers/evenements-externes/) | sessions Discover des événements, des CVE et des rejets |
 
@@ -58,84 +59,15 @@ ouvertes : V1 les notifie donc à chaque passage.
 
 ## Champs ECS produits
 
-Commun aux deux sources : `event.provider` (`scalingo` | `github`),
-`event.kind`, `event.action`, `event.id`, `service.name`, et `message`, la ligne
+La correspondance champ par champ (payload de la source → champ ECS → règle de
+transformation), le gabarit de la ligne `message`, les catégories et émojis, et
+les causes de rejet : **[correspondance-ecs.md](correspondance-ecs.md)**.
+
+En résumé : chaque pipeline pose `event.provider` (`scalingo` | `github`),
+`event.kind`, `event.action`, `event.id`, `service.name` et `message`, la ligne
 de notification de l'événement en texte brut, que les règles et les Workflows
-Tchap (cf. [workflows/tchap](../../supervision/workflows/tchap/README.md#le-message))
-listent telle quelle. Le payload brut est gardé sous `scalingo.*` ou `github.*`,
-lisible dans le document mais **non indexé** (`dynamic: false`) : on ne cherche
-pas dedans, on s'en sert pour enquêter ou faire évoluer le mapping.
-
-### Scalingo
-
-Enveloppe commune, vérifiée sur 3 captures réelles le 2026-09-23 :
-`{id, created_at, type, app_id, app_name, user, type_data}`. `type_data` change
-de forme selon `type`.
-
-| `type` Scalingo                 | `event.action`                                                                     | `event.outcome`       | Autres champs                                                                                       |
-|---------------------------------|------------------------------------------------------------------------------------|-----------------------|-----------------------------------------------------------------------------------------------------|
-| `alert` ✅                      | `resource_threshold_exceeded` (`activated: true`) / `resource_threshold_recovered` | `failure` / `success` | `event.kind: alert`, `labels.metric`, `labels.value_text`, `labels.limit_text`, `service.node.name` |
-| `scale` ✅                      | `app_scaled`                                                                       | —                     | `labels.formation`, `labels.formation_before`, `labels.scaled_to_zero`                              |
-| `restart` ✅                    | `app_restarted`                                                                    | —                     | `event.reason` (`user_restart`…), `labels.scope`                                                    |
-| `crash`                         | `app_crashed`                                                                      | `failure`             | `event.reason`                                                                                      |
-| `repeated_crash`                | `app_crashed_repeatedly`                                                           | `failure`             | `event.reason`                                                                                      |
-| `stop` / `start` / `deployment` | `app_stopped` / `app_started` / `app_deployed`                                     | —                     |                                                                                                     |
-| autre                           | `scalingo_<type>`                                                                  | —                     | indexé quand même, visible dans Discover                                                            |
-
-**Deux formats.** Le même notifier webhook envoie certains événements au format
-Slack, celui qu'il poste dans Mattermost : constaté le 2026-10-19 pour les
-modifications de variables (`{username: "Scalingo", attachments: [{title:
-"[<app>] Variables bulk edited", fields, footer: "By <auteur>", ts}]}`), alors
-que les redémarrages, scalings et alertes arrivent au format ci-dessus.
-`ingest-alertes-scalingo-format-slack` les remet dans l'enveloppe habituelle :
-`type` = le libellé en snake_case (`scalingo_variables_bulk_edited`, classé
-`infra`), `labels.details` = les champs (noms des variables, jamais leurs
-valeurs). Exemple : `ℹ️ pass-emploi-logstash-perf : scalingo_variables_bulk_edited (New vars : TEST_NOTIFIER_ELASTIC), par alexandre.tingaud-octo`.
-
-✅ = capturé. Les autres noms de `type` viennent du catalogue Scalingo, **à
-confirmer à la première occurrence réelle** : `labels.scalingo_type` garde la
-valeur brute. Si un crash arrive sous un autre nom, il tombe en `scalingo_<type>`
-et est classé `infra` : l'ajouter à la table `actions` du pipeline
-`ingest-alertes-scalingo`, et à `critiques` si c'est un incident.
-
-**Catégorie et émoji** : le pipeline classe chaque événement dans
-`labels.categorie` et préfixe `message` d'un émoji, depuis une seule table :
-
-| `labels.categorie` | Événements | Émoji en prod | Émoji en staging / perf |
-|---|---|---|---|
-| `incident` | `app_crashed`, `app_crashed_repeatedly`, `app_restarted` (quelle que soit la raison), `app_stopped` | 🚨 | ⚠️ |
-| `incident` | `resource_threshold_exceeded` | ⚠️ | ⚠️ |
-| `infra` | tout le reste, par défaut : `app_deployed`, `app_scaled`, variables, `resource_threshold_recovered`, `scalingo_<type>` | ℹ️ | ℹ️ |
-
-Les niveaux reprennent ceux des anciennes règles X1 (🚨 en prod), X2 et X3 (⚠️) ;
-tout événement qu'elles ne notifiaient pas est en ℹ️.
-
-Exemple : `🚨 pass-emploi-api-prod : app_crashed (oom) sur web, par scalingo-platform`.
-Les règles filtrent `labels.categorie` si l'on veut un jour sortir l'infra des
-salons de monitoring (cf. [alertes applicatives](../../supervision/alertes-applicatives.md)).
-
-`service.name` et `service.environment` suivent la même règle que Logstash
-(suffixe `-prod`, `-staging`, `-perf` de l'app). Une app dont le suffixe ne
-correspond pas au data stream visé est rejetée : son notifier pointe vers le
-mauvais environnement (règle 14). `user.name` est l'auteur
-(`scalingo-platform` pour un événement automatique) ; **l'email n'est pas
-conservé**.
-
-### Dependabot
-
-Un document par alerte, au format de l'API REST GitHub
-(`GET /repos/{owner}/{repo}/dependabot/alerts`), plus `repository` (nom court
-du repo). `@timestamp` est l'heure d'envoi par le workflow.
-
-| Champ                                                                 | Source                                                    |
-|-----------------------------------------------------------------------|-----------------------------------------------------------|
-| `service.name`                                                        | `repository` (à défaut, extrait de `html_url`)            |
-| `event.action`                                                        | `dependency_vulnerability_detected` (`event.kind: alert`) |
-| `event.id`                                                            | `<repo>#<numéro de l'alerte>`                             |
-| `vulnerability.id`                                                    | `security_advisory.cve_id`, à défaut `ghsa_id`            |
-| `vulnerability.severity`, `.description`, `.reference`, `.score.base` | `severity`, `summary`, `html_url`, score CVSS v3          |
-| `package.name`, `labels.ecosystem`, `labels.ghsa_id`                  | `dependency.package.*`, `ghsa_id`                         |
-| `labels.dependabot_url`                                               | page des alertes du repo, déduite de `html_url`           |
+Tchap listent telle quelle. Le payload brut est gardé sous `scalingo.*` ou
+`github.*`, lisible dans le document mais **non indexé**.
 
 ## Mise en service
 
@@ -220,7 +152,7 @@ python3 -I verifier-parite.py --depuis 2026-10-19T17:00:00Z
 
 ## Points ouverts
 
-- **Noms des `type` de crash et de déploiement** : non capturés (cf. [Scalingo](#scalingo)).
+- **Noms des `type` de crash et de déploiement** : non capturés (cf. [table des actions](correspondance-ecs.md#table-des-actions)).
 - **Événements au format Slack** : seules les variables sont constatées. Un
   autre type dans ce format passe par le même pipeline et sort en ℹ️
   `scalingo_<libellé>` ; un format encore différent part au failure store
