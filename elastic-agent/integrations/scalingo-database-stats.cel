@@ -34,8 +34,8 @@ request("POST", state.auth_url).with({
                           "app": base.app,
                           "addon_id": base.addon_id,
                           "instance": i.instance_id,
-                          "data_size": {"bytes": int(m.database_stats.data_size)},
-                        }.with(has(base.connexions_max) ? {"connexions_max": base.connexions_max} : {}),
+                        }.with(has(base.connexions_max) ? {"connexions_max": base.connexions_max} : {})
+                        .with(m.?database_stats.?data_size.hasValue() ? {"data_size": {"bytes": int(m.database_stats.data_size)}} : {}),
                         "cpu": {"usage": i.cpu.usage_in_percents},
                         "memory": {
                           "usage": {"bytes": int(i.memory.memory_usage)},

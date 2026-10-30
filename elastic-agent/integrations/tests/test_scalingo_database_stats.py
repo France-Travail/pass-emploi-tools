@@ -56,6 +56,12 @@ class TestScalingoDatabaseStats(unittest.TestCase):
         self.assertEqual(pg['connexions_max'], 480)
         self.assertNotIn('connexions_max', redis)
 
+    def test_base_sans_taille_des_donnees(self):
+        self.base('redis-api-prod', faux_scalingo.ADDON_SANS_STATS)
+        base = self.evenements()[0]['scalingo']['database']
+        self.assertEqual(base['nom'], 'redis-api-prod')
+        self.assertNotIn('data_size', base)
+
     def test_base_en_erreur_n_arrete_pas_les_autres(self):
         self.base('postgresql-api-prod', 'addon-pg')
         self.base('redis-en-panne', faux_scalingo.ADDON_EN_ERREUR)

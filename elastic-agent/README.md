@@ -202,7 +202,7 @@ MITO=<chemin de mito> python3 -I -m unittest discover -s elastic-agent/integrati
 |-----------------------------------------------------------------|-----------------------------------------------------------|
 | `scalingo.database.nom`, `.app`, `.addon_id`                    | state (`bases`)                                           |
 | `scalingo.database.instance`                                    | `instances_metrics.<id>.instance_id`                      |
-| `scalingo.database.data_size.bytes`                             | `database_stats.data_size`                                |
+| `scalingo.database.data_size.bytes`                             | `database_stats.data_size`, si l'API la donne (absente pour certaines bases) |
 | `scalingo.database.connexions_max`                              | state, si le plan en fixe                                 |
 | `scalingo.cpu.usage`                                            | `cpu.usage_in_percents` de l'instance (%)                 |
 | `scalingo.memory.usage.bytes`, `.limit.bytes`, `.highest.bytes` | `memory_usage`, `memory_limit`, `max_memory_usage`        |
