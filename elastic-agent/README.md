@@ -22,7 +22,8 @@ pass-emploi-elastic-agent-perf   ← cette app (1 seule instance)
   └── Elastic Agent Fleet
         ├── Intégration Redis → Redis Logstash (SCALINGO_REDIS_URL)
         ├── Intégration Redis → autres Redis si besoin
-        └── Intégration Custom API (CEL) → API Scalingo /stats (mémoire des conteneurs)
+        ├── Intégration Custom API (CEL) → API Scalingo /stats (mémoire des conteneurs)
+        └── Intégration Custom API (CEL) → API des bases Scalingo /metrics (instances des bases)
 ```
 
 ## Configuration des intégrations (Fleet)
@@ -111,7 +112,7 @@ confondre avec « Custom API », package `httpjson`, qui n'a pas de champ progra
 | Resource Interval                          | `1m`                                                                                                |
 | The CEL program to be run for each polling | contenu de `integrations/scalingo-container-stats.cel`                                              |
 | Initial CEL evaluation state               | voir ci-dessous                                                                                     |
-| Secret CEL evaluation state                | `api_token: <token API Scalingo, Bitwarden « Scalingo — token observabilité »>`                     |
+| Secret CEL evaluation state                | `api_token: <token API Scalingo, Bitwarden « API Token Scalingo pour Elastic »>`                     |
 
 ```yaml
 auth_url: https://auth.scalingo.com/v1/tokens/exchange
@@ -145,3 +146,66 @@ apps:
 | `scalingo.memory.pct`                                           | `memory_usage / memory_limit` (0–1)                                    |
 | `scalingo.swap.usage.bytes`, `.highest.bytes`                   | `swap_usage`, `highest_swap_usage`                                     |
 | `scalingo.cpu.usage`                                            | `cpu_usage` (%)                                                        |
+
+## Métriques des instances de bases (intégration Custom API)
+
+CPU, mémoire, swap et disque des instances PostgreSQL et Redis, que les
+intégrations PostgreSQL et Redis ne voient pas (Scalingo gère ces instances).
+L'API des bases de Scalingo les donne par
+`GET https://db-api.osc-secnum-fr1.scalingo.com/api/databases/<addon_id>/metrics`,
+avec un jeton propre à chaque base.
+
+Programme versionné : [`integrations/scalingo-database-stats.cel`](integrations/scalingo-database-stats.cel).
+Il échange le token API contre un JWT, demande pour chaque base son jeton
+(`POST /v1/apps/<app>/addons/<addon_id>/token`), puis ses métriques, et émet un
+document par instance. Une base en erreur émet un document `error.message` à son
+nom ; les autres continuent.
+
+Le compte qui porte le token doit être **collaborateur** (pas *limited*) sur
+chaque app qui porte une base : un collaborateur limité ne lit pas les
+métriques des bases.
+
+Installation : comme la mémoire des conteneurs, avec ces valeurs :
+
+| Champ                        | Valeur                                       |
+|------------------------------|----------------------------------------------|
+| Integration name             | `scalingo-database-stats-<env>`              |
+| Dataset name                 | `scalingo.database_stats`                    |
+| Resource URL                 | `https://api.osc-secnum-fr1.scalingo.com`    |
+| Resource Interval            | `1m`                                         |
+| Secret CEL evaluation state  | `api_token: <Bitwarden « API Token Scalingo pour Elastic »>` |
+
+*Initial CEL evaluation state* (prod) :
+
+```yaml
+auth_url: https://auth.scalingo.com/v1/tokens/exchange
+db_api_url: https://db-api.osc-secnum-fr1.scalingo.com
+bases:
+  - {app: pass-emploi-api-prod, addon_id: ad-a402741f-8751-409c-b602-a645998335ef, nom: postgresql-api-prod, disque_inclus_octets: 171798691840, connexions_max: 480}
+  - {app: pass-emploi-api-prod, addon_id: ad-a1a0483d-c0b0-4e75-afb8-d53afb90bc9c, nom: redis-api-prod, disque_inclus_octets: 171798691840}
+  - {app: pass-emploi-connect-prod, addon_id: ad-82bc06a9-c3b8-431e-acd7-c62382fcda2c, nom: redis-connect-prod, disque_inclus_octets: 21474836480}
+```
+
+`disque_inclus_octets` et `connexions_max` recopient la description du plan de
+l'addon (`GET https://api.osc-secnum-fr1.scalingo.com/v1/addon_providers/<postgresql|redis>/plans`) :
+à mettre à jour si le plan change. Le disque inclus est un quota facturé au-delà,
+pas une limite qui bloque la base.
+
+**Tests** : contre un faux Scalingo local, avec [`mito`](https://github.com/elastic/mito)
+(sans release binaire : `go install github.com/elastic/mito/cmd/mito@latest`) :
+
+```bash
+MITO=<chemin de mito> python3 -I -m unittest discover -s elastic-agent/integrations/tests -v
+```
+
+| Champ produit                                                   | Source `/metrics`                                         |
+|-----------------------------------------------------------------|-----------------------------------------------------------|
+| `scalingo.database.nom`, `.app`, `.addon_id`                    | state (`bases`)                                           |
+| `scalingo.database.instance`                                    | `instances_metrics.<id>.instance_id`                      |
+| `scalingo.database.data_size.bytes`                             | `database_stats.data_size`                                |
+| `scalingo.database.connexions_max`                              | state, si le plan en fixe                                 |
+| `scalingo.cpu.usage`                                            | `cpu.usage_in_percents` de l'instance (%)                 |
+| `scalingo.memory.usage.bytes`, `.limit.bytes`, `.highest.bytes` | `memory_usage`, `memory_limit`, `max_memory_usage`        |
+| `scalingo.memory.pct`                                           | `memory_usage / memory_limit` (0–1)                       |
+| `scalingo.swap.usage.bytes`                                     | `swap_usage`                                              |
+| `scalingo.disk.usage.bytes`, `.inclus.bytes`, `.pct`            | `real_disk_size` de l'instance, quota du plan, rapport (0–1) |
