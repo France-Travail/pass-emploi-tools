@@ -19,6 +19,15 @@ et cette doc pointent vers les objets par leur id.
 | [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74) | [`dashboards/dashboard-diagnostic-erreurs.ndjson`](dashboards/dashboard-diagnostic-erreurs.ndjson) | point d'entrée du diagnostic d'erreurs : taux d'échec, échecs par app, échecs Router contre App ; oriente vers les deux suivants |
 | [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74) | [`dashboards/dashboard-diagnostic-erreurs.ndjson`](dashboards/dashboard-diagnostic-erreurs.ndjson) | erreurs applicatives : top erreurs par app, routes en échec, échecs et pannes de transport partenaires, messages d'erreur |
 | [[Pass Emploi] Diagnostic d'erreurs - Robots / scan](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6) | [`dashboards/dashboard-diagnostic-erreurs.ndjson`](dashboards/dashboard-diagnostic-erreurs.ndjson) | bruit des robots et scanners : 404, IP, user agents, 401 |
+| [[Pass Emploi] Bases de données - PostgreSQL](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/66b0c0ac-d034-489b-ab0a-7b07539074ff) | [`dashboards/dashboard-bases-de-donnees.ndjson`](dashboards/dashboard-bases-de-donnees.ndjson) | PostgreSQL de l'api : mémoire, disque, CPU, connexions, cache ; requêtes lentes (moyenne et P95/P99), les plus appelées ; tables lues sans index, index jamais utilisés |
+| [[Pass Emploi] Bases de données - Redis](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/86b702ee-b9c7-4344-91ef-a10a50405ed5) | [`dashboards/dashboard-bases-de-donnees.ndjson`](dashboards/dashboard-bases-de-donnees.ndjson) | Redis de l'api et de connect : mémoire face à la limite du conteneur, activité, clients, clés, files de jobs Bull |
+
+Les dashboards des bases ne sont pas génériques : le dashboard Redis associe
+chaque adresse à une base dans ses requêtes (`pa-back-prod-2395` → `redis-api-prod`,
+`pass-emploi-connect-3919` → `redis-connect-prod`) ; l'environnement se lit dans
+le nom de la base (`…-perf`) ou de l'agent (`…-elastic-agent-perf-…`). Un Redis
+qui change d'adresse, ou la perf, se règle en modifiant ces requêtes dans Kibana,
+puis en réexportant le fichier.
 
 ## Sessions Discover
 

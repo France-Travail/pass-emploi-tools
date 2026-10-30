@@ -221,6 +221,141 @@ PUT _component_template/logs-scalingo.container_stats@custom
   "_meta": { "description": "Mémoire des conteneurs Scalingo (API /stats)", "managed_by": "pass-emploi-tools" }
 }
 
+# ─── PostgreSQL de l'api (intégration PostgreSQL, agent dédié) ───
+PUT _component_template/metrics-postgresql.database@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "description": "Retention métriques base PostgreSQL (cache, transactions, verrous)", "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/metrics-postgresql.activity@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "description": "Retention activité PostgreSQL (connexions)", "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/metrics-postgresql.bgwriter@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } } },
+  "_meta": { "description": "Retention bgwriter PostgreSQL (checkpoints)", "managed_by": "pass-emploi-tools" }
+}
+
+# ─── PostgreSQL de l'api (package SQL, requêtes de elastic-agent/integrations/postgresql/) ───
+PUT _component_template/metrics-sql.postgresql_statements@custom
+{
+  "template": {
+    "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } },
+    "mappings": {
+      "properties": {
+        "sql": { "properties": { "metrics": { "properties": {
+          "queryid": { "type": "keyword" },
+          "requete": { "type": "keyword", "ignore_above": 10000 },
+          "calls": { "type": "long" },
+          "total_exec_time_ms": { "type": "double" },
+          "mean_exec_time_ms": { "type": "double" },
+          "stddev_exec_time_ms": { "type": "double" },
+          "rows": { "type": "long" },
+          "shared_blks_hit": { "type": "long" },
+          "shared_blks_read": { "type": "long" },
+          "classement": { "type": "keyword" },
+          "stats_reset": { "type": "keyword" },
+          "requetes_evincees": { "type": "long" }
+        } } } }
+      }
+    }
+  },
+  "_meta": { "description": "Retention et types des statistiques des requêtes PostgreSQL (pg_stat_statements, top 200 x 2)", "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/metrics-sql.postgresql_index_stats@custom
+{
+  "template": {
+    "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } },
+    "mappings": {
+      "properties": {
+        "sql": { "properties": { "metrics": { "properties": {
+          "schema": { "type": "keyword" },
+          "table": { "type": "keyword" },
+          "index": { "type": "keyword" },
+          "idx_scan": { "type": "long" },
+          "taille_octets": { "type": "long" },
+          "contrainte": { "type": "boolean" },
+          "stats_reset": { "type": "keyword" }
+        } } } }
+      }
+    }
+  },
+  "_meta": { "description": "Retention et types des statistiques des index PostgreSQL", "managed_by": "pass-emploi-tools" }
+}
+
+PUT _component_template/metrics-sql.postgresql_table_stats@custom
+{
+  "template": {
+    "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } },
+    "mappings": {
+      "properties": {
+        "sql": { "properties": { "metrics": { "properties": {
+          "schema": { "type": "keyword" },
+          "table": { "type": "keyword" },
+          "seq_scan": { "type": "long" },
+          "seq_tup_read": { "type": "long" },
+          "idx_scan": { "type": "long" },
+          "n_live_tup": { "type": "long" },
+          "taille_octets": { "type": "long" },
+          "stats_reset": { "type": "keyword" }
+        } } } }
+      }
+    }
+  },
+  "_meta": { "description": "Retention et types des statistiques des tables PostgreSQL", "managed_by": "pass-emploi-tools" }
+}
+
+# ─── Métriques des instances de bases Scalingo (CEL sur l'agent dédié) ───
+# Input CEL = data stream de type logs, mais mesure périodique : rétention métriques.
+PUT _component_template/logs-scalingo.database_stats@custom
+{
+  "template": {
+    "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } },
+    "mappings": {
+      "properties": {
+        "scalingo": {
+          "properties": {
+            "database": {
+              "properties": {
+                "nom": { "type": "keyword" },
+                "app": { "type": "keyword" },
+                "addon_id": { "type": "keyword" },
+                "instance": { "type": "keyword" },
+                "role": { "type": "keyword" },
+                "data_size": { "properties": { "bytes": { "type": "long" } } },
+                "connexions_max": { "type": "integer" }
+              }
+            },
+            "cpu": { "properties": { "usage": { "type": "float" } } },
+            "memory": {
+              "properties": {
+                "usage": { "properties": { "bytes": { "type": "long" } } },
+                "limit": { "properties": { "bytes": { "type": "long" } } },
+                "highest": { "properties": { "bytes": { "type": "long" } } },
+                "pct": { "type": "scaled_float", "scaling_factor": 1000 }
+              }
+            },
+            "swap": { "properties": { "usage": { "properties": { "bytes": { "type": "long" } } } } },
+            "disk": {
+              "properties": {
+                "usage": { "properties": { "bytes": { "type": "long" } } },
+                "inclus": { "properties": { "bytes": { "type": "long" } } },
+                "pct": { "type": "scaled_float", "scaling_factor": 1000 }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "_meta": { "description": "Métriques des instances de bases Scalingo (API des bases /metrics)", "managed_by": "pass-emploi-tools" }
+}
+
 # ─── Métriques APM agrégées (package APM) → metrics-apm-retention, sauf 1 min → metrics-apm-1m-retention ───
 PUT _component_template/metrics-apm.internal@custom
 {
