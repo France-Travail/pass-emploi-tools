@@ -23,6 +23,8 @@ pass-emploi-elastic-agent-perf   ← cette app (1 seule instance)
         ├── Intégration Redis → Redis Logstash (redis-logstash-<env>)
         ├── Intégration Redis → Redis de l'api (redis-api-prod : info, keyspace, key sur les files Bull)
         ├── Intégration Redis → Redis de connect (redis-connect-prod : info, keyspace)
+        ├── Intégration PostgreSQL → base de l'api (postgresql-api-prod : database, activity, bgwriter)
+        ├── SQL Input ×3 → statistiques des requêtes, des index, des tables de la base de l'api
         ├── Intégration Custom API (CEL) → API Scalingo /stats (mémoire des conteneurs)
         └── Intégration Custom API (CEL) → API des bases Scalingo /metrics (instances des bases)
 ```
@@ -82,6 +84,32 @@ Créer une policy Fleet dédiée (ex: `pass-emploi-elastic-agent-perf`) avec :
     n'accepte que TLS → `error sending slowlog get: EOF` toutes les ~10 s.
 - Intégration **System** (optionnel) : métriques système du container
 - Intégration **Custom API** : mémoire des conteneurs Scalingo (ci-dessous)
+
+## PostgreSQL et statistiques SQL
+
+Policy `pass-emploi-elastic-agent-<env>`, une intégration PostgreSQL et trois
+SQL Input, toutes sur la même URL et le même utilisateur (cf. « PostgreSQL :
+connexion vérifiée ») :
+
+| Intégration | Package | Dataset | Réglages |
+|---|---|---|---|
+| `postgresql-api-<env>` | PostgreSQL | `postgresql.database`, `.activity`, `.bgwriter` (1 min) | **`statement` désactivé** : une ligne par requête suivie à chaque relevé (≈ 5 000 en prod) ; les requêtes passent par le SQL Input, limité au top 200 ×2. Logs désactivés : pas de fichier de log dans le conteneur |
+| `postgresql-statements-<env>` | SQL Input | `sql.postgresql_statements` | requête de [`integrations/postgresql/statements.sql`](integrations/postgresql/statements.sql) |
+| `postgresql-index-stats-<env>` | SQL Input | `sql.postgresql_index_stats` | requête de [`integrations/postgresql/index_stats.sql`](integrations/postgresql/index_stats.sql) |
+| `postgresql-table-stats-<env>` | SQL Input | `sql.postgresql_table_stats` | requête de [`integrations/postgresql/table_stats.sql`](integrations/postgresql/table_stats.sql) |
+
+Pour les trois SQL Input : type **Metrics** (le dataset doit donner
+`metrics-sql.<dataset>-default`, sinon ni rétention ni dashboards), driver
+`postgres`, *Period* `10m`, *SSL Configuration* vide, requête collée au format
+YAML, avec le format de réponse `table` :
+
+```bash
+f=statements; { echo "- query: |"; sed 's/^/    /' elastic-agent/integrations/postgresql/$f.sql; echo "  response_format: table"; }
+```
+
+Une requête modifiée se vérifie d'abord sur une base, en lecture seule :
+[`integrations/postgresql/verifier.sh`](integrations/postgresql/verifier.sh),
+dans un conteneur ponctuel de l'app qui porte la base.
 
 ## PostgreSQL : connexion vérifiée
 
