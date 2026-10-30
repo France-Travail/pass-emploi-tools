@@ -62,6 +62,11 @@ class TestScalingoDatabaseStats(unittest.TestCase):
         self.assertEqual(base['nom'], 'redis-api-prod')
         self.assertNotIn('data_size', base)
 
+    def test_role_des_instances_d_un_cluster(self):
+        self.base('postgresql-api-prod', faux_scalingo.ADDON_CLUSTER)
+        roles = {e['scalingo']['database']['instance']: e['scalingo']['database']['role'] for e in self.evenements()}
+        self.assertEqual(roles, {'9f20c633-3507-4585-8cd0-f9ada91165c0': 'donnees', 'aux-1': 'auxiliaire'})
+
     def test_base_en_erreur_n_arrete_pas_les_autres(self):
         self.base('postgresql-api-prod', 'addon-pg')
         self.base('redis-en-panne', faux_scalingo.ADDON_EN_ERREUR)

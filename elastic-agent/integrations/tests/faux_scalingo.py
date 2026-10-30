@@ -5,6 +5,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 TOKEN_REFUSE = 'token-refuse'
 ADDON_EN_ERREUR = 'addon-en-erreur'
 ADDON_SANS_STATS = 'addon-sans-stats'
+ADDON_CLUSTER = 'addon-cluster'
 
 METRIQUES = {
     'cpu_usage': 0,
@@ -53,6 +54,10 @@ class Gestionnaire(BaseHTTPRequestHandler):
         self.server.appels.append(('GET', self.path))
         base = re.fullmatch(r'/api/databases/([^/]+)/metrics', self.path)
         if base and self.headers.get('Authorization') == 'Bearer db-' + base.group(1):
+            if base.group(1) == ADDON_CLUSTER:
+                donnees = METRIQUES['instances_metrics']['9f20c633-3507-4585-8cd0-f9ada91165c0']
+                auxiliaire = {**donnees, 'instance_id': 'aux-1', 'real_disk_size': 0}
+                return self.repondre(200, {**METRIQUES, 'instances_metrics': {'donnees': donnees, 'aux-1': auxiliaire}})
             if base.group(1) == ADDON_SANS_STATS:
                 return self.repondre(200, {k: v for k, v in METRIQUES.items() if k != 'database_stats'})
             return self.repondre(200, METRIQUES)

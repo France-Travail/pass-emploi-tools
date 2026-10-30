@@ -275,6 +275,7 @@ PUT _component_template/logs-scalingo.database_stats@custom
                 "app": { "type": "keyword" },
                 "addon_id": { "type": "keyword" },
                 "instance": { "type": "keyword" },
+                "role": { "type": "keyword" },
                 "data_size": { "properties": { "bytes": { "type": "long" } } },
                 "connexions_max": { "type": "integer" }
               }

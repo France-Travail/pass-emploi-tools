@@ -158,7 +158,8 @@ avec un jeton propre à chaque base.
 Programme versionné : [`integrations/scalingo-database-stats.cel`](integrations/scalingo-database-stats.cel).
 Il échange le token API contre un JWT, demande pour chaque base son jeton
 (`POST /v1/apps/<app>/addons/<addon_id>/token`), puis ses métriques, et émet un
-document par instance. Une base en erreur émet un document `error.message` à son
+document par instance : chaque base est un cluster, 2 nœuds de données et des
+instances auxiliaires. Une base en erreur émet un document `error.message` à son
 nom ; les autres continuent.
 
 Le compte qui porte le token doit être **collaborateur** (pas *limited*) sur
@@ -202,6 +203,7 @@ MITO=<chemin de mito> python3 -I -m unittest discover -s elastic-agent/integrati
 |-----------------------------------------------------------------|-----------------------------------------------------------|
 | `scalingo.database.nom`, `.app`, `.addon_id`                    | state (`bases`)                                           |
 | `scalingo.database.instance`                                    | `instances_metrics.<id>.instance_id`                      |
+| `scalingo.database.role`                                        | `donnees` si l'instance a des données sur disque (`real_disk_size` > 0), sinon `auxiliaire` (composants de haute disponibilité, 128 Mio) |
 | `scalingo.database.data_size.bytes`                             | `database_stats.data_size`, si l'API la donne (absente pour certaines bases) |
 | `scalingo.database.connexions_max`                              | state, si le plan en fixe                                 |
 | `scalingo.cpu.usage`                                            | `cpu.usage_in_percents` de l'instance (%)                 |
