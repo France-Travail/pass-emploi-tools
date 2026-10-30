@@ -16,6 +16,9 @@ for f in statements.sql index_stats.sql table_stats.sql; do
   vides=$(printf '%s\n' "$sortie" | sed '1d;$d' | awk -F'|' '$NF == "" { n++ } END { print n + 0 }')
   [ "$vides" = 0 ] || { echo "  stats_reset vide sur $vides lignes"; echec=1; }
   if [ "$f" = statements.sql ]; then
+    doublons=$(printf '%s\n' "$sortie" | sed '1d;$d' | awk -F'|' '{ print $1 }' | sort | uniq -d | wc -l)
+    [ "$doublons" = 0 ] || { echo "  $doublons queryid en double"; echec=1; }
+    printf '%s\n' "$sortie" | head -1 | grep -q 'requetes_evincees' || { echo "  colonne requetes_evincees absente"; echec=1; }
     printf '%s\n' "$sortie" | sed '1d;$d' | awk -F'|' '{ print $2 }' | grep -Eiq '^ *(copy|set|show|do|call|vacuum|analyze|create|alter|drop|truncate|grant|revoke|begin|commit|rollback|reset|lock|refresh|cluster|reindex|discard|deallocate|prepare|execute|listen|notify|unlisten|checkpoint|explain) ' && { echo "  commande utilitaire présente"; echec=1; }
     longueur=$(printf '%s\n' "$sortie" | sed '1d;$d' | awk -F'|' '{ if (length($2) > m) m = length($2) } END { print m + 0 }')
     echo "  texte le plus long : $longueur caractères"
