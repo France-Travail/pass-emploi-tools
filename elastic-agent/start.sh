@@ -11,7 +11,8 @@ mkdir -p /app/data/elastic-agent-state
 # un chemin de fichier, pas un champ YAML comme pour Redis.
 if [ -n "${POSTGRESQL_CA_CERT_BASE64:-}" ]; then
   mkdir -p /app/certs
-  echo "$POSTGRESQL_CA_CERT_BASE64" | base64 -d > /app/certs/postgresql-ca.pem
+  echo "$POSTGRESQL_CA_CERT_BASE64" | base64 -d > /app/certs/postgresql-ca.pem 2>/dev/null \
+    || { rm -f /app/certs/postgresql-ca.pem; echo "POSTGRESQL_CA_CERT_BASE64 invalide : certificat ignoré, l'intégration PostgreSQL échouera" >&2; }
 fi
 
 # Génère un ELASTIC_AGENT_ID unique et stable par instance à partir du HOSTNAME Scalingo

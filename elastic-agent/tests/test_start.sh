@@ -23,4 +23,7 @@ verifier "l'agent démarre avec le certificat" "$sortie" AGENT_LANCE
 sortie="$(lancer)"
 verifier "l'agent démarre sans certificat" "$sortie" AGENT_LANCE
 
-[ $echecs = 0 ] && echo "3/3 OK" || { echo "$echecs échec(s)"; exit 1; }
+sortie="$(lancer -e POSTGRESQL_CA_CERT_BASE64="pas du base64 !")"
+verifier "l'agent démarre avec un certificat invalide" "$sortie" AGENT_LANCE
+
+[ $echecs = 0 ] && echo "4/4 OK" || { echo "$echecs échec(s)"; exit 1; }
