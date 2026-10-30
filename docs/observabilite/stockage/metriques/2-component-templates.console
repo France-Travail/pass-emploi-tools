@@ -257,7 +257,8 @@ PUT _component_template/metrics-sql.postgresql_statements@custom
           "rows": { "type": "long" },
           "shared_blks_hit": { "type": "long" },
           "shared_blks_read": { "type": "long" },
-          "classement": { "type": "keyword" }
+          "classement": { "type": "keyword" },
+          "stats_reset": { "type": "keyword" }
         } } } }
       }
     }

@@ -16,6 +16,7 @@ select
   m.shared_blks_read,
   concat_ws(',',
     case when m.queryid in (select queryid from par_temps) then 'temps' end,
-    case when m.queryid in (select queryid from par_appels) then 'appels' end) as classement
+    case when m.queryid in (select queryid from par_appels) then 'appels' end) as classement,
+  (select stats_reset from pg_stat_statements_info)::text as stats_reset
 from miennes m
 where m.queryid in (select queryid from par_temps union select queryid from par_appels);
