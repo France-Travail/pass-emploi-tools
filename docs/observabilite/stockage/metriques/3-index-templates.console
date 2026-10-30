@@ -60,6 +60,15 @@ POST metrics-fleet_server.agent_versions-default/_rollover
 # Mémoire des conteneurs Scalingo (Custom API)
 POST logs-scalingo.container_stats-default/_rollover
 
+# Bases de données (PostgreSQL, package SQL, métriques des instances Scalingo)
+POST metrics-postgresql.database-default/_rollover
+POST metrics-postgresql.activity-default/_rollover
+POST metrics-postgresql.bgwriter-default/_rollover
+POST metrics-sql.postgresql_statements-default/_rollover
+POST metrics-sql.postgresql_index_stats-default/_rollover
+POST metrics-sql.postgresql_table_stats-default/_rollover
+POST logs-scalingo.database_stats-default/_rollover
+
 # Elastic Agent — logs internes
 POST logs-elastic_agent-default/_rollover
 POST logs-elastic_agent.filebeat-default/_rollover

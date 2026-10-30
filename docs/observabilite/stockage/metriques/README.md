@@ -11,6 +11,9 @@ Rétention des métriques Fleet et Heartbeat. Collecte : [collecte/metriques](..
 | `metrics-elastic_agent.*-default` (4 datasets — santé de l'agent lui-même)   | `metrics-fleet-retention`     | 90 j  |
 | `metrics-fleet_server.{agent_status,agent_versions}-default`                | `metrics-fleet-retention`     | 90 j  |
 | `logs-scalingo.container_stats-default` (Custom API — mémoire des conteneurs) | `metrics-fleet-retention`     | 90 j  |
+| `metrics-postgresql.{database,activity,bgwriter}-default` (PostgreSQL de l'api) | `metrics-fleet-retention`     | 90 j  |
+| `metrics-sql.postgresql_{statements,index_stats,table_stats}-default` (package SQL — requêtes, index, tables) | `metrics-fleet-retention`     | 90 j  |
+| `logs-scalingo.database_stats-default` (Custom API — instances des bases) | `metrics-fleet-retention`     | 90 j  |
 | `logs-elastic_agent{,.filebeat,.metricbeat,.status_change}-default`         | `logs-elastic-agent-retention`| 90 j  |
 | `heartbeat-<version>` (seul `heartbeat-9.1.5` existe au 2026-09-30)         | `heartbeat`                   | 90 j (14 hot + 7 warm + 69 frozen) |
 | `metrics-apm.internal-default`, `metrics-apm.{service_destination,service_summary,service_transaction,transaction}.{10m,60m}-default` | `metrics-apm-retention` | 90 j (14 hot + 7 warm + 69 frozen) |
