@@ -170,9 +170,6 @@ class TestMessages(unittest.TestCase):
                         json.loads(action['params']['body'])
 
 
-if __name__ == '__main__':
-    unittest.main()
-
 
 class TestRenvoisVersLesBasesDeDonnees(unittest.TestCase):
     PG = '66b0c0ac-d034-489b-ab0a-7b07539074ff'
@@ -206,3 +203,7 @@ class TestRenvoisVersLesBasesDeDonnees(unittest.TestCase):
             self.assertIn(id_, etapes[1])
             self.assertIn(id_, self.champs(regle)['Dashboards'])
             self.assertIn({'id': id_}, regle['artifacts']['dashboards'])
+
+
+if __name__ == '__main__':
+    unittest.main()
