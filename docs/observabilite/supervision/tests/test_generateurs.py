@@ -172,3 +172,37 @@ class TestMessages(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestRenvoisVersLesBasesDeDonnees(unittest.TestCase):
+    PG = '66b0c0ac-d034-489b-ab0a-7b07539074ff'
+    REDIS = '86b702ee-b9c7-4344-91ef-a10a50405ed5'
+
+    def regle(self, code):
+        return json.load(open(os.path.join(SUPERVISION, 'rules', '2-applicatives', f'{code}.json')))
+
+    def champs(self, regle):
+        return {f['title']: f['value'] for a in regle['actions'] if isinstance(a['params'].get('body'), dict)
+                for p in a['params']['body'].get('attachments', []) for f in p.get('fields', [])}
+
+    def etapes(self, guide):
+        return guide.split('## À vérifier')[1].split('## ')[0].strip().splitlines()
+
+    def test_a6_part_du_dashboard_postgresql(self):
+        regle = self.regle('A6')
+        guide = regle['artifacts']['investigation_guide']['blob']
+        self.assertIn(self.PG, self.etapes(guide)[0])
+        self.assertIn(self.PG, self.champs(regle)['À vérifier'].splitlines()[0])
+        self.assertIn(self.PG, self.champs(regle)['Dashboards'])
+        self.assertIn({'id': self.PG}, regle['artifacts']['dashboards'])
+        self.assertNotIn('dashboard.scalingo.com', guide)
+
+    def test_a2_cite_les_bases_sans_depasser_trois_etapes(self):
+        regle = self.regle('A2')
+        guide = regle['artifacts']['investigation_guide']['blob']
+        etapes = self.etapes(guide)
+        self.assertLessEqual(len(etapes), 3)
+        for id_ in (self.PG, self.REDIS):
+            self.assertIn(id_, etapes[1])
+            self.assertIn(id_, self.champs(regle)['Dashboards'])
+            self.assertIn({'id': id_}, regle['artifacts']['dashboards'])
