@@ -1,5 +1,5 @@
 #!/bin/bash
-# Lance les requêtes du package SQL contre la base de l'app ; à exécuter dans un conteneur ponctuel Scalingo.
+# À lancer dans un conteneur ponctuel de l'app qui porte la base : les conteneurs ont psql, pas le poste local.
 set -u
 cd "$(dirname "$0")"
 echec=0

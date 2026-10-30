@@ -183,8 +183,9 @@ Rendre visibles dans Kibana, pour chaque base :
 4. **Intégration CEL** sur l'API des bases de Scalingo : un document par instance
    et par relevé, pour les trois bases.
 
-Les URL des bases sont posées en variables de l'app de l'agent, comme le prévoit
-`elastic-agent/README.md` (« Ajout d'un nouveau Redis à monitorer »).
+Hôte et port des bases en clair dans chaque intégration, mot de passe en secret
+Fleet, comme pour le Redis de Logstash (`elastic-agent/README.md`) : aucune
+variable sur l'app de l'agent, hormis le certificat de PostgreSQL.
 
 ### 7.2 Restitution
 

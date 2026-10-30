@@ -22,6 +22,13 @@ et cette doc pointent vers les objets par leur id.
 | [[Pass Emploi] Bases de données - PostgreSQL](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/66b0c0ac-d034-489b-ab0a-7b07539074ff) | [`dashboards/dashboard-bases-de-donnees.ndjson`](dashboards/dashboard-bases-de-donnees.ndjson) | PostgreSQL de l'api : mémoire, disque, CPU, connexions, cache ; requêtes lentes (moyenne et P95/P99), les plus appelées ; tables lues sans index, index jamais utilisés |
 | [[Pass Emploi] Bases de données - Redis](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/86b702ee-b9c7-4344-91ef-a10a50405ed5) | [`dashboards/dashboard-bases-de-donnees.ndjson`](dashboards/dashboard-bases-de-donnees.ndjson) | Redis de l'api et de connect : mémoire face à la limite du conteneur, activité, clients, clés, files de jobs Bull |
 
+Les dashboards des bases ne sont pas génériques : le dashboard Redis associe
+chaque adresse à une base dans ses requêtes (`pa-back-prod-2395` → `redis-api-prod`,
+`pass-emploi-connect-3919` → `redis-connect-prod`) ; l'environnement se lit dans
+le nom de la base (`…-perf`) ou de l'agent (`…-elastic-agent-perf-…`). Un Redis
+qui change d'adresse, ou la perf, se règle en modifiant ces requêtes dans Kibana,
+puis en réexportant le fichier.
+
 ## Sessions Discover
 
 Chaque session est le lien « À vérifier » d'une alerte : elle ouvre directement

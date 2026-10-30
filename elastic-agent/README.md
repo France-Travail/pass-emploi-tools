@@ -10,8 +10,8 @@ plusieurs apps** (ex: un cluster Redis utilisé par plusieurs services).
 Un seul agent dédié évite les doublons de métriques qui surviendraient si chaque
 instance Logstash monitorait la même ressource.
 
-> **Rétention des métriques dans Elasticsearch** (`metrics-redis.*` — info, key,
-> keyspace) : [`stockage/metriques/README.md`](../docs/observabilite/stockage/metriques/README.md), section
+> **Rétention des métriques dans Elasticsearch** (`metrics-redis.*`,
+> `metrics-postgresql.*`, `metrics-sql.postgresql_*`, `logs-scalingo.*`) : [`stockage/metriques/README.md`](../docs/observabilite/stockage/metriques/README.md), section
 > `metriques/`. Ce README-ci documente **quoi** superviser (Fleet, intégrations) ;
 > l'autre documente **combien de temps** la donnée est gardée (policies ILM).
 
@@ -137,8 +137,8 @@ Test du démarrage : `bash elastic-agent/tests/test_start.sh` (Docker).
 **TLS selon le réglage du Redis** : un Redis Scalingo avec *Force TLS* n'accepte
 que TLS (bloc `ssl.certificate_authorities` dans l'intégration, cf.
 `logs/README.md`) ; **sans *Force TLS*, il n'accepte que le clair** : laisser le
-champ *SSL* vide, sinon `TLS handshake timeout` (constaté le 2026-10-30 sur les
-Redis de l'api et de connect, qui n'ont pas *Force TLS*). Réglage d'un addon :
+champ *SSL* vide, sinon `TLS handshake timeout` (cas des Redis de l'api et de
+connect, qui n'ont pas *Force TLS*). Réglage d'un addon :
 `scalingo --app <app> addons-info <addon_id>`.
 
 1. Lire l'hôte et le port du Redis, sans afficher le mot de passe :
