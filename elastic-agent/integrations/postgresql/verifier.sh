@@ -12,8 +12,9 @@ for f in statements.sql index_stats.sql table_stats.sql; do
   echo "$f : $lignes lignes en $ms ms"
   echo "  colonnes : $(printf '%s\n' "$sortie" | head -1)"
   printf '%s\n' "$sortie" | sed -n '2,4p' | cut -c1-200 | sed 's/^/  /'
+  printf '%s\n' "$sortie" | head -1 | grep -q 'stats_reset' || { echo "  colonne stats_reset absente"; echec=1; }
   if [ "$f" = statements.sql ]; then
-    printf '%s\n' "$sortie" | head -1 | grep -q 'stats_reset' || { echo "  colonne stats_reset absente"; echec=1; }
+    printf '%s\n' "$sortie" | sed '1d;$d' | awk -F'|' '{ print $2 }' | grep -Eiq '^ *(copy|set|show|do|call|vacuum|analyze|create|alter|drop|truncate|grant|revoke|begin|commit|rollback|reset|lock|refresh|cluster|reindex|discard|deallocate|prepare|execute|listen|notify|unlisten|checkpoint|explain) ' && { echo "  commande utilitaire présente"; echec=1; }
     longueur=$(printf '%s\n' "$sortie" | sed '1d;$d' | awk -F'|' '{ if (length($2) > m) m = length($2) } END { print m + 0 }')
     echo "  texte le plus long : $longueur caractères"
     [ "$longueur" -le 10000 ] || { echo "  texte au-delà de 10 000 caractères"; echec=1; }

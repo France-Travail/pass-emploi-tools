@@ -278,7 +278,8 @@ PUT _component_template/metrics-sql.postgresql_index_stats@custom
           "index": { "type": "keyword" },
           "idx_scan": { "type": "long" },
           "taille_octets": { "type": "long" },
-          "contrainte": { "type": "boolean" }
+          "contrainte": { "type": "boolean" },
+          "stats_reset": { "type": "keyword" }
         } } } }
       }
     }
@@ -299,7 +300,8 @@ PUT _component_template/metrics-sql.postgresql_table_stats@custom
           "seq_tup_read": { "type": "long" },
           "idx_scan": { "type": "long" },
           "n_live_tup": { "type": "long" },
-          "taille_octets": { "type": "long" }
+          "taille_octets": { "type": "long" },
+          "stats_reset": { "type": "keyword" }
         } } } }
       }
     }
