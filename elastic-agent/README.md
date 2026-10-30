@@ -20,8 +20,9 @@ instance Logstash monitorait la même ressource.
 ```
 pass-emploi-elastic-agent-perf   ← cette app (1 seule instance)
   └── Elastic Agent Fleet
-        ├── Intégration Redis → Redis Logstash (SCALINGO_REDIS_URL)
-        ├── Intégration Redis → autres Redis si besoin
+        ├── Intégration Redis → Redis Logstash (redis-logstash-<env>)
+        ├── Intégration Redis → Redis de l'api (redis-api-prod : info, keyspace, key sur les files Bull)
+        ├── Intégration Redis → Redis de connect (redis-connect-prod : info, keyspace)
         ├── Intégration Custom API (CEL) → API Scalingo /stats (mémoire des conteneurs)
         └── Intégration Custom API (CEL) → API des bases Scalingo /metrics (instances des bases)
 ```
@@ -51,7 +52,6 @@ Pour configurer les intégrations :
 | `FLEET_URL`              | URL du Fleet Server (ex: `https://fleet.example.com:8220`)                              |
 | `FLEET_ENROLLMENT_TOKEN` | Token d'enrollment Fleet pour la policy de cet agent                                    |
 | `ENVIRONMENT`            | Nom de l'environnement (ex: `perf`, `staging`, `prod`)                                  |
-| `SCALINGO_REDIS_URL`     | URL du Redis à monitorer (injectée automatiquement par Scalingo si l'addon est attaché) |
 
 ### Variables optionnelles
 
@@ -74,7 +74,9 @@ Pour configurer les intégrations :
 ### Policy Fleet recommandée
 
 Créer une policy Fleet dédiée (ex: `pass-emploi-elastic-agent-perf`) avec :
-- Intégration **Redis** : `hosts: ["${SCALINGO_REDIS_URL}"]`
+- Intégration **Redis**, une par Redis : *Hosts* `hôte:port` (lus dans `SCALINGO_REDIS_URL` de l'app qui porte le Redis), mot de passe dans *Password* (secret Fleet), bloc *SSL* seulement si le Redis a *Force TLS* (cf. « Ajout d'un nouveau Redis à monitorer »).
+  - Redis de l'api : `key` sur les files Bull `bull:JobQueue:{wait,active,delayed,failed,completed}` (`limit: 1` par motif ; jamais `pattern: '*'`, qui parcourrait toutes les clés) ;
+  - Redis de connect : `key` désactivé (une clé par grant d'authentification, nombre non borné) : la croissance se lit dans `keyspace` et la mémoire.
   - **Désactiver « Collect Redis slow logs »** : cet input n'a pas d'option TLS
     dans le package (`hosts` + `password` seulement), or le Redis Scalingo
     n'accepte que TLS → `error sending slowlog get: EOF` toutes les ~10 s.
@@ -111,9 +113,11 @@ champ *SSL* vide, sinon `TLS handshake timeout` (constaté le 2026-10-30 sur les
 Redis de l'api et de connect, qui n'ont pas *Force TLS*). Réglage d'un addon :
 `scalingo --app <app> addons-info <addon_id>`.
 
-1. Récupérer l'URL du Redis depuis les variables d'env de l'app Scalingo concernée
-2. Ajouter la variable d'env dans cette app (ex: `REDIS_URL_APP=redis://...`)
-3. Ajouter une nouvelle instance de l'intégration Redis dans la policy Fleet
+1. Lire l'hôte et le port du Redis, sans afficher le mot de passe :
+   `scalingo --app <app> env-get SCALINGO_REDIS_URL | sed -E 's#^.*@##'`
+2. Ajouter une intégration Redis dans la policy Fleet de l'agent : *Hosts* =
+   `hôte:port`, *Password* = le mot de passe de cette URL, *SSL* selon le réglage
+   ci-dessus. Aucune variable à poser sur l'app de l'agent.
 
 ## Mémoire des conteneurs Scalingo (intégration Custom API)
 
