@@ -104,6 +104,13 @@ Test du démarrage : `bash elastic-agent/tests/test_start.sh` (Docker).
 
 ## Ajout d'un nouveau Redis à monitorer
 
+**TLS selon le réglage du Redis** : un Redis Scalingo avec *Force TLS* n'accepte
+que TLS (bloc `ssl.certificate_authorities` dans l'intégration, cf.
+`logs/README.md`) ; **sans *Force TLS*, il n'accepte que le clair** : laisser le
+champ *SSL* vide, sinon `TLS handshake timeout` (constaté le 2026-10-30 sur les
+Redis de l'api et de connect, qui n'ont pas *Force TLS*). Réglage d'un addon :
+`scalingo --app <app> addons-info <addon_id>`.
+
 1. Récupérer l'URL du Redis depuis les variables d'env de l'app Scalingo concernée
 2. Ajouter la variable d'env dans cette app (ex: `REDIS_URL_APP=redis://...`)
 3. Ajouter une nouvelle instance de l'intégration Redis dans la policy Fleet
