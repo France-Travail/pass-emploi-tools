@@ -6,7 +6,7 @@ par_temps as (select queryid from miennes order by total_exec_time desc limit 20
 par_appels as (select queryid from miennes order by calls desc limit 200)
 select
   m.queryid::text as queryid,
-  left(regexp_replace(m.query, '\s+', ' ', 'g'), 2000) as requete,
+  left(regexp_replace(m.query, '\s+', ' ', 'g'), 10000) as requete,
   m.calls,
   round(m.total_exec_time::numeric, 3)::float8 as total_exec_time_ms,
   round(m.mean_exec_time::numeric, 3)::float8 as mean_exec_time_ms,

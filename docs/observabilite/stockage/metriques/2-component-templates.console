@@ -249,7 +249,7 @@ PUT _component_template/metrics-sql.postgresql_statements@custom
       "properties": {
         "sql": { "properties": { "metrics": { "properties": {
           "queryid": { "type": "keyword" },
-          "requete": { "type": "keyword", "ignore_above": 4096 },
+          "requete": { "type": "keyword", "ignore_above": 10000 },
           "calls": { "type": "long" },
           "total_exec_time_ms": { "type": "double" },
           "mean_exec_time_ms": { "type": "double" },
