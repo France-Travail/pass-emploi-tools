@@ -58,6 +58,7 @@ Pour configurer les intégrations :
 | Variable                | Défaut              | Description                           |
 |-------------------------|---------------------|---------------------------------------|
 | `ELASTIC_AGENT_GO_OPTS` | `GOMEMLIMIT=512MiB` | Options Go runtime pour Elastic Agent |
+| `POSTGRESQL_CA_CERT_BASE64` | — | Certificat de l'autorité des bases Scalingo, en base64 ; écrit au démarrage dans `/app/certs/postgresql-ca.pem` pour l'intégration PostgreSQL (cf. ci-dessous) |
 
 ### Configuration Scalingo
 
@@ -79,6 +80,27 @@ Créer une policy Fleet dédiée (ex: `pass-emploi-elastic-agent-perf`) avec :
     n'accepte que TLS → `error sending slowlog get: EOF` toutes les ~10 s.
 - Intégration **System** (optionnel) : métriques système du container
 - Intégration **Custom API** : mémoire des conteneurs Scalingo (ci-dessous)
+
+## PostgreSQL : connexion vérifiée
+
+L'intégration PostgreSQL (et le package SQL) vérifient le certificat du serveur :
+
+```
+postgres://<hôte>:<port>/<base>?sslmode=verify-full&sslrootcert=/app/certs/postgresql-ca.pem
+```
+
+L'utilisateur et le mot de passe vont dans les champs *Username* et *Password*
+(secret Fleet), jamais dans l'URL. Contrairement à Redis, dont le certificat se
+colle dans un champ YAML, PostgreSQL attend un **chemin de fichier** : `start.sh`
+l'écrit depuis `POSTGRESQL_CA_CERT_BASE64`.
+
+Le certificat est le même pour toutes les bases et les deux régions, public :
+
+```bash
+curl -s https://db-api.osc-secnum-fr1.scalingo.com/api/ca_certificate | base64 -w0
+```
+
+Test du démarrage : `bash elastic-agent/tests/test_start.sh` (Docker).
 
 ## Ajout d'un nouveau Redis à monitorer
 
