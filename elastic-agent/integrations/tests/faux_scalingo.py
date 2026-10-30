@@ -1,4 +1,3 @@
-"""Imite l'API Scalingo (échange de token, token d'addon) et l'API des bases (métriques)."""
 import json, re, threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -6,6 +5,8 @@ TOKEN_REFUSE = 'token-refuse'
 ADDON_EN_ERREUR = 'addon-en-erreur'
 ADDON_SANS_STATS = 'addon-sans-stats'
 ADDON_CLUSTER = 'addon-cluster'
+ADDON_REPONSE_INATTENDUE = 'addon-reponse-inattendue'
+ADDON_METRIQUES_VIDES = 'addon-metriques-vides'
 
 METRIQUES = {
     'cpu_usage': 0,
@@ -47,6 +48,8 @@ class Gestionnaire(BaseHTTPRequestHandler):
         if addon and self.headers.get('Authorization') == 'Bearer jwt':
             if addon.group(1) == ADDON_EN_ERREUR:
                 return self.repondre(401, {'error': 'unauthorized'})
+            if addon.group(1) == ADDON_REPONSE_INATTENDUE:
+                return self.repondre(200, {'inattendu': True})
             return self.repondre(200, {'addon': {'id': addon.group(1), 'token': 'db-' + addon.group(1)}})
         self.repondre(404, {'error': 'not found'})
 
@@ -54,6 +57,8 @@ class Gestionnaire(BaseHTTPRequestHandler):
         self.server.appels.append(('GET', self.path))
         base = re.fullmatch(r'/api/databases/([^/]+)/metrics', self.path)
         if base and self.headers.get('Authorization') == 'Bearer db-' + base.group(1):
+            if base.group(1) == ADDON_METRIQUES_VIDES:
+                return self.repondre(200, {})
             if base.group(1) == ADDON_CLUSTER:
                 donnees = METRIQUES['instances_metrics']['9f20c633-3507-4585-8cd0-f9ada91165c0']
                 auxiliaire = {**donnees, 'instance_id': 'aux-1', 'real_disk_size': 0}

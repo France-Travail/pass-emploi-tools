@@ -76,6 +76,22 @@ class TestScalingoDatabaseStats(unittest.TestCase):
         self.assertEqual(len(erreurs), 1)
         self.assertIn('redis-en-panne', erreurs[0]['error']['message'])
         self.assertIn('401', erreurs[0]['error']['message'])
+        self.assertEqual(erreurs[0]['scalingo']['database']['nom'], 'redis-en-panne')
+
+    def test_metriques_inattendues_n_arretent_pas_les_autres(self):
+        self.base('postgresql-api-prod', 'addon-pg')
+        self.base('redis-muet', faux_scalingo.ADDON_METRIQUES_VIDES)
+        erreurs = [e for e in self.evenements() if 'error' in e]
+        self.assertEqual([e['scalingo']['database']['nom'] for e in erreurs], ['redis-muet'])
+
+    def test_reponse_inattendue_n_arrete_pas_les_autres(self):
+        self.base('postgresql-api-prod', 'addon-pg')
+        self.base('redis-bizarre', faux_scalingo.ADDON_REPONSE_INATTENDUE)
+        evenements = self.evenements()
+        erreurs = [e for e in evenements if 'error' in e]
+        self.assertEqual(len(evenements) - len(erreurs), 1)
+        self.assertEqual(len(erreurs), 1)
+        self.assertEqual(erreurs[0]['scalingo']['database']['nom'], 'redis-bizarre')
 
     def test_echange_du_token_refuse(self):
         self.etat['secret']['api_token'] = faux_scalingo.TOKEN_REFUSE

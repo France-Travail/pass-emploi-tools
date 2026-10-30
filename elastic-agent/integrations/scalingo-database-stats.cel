@@ -15,7 +15,9 @@ request("POST", state.auth_url).with({
             "Header": {"Authorization": ["Bearer " + jwt], "Accept": ["application/json"]},
           }).do_request().as(jeton,
             jeton.StatusCode != 200 && jeton.StatusCode != 201 ?
-              dyn([{"error": {"message": "Scalingo token de la base " + base.nom + " : HTTP " + string(jeton.StatusCode)}}])
+              dyn([{"error": {"message": "Scalingo token de la base " + base.nom + " : HTTP " + string(jeton.StatusCode)}, "scalingo": {"database": {"nom": base.nom}}}])
+            : !jeton.Body.decode_json().?addon.?token.hasValue() ?
+              dyn([{"error": {"message": "Scalingo token de la base " + base.nom + " : réponse sans addon.token"}, "scalingo": {"database": {"nom": base.nom}}}])
             :
               request("GET", state.db_api_url + "/api/databases/" + base.addon_id + "/metrics").with({
                 "Header": {
@@ -24,7 +26,9 @@ request("POST", state.auth_url).with({
                 },
               }).do_request().as(resp,
                 resp.StatusCode != 200 ?
-                  dyn([{"error": {"message": "Scalingo métriques de la base " + base.nom + " : HTTP " + string(resp.StatusCode)}}])
+                  dyn([{"error": {"message": "Scalingo métriques de la base " + base.nom + " : HTTP " + string(resp.StatusCode)}, "scalingo": {"database": {"nom": base.nom}}}])
+                : !resp.Body.decode_json().?instances_metrics.hasValue() ?
+                  dyn([{"error": {"message": "Scalingo métriques de la base " + base.nom + " : réponse sans instances_metrics"}, "scalingo": {"database": {"nom": base.nom}}}])
                 :
                   dyn(resp.Body.decode_json().as(m,
                     m.instances_metrics.map(id, m.instances_metrics[id]).map(i, {

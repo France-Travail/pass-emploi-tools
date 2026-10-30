@@ -262,7 +262,7 @@ MITO=<chemin de mito> python3 -I -m unittest discover -s elastic-agent/integrati
 
 | Champ produit                                                   | Source `/metrics`                                         |
 |-----------------------------------------------------------------|-----------------------------------------------------------|
-| `scalingo.database.nom`, `.app`, `.addon_id`                    | state (`bases`)                                           |
+| `scalingo.database.nom`, `.app`, `.addon_id`                    | state (`bases`) ; `nom` aussi sur les documents `error.message` |
 | `scalingo.database.instance`                                    | `instances_metrics.<id>.instance_id`                      |
 | `scalingo.database.role`                                        | `donnees` si l'instance a des données sur disque (`real_disk_size` > 0), sinon `auxiliaire` (composants de haute disponibilité, 128 Mio) |
 | `scalingo.database.data_size.bytes`                             | `database_stats.data_size`, si l'API la donne (absente pour certaines bases) |
