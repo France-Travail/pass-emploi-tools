@@ -233,6 +233,8 @@ def pousser(env):
 
 
 def ecarts(attendu, reel, chemin=''):
+    if isinstance(reel, dict) and reel.get('isSecretRef') and '@@' in json.dumps(attendu):
+        return []
     if isinstance(attendu, dict):
         if not isinstance(reel, dict):
             return [chemin or '.']

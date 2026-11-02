@@ -6,7 +6,7 @@
       "streams": {
         "sql.sql": {
           "enabled": true,
-          "vars": {"hosts": "@@URL_AVEC_IDENTIFIANTS@@", "driver": "postgres", "data_stream.type": "metrics", "data_stream.dataset": "@@DATASET@@", "period": "@@PERIODE@@", "sql_queries": "@@REQUETE@@", "merge_results": false, "ssl": ""}
+          "vars": {"hosts": ["@@URL_AVEC_IDENTIFIANTS@@"], "driver": "postgres", "data_stream.type": "metrics", "data_stream.dataset": "@@DATASET@@", "period": "@@PERIODE@@", "sql_queries": "@@REQUETE@@", "merge_results": false, "ssl": ""}
         }
       }
     }

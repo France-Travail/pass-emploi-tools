@@ -9,6 +9,13 @@ PLANS = {
 }
 
 
+def comme_stocke_par_fleet(integration):
+    if integration.get('package', {}).get('name') == 'sql':
+        variables = integration['inputs']['sql-sql/metrics']['streams']['sql.sql']['vars']
+        variables['hosts'] = {'ids': ['secret-' + integration['name']], 'isSecretRef': True}
+    return integration
+
+
 class Plateforme:
     """Faux Scalingo (API, auth, API des bases) et faux Fleet, sur un seul port local."""
 
@@ -65,6 +72,13 @@ class Plateforme:
                     return self.repondre(200, {'items': plateforme.integrations, 'total': len(plateforme.integrations)})
                 self.repondre(404, {'error': 'not found'})
 
+            def refus_comme_fleet(self, corps):
+                for entree in corps.get('inputs', {}).values():
+                    for flux in [entree, *(entree.get('streams') or {}).values()]:
+                        if 'hosts' in (flux.get('vars') or {}) and not isinstance(flux['vars']['hosts'], list):
+                            return self.repondre(400, {'message': 'Invalid format for Hosts: expected array'}) or True
+                return False
+
             def do_POST(self):
                 chemin = urlparse(self.path).path
                 if chemin == '/v1/tokens/exchange':
@@ -78,7 +92,9 @@ class Plateforme:
                     plateforme.appels.append(('POST', chemin, corps['name']))
                     if plateforme.refus_fleet:
                         return self.repondre(400, {'message': 'refus : ' + json.dumps(corps)})
-                    plateforme.integrations.append({**corps, 'id': 'id-' + corps['name']})
+                    if self.refus_comme_fleet(corps):
+                        return
+                    plateforme.integrations.append(comme_stocke_par_fleet({**corps, 'id': 'id-' + corps['name']}))
                     return self.repondre(200, {'item': corps})
                 self.repondre(404, {'error': 'not found'})
 
@@ -89,7 +105,9 @@ class Plateforme:
                     plateforme.appels.append(('PUT', chemin, corps['name']))
                     if plateforme.refus_fleet:
                         return self.repondre(400, {'message': 'refus : ' + json.dumps(corps)})
-                    plateforme.integrations = [{**corps, 'id': m.group(1)} if i['id'] == m.group(1) else i for i in plateforme.integrations]
+                    if self.refus_comme_fleet(corps):
+                        return
+                    plateforme.integrations = [comme_stocke_par_fleet({**corps, 'id': m.group(1)}) if i['id'] == m.group(1) else i for i in plateforme.integrations]
                     return self.repondre(200, {'item': corps})
                 self.repondre(404, {'error': 'not found'})
 

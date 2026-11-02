@@ -11,7 +11,9 @@
             "data_stream.dataset": "sql.postgresql_table_stats",
             "data_stream.type": "metrics",
             "driver": "postgres",
-            "hosts": "@@URL_AVEC_IDENTIFIANTS@@",
+            "hosts": [
+              "@@URL_AVEC_IDENTIFIANTS@@"
+            ],
             "merge_results": false,
             "period": "10m",
             "processors": "- add_fields:\n    target: labels\n    fields:\n      base: postgresql-api-perf\n",
