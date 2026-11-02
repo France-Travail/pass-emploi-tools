@@ -14,7 +14,7 @@ pass-emploi-elastic-agent-perf   ← cette app (1 seule instance)
         ├── Intégration Redis → Redis de l'api (redis-api-prod : info, keyspace, key sur les files Bull)
         ├── Intégration Redis → Redis de connect (redis-connect-prod : info, keyspace)
         ├── Intégration PostgreSQL → base de l'api (postgresql-api-prod : database, activity, bgwriter)
-        ├── SQL Input ×3 → statistiques des requêtes, des index, des tables de la base de l'api
+        ├── SQL Input ×5 → statistiques des requêtes, des index, des tables de la base de l'api
         ├── Intégration Custom API (CEL) → API Scalingo /stats (mémoire des conteneurs)
         └── Intégration Custom API (CEL) → API des bases Scalingo /metrics (instances des bases)
 ```
