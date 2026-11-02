@@ -76,11 +76,11 @@ Deux besoins, dans cet ordre (décision de l'utilisateur) :
    1. avant de conclure : date de remise à zéro (« Depuis ») et période choisie ;
       un index utilisé par un job mensuel paraît inutile sur une semaine ;
    2. index jamais utilisé : supprimable s'il ne porte aucune contrainte et
-      qu'aucune requête du code ne s'en sert ; priorité au-delà de 1 Go ;
-   3. index peu sélectif (plus de 1 000 lignes lues par scan, ou moins de 10 %
-      des lignes lues récupérées) : colonne mal choisie ;
-   4. trop d'index sur une table (au-delà de 5 à 15, ou index plus lourds que la
-      table) : coût à l'écriture et au vacuum ;
+      qu'aucune requête du code ne s'en sert ; priorité aux plus lourds ;
+   3. index peu sélectif (beaucoup de lignes lues par scan au regard de la table,
+      ou peu des lignes lues réellement récupérées) : colonne mal choisie ;
+   4. trop d'index sur une table (nombreux au regard de ses écritures, ou plus
+      lourds que la table) : coût à l'écriture et au vacuum ;
    5. table lue sans index : `EXPLAIN (ANALYZE)` ; un `Seq Scan` sur une petite
       table est normal ; une écriture se teste entre `BEGIN` et `ROLLBACK` ;
    6. plan qui se dégrade d'un coup : estimations loin du réel ou beaucoup de
@@ -181,8 +181,10 @@ programmes CEL, leurs tests, générateurs, configuration, `generated/`, et la
 partie Fleet du README. **L'app Scalingo reste dans `elastic-agent/`**
 (`Procfile`, `start.sh`, `tests/test_start.sh`, déploiement) : les apps de prod et
 de perf sont déployées avec `PROJECT_DIR=elastic-agent`. Liens à reprendre dans
-`docs/observabilite/` ; les deux ADR qui citent `elastic-agent/` sont des traces
-datées : leurs liens ne sont pas modifiés (choix par défaut, cf. §8).
+`docs/observabilite/`. ADR-002 pointe vers `elastic-agent/README.md`, qui reste :
+rien à faire. **ADR-003 pointe vers la section « Mémoire des conteneurs Scalingo
+(intégration Custom API) » de ce README, qui part avec les sources Fleet : son
+lien est à changer vers le nouvel emplacement** (décision de l'utilisateur).
 
 ### 5.5 Garde-fous
 
@@ -193,6 +195,13 @@ datées : leurs liens ne sont pas modifiés (choix par défaut, cf. §8).
   secret.
 - Tests du générateur (fichier de configuration invalide, base inconnue, sortie
   identique aux sources) dans `supervision/tests/`, joués par le même check.
+- **Un workflow GitHub Actions de vérification contre la prod** (décision de
+  l'utilisateur) : sur une PR qui touche les sources (requêtes SQL, CEL, gabarits,
+  configuration, dashboards), il exécute chaque requête des dashboards contre
+  Elasticsearch et lance « Vérifier » (Fleet face aux fichiers générés) ; chaque
+  jour, il relance « Vérifier » pour détecter une modification faite à la main
+  dans Fleet. Clé en lecture seule (données et Fleet) dans les secrets GitHub,
+  créée par l'utilisateur.
 
 ## 6. Déploiement
 
@@ -225,11 +234,17 @@ poussée, limitée et de courte durée, gardée de son côté.
 
 ## 8. Mes choix (non validés par l'utilisateur)
 
-- Un fichier de configuration unique pour tous les environnements.
-- Les liens des deux ADR laissés tels quels.
-- Seuils de l'encadré repris du support (1 000 lignes par scan, 10 %, 5 à 15
-  index, 1 Go) ; seuil « en retard » de l'entretien fixé sur les valeurs réelles
-  de prod.
+- Un fichier de configuration unique pour tous les environnements, découpé par
+  environnement s'il dépasse une centaine de lignes (validé par l'utilisateur).
+- **Critères relatifs plutôt que seuils absolus** (validé par l'utilisateur) :
+  les seuils du support (1 000 lignes par scan, 10 %, 5 à 15 index, 1 Go) sont des
+  repères de praticien, dépendants de la taille des tables et de l'usage, pas des
+  constantes de PostgreSQL. Tableaux et encadré raisonnent en relatif : lignes
+  lues par scan face au nombre de lignes de la table, taille d'un index face à
+  sa table et à la base, nombre d'index face au volume d'écritures de la table.
+  Les repères du support restent dans l'encadré, présentés comme indicatifs ; les
+  seuils exacts, et celui « en retard » de l'entretien, sont calés sur les
+  valeurs réelles de prod à la construction.
 
 - **Périmètre de la poussée** : seulement les intégrations qu'elle génère,
   reconnues à leur nom. Les intégrations de la stack d'observabilité présentes
