@@ -91,6 +91,9 @@ consts:
     - type: MAJ_REFERENTIEL_PLAN_ACTION
       description: "Tous les jours à 8h. Mise à jour du référentiel du plan d'action depuis Grist."
       attendues: 1
+    - type: NETTOYER_ARCHIVES_JEUNES
+      description: "Tous les jours à 3h. Révoque les accès IdP et archive puis supprime les chats des jeunes archivés en différé."
+      attendues: 1
 steps:
   - name: requete
     type: elasticsearch.esql.query
