@@ -39,6 +39,9 @@ Usage : $(basename "$0") [--sortie DIR] [--sans-fetch]
 
 Produit l'inventaire des versions Pass Emploi (Scalingo ${REGIONS[*]} + repos de $WORKSPACE)
 dans DIR/inventaire.json et DIR/inventaire.md (défaut : $SORTIE).
+
+Version du cluster Elastic Cloud : lue si ELASTIC_URL et ELASTIC_INVENTAIRE_API_KEY sont définies
+(clé API limitée au privilège cluster monitor).
 EOF
 }
 
@@ -347,6 +350,25 @@ for repo in "${REPOS[@]}"; do
   log "  $repo ($branche)"
 done
 
+lire_version_cluster_elastic() {
+  if [ -z "${ELASTIC_URL:-}" ] || [ -z "${ELASTIC_INVENTAIRE_API_KEY:-}" ]; then
+    jq -n -c '{version: null, statut: "non lue (ELASTIC_URL ou ELASTIC_INVENTAIRE_API_KEY absente)"}'
+    return
+  fi
+  local reponse
+  if reponse=$(curl --silent --fail --max-time 20 \
+      -H @<(printf 'Authorization: ApiKey %s\n' "$ELASTIC_INVENTAIRE_API_KEY") "${ELASTIC_URL%/}/" 2>/dev/null) \
+    && jq -e '.version.number' <<<"$reponse" >/dev/null 2>&1; then
+    jq -c '{version: .version.number, statut: "lue"}' <<<"$reponse"
+  else
+    printf '%s\t%s\t%s\n' elastic-cloud "GET /" "" >>"$TRAVAIL/erreurs.tsv"
+    jq -n -c '{version: null, statut: "échec de GET / (URL, clé ou privilège monitor)"}'
+  fi
+}
+
+log "Elastic Cloud"
+lire_version_cluster_elastic >"$TRAVAIL/elastic.json"
+
 jq -s -c '.' "$TRAVAIL"/apps/*.json >"$TRAVAIL/apps.json"
 jq -s -c 'add' "$TRAVAIL"/stacks-*.json >"$TRAVAIL/stacks.json"
 jq -R -s -c 'split("\n") | map(select(length > 0) | split("\t") | {repo: .[0], branche: .[1], commit: .[2], dateCommit: .[3]})' "$TRAVAIL/repos.tsv" >"$TRAVAIL/repos.json"
@@ -362,7 +384,8 @@ jq -n \
   --argjson regions "$(printf '%s\n' "${REGIONS[@]}" | jq -R -s -c 'split("\n") | map(select(length > 0))')" \
   --slurpfile apps "$TRAVAIL/apps.json" --slurpfile stacks "$TRAVAIL/stacks.json" \
   --slurpfile repos "$TRAVAIL/repos.json" --slurpfile faitsRepos "$TRAVAIL/faits-repos.json" \
-  --slurpfile erreurs "$TRAVAIL/erreurs.json" '
+  --slurpfile erreurs "$TRAVAIL/erreurs.json" --slurpfile elastic "$TRAVAIL/elastic.json" '
+  def semver: split(".") | map(tonumber? // 0);
   def norm: ascii_downcase | sub("^v"; "");
   def compatibles($a; $b): ($a | norm) as $x | ($b | norm) as $y
     | $x != "latest" and $y != "latest"
@@ -384,10 +407,19 @@ jq -n \
           cellules: ($colonnes | map(. as $c | {key: $c, value: ([$groupe[] | select(.contexte == $c) | {valeur, source}] | unique)}) | from_entries),
           ecart: ([$valeurs[] as $a | $valeurs[] as $b | select(compatibles($a; $b) | not)] | length > 0)
         })) as $matrice
+  | $elastic[0] as $cluster
+  | ($faits | map(select(.brique == "logstash" or .brique == "elastic-agent" or .brique == "heartbeat")
+      | . + {statut: (if $cluster.version == null then "inconnu"
+          elif (.valeur | semver) > ($cluster.version | semver) then "violation"
+          elif (.valeur | semver) == ($cluster.version | semver) then "aligné"
+          else "en retard" end)})
+      | sort_by((.statut != "violation"), (.statut != "en retard"), .app, .brique, .source)) as $stackElastic
   | {
       genereLe: $genereLe,
       regions: $regions,
       erreursCollecte: $erreurs[0],
+      elasticCloud: $cluster,
+      stackElastic: $stackElastic,
       repos: $repos[0],
       stacks: $stacks[0],
       apps: ($apps[0] | sort_by(.composant, .env)),
@@ -411,9 +443,23 @@ jq -r '
   "Sources : Scalingo (\(.regions | join(", "))) ; " + (.repos | map("\(.repo) `\(.branche)` \(.commit) (\(.dateCommit))") | join(", ")) + ".",
   "",
   (if (.erreursCollecte | length) > 0 then
-    "**Collecte incomplète** : \(.erreursCollecte | length) appel(s) Scalingo en échec, les cellules correspondantes sont vides à tort : " + (.erreursCollecte | map("`\(.commande) \(.arguments)` (\(.region))") | join(", ")) + ".", ""
+    "**Collecte incomplète** : \(.erreursCollecte | length) appel(s) en échec, les cellules correspondantes sont vides à tort : " + (.erreursCollecte | map("`\(.commande) \(.arguments)` (\(.region))") | join(", ")) + ".", ""
   else empty end),
   "Colonnes : prod / staging / perf = Scalingo (version déployée au dernier déploiement réussi, variables `*_VERSION`, addons, stack) ; dépôt = fichiers lus au build Scalingo ; CI = `.github/` ; local = Dockerfiles et docker-compose.",
+  "",
+  "## Stack Elastic : cluster \(.elasticCloud.version // .elasticCloud.statut)",
+  "",
+  "Invariant : aucune brique au-dessus de la version du cluster (violation). À chaque montée du cluster, aligner les briques en retard.",
+  "",
+  (if .elasticCloud.version == null then "Version du cluster \(.elasticCloud.statut) : comparaison impossible.", "" else empty end),
+  (.stackElastic | map(select(.statut != "aligné"))) as $aSignaler
+  | (if ($aSignaler | length) > 0 then
+      (["Statut", "App", "Env", "Brique", "Version", "Source"] | ligne),
+      "|---|---|---|---|---|---|",
+      ($aSignaler[] | [(if .statut == "violation" then "**violation**" else .statut end), .app, .contexte, .brique, .valeur, .source] | ligne)
+    else "Toutes les briques sont alignées sur le cluster." end),
+  "",
+  "\(.stackElastic | map(select(.statut == "aligné")) | length) ligne(s) alignée(s).",
   "",
   "## Écarts (\(.matrice | map(select(.ecart)) | length))",
   "",
