@@ -1,17 +1,20 @@
 # Alertes de sécurité
 
-Les alertes sur les **vulnérabilités des dépendances** de nos repos : les CVE
+Les alertes sur les **vulnérabilités des dépendances** de nos repos (les CVE
 remontées par Dependabot, que le workflow GitHub Actions
 [`security-alerts.yml`](../../../.github/workflows/security-alerts.yml) envoie
-dans `logs-alertes-github-default` (cf.
-[collecte par webhook](../collecte/webhooks/README.md)).
-Elles signalent un risque à traiter, pas une panne.
+dans `logs-alertes-github-default`) et sur une **suspicion d'attaque par déni
+de service**, lue dans les alertes de métriques Scalingo (cf.
+[collecte par webhook](../collecte/webhooks/README.md)). Aucune ne dépend des
+logs des apps.
 
 ## Récapitulatif
 
 | #  | Signal                    | Data stream                   | Condition                                 | Fréquence | Throttle | Sévérité    |
 |----|---------------------------|-------------------------------|-------------------------------------------|-----------|----------|-------------|
 | V1 | CVE high/critical ouverte | `logs-alertes-github-default` | `vulnerability.severity` high ou critical | 5 min     | —        | 🚨 Critical |
+| D1a | Suspicion d'attaque DDoS, prod | `logs-alertes-scalingo-prod-default` | alertes `rpm` et `5XX` de la même app à moins de 10 min, non revenues à la normale | 1 min | — | 🚨 Critical |
+| D1b | Suspicion d'attaque DDoS, staging / perf | `logs-alertes-scalingo-staging-default`, `-perf-default` | idem | 1 min | — | 🚨 Critical |
 
 **Création** : rejouer [`rules/generated/1-rules-securite.console`](rules/generated/1-rules-securite.console)
 dans Dev Tools, après les sessions Discover de
@@ -49,7 +52,43 @@ notification.
    CVE, sur son nom : une règle ne sait pas choisir les liens selon les CVE
    qu'elle liste ; l'Investigation guide, qui ne voit pas les CVE, garde les 3.
 
-> **Pendant la migration** : `security-alerts.yml` garde son envoi direct vers
-> Mattermost tant que son envoi vers Elasticsearch n'est pas en place (cf.
-> [mise en service](../collecte/webhooks/README.md#mise-en-service),
-> étape GitHub Actions).
+## D1a / D1b — Suspicion d'attaque DDoS (Critical)
+
+**Objectif** : désigner l'app attaquée dès les premières minutes, même quand le
+log drain et Logstash ont décroché. Le 23/10/2026, 3 IP ont envoyé à connect
+27 400 requêtes par minute et 9 800 erreurs 5xx en 5 min, et les logs ont
+disparu pendant 25 h ; le même scénario, d'une seule IP, était passé inaperçu le
+21/10.
+
+Une règle ES|QL sur les [alertes de métriques Scalingo](alertes-applicatives.md#alertes-de-métriques-scalingo--la-surcharge-sans-les-logs) :
+pour chaque app, le dernier événement de ses alertes `Requests per Minute` et
+`5xx Errors` ; elle sonne si les deux sont des dépassements, à moins de 10 min
+d'intervalle. Fenêtre de 45 min : au-delà du rappel de 30 min des alertes, une
+alerte toujours dépassée y garde un événement. Le RPM seul (un pic légitime qui
+passe) ne la déclenche pas ; rejouée sur les 30 jours d'octobre 2026 avec les
+seuils retenus, elle n'aurait sonné que les 21 et 23/10, sur connect.
+
+| Paramètre               | Valeur |
+|-------------------------|--------|
+| **Rule name**           | `Scalingo - Prod - Suspicion d'attaque DDoS` (D1a), `Scalingo - Hors-Prod - Suspicion d'attaque DDoS` (D1b) |
+| **Type**                | Elasticsearch query rule (ES\|QL), `groupBy: all` |
+| **Fenêtre / fréquence** | 45 min / 1 min |
+| **Actions**             | Tchap via le Workflow `tchap-monitoring-securite` (D1a) ou `tchap-monitoring-staging` (D1b) |
+| **Message**             | une ligne par app : nom, requêtes par minute et 5xx relevés par Scalingo, heure du premier dépassement |
+
+**À vérifier** :
+1. Quelle app, depuis quand, et le trafic continue-t-il de monter : ses
+   métriques (onglet Metrics) dans le **[Scalingo] Dashboard des apps**.
+2. Un événement légitime l'explique-t-il : mise en service, notification de
+   masse, campagne de communication.
+3. D'où vient le trafic : si les logs du routeur arrivent encore (règle 3b au
+   repos), le Discover **[Pass Emploi] Logs de Prod - Trafic du routeur par IP** ;
+   sinon, les logs du routeur lus chez Scalingo, sans drain ni Logstash
+   (cf. [runbook](../runbooks/investigation-incident.md#suspicion-de-ddos-ou-surcharge-de-linfra)),
+   puis le support Scalingo.
+
+**Création** : nouvelles règles, à créer avec `POST` (cf. l'en-tête de leur
+bloc dans [`rules/generated/1-rules-securite.console`](rules/generated/1-rules-securite.console)),
+après la session Discover
+[`discover-session-prod-trafic-routeur-par-ip.ndjson`](discovers/applicatives/discover-session-prod-trafic-routeur-par-ip.ndjson)
+et le Workflow [`tchap-monitoring-securite`](workflows/tchap/generated/tchap-monitoring-securite.console).

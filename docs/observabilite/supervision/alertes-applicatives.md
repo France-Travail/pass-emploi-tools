@@ -506,6 +506,50 @@ après les sessions Discover de [`discovers/webhooks/`](discovers/webhooks/).
    onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur.
 2. L'activité de l'app (onglet Activity) dans le **[Scalingo] Dashboard des apps**.
 
+### Alertes de métriques Scalingo — la surcharge, sans les logs
+
+Scalingo mesure lui-même la santé des apps : requêtes par minute, erreurs 5xx et
+temps de réponse au routeur, mémoire des conteneurs. Ses **alertes de métriques**
+ne passent ni par le log drain ni par Logstash : chacune prévient le notifier
+Elastic de son app, qui écrit directement dans `logs-alertes-scalingo-<env>-default`,
+puis A4a (A4b hors prod) en fait une ligne ⚠️ au dépassement et ℹ️ au retour à
+la normale. Elles restent donc audibles quand la chaîne de logs est tombée,
+comme le 23/10/2026. Chaque alerte prévient aussi le notifier e-mail de l'app,
+en secours si Elastic Cloud est indisponible.
+
+| App (`-prod`) | Requêtes par minute (`rpm`) | Erreurs 5xx par minute (`5XX`) | Temps de réponse p95 (`p95_response_time`) | Mémoire (`memory`) |
+|---|---|---|---|---|
+| `pass-emploi-api` | > 12 000 pendant 5 min | > 300 pendant 2 min | > 3 000 ms pendant 5 min | > 90 % pendant 5 min |
+| `pass-emploi-connect` | > 3 000 pendant 3 min | > 50 pendant 2 min | > 2 000 ms pendant 5 min | > 90 % pendant 5 min |
+| `pass-emploi-web` | > 12 000 pendant 5 min | > 50 pendant 2 min | > 3 000 ms pendant 5 min | > 90 % pendant 5 min |
+
+Rappel toutes les 30 min tant que le seuil reste dépassé (`--remind-every`).
+Seuils tirés de 30 jours de logs du routeur : au-dessus des pics des jours
+ouvrés (l'api dépasse chaque matin les 7 500 requêtes par minute que son
+autoscaler absorbe, sans erreurs), au niveau des attaques sur connect des 21 et
+23/10/2026. Web n'a pas de logs du routeur : ses seuils viennent des 72 h que
+garde Scalingo. La durée minimale avant déclenchement est de 2 min chez Scalingo.
+Pas d'alerte `swap`, que Scalingo retire des conteneurs d'app, ni `cpu`, que
+gèrent les autoscalers.
+
+Un seuil dépassé seul reste ⚠️ : une surcharge peut être légitime. RPM **et**
+5xx dépassés ensemble sur la même app, c'est la règle 🚨
+[D1a / D1b](alertes-securite.md#d1a--d1b--suspicion-dattaque-ddos-critical).
+
+Dans le webhook, Scalingo nomme les métriques par leur libellé (`labels.metric`) :
+`Requests per Minute`, `5xx Errors`, `RAM`, et ne transmet la valeur et le seuil
+qu'en texte (`2.0 rpm`, `≥ 1.0 rpm`) ; l'émetteur est `router` ou le conteneur.
+
+**Création** (une alerte par ligne et par métrique, rattachée au notifier
+Elastic de l'app et à son notifier e-mail, identifiants donnés par
+`scalingo --region osc-secnum-fr1 --app <app> notifiers`) :
+
+```bash
+scalingo --region osc-secnum-fr1 --app pass-emploi-connect-prod alerts-add \
+  --container-type web --metric rpm --limit 3000 --duration-before-trigger 3m \
+  --remind-every 30m --notifiers <id Elastic> --notifiers <id e-mail>
+```
+
 ### Sortir l'infra des salons de monitoring
 
 Si l'équipe veut isoler les lignes ℹ️ (déploiements…) dans des salons
