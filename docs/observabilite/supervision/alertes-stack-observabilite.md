@@ -107,7 +107,7 @@ Session Discover : onglet « Logs non indexés : Échec de process Logstash ind�
 | **Fréquence**           | 1 min                                                                                                                                                                                    |
 | **Sévérité**            | Critical                                                                                                                                                                                 |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                               |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-production** — message dans le bloc de la règle                                                                                                            |
+| **Action**              | Workflow `tchap-o11y-production` — message dans le bloc de la règle                                                                                                            |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue) |
 
@@ -125,7 +125,7 @@ Session Discover : onglet « Logs non indexés : Échec de process Logstash ind�
 | **Fréquence**           | 5 min                                                                                                                                                                                      |
 | **Sévérité**            | Warning                                                                                                                                                                                    |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                 |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — message dans le bloc de la règle                                                                                                                 |
+| **Action**              | Workflow `tchap-o11y-staging` — message dans le bloc de la règle                                                                                                                 |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)   |
 
@@ -168,7 +168,7 @@ Session Discover : onglet « Logs non indexés : Erreur de transformation Logsta
 | **Fréquence**           | 1 h                                                                                                                                                                                                            |
 | **Sévérité**            | Warning                                                                                                                                                                                                        |
 | **Notification**        | Une fois par jour : `On check intervals` / `Run when: Query matched`, avec `If alert is generated during timeframe` tous les jours de `09:30` à `10:30` (`Europe/Paris`) (onglet Actions → Settings) |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-production** — message dans le bloc de la règle                                                                                                                                  |
+| **Action**              | Workflow `tchap-o11y-production` — message dans le bloc de la règle                                                                                                                                  |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue) |
 
@@ -193,7 +193,7 @@ fait ce travail.
 | **Fréquence**           | 5 min                                                                                                                                                                                                          |
 | **Sévérité**            | Warning                                                                                                                                                                                                        |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                               |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — message dans le bloc de la règle                                                                                                                                     |
+| **Action**              | Workflow `tchap-o11y-staging` — message dans le bloc de la règle                                                                                                                                     |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue) |
 
@@ -230,8 +230,7 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 | **Fenêtre**               | 5 min                                                                                                                                                                                                       |
 | **Fréquence**             | 2 min                                                                                                                                                                                                       |
 | **Sévérité**              | Critical                                                                                                                                                                                                    |
-| **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-o11y-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — message dans le bloc de la règle                  |
-| **Action 2 (résolution)** | Connecteur Kibana **Mattermost-o11y-production** — `On status changes` / `Run when: Recovered` (onglet Actions → Settings) — message dans le bloc de la règle                                                    |
+| **Action**           | Workflow `tchap-o11y-production`, un message quand l'alerte apparaît, sans relance ni message de fin (cf. [Brancher une règle](workflows/tchap/README.md#brancher-une-règle)) — message dans le bloc de la règle                  |
 | **Related dashboards**    | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide**   | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
 
@@ -248,8 +247,7 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 | **Fenêtre**               | 5 min                                                                                                                                                                                                       |
 | **Fréquence**             | 2 min                                                                                                                                                                                                       |
 | **Sévérité**              | Critical                                                                                                                                                                                                    |
-| **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-o11y-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — message dans le bloc de la règle                  |
-| **Action 2 (résolution)** | Connecteur Kibana **Mattermost-o11y-production** — `On status changes` / `Run when: Recovered` (onglet Actions → Settings) — message dans le bloc de la règle                                                    |
+| **Action**           | Workflow `tchap-o11y-production`, un message quand l'alerte apparaît, sans relance ni message de fin (cf. [Brancher une règle](workflows/tchap/README.md#brancher-une-règle)) — message dans le bloc de la règle                  |
 | **Related dashboards**    | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide**   | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
 
@@ -267,7 +265,7 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 | **Fréquence**           | 5 min                                                                                                                                                                                                       |
 | **Sévérité**            | Warning                                                                                                                                                                                                     |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                            |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — message dans le bloc de la règle                                                                                                                                  |
+| **Action**              | Workflow `tchap-o11y-staging` — message dans le bloc de la règle                                                                                                                                  |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
 
@@ -285,7 +283,7 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 | **Fréquence**           | 5 min                                                                                                                                                                                                       |
 | **Sévérité**            | Warning                                                                                                                                                                                                     |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                            |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — message dans le bloc de la règle                                                                                                                                  |
+| **Action**              | Workflow `tchap-o11y-staging` — message dans le bloc de la règle                                                                                                                                  |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
 
@@ -352,8 +350,7 @@ attendu : Redis absorbe, et un backlog qui ne se vide pas relève de l'alerte 7.
 | **Fenêtre**               | 15 min                                                                                                                                                                                                   |
 | **Fréquence**             | 2 min                                                                                                                                                                                                    |
 | **Sévérité**              | Critical                                                                                                                                                                                                 |
-| **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-o11y-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — message dans le bloc de la règle               |
-| **Action 2 (résolution)** | Connecteur Kibana **Mattermost-o11y-production** — `On status changes` / `Run when: Recovered` (onglet Actions → Settings) — message dans le bloc de la règle                                               |
+| **Action**           | Workflow `tchap-o11y-production`, un message quand l'alerte apparaît, sans relance ni message de fin (cf. [Brancher une règle](workflows/tchap/README.md#brancher-une-règle)) — message dans le bloc de la règle               |
 | **Related dashboards**    | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide**   | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch) |
 
@@ -374,7 +371,7 @@ attendu : Redis absorbe, et un backlog qui ne se vide pas relève de l'alerte 7.
 | **Fréquence**           | 5 min                                                                                                                                                                                                    |
 | **Sévérité**            | Warning                                                                                                                                                                                                  |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                         |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — message dans le bloc de la règle                                                                                                                               |
+| **Action**              | Workflow `tchap-o11y-staging` — message dans le bloc de la règle                                                                                                                               |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch) |
 
@@ -421,7 +418,7 @@ ici : c'est l'[alerte 9](#alerte-9--mémoire-du-conteneur-logstash-oom-kill-scal
 | **Fréquence**           | 2 min                                                                                                                                                                    |
 | **Sévérité**            | Critical                                                                                                                                                                 |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                         |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-production** — message dans le bloc de la règle                                                                                            |
+| **Action**              | Workflow `tchap-o11y-production` — message dans le bloc de la règle                                                                                            |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-2--gel-gc-jvm) |
 
@@ -442,7 +439,7 @@ ici : c'est l'[alerte 9](#alerte-9--mémoire-du-conteneur-logstash-oom-kill-scal
 | **Fréquence**           | 5 min                                                                                                                                                                    |
 | **Sévérité**            | Warning                                                                                                                                                                  |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                         |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — message dans le bloc de la règle                                                                                               |
+| **Action**              | Workflow `tchap-o11y-staging` — message dans le bloc de la règle                                                                                               |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-2--gel-gc-jvm) |
 
@@ -482,7 +479,7 @@ throttle. Scalingo n'envoie `app_crashed` qu'aux 2ᵉ, 5ᵉ et 12ᵉ crashs, et
 | **Type**                | Elasticsearch query rule (KQL), data view `logs-alertes-scalingo-prod-default` |
 | **Requête**             | `service.name : ("pass-emploi-logstash" or "pass-emploi-logstash-process" or "pass-emploi-elastic-agent" or "pass-emploi-heartbeat")` |
 | **Fenêtre / fréquence** | 5 min / 1 min |
-| **Actions**             | Mattermost-o11y-production ; Tchap via le Workflow `tchap-o11y-production` |
+| **Actions**             | Tchap via le Workflow `tchap-o11y-production` |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 
 **À vérifier** :
@@ -503,7 +500,7 @@ throttle. Scalingo n'envoie `app_crashed` qu'aux 2ᵉ, 5ᵉ et 12ᵉ crashs, et
 | **Type**                | Elasticsearch query rule (KQL), data view `logs-alertes-scalingo-staging-default,logs-alertes-scalingo-perf-default` |
 | **Requête**             | celle de 6a |
 | **Fenêtre / fréquence** | 10 min / 5 min |
-| **Actions**             | Mattermost-o11y-staging ; Tchap via le Workflow `tchap-o11y-staging` |
+| **Actions**             | Tchap via le Workflow `tchap-o11y-staging` |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 
 **À vérifier** : comme 6a, avec le Discover **[Pass Emploi] Alertes externes
@@ -573,8 +570,7 @@ sévère côté `process`.
 | **Fenêtre**               | 15 min                                                                                                                                                                                     |
 | **Fréquence**             | 2 min                                                                                                                                                                                      |
 | **Sévérité**              | Critical                                                                                                                                                                                   |
-| **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-o11y-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — message dans le bloc de la règle |
-| **Action 2 (résolution)** | Connecteur Kibana **Mattermost-o11y-production** — `On status changes` / `Run when: Recovered` (onglet Actions → Settings) — message dans le bloc de la règle                                    |
+| **Action**           | Workflow `tchap-o11y-production`, un message quand l'alerte apparaît, sans relance ni message de fin (cf. [Brancher une règle](workflows/tchap/README.md#brancher-une-règle)) — message dans le bloc de la règle |
 | **Related dashboards**    | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide**   | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-5--backlog-redis-logstashingest) |
 
@@ -594,7 +590,7 @@ sévère côté `process`.
 | **Fréquence**           | 5 min                                                                                                           |
 | **Sévérité**            | Warning                                                                                                         |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)      |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — message dans le bloc de la règle                                                                                                                                                    |
+| **Action**              | Workflow `tchap-o11y-staging` — message dans le bloc de la règle                                                                                                                                                    |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-5--backlog-redis-logstashingest) |
 
@@ -664,7 +660,7 @@ agent ressemble à une infra saine. Contexte :
 | **Fenêtre**               | 5 min                                                                                                                                                                                                                                                                                                          |
 | **Fréquence**             | 1 min                                                                                                                                                                                                                                                                                                          |
 | **Sévérité**              | Critical                                                                                                                                                                                                                                                                                                       |
-| **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-o11y-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — message dans le bloc de la règle                                                                                                                     |
+| **Action**           | Workflow `tchap-o11y-production`, un message quand l'alerte apparaît, sans relance ni message de fin (cf. [Brancher une règle](workflows/tchap/README.md#brancher-une-règle)) — message dans le bloc de la règle                                                                                                                     |
 | **Action 2 (résolution)** | **Aucune** — voir note « Transition, pas état » ci-dessus                                                                                                                                                                                                                                                      |
 | **Related dashboards**    | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide**   | dans la règle (mêmes étapes que le message) ; runbook : [pilotage des agents](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/pilotage.md) et [post-mortem — agent UNENROLLED](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/post-mortems/postmortem-2026-09-unenrolled-elastic-agent.md) |
@@ -697,7 +693,7 @@ FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*
 | **Fréquence**           | 1 min                                                                                                                                                                                                                                                                                                          |
 | **Sévérité**            | Warning                                                                                                                                                                                                                                                                                                        |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                                                                                     |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — message dans le bloc de la règle                                                                                                                                                                                                                                     |
+| **Action**              | Workflow `tchap-o11y-staging` — message dans le bloc de la règle                                                                                                                                                                                                                                     |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [pilotage des agents](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/pilotage.md) et [post-mortem — agent UNENROLLED](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/post-mortems/postmortem-2026-09-unenrolled-elastic-agent.md) |
 
@@ -756,8 +752,7 @@ et l'Elastic Agent co-localisé lui échappent (cf.
 | **Fenêtre**               | 5 min                                                                                                                                                                                      |
 | **Fréquence**             | 1 min                                                                                                                                                                                      |
 | **Sévérité**              | Critical                                                                                                                                                                                   |
-| **Action 1 (alerte)**     | Connecteur Kibana **Mattermost-o11y-production** — `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings) — message dans le bloc de la règle |
-| **Action 2 (résolution)** | Connecteur Kibana **Mattermost-o11y-production** — `On status changes` / `Run when: Recovered` (onglet Actions → Settings) — message dans le bloc de la règle                                    |
+| **Action**           | Workflow `tchap-o11y-production`, un message quand l'alerte apparaît, sans relance ni message de fin (cf. [Brancher une règle](workflows/tchap/README.md#brancher-une-règle)) — message dans le bloc de la règle |
 | **Related dashboards**    | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide**   | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
 
@@ -778,7 +773,7 @@ et l'Elastic Agent co-localisé lui échappent (cf.
 | **Fréquence**           | 5 min                                                                                                                                                                   |
 | **Sévérité**            | Warning                                                                                                                                                                 |
 | **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                              |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-staging** — message dans le bloc de la règle                                                                                                    |
+| **Action**              | Workflow `tchap-o11y-staging` — message dans le bloc de la règle                                                                                                    |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
 
@@ -820,7 +815,7 @@ les métriques Fleet et les logs Elastic Agent sur `metrics@lifecycle` /
 | **Fréquence**           | 1 h                                                                                                                                                                                                            |
 | **Sévérité**            | Warning                                                                                                                                                                                                        |
 | **Notification**        | Une fois par jour : `On check intervals` / `Run when: Query matched`, avec `If alert is generated during timeframe` tous les jours de `09:30` à `10:30` (`Europe/Paris`) (onglet Actions → Settings) |
-| **Action**              | Connecteur Kibana **Mattermost-o11y-production** — message dans le bloc de la règle                                                                                                                                        |
+| **Action**              | Workflow `tchap-o11y-production` — message dans le bloc de la règle                                                                                                                                        |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook ILM](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-ilm.md) |
 
@@ -1026,7 +1021,7 @@ l'alerte que portait le document ne serait pas levée.
 | **Type**                | Elasticsearch query rule (KQL), data view sur les 4 `logs-alertes-*-default::failures` (`allowHidden`) |
 | **Requête**             | aucune : tout document |
 | **Fenêtre / fréquence** | 10 min / 5 min |
-| **Actions**             | Mattermost-o11y-production ; Tchap via le Workflow `tchap-o11y-production` |
+| **Actions**             | Tchap via le Workflow `tchap-o11y-production` |
 | **Related dashboards**  | — |
 
 Une ligne par rejet : `error.type` et `error.message`.

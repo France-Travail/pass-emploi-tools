@@ -22,11 +22,9 @@ chaîne de télémétrie elle-même sont dans
 [alertes-stack-observabilite](alertes-stack-observabilite.md) : si elle est
 aveugle (alerte 3 « silence »), ces alertes-ci ne peuvent pas se déclencher.
 
-Toutes notifient via Mattermost (`#monitoring-production`), sauf A4b
-(`Mattermost-monitoring-staging`) et A5a / A5b (canaux des jobs,
-`jobs-production` / `jobs-staging`). Toutes notifient aussi Tchap, dans le
-salon qui correspond à leur canal (cf. [workflows/tchap](workflows/tchap/README.md)) :
-l'action Tchap est déployée avec le compte du bot.
+Toutes notifient le salon Tchap `monitoring-production`, sauf A4b
+(`monitoring-staging`) et A5a / A5b (salons des jobs, `jobs-production` /
+`jobs-staging`), cf. [workflows/tchap](workflows/tchap/README.md).
 
 ## Récapitulatif
 
@@ -119,7 +117,7 @@ dans Dev Tools, après [`slo/1-slos.console`](slo/1-slos.console).
 | **SLO**                 | le SLO visé                                                                                          |
 | **Fenêtres**            | valeurs par défaut de Kibana, cf. tableau ci-dessous                                                 |
 | **Fréquence**           | 1 min                                                                                                |
-| **Action**              | Connecteur Kibana **Mattermost-monitoring-production**, groupes `Critical` et `High` uniquement — message dans le bloc de la règle |
+| **Action**              | Workflow `tchap-monitoring-production`, tous les groupes de gravité (Critical à Low) — message dans le bloc de la règle |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook d'investigation](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md) |
 
@@ -182,7 +180,7 @@ domaine, le code et le message.
 | **Fréquence**           | 1 min                                                                                                              |
 | **Sévérité**            | Warning                                                                                                            |
 | **Throttle**            | `On custom action intervals` / `Run every 1 hour` / `Run when: Query matched` (onglet Actions → Settings)          |
-| **Action**              | Connecteur Kibana **Mattermost-monitoring-production**, et Workflow `tchap-monitoring-production` (relance la requête de la règle) — messages dans le bloc de la règle |
+| **Action**              | Workflow `tchap-monitoring-production` (relance la requête de la règle) — message dans le bloc de la règle |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message, contacts partenaires) ; runbook : [runbook d'investigation](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md) |
 
@@ -236,7 +234,7 @@ Discover « Erreurs serveur 5xx » la retrouve par son `trace.id`.
 | **Fréquence**           | 1 min                                                                                                              |
 | **Sévérité**            | Critical                                                                                                           |
 | **Throttle**            | `On custom action intervals` / `Run every 1 hour` / `Run when: Query matched` (onglet Actions → Settings)          |
-| **Action**              | Connecteur Kibana **Mattermost-monitoring-production**, et Workflow `tchap-monitoring-production` (relance la requête de la règle) — messages dans le bloc de la règle |
+| **Action**              | Workflow `tchap-monitoring-production` (relance la requête de la règle) — message dans le bloc de la règle |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook d'investigation](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md) |
 
@@ -280,7 +278,7 @@ précédents, ramenée à 10 min (7 j × 6 tranches = 42). Le plancher de 20 ref
 | **Fréquence**           | 5 min                                                                                                              |
 | **Sévérité**            | Critical                                                                                                           |
 | **Throttle**            | `On custom action intervals` / `Run every 1 hour` / `Run when: Query matched` (onglet Actions → Settings)          |
-| **Action**              | Connecteur Kibana **Mattermost-monitoring-production** — message dans le bloc de la règle                                      |
+| **Action**              | Workflow `tchap-monitoring-production` — message dans le bloc de la règle                                      |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook d'investigation](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md) |
 
@@ -326,7 +324,7 @@ prod : connexion perdue, pool de connexions saturé
 | **Fréquence**           | 1 min                                                                                                              |
 | **Sévérité**            | Critical                                                                                                           |
 | **Throttle**            | `On custom action intervals` / `Run every 1 hour` / `Run when: Query matched` (onglet Actions → Settings)          |
-| **Action**              | Connecteur Kibana **Mattermost-monitoring-production**, et Workflow `tchap-monitoring-production` (relance la requête de la règle) — messages dans le bloc de la règle |
+| **Action**              | Workflow `tchap-monitoring-production` (relance la requête de la règle) — message dans le bloc de la règle |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook d'investigation](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md) |
 
@@ -375,7 +373,7 @@ elles visaient des services qui n'émettent plus (`pa-back-prod`,
 | **Fréquence**           | 1 min                                                                                                              |
 | **Sévérité**            | Warning                                                                                                            |
 | **Throttle**            | `On custom action intervals` / `Run every 1 hour` / `Run when: Query matched` (onglet Actions → Settings)          |
-| **Action**              | Connecteur Kibana **Mattermost-monitoring-production**, et Workflow `tchap-monitoring-production` (relance la requête de la règle) — messages dans le bloc de la règle |
+| **Action**              | Workflow `tchap-monitoring-production` (relance la requête de la règle) — message dans le bloc de la règle |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 | **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook d'investigation](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md) |
 
@@ -481,7 +479,7 @@ après les sessions Discover de [`discovers/webhooks/`](discovers/webhooks/).
 | **Type**                | Elasticsearch query rule (KQL), data view `logs-alertes-scalingo-prod-default` |
 | **Requête**             | `not service.name : ("pass-emploi-logstash" or "pass-emploi-logstash-process" or "pass-emploi-elastic-agent" or "pass-emploi-heartbeat")` |
 | **Fenêtre / fréquence** | 5 min / 1 min |
-| **Actions**             | Mattermost-monitoring-production ; Tchap via le Workflow `tchap-monitoring-production` |
+| **Actions**             | Tchap via le Workflow `tchap-monitoring-production` |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 
 **À vérifier** :
@@ -500,7 +498,7 @@ après les sessions Discover de [`discovers/webhooks/`](discovers/webhooks/).
 | **Type**                | Elasticsearch query rule (KQL), data view `logs-alertes-scalingo-staging-default,logs-alertes-scalingo-perf-default` |
 | **Requête**             | celle d'A4a |
 | **Fenêtre / fréquence** | 10 min / 5 min |
-| **Actions**             | Mattermost-monitoring-staging ; Tchap via le Workflow `tchap-monitoring-staging` |
+| **Actions**             | Tchap via le Workflow `tchap-monitoring-staging` |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 
 **À vérifier** :
@@ -551,9 +549,7 @@ aussi, sans exécutions attendues. Seul manque `nbErreurs`, absent des logs.
 Les notifications de `SuiviJobService` **restent actives** tant que la parité
 n'est pas jugée suffisante.
 
-**Création** : créer les connecteurs de
-[`connecteurs/mattermost-jobs.console`](connecteurs/mattermost-jobs.console),
-importer les sessions de [`discovers/applicatives/`](discovers/applicatives/)
+**Création** : importer les sessions de [`discovers/applicatives/`](discovers/applicatives/)
 (`discover-session-*-jobs.ndjson`), puis rejouer les blocs A5a / A5b de
 [`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console)
 (`POST` : ce sont de nouvelles règles).
@@ -566,7 +562,7 @@ importer les sessions de [`discovers/applicatives/`](discovers/applicatives/)
 | **Type**                | Elasticsearch query rule (KQL), data view `logs-prod-default,logs-router-prod-default` |
 | **Requête**             | `service.name : "pass-emploi-api" and event.action : ("job_crashed" or "job_handler_not_found")` |
 | **Fenêtre / fréquence** | 5 min / 1 min |
-| **Actions**             | Mattermost-jobs-production |
+| **Actions**             | Tchap via le Workflow `tchap-jobs-production` |
 
 **À vérifier** :
 1. Le Discover **[Pass Emploi] Logs de Prod - Jobs**, onglet « Jobs en échec » :
@@ -577,5 +573,5 @@ importer les sessions de [`discovers/applicatives/`](discovers/applicatives/)
 ### A5b — Jobs en échec, staging / perf
 
 Comme A5a, sur `logs-staging-default,logs-perf-default`, toutes les 5 min
-(fenêtre de 10 min), vers Mattermost-jobs-staging ; la ligne donne
+(fenêtre de 10 min), vers le salon Tchap `jobs-staging` ; la ligne donne
 l'environnement. Session : **[Pass Emploi] Logs Hors-Prod - Jobs**.

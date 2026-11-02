@@ -29,7 +29,7 @@ Deux sortes de contenus, rangés séparément :
 | [rules/](rules/) | les règles d'alerte : une règle = un fichier JSON par périmètre, et les fichiers générés à coller dans Dev Tools (`rules/generated/`) | [rules/README.md](rules/README.md) |
 | [workflows/tchap/](workflows/tchap/) | l'envoi des alertes dans Tchap : `tchap-client`, et les Workflows générés par salon (`workflows/tchap/generated/`) | [workflows/tchap/README.md](workflows/tchap/README.md) |
 | [pipelines/webhooks/](pipelines/webhooks/) | les ingest pipelines qui transforment les événements reçus par webhook (Scalingo, Dependabot) en champs ECS, et l'accès de leurs émetteurs | [pipelines/webhooks/README.md](pipelines/webhooks/README.md) |
-| [connecteurs/](connecteurs/) | les connecteurs Kibana à créer : Tchap, Mattermost des jobs | en-tête de chaque fichier |
+| [connecteurs/](connecteurs/) | le connecteur Kibana à créer : Tchap | en-tête de chaque fichier |
 | [dashboards/](dashboards/) | les dashboards (`.ndjson`) | [objets Kibana](objets-kibana.md#dashboards) |
 | [discovers/](discovers/) | les sessions Discover (`.ndjson`), citées par les alertes | [objets Kibana](objets-kibana.md#sessions-discover) |
 
@@ -38,7 +38,6 @@ modifier, modifier leur source (cf. leur en-tête et le mode d'emploi).
 
 ## Où arrivent les alertes
 
-Dans les canaux `monitoring-*`, `o11y-*` et `jobs-*`, qui portent le même nom
-dans Mattermost et dans Tchap : cf.
+Dans les salons Tchap `monitoring-*`, `o11y-*` et `jobs-*` : cf.
 [workflows/tchap/README.md](workflows/tchap/README.md). AutoOps alerte en direct
-(disque, indexation) : cf. [alertes de la stack](alertes-stack-observabilite.md).
+(disque, indexation), par e-mail et dans Tchap : cf. [alertes de la stack](alertes-stack-observabilite.md).
