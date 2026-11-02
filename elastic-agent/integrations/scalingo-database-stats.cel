@@ -40,7 +40,8 @@ request("POST", state.auth_url).with({
                           "instance": i.instance_id,
                           "role": i.real_disk_size > 0.0 ? "donnees" : "auxiliaire",
                         }.with(has(base.connexions_max) ? {"connexions_max": base.connexions_max} : {})
-                        .with(m.?database_stats.?data_size.hasValue() ? {"data_size": {"bytes": int(m.database_stats.data_size)}} : {}),
+                        .with(m.?database_stats.?data_size.hasValue() ? {"data_size": {"bytes": int(m.database_stats.data_size)}} : {})
+                        .with(has(state.ca_expire_le) ? {"ca_expire_le": state.ca_expire_le} : {}),
                         "cpu": {"usage": i.cpu.usage_in_percents},
                         "memory": {
                           "usage": {"bytes": int(i.memory.memory_usage)},

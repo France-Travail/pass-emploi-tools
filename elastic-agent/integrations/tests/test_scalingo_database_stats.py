@@ -67,6 +67,15 @@ class TestScalingoDatabaseStats(unittest.TestCase):
         roles = {e['scalingo']['database']['instance']: e['scalingo']['database']['role'] for e in self.evenements()}
         self.assertEqual(roles, {'9f20c633-3507-4585-8cd0-f9ada91165c0': 'donnees', 'aux-1': 'auxiliaire'})
 
+    def test_date_d_expiration_de_l_autorite(self):
+        self.base('postgresql-api-prod', 'addon-pg')
+        self.etat['ca_expire_le'] = '2037-07-29T09:57:55Z'
+        self.assertEqual(self.evenements()[0]['scalingo']['database']['ca_expire_le'], '2037-07-29T09:57:55Z')
+
+    def test_sans_date_d_expiration_de_l_autorite(self):
+        self.base('postgresql-api-prod', 'addon-pg')
+        self.assertNotIn('ca_expire_le', self.evenements()[0]['scalingo']['database'])
+
     def test_base_en_erreur_n_arrete_pas_les_autres(self):
         self.base('postgresql-api-prod', 'addon-pg')
         self.base('redis-en-panne', faux_scalingo.ADDON_EN_ERREUR)

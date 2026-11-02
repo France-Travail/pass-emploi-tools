@@ -521,7 +521,8 @@ PUT _component_template/logs-scalingo.database_stats@custom
                 "instance": { "type": "keyword" },
                 "role": { "type": "keyword" },
                 "data_size": { "properties": { "bytes": { "type": "long" } } },
-                "connexions_max": { "type": "integer" }
+                "connexions_max": { "type": "integer" },
+                "ca_expire_le": { "type": "date" }
               }
             },
             "cpu": { "properties": { "usage": { "type": "float" } } },

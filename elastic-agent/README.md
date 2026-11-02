@@ -267,6 +267,7 @@ MITO=<chemin de mito> python3 -I -m unittest discover -s elastic-agent/integrati
 | `scalingo.database.role`                                        | `donnees` si l'instance a des données sur disque (`real_disk_size` > 0), sinon `auxiliaire` (composants de haute disponibilité, 128 Mio) |
 | `scalingo.database.data_size.bytes`                             | `database_stats.data_size`, si l'API la donne (absente pour certaines bases) |
 | `scalingo.database.connexions_max`                              | state, si le plan en fixe                                 |
+| `scalingo.database.ca_expire_le`                                | state (`ca_expire_le`) : expiration de l'autorité de certification des bases, si fournie |
 | `scalingo.cpu.usage`                                            | `cpu.usage_in_percents` de l'instance (%)                 |
 | `scalingo.memory.usage.bytes`, `.limit.bytes`, `.highest.bytes` | `memory_usage`, `memory_limit`, `max_memory_usage`        |
 | `scalingo.memory.pct`                                           | `memory_usage / memory_limit` (0–1)                       |
