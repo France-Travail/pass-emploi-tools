@@ -35,7 +35,7 @@ prochaine poussée écrase la modification et « verifier » la signale.
 ```bash
 cd docs/observabilite/supervision/agents
 python3 -I generer-integrations.py                      # génère generated/<env>/, sans réseau ni secret
-python3 -I generer-integrations.py pousser --env perf   # SCALINGO_API_TOKEN, KIBANA_URL, KIBANA_FLEET_API_KEY
+python3 -I generer-integrations.py pousser --env perf   # SCALINGO_API_TOKEN, KIBANA_URL, ES_API_KEY (écriture Fleet)
 python3 -I generer-integrations.py verifier --env prod  # KIBANA_URL, ES_API_KEY (lecture)
 ```
 
@@ -49,26 +49,22 @@ python3 -I generer-integrations.py verifier --env prod  # KIBANA_URL, ES_API_KEY
   intégration par son nom. Les mots de passe vont dans les secrets Fleet ; rien
   de secret n'est écrit ni affiché. Une base illisible dans Scalingo est
   signalée et sautée, les autres sont poussées. **Rien n'est jamais supprimé.**
-- **Vérifier** compare Fleet aux fichiers générés (hors valeurs remplies à la
-  poussée) et liste, sans échouer, les intégrations de la policy que le script
+- **Vérifier** compare Fleet aux fichiers générés, policy de rattachement
+  comprise, et liste, sans échouer, les intégrations de la policy que le script
   ne gère pas (stack d'observabilité : Redis de Logstash, mémoire des
-  conteneurs, System).
+  conteneurs, System). Limite : les valeurs remplies à la poussée (hôtes,
+  bloc *SSL*, identifiants d'addon, quotas) ne sont pas contrôlées, `verifier`
+  ne lisant pas Scalingo ; seule leur présence l'est.
 
 Clés : `SCALINGO_API_TOKEN`, le token Bitwarden « API Token Scalingo pour
 Elastic » (son compte doit être collaborateur des apps qui portent les bases) ;
-`KIBANA_FLEET_API_KEY`, une clé de courte durée qui peut écrire dans Fleet,
-créée au moment de pousser :
+`ES_API_KEY`, une clé qui peut écrire dans Fleet (`feature_fleet.all`,
+`feature_fleetv2.all`) pour pousser, en lecture suffit pour vérifier.
 
-```
-POST /_security/api_key
-{
-  "name": "pousser-integrations-bases",
-  "expiration": "1h",
-  "role_descriptors": { "fleet": { "applications": [
-    { "application": "kibana-.kibana", "privileges": ["feature_fleet.all", "feature_fleetv2.all"], "resources": ["*"] }
-  ] } }
-}
-```
+La vérification tourne aussi chaque jour dans GitHub Actions
+(`.github/workflows/verification-supervision-bases.yml`, environnement
+`Performance` : secret `ELASTICSEARCH_API_KEY_RESTRICTED_READ_ONLY`, variables
+`ES_URL` et `KIBANA_URL`). Après une poussée, la relancer à la main.
 
 Les intégrations de la stack d'observabilité, elles, restent configurées dans
 Kibana → Fleet (cf. [pilotage](../../pilotage.md)).
@@ -146,10 +142,9 @@ apps:
   *Redacted fields* — le programme lit les deux.
 - **Région** : les apps Logstash sont sur `osc-secnum-fr1` ; un appel sur
   `osc-fr1` répond `404`.
-- **Compte** : token porté par un compte personnel le temps que l'administrateur du
-  projet Scalingo crée un compte technique, invité en collaborateur *limited* sur
-  les seules apps de la liste (un token porte les droits de son compte, pas de
-  token restreint à une app). À migrer vers ce compte puis révoquer.
+- **Compte** : un token porte les droits de son compte ; Scalingo n'a pas de
+  token restreint à une app. Le compte idéal est un compte technique invité en
+  collaborateur *limited* sur les seules apps de la liste.
 - **Tester le programme hors Fleet** avec [`mito`](https://github.com/elastic/mito)
   (le moteur de l'input CEL) : `mito -data state.json integrations/scalingo-container-stats.cel`,
   où `state.json` contient `url`, `auth_url`, `apps` et `secret.api_token`.

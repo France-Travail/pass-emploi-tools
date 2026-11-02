@@ -160,7 +160,7 @@ Expected : `verif` (requête ES|QL et comparaison Fleet en lecture) sans écart.
 - Test: `docs/observabilite/supervision/tests/test_pousser_integrations.py`, faux serveurs dans `supervision/tests/faux_fleet.py` (et le faux Scalingo existant, étendu)
 
 **Interfaces:**
-- `pousser(env: str) -> int` (code de sortie) : variables `SCALINGO_API_TOKEN`, `KIBANA_URL`, `KIBANA_FLEET_API_KEY` ; lit addons, variables (`SCALINGO_POSTGRESQL_URL`, `SCALINGO_REDIS_URL`), plans, Force TLS, date de l'autorité ; remplit les repères en mémoire ; met à jour par nom (`PUT /api/fleet/package_policies/<id>`) ou crée (`POST`) ; n'appelle jamais `DELETE`.
+- `pousser(env: str) -> int` (code de sortie) : variables `SCALINGO_API_TOKEN`, `KIBANA_URL`, `ES_API_KEY` ; lit addons, variables (`SCALINGO_POSTGRESQL_URL`, `SCALINGO_REDIS_URL`), plans, Force TLS, date de l'autorité ; remplit les repères en mémoire ; met à jour par nom (`PUT /api/fleet/package_policies/<id>`) ou crée (`POST`) ; n'appelle jamais `DELETE`.
 - `verifier(env: str) -> int` : variables `KIBANA_URL`, `ES_API_KEY` (lecture) ; compare chaque intégration générée à Fleet (hors secrets et valeurs remplies à la poussée) ; liste les intégrations de la policy non gérées, sans échec.
 
 - [ ] **Step 1 : Tests** :

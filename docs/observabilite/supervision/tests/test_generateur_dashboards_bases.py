@@ -26,14 +26,17 @@ class TestGenerateurDashboardsBases(unittest.TestCase):
             with self.subTest(interdit):
                 self.assertNotIn(interdit, contenu)
 
-    def test_selecteurs_issus_de_bases_json(self):
-        bases = json.load(open(os.path.join(SUPERVISION, 'agents', 'bases.json')))
+    def test_selecteurs_identiques_aux_labels_des_integrations_generees(self):
         noms = {'postgresql': set(), 'redis': set()}
-        for env, apps in bases.items():
-            for app, types in apps.items():
-                for type_ in types:
-                    prefixe = 'postgresql' if type_ == 'postgresql' else 'redis'
-                    noms[prefixe].add(f"{prefixe}-{app.removeprefix('pass-emploi-').removesuffix('-' + env)}-{env}")
+        dossier = os.path.join(SUPERVISION, 'agents', 'generated')
+        for env in os.listdir(dossier):
+            for fichier in os.listdir(os.path.join(dossier, env)):
+                integration = json.load(open(os.path.join(dossier, env, fichier)))
+                if integration['package']['name'] in noms:
+                    for entree in integration['inputs'].values():
+                        for flux in (entree.get('streams') or {}).values():
+                            if 'processors' in (flux.get('vars') or {}):
+                                noms[integration['package']['name']].add(flux['vars']['processors'].split('base: ')[1].strip())
         for ligne in open(VERSIONNE):
             attributs = json.loads(ligne)['attributes']
             controles = {c['config']['variable_name']: c['config'] for c in attributs['pinned_panels']['panels'].values()}

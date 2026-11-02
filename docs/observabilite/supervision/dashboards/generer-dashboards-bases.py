@@ -23,7 +23,6 @@ DASHBOARD_EN_COURS = []
 
 
 def bases(type_):
-    """Noms des bases de ce type, par environnement, dans l'ordre de ../agents/bases.json : [(env, app, nom)]."""
     resultat = []
     for env, apps in json.load(open(os.path.join(ICI, '..', 'agents', 'bases.json'), encoding='utf-8')).items():
         for app, types in apps.items():
@@ -158,8 +157,10 @@ def sous_l_encadre(encadre_, panneaux):
 
 def erreurs_de_collecte(composants, y, p):
     filtre = ' OR '.join(f'component.id LIKE "{c}*"' for c in composants)
-    return panneau('Erreurs de collecte', 'Erreurs de l\'Elastic Agent sur ces intégrations : une base qui ne répond plus (mot de passe changé, certificat, réseau) se voit ici, pas comme une base sans activité.',
-                   f'FROM logs-elastic_agent.metricbeat-*, logs-elastic_agent.filebeat-*\n| WHERE log.level == "error" AND ({filtre})\n| EVAL erreur = SUBSTRING(message, 1, 300)\n| STATS occurrences = COUNT(*), derniere = MAX(@timestamp) BY component.id, erreur\n| SORT derniere DESC\n| KEEP derniere, component.id, erreur, occurrences\n| LIMIT 20',
+    environnements = sorted({env for env, _, _ in bases('postgresql') + bases('redis')})
+    environnement = 'CASE(' + ', '.join(f'host.name LIKE "*-{env}-*", "{env}"' for env in environnements) + ', "")'
+    return panneau('Erreurs de collecte', 'Erreurs de l\'Elastic Agent de l\'environnement de la base choisie, sur ces intégrations : une base qui ne répond plus (mot de passe changé, certificat, réseau) se voit ici, pas comme une base sans activité.',
+                   f'FROM logs-elastic_agent.metricbeat-*, logs-elastic_agent.filebeat-*\n| WHERE log.level == "error" AND ({filtre})\n| EVAL environnement = {environnement}\n| WHERE environnement != "" AND ENDS_WITH(?base, CONCAT("-", environnement))\n| EVAL erreur = SUBSTRING(message, 1, 300)\n| STATS occurrences = COUNT(*), derniere = MAX(@timestamp) BY component.id, erreur\n| SORT derniere DESC\n| KEEP derniere, component.id, erreur, occurrences\n| LIMIT 20',
                    p, 'lnsDatatable', 0, y, 48, 10)
 
 

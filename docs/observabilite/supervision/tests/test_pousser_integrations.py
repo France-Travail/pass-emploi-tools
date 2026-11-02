@@ -16,11 +16,12 @@ class TestPousserIntegrations(unittest.TestCase):
         self.plateforme = faux_plateforme.Plateforme(MOT_DE_PASSE)
         self.addCleanup(self.plateforme.arreter)
 
-    def lancer(self, *args):
+    def lancer(self, *args, sans=()):
         url = self.plateforme.url
-        env = {**os.environ, 'SCALINGO_API_TOKEN': 'token-scalingo', 'SCALINGO_API_URL': url,
+        env = {**{k: v for k, v in os.environ.items() if k != 'KIBANA_FLEET_API_KEY'}, 'SCALINGO_API_TOKEN': 'token-scalingo', 'SCALINGO_API_URL': url,
                'SCALINGO_AUTH_URL': url + '/v1/tokens/exchange', 'SCALINGO_DB_API_URL': url,
-               'KIBANA_URL': url, 'KIBANA_FLEET_API_KEY': 'cle-fleet', 'ES_API_KEY': 'cle-lecture'}
+               'KIBANA_URL': url, 'ES_API_KEY': 'cle-elastic'}
+        env = {k: v for k, v in env.items() if k not in sans}
         return subprocess.run([sys.executable, '-I', SCRIPT, *args], capture_output=True, text=True, env=env, timeout=60)
 
     def ecritures(self, methode):
@@ -113,6 +114,70 @@ class TestPousserIntegrations(unittest.TestCase):
         self.assertNotIn('redis-orpheline-perf', self.ecritures('POST') + self.ecritures('PUT'))
         self.assertIn('redis-orpheline-perf', sortie.stderr)
 
+
+    def redis_connect(self, url):
+        self.plateforme.apps['pass-emploi-connect-perf']['variables']['SCALINGO_REDIS_URL'] = url
+
+    def pousse_sans_connect(self, sortie):
+        self.assertEqual(sortie.returncode, 1)
+        self.assertIn('redis-connect-perf', sortie.stderr)
+        self.assertNotIn('redis-connect-perf', self.ecritures('POST'))
+        self.assertIn('redis-api-perf', self.ecritures('POST'))
+
+    def test_url_sans_mot_de_passe_isole_la_base(self):
+        self.redis_connect('redis://redis-connect.exemple:30003')
+        self.pousse_sans_connect(self.lancer('pousser', '--env', 'perf'))
+
+    def test_schema_inattendu_isole_la_base(self):
+        self.redis_connect(f'http://user:{MOT_DE_PASSE}@redis-connect.exemple:30003')
+        self.pousse_sans_connect(self.lancer('pousser', '--env', 'perf'))
+
+    def test_rediss_accepte(self):
+        self.redis_connect(f'rediss://user:{MOT_DE_PASSE}@redis-connect.exemple:30003')
+        self.assertEqual(self.lancer('pousser', '--env', 'perf').returncode, 0)
+        self.assertIn('redis-connect-perf', self.ecritures('POST'))
+
+    def test_mot_de_passe_encode_est_decode(self):
+        self.redis_connect('redis://user:p%40ss@redis-connect.exemple:30003')
+        self.assertEqual(self.lancer('pousser', '--env', 'perf').returncode, 0)
+        redis = next(i for i in self.plateforme.integrations if i['name'] == 'redis-connect-perf')
+        self.assertEqual(redis['inputs']['redis-redis/metrics']['vars']['password'], 'p@ss')
+
+    def test_mot_de_passe_mal_forme_jamais_affiche(self):
+        self.redis_connect('redis://:zz9secret#x@redis-connect.exemple:30003')
+        sortie = self.lancer('pousser', '--env', 'perf')
+        self.pousse_sans_connect(sortie)
+        self.assertNotIn('zz9secret', sortie.stdout + sortie.stderr)
+
+    def test_plan_sans_max_connexions(self):
+        plans = faux_plateforme.PLANS['postgresql']
+        self.addCleanup(faux_plateforme.PLANS.__setitem__, 'postgresql', plans)
+        faux_plateforme.PLANS['postgresql'] = [{'name': 'postgresql-starter-512', 'description': '<li>Includes 10GB disk space</li>'}]
+        self.assertEqual(self.lancer('pousser', '--env', 'perf').returncode, 0)
+        cel = next(i for i in self.plateforme.integrations if i['name'] == 'scalingo-database-stats-perf')
+        etat = cel['inputs']['cel-cel']['streams']['cel.cel']['vars']['state']
+        self.assertNotIn('connexions_max', etat)
+        self.assertNotIn('None', etat)
+
+    def test_variable_manquante_message_clair(self):
+        sortie = self.lancer('pousser', '--env', 'perf', sans=('SCALINGO_API_TOKEN',))
+        self.assertNotEqual(sortie.returncode, 0)
+        self.assertIn('SCALINGO_API_TOKEN', sortie.stderr)
+        self.assertNotIn('Traceback', sortie.stderr)
+
+    def test_verifier_signale_une_ligne_ajoutee_a_l_etat_cel(self):
+        self.lancer('pousser', '--env', 'perf')
+        cel = next(i for i in self.plateforme.integrations if i['name'] == 'scalingo-database-stats-perf')
+        cel['inputs']['cel-cel']['streams']['cel.cel']['vars']['state'] += '  - {app: autre, addon_id: "ad-x", nom: redis-autre-perf, disque_inclus_octets: 1}\n'
+        self.assertEqual(self.lancer('verifier', '--env', 'perf').returncode, 1)
+
+    def test_verifier_signale_une_autre_policy(self):
+        self.lancer('pousser', '--env', 'perf')
+        redis = next(i for i in self.plateforme.integrations if i['name'] == 'redis-api-perf')
+        redis['policy_ids'] = redis['policy_ids'] + ['autre-policy']
+        sortie = self.lancer('verifier', '--env', 'perf')
+        self.assertEqual(sortie.returncode, 1)
+        self.assertIn('policy_ids', sortie.stdout)
 
 class TestMasquage(unittest.TestCase):
     def test_secret_a_cheval_sur_la_troncature_jamais_affiche(self):

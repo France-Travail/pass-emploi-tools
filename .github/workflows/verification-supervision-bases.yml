@@ -1,17 +1,15 @@
 # Vérifie contre la prod la supervision des bases : chaque requête des dashboards
 # « [Pass Emploi] Bases de données » s'exécute sur les vraies données et rend les colonnes
 # du catalogue, et les intégrations Fleet de l'agent dédié n'ont pas divergé des fichiers
-# générés (modification faite à la main dans Fleet). Chaque jour, et sur une PR qui touche
-# ces sources. Lecture seule : rien n'est écrit dans Kibana ni dans Fleet.
+# générés (modification faite à la main dans Fleet). Chaque jour, ou à la main après une
+# poussée. Lecture seule : rien n'est écrit dans Kibana ni dans Fleet.
+#
+# Pas de déclencheur pull_request : le code d'une PR s'exécuterait avec la clé de lecture,
+# et une PR qui modifie un modèle diverge de la prod tant que la poussée n'est pas faite.
 
 name: Supervision - Bases de données vérifiées contre la prod
 
 on:
-  pull_request:
-    paths:
-      - 'docs/observabilite/supervision/agents/**'
-      - 'docs/observabilite/supervision/dashboards/**'
-      - '.github/workflows/verification-supervision-bases.yml'
   schedule:
     - cron: '30 6 * * *'
   workflow_dispatch:
@@ -23,6 +21,8 @@ jobs:
   verifier:
     name: Dashboards et intégrations Fleet des bases conformes à la prod
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: Performance
     env:
       ES_URL: ${{ vars.ES_URL }}
       KIBANA_URL: ${{ vars.KIBANA_URL }}

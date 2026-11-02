@@ -3,7 +3,7 @@
 Usage :
   python3 -I generer-integrations.py                    génère, sans réseau ni secret
   python3 -I generer-integrations.py pousser --env perf  remplit les repères depuis Scalingo et écrit dans Fleet
-                                                         (SCALINGO_API_TOKEN, KIBANA_URL, KIBANA_FLEET_API_KEY)
+                                                         (SCALINGO_API_TOKEN, KIBANA_URL, ES_API_KEY)
   python3 -I generer-integrations.py verifier --env prod compare Fleet au généré (KIBANA_URL, ES_API_KEY)
 Sources : bases.json (bases à superviser), policies.json, requetes-sql.json, modeles/, integrations/.
 """
@@ -172,9 +172,16 @@ def reperes_de_base(nom, type_, info, pem):
     return {'HOTE_PORT': f"{info['hote']}:{info['port']}", 'MOT_DE_PASSE': info['mot_de_passe'], 'SSL': ssl_}
 
 
+def variables_d_environnement(*noms):
+    manquantes = [nom for nom in noms if not os.environ.get(nom)]
+    if manquantes:
+        sys.exit(f'Variables d\'environnement manquantes : {", ".join(manquantes)}')
+    return [os.environ[nom] for nom in noms]
+
+
 def pousser(env):
     import fleet as fleet_, scalingo as scalingo_
-    token, cle = os.environ['SCALINGO_API_TOKEN'], os.environ['KIBANA_FLEET_API_KEY']
+    token, cle, _ = variables_d_environnement('SCALINGO_API_TOKEN', 'ES_API_KEY', 'KIBANA_URL')
     SECRETS.update((token, cle))
     bases, erreurs = bases_de(env, json_de('bases.json')[env])
     if erreurs:
@@ -219,6 +226,9 @@ def pousser(env):
             variables = corps['inputs']['cel-cel']['streams']['cel.cel']['vars']
             variables['state'] = ''.join(l for l in variables['state'].splitlines(True)
                                          if not re.search(r'@@ADDON_ID:([^@]+)@@', l) or re.search(r'@@ADDON_ID:([^@]+)@@', l).group(1) in infos)
+            variables['state'] = re.sub(r', connexions_max: @@CONNEXIONS_MAX:([^@]+)@@',
+                                        lambda m: '' if reperes_cel.get(f'CONNEXIONS_MAX:{m.group(1)}') is None else m.group(0),
+                                        variables['state'])
             corps = remplacer(corps, reperes_cel)
         else:
             base = base_de.get(nom)
@@ -247,6 +257,9 @@ def pousser(env):
     return 1 if echecs else 0
 
 
+REPERES_MULTILIGNES = {'SSL'}
+
+
 def ecarts(attendu, reel, chemin=''):
     if isinstance(reel, dict) and reel.get('isSecretRef') and '@@' in json.dumps(attendu):
         return []
@@ -263,8 +276,8 @@ def ecarts(attendu, reel, chemin=''):
     if isinstance(attendu, str) and '@@' in attendu:
         if isinstance(reel, dict) and reel.get('isSecretRef'):
             return []
-        motif = re.escape(attendu)
-        motif = re.sub(r'@@[^@]+@@', '.*?', motif.replace(re.escape('@@'), '@@'))
+        motif = re.escape(attendu).replace(re.escape('@@'), '@@')
+        motif = re.sub(r'@@([^@]+)@@', lambda m: '(?s:.*?)' if m.group(1) in REPERES_MULTILIGNES else '[^\\n]*?', motif)
         return [] if isinstance(reel, str) and re.fullmatch(motif, reel, re.S) else [chemin]
     if isinstance(attendu, str) and isinstance(reel, str):
         return [] if attendu.strip() == reel.strip() else [chemin]
@@ -273,7 +286,7 @@ def ecarts(attendu, reel, chemin=''):
 
 def verifier(env):
     import fleet as fleet_
-    cle = os.environ['ES_API_KEY']
+    cle, _ = variables_d_environnement('ES_API_KEY', 'KIBANA_URL')
     SECRETS.add(cle)
     policy = json_de('policies.json')[env]
     client = fleet_.Fleet(cle)
@@ -288,7 +301,7 @@ def verifier(env):
             dire(f'{nom} : absente de Fleet')
             nb_ecarts += 1
             continue
-        champs = ecarts({k: contenu[k] for k in ('inputs', 'package') if k in contenu}, existantes[nom])
+        champs = ecarts({k: contenu[k] for k in ('inputs', 'package', 'policy_ids') if k in contenu}, existantes[nom])
         champs = [c for c in champs if not c.startswith('package.') or c == 'package.name']
         if champs:
             nb_ecarts += 1

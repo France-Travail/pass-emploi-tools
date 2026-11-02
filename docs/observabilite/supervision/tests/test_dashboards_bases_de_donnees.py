@@ -65,6 +65,11 @@ class TestDashboardsBasesDeDonnees(unittest.TestCase):
                 with self.subTest(f'{titre} / {panneau}'):
                     self.assertNotIn('span.db.statement', requete)
 
+    def test_erreurs_de_collecte_de_l_environnement_de_la_base(self):
+        for titre, _, requetes, _ in dashboards():
+            with self.subTest(titre):
+                self.assertIn('?base', requetes['Erreurs de collecte'])
+
     def test_aucun_plafond_de_plan_en_dur(self):
         contenu = open(FICHIER).read()
         for plafond in ('480', '160 Go', '10 Go', '30 en perf'):

@@ -1,11 +1,13 @@
 """Lecture des bases dans Scalingo : addons, URL de connexion, plans, Force TLS, autorité de certification."""
-import base64, json, os, re, ssl, tempfile, urllib.request
-from urllib.parse import urlparse
+import base64, json, os, re, subprocess, urllib.request
+from datetime import datetime
+from urllib.parse import unquote, urlparse
 
 API = os.environ.get('SCALINGO_API_URL', 'https://api.osc-secnum-fr1.scalingo.com').rstrip('/')
 AUTH = os.environ.get('SCALINGO_AUTH_URL', 'https://auth.scalingo.com/v1/tokens/exchange')
 DB_API = os.environ.get('SCALINGO_DB_API_URL', 'https://db-api.osc-secnum-fr1.scalingo.com').rstrip('/')
 VARIABLE = {'postgresql': 'SCALINGO_POSTGRESQL_URL', 'redis': 'SCALINGO_REDIS_URL'}
+SCHEMAS = {'postgresql': ('postgres', 'postgresql'), 'redis': ('redis', 'rediss')}
 GIO = 1024 ** 3
 
 
@@ -33,7 +35,6 @@ class Scalingo:
         return json.loads(_appel('GET', API + chemin, jeton=self.jwt))
 
     def base(self, app, fournisseur):
-        """Addon, URL de connexion et plan de la base « fournisseur » (postgresql, redis) de l'app."""
         addons = [a for a in self._json(f'/v1/apps/{app}/addons')['addons'] if a['addon_provider']['id'] == fournisseur]
         if len(addons) != 1:
             raise ErreurBase(f'{len(addons)} addon {fournisseur} sur {app}, 1 attendu')
@@ -41,11 +42,17 @@ class Scalingo:
         if VARIABLE[fournisseur] not in variables:
             raise ErreurBase(f'variable {VARIABLE[fournisseur]} absente de {app}')
         url = urlparse(variables[VARIABLE[fournisseur]])
-        if not (url.hostname and url.port and url.password):
+        try:
+            hote, port, mot_de_passe = url.hostname, url.port, url.password
+        except ValueError:
+            raise ErreurBase(f'variable {VARIABLE[fournisseur]} de {app} illisible') from None
+        if url.scheme not in SCHEMAS[fournisseur]:
+            raise ErreurBase(f'variable {VARIABLE[fournisseur]} de {app} : schéma {url.scheme}, attendu {" ou ".join(SCHEMAS[fournisseur])}')
+        if not (hote and port and mot_de_passe):
             raise ErreurBase(f'variable {VARIABLE[fournisseur]} de {app} sans hôte, port ou mot de passe')
         addon = addons[0]
-        return {'addon_id': addon['id'], 'hote': url.hostname, 'port': url.port, 'utilisateur': url.username or '',
-                'mot_de_passe': url.password, 'base_de_donnees': url.path.lstrip('/'),
+        return {'addon_id': addon['id'], 'hote': hote, 'port': port, 'utilisateur': unquote(url.username or ''),
+                'mot_de_passe': unquote(mot_de_passe), 'base_de_donnees': url.path.lstrip('/'),
                 **self.plan(fournisseur, addon['plan']['name']), 'force_tls': self.force_tls(app, addon['id'])}
 
     def plan(self, fournisseur, nom):
@@ -65,11 +72,6 @@ class Scalingo:
 
 
 def autorite_de_certification():
-    """Certificat PEM de l'autorité des bases Scalingo et sa date d'expiration (ISO 8601)."""
     pem = _appel('GET', DB_API + '/api/ca_certificate')
-    with tempfile.NamedTemporaryFile('w', suffix='.pem') as f:
-        f.write(pem)
-        f.flush()
-        fin = ssl._ssl._test_decode_cert(f.name)['notAfter']
-    from datetime import datetime
-    return pem, datetime.strptime(fin, '%b %d %H:%M:%S %Y %Z').strftime('%Y-%m-%dT%H:%M:%SZ')
+    fin = subprocess.run(['openssl', 'x509', '-noout', '-enddate'], input=pem, capture_output=True, text=True, check=True).stdout
+    return pem, datetime.strptime(fin.strip().removeprefix('notAfter='), '%b %d %H:%M:%S %Y %Z').strftime('%Y-%m-%dT%H:%M:%SZ')
