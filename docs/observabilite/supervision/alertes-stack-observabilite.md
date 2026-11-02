@@ -7,9 +7,7 @@ dans [alertes-applicatives](alertes-applicatives.md). Hors alertes 11 et 12
 (AutoOps), ce sont des **Kibana Rules** qui notifient les canaux
 `o11y-production` et `o11y-staging` (même nom dans Mattermost et dans Tchap).
 
-> Les Kibana Rules notifient Tchap par les [Workflows Tchap](workflows/tchap/README.md),
-> et Mattermost tant que leurs actions Mattermost ne sont pas retirées
-> (cf. [`FEATURE_NOTIFIER_ALERTES_MATTERMOST`](rules/README.md#feature_notifier_alertes_mattermost)). Les
+> Les Kibana Rules notifient Tchap par les [Workflows Tchap](workflows/tchap/README.md). Les
 > alertes émises hors Kibana, **11 et 12 (AutoOps)**, préviennent l'équipe par
 > e-mail et postent directement dans Tchap, par un connecteur Webhook AutoOps en
 > `POST` (cf. leur section,

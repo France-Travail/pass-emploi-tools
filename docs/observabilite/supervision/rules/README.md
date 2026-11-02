@@ -61,7 +61,7 @@ et l'Investigation guide (`artifacts.investigation_guide`) reprend les mêmes é
 Depuis `docs/observabilite/supervision/` :
 
 ```bash
-FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I rules/generer-regles.py
+python3 -I rules/generer-regles.py
 python3 -I workflows/tchap/generer-workflows.py
 ```
 
@@ -72,9 +72,8 @@ python3 -I workflows/tchap/generer-workflows.py
    (`../workflows/tchap/generated/`), depuis les mêmes JSON.
 
 Commiter les sources **et** les fichiers générés dans la même PR.
-`FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I rules/generer-regles.py --verifier`
-compare `generated/` à ses sources sans rien écrire. Sans la variable, il compare
-aux règles sans Mattermost et signale donc des différences.
+`python3 -I rules/generer-regles.py --verifier` compare `generated/` à ses
+sources sans rien écrire.
 
 ## `FEATURE_NOTIFIER_ALERTES_MATTERMOST`
 
@@ -84,9 +83,8 @@ Feature flipping, selon la convention des apps : **active seulement si elle vaut
 - `true` : les règles générées gardent leurs actions Mattermost ;
 - absente : elles n'ont plus que leur action Tchap. Les messages Tchap ne changent pas.
 
-Le CI la fixe à `true`. Le jour de la bascule : régénérer sans elle, passer celle
-du CI (`.github/workflows/elastic-rules-and-workflows-checks.yml`) à `false` dans le même commit,
-redéployer.
+Mattermost étant arrêté, le CI la fixe à `false`
+(`.github/workflows/elastic-rules-and-workflows-checks.yml`) : on génère sans elle.
 
 ## Le check de la PR
 

@@ -120,7 +120,7 @@ Modifier dans Kibana, puis réexporter par-dessus le fichier versionné :
 
   Puis régénérer et commiter le tout :
   ```bash
-  FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I rules/generer-regles.py
+  python3 -I rules/generer-regles.py
   python3 -I workflows/tchap/generer-workflows.py
   ```
   Déployer ensuite le bloc de `rules/generated/` dans Dev Tools (manuellement).
@@ -131,5 +131,5 @@ Modifier dans Kibana, puis réexporter par-dessus le fichier versionné :
   salon inconnu, règle ES|QL hors `@timestamp`).
   `FEATURE_NOTIFIER_ALERTES_MATTERMOST` suit la convention des features des apps
   (active seulement à `true`) : à `true`, les règles gardent leurs actions
-  Mattermost ; sans elle, elles n'ont plus que leur action Tchap. Le CI la fixe
-  à `true` jusqu'au décommissionnement de Mattermost.
+  Mattermost ; sans elle, elles n'ont plus que leur action Tchap. Mattermost étant
+  arrêté, le CI la fixe à `false`.
