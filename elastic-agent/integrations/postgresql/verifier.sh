@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 echec=0
 declare -A attendues=(
   [statements.sql]="queryid requete calls total_exec_time_ms stats_reset requetes_evincees"
-  [index_stats.sql]="index idx_scan idx_tup_read idx_tup_fetch taille_octets taille_table_octets contrainte stats_reset"
+  [index_stats.sql]="index idx_scan idx_tup_read idx_tup_fetch taille_octets taille_table_octets lignes_table contrainte stats_reset"
   [table_stats.sql]="table seq_scan seq_tup_read idx_scan n_live_tup n_dead_tup n_mod_since_analyze last_analyze last_autoanalyze last_vacuum last_autovacuum n_tup_ins n_tup_upd n_tup_del stats_reset"
   [index_hygiene.sql]="table index valide doublon_de index_de_la_table taille_index_octets taille_table_octets taille_index_table_octets"
   [activite.sql]="plus_vieille_transaction_s sessions_idle_in_transaction sessions_en_attente_verrou plus_longue_attente_verrou_s"

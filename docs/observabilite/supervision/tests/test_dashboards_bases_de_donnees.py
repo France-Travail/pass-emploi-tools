@@ -9,7 +9,7 @@ def dashboards():
         objet = json.loads(ligne)
         attributs = objet['attributes']
         requetes = {p['embeddableConfig']['attributes']['title']: p['embeddableConfig']['attributes']['state']['query']['esql']
-                    for p in json.loads(attributs['panelsJSON'])}
+                    for p in json.loads(attributs['panelsJSON']) if p['type'] == 'vis'}
         controles = {c['config']['variable_name']: c['config'] for c in attributs['pinned_panels']['panels'].values()}
         yield attributs['title'], attributs, requetes, controles
 
@@ -64,6 +64,36 @@ class TestDashboardsBasesDeDonnees(unittest.TestCase):
             for panneau, requete in requetes.items():
                 with self.subTest(f'{titre} / {panneau}'):
                     self.assertNotIn('span.db.statement', requete)
+
+    def test_encadre_investiguer_en_tete(self):
+        for ligne in open(FICHIER):
+            attributs = json.loads(ligne)['attributes']
+            premier = min(json.loads(attributs['panelsJSON']), key=lambda p: (p['gridData']['y'], p['gridData']['x']))
+            with self.subTest(attributs['title']):
+                self.assertEqual(premier['type'], 'markdown')
+                contenu = premier['embeddableConfig']['content']
+                self.assertTrue(contenu.startswith('**Investiguer**'))
+                self.assertLessEqual(sum(1 for l in contenu.splitlines() if l.lstrip()[:2] in ('- ', '1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.')), 10)
+
+    def test_panneaux_d_investigation_presents(self):
+        attendus = {
+            'PostgreSQL': ['Sélectivité des index', 'Hygiène des index', 'Entretien des tables', 'Verrous et transactions longues',
+                           'Swap des nœuds de données', 'Certificat de l\'autorité'],
+            'Redis': ['Swap des nœuds de données', 'Certificat de l\'autorité'],
+        }
+        for titre, _, requetes, _ in dashboards():
+            for type_de_base, panneaux in attendus.items():
+                if type_de_base in titre:
+                    for panneau in panneaux:
+                        with self.subTest(f'{titre} / {panneau}'):
+                            self.assertIn(panneau, requetes)
+
+    @unittest.skipUnless(os.environ.get('MOTS_INTERDITS'), 'MOTS_INTERDITS absent : mots propres au client du support d\'audit, fournis hors du repo')
+    def test_aucune_donnee_du_support(self):
+        contenu = open(FICHIER).read().lower()
+        for mot in filter(None, (m.strip().lower() for m in os.environ['MOTS_INTERDITS'].split(','))):
+            with self.subTest(mot):
+                self.assertNotIn(mot, contenu)
 
 
 if __name__ == '__main__':

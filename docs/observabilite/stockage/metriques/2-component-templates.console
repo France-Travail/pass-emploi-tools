@@ -312,6 +312,9 @@ PUT _component_template/metrics-sql.postgresql_index_stats@custom
                 },
                 "taille_table_octets": {
                   "type": "long"
+                },
+                "lignes_table": {
+                  "type": "long"
                 }
               }
             }
