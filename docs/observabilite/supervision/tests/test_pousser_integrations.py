@@ -1,7 +1,7 @@
 """Lancer depuis la racine du repo : python3 -I -m unittest discover -s docs/observabilite/supervision/tests -v
 « pousser » et « verifier » contre un faux Scalingo et un faux Fleet locaux (faux_plateforme.py).
 """
-import json, os, subprocess, sys, unittest
+import importlib.util, io, json, os, shutil, subprocess, sys, unittest, urllib.error
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import faux_plateforme
@@ -95,6 +95,33 @@ class TestPousserIntegrations(unittest.TestCase):
         self.assertEqual(sortie.returncode, 1)
         self.assertIn('scalingo-database-stats-perf', sortie.stdout + sortie.stderr)
 
+
+    def test_cel_existant_garde_toutes_ses_bases_si_une_base_echoue(self):
+        self.plateforme.integrations.append({'id': 'cel-la', 'name': 'scalingo-database-stats-perf', 'policy_ids': ['x'], 'inputs': {}})
+        del self.plateforme.apps['pass-emploi-connect-perf']['variables']['SCALINGO_REDIS_URL']
+        sortie = self.lancer('pousser', '--env', 'perf')
+        self.assertEqual(sortie.returncode, 1)
+        self.assertNotIn('scalingo-database-stats-perf', self.ecritures('PUT'))
+        self.assertIn('scalingo-database-stats-perf', sortie.stderr)
+
+    def test_fichier_genere_sans_base_jamais_pousse(self):
+        orphelin = os.path.join(GENERE, 'redis-orpheline-perf.json')
+        shutil.copy(os.path.join(GENERE, 'redis-api-perf.json'), orphelin)
+        self.addCleanup(os.remove, orphelin)
+        sortie = self.lancer('pousser', '--env', 'perf')
+        self.assertEqual(sortie.returncode, 1)
+        self.assertNotIn('redis-orpheline-perf', self.ecritures('POST') + self.ecritures('PUT'))
+        self.assertIn('redis-orpheline-perf', sortie.stderr)
+
+
+class TestMasquage(unittest.TestCase):
+    def test_secret_a_cheval_sur_la_troncature_jamais_affiche(self):
+        spec = importlib.util.spec_from_file_location('generer_integrations', SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.SECRETS.add(MOT_DE_PASSE)
+        erreur = urllib.error.HTTPError('http://fleet', 400, 'Bad Request', {}, io.BytesIO(('x' * 495 + MOT_DE_PASSE).encode()))
+        self.assertNotIn(MOT_DE_PASSE[:5], module.masquer(module.detail(erreur)))
 
 if __name__ == '__main__':
     unittest.main()

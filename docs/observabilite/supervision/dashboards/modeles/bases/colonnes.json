@@ -37,7 +37,7 @@
       "keyword"
     ]
   ],
-  "PostgreSQL / Connexions ouvertes (max du plan : 480 en prod, 30 en perf)": [
+  "PostgreSQL / Connexions ouvertes (tout le serveur)": [
     [
       "connexions",
       "long"

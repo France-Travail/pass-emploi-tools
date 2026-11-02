@@ -139,8 +139,8 @@ def dire(texte, erreur=False):
 
 def detail(exception):
     if isinstance(exception, urllib.error.HTTPError):
-        return f'HTTP {exception.code} {exception.read().decode(errors="replace")[:500]}'
-    return str(exception)
+        return f'HTTP {exception.code} {masquer(exception.read().decode(errors="replace"))[:500]}'
+    return masquer(str(exception))
 
 
 def remplacer(valeur, reperes):
@@ -200,6 +200,9 @@ def pousser(env):
         reperes_cel.update({f'ADDON_ID:{nom}': info['addon_id'], f'DISQUE_INCLUS:{nom}': info['disque_inclus_octets'],
                             f'CONNEXIONS_MAX:{nom}': info['connexions_max']})
     base_postgresql = next((nom for nom, t, _ in bases if t == 'postgresql'), None)
+    base_de = {nom: nom for nom, _, _ in bases}
+    if base_postgresql:
+        base_de.update({f"postgresql-{requete['nom']}-{env}": base_postgresql for requete in json_de('requetes-sql.json')})
     client = fleet_.Fleet(cle)
     try:
         existantes = client.toutes()
@@ -208,17 +211,29 @@ def pousser(env):
         return 1
     for nom, contenu in generees(env).items():
         corps = {k: v for k, v in contenu.items() if not k.startswith('_')}
-        if nom.startswith('scalingo-database-stats-'):
+        if nom == f'scalingo-database-stats-{env}':
+            if len(infos) < len(bases) and (nom in existantes or not infos):
+                dire(f'{nom} : non poussée, une base n\'a pas pu être lue dans Scalingo ; la version dans Fleet est gardée', erreur=True)
+                echecs += 1
+                continue
             variables = corps['inputs']['cel-cel']['streams']['cel.cel']['vars']
             variables['state'] = ''.join(l for l in variables['state'].splitlines(True)
                                          if not re.search(r'@@ADDON_ID:([^@]+)@@', l) or re.search(r'@@ADDON_ID:([^@]+)@@', l).group(1) in infos)
             corps = remplacer(corps, reperes_cel)
         else:
-            base = nom if nom in dict((b[0], b) for b in bases) else base_postgresql
+            base = base_de.get(nom)
+            if base is None:
+                dire(f'{nom} : non poussée, aucune base de bases.json ne lui correspond (régénérer ?)', erreur=True)
+                echecs += 1
+                continue
             if base not in reperes:
                 dire(f'{nom} : non poussée, la base {base} n\'a pas pu être lue dans Scalingo', erreur=True)
                 continue
             corps = remplacer(corps, reperes[base])
+        if '@@' in json.dumps(corps):
+            dire(f'{nom} : non poussée, des repères @@…@@ restent à remplir', erreur=True)
+            echecs += 1
+            continue
         try:
             if nom in existantes:
                 client.mettre_a_jour(existantes[nom]['id'], corps)

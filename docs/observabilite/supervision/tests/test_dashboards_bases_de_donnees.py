@@ -65,6 +65,12 @@ class TestDashboardsBasesDeDonnees(unittest.TestCase):
                 with self.subTest(f'{titre} / {panneau}'):
                     self.assertNotIn('span.db.statement', requete)
 
+    def test_aucun_plafond_de_plan_en_dur(self):
+        contenu = open(FICHIER).read()
+        for plafond in ('480', '160 Go', '10 Go', '30 en perf'):
+            with self.subTest(plafond):
+                self.assertNotIn(plafond, contenu)
+
     def test_aucun_panneau_ne_se_chevauche(self):
         for ligne in open(FICHIER):
             attributs = json.loads(ligne)['attributes']
