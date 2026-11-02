@@ -69,19 +69,15 @@ nom des data streams.
 
 ## Versions
 
-Relevé du 2026-09-30 — vérifier l'état réel avant d'agir.
+Versions réelles : `inventaire/inventaire-versions.sh`
+([mode d'emploi](../../inventaire/README.md)).
 
-- **Logstash 9.4.7** et **Elastic Agent 9.4.7** — buildpacks custom (`LOGSTASH_VERSION`,
-  `ELASTIC_AGENT_VERSION` ; l'agent doit être ≤ version du cluster).
-- **Elastic Cloud 9.4.7** (APM Server compris, version pilotée par le plan) —
-  aligné sur Logstash et Elastic Agent. À la prochaine montée de version du
-  cluster, monter les buildpacks dans la foulée.
-- **Heartbeat 9.1.5** en exécution — buildpack `SocialGouv/heartbeat-buildpack`,
-  version fixée par `HEARTBEAT_VERSION` (défaut du buildpack : 7.16.1). La
-  variable est déjà à `9.4.7`, mais l'app n'a pas été redéployée : seul le data
-  stream `heartbeat-9.1.5` existe. Le nom du data stream suit la version du
-  binaire, cf. [montée de version](stockage/metriques/README.md#montée-de-version-heartbeat).
-- **Java 21** (upgrade depuis Java 11 via buildpack custom).
+- Logstash, l'Elastic Agent et Heartbeat ne dépassent jamais la version du
+  cluster Elastic Cloud. À chaque montée du cluster, les aligner
+  (`LOGSTASH_VERSION`, `ELASTIC_AGENT_VERSION`, `HEARTBEAT_VERSION`), puis
+  redéployer : la variable seule ne change rien au binaire en cours.
+- Le nom du data stream de Heartbeat suit la version du binaire, cf.
+  [montée de version](stockage/metriques/README.md#montée-de-version-heartbeat).
 
 ## Garde-fous JVM / Scalingo
 
