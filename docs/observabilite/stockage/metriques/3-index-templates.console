@@ -67,6 +67,8 @@ POST metrics-postgresql.bgwriter-default/_rollover
 POST metrics-sql.postgresql_statements-default/_rollover
 POST metrics-sql.postgresql_index_stats-default/_rollover
 POST metrics-sql.postgresql_table_stats-default/_rollover
+POST metrics-sql.postgresql_index_hygiene-default/_rollover
+POST metrics-sql.postgresql_activite-default/_rollover
 POST logs-scalingo.database_stats-default/_rollover
 
 # Elastic Agent — logs internes
