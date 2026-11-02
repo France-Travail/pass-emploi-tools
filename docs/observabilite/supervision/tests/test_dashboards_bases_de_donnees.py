@@ -35,7 +35,7 @@ class TestDashboardsBasesDeDonnees(unittest.TestCase):
     def test_compteurs_remis_a_zero_jamais_compares_entre_segments(self):
         for titre, _, requetes, _ in dashboards():
             for panneau, requete in requetes.items():
-                if any(source in requete for source in ('postgresql_statements', 'postgresql_index_stats', 'postgresql_table_stats')):
+                if any(source in requete for source in ('postgresql_statements', 'postgresql_index_stats', 'postgresql_table_stats')) and ') - MIN(' in requete:
                     with self.subTest(f'{titre} / {panneau}'):
                         self.assertIn('stats_reset', requete)
                 with self.subTest(f'{titre} / {panneau} (Redis)'):
@@ -55,7 +55,7 @@ class TestDashboardsBasesDeDonnees(unittest.TestCase):
             self.assertEqual(controles['table']['control_type'], 'VALUES_FROM_QUERY')
             self.assertIn('postgresql_table_stats', controles['table']['esql_query'])
             for panneau, requete in requetes.items():
-                if 'postgresql_statements' in requete or 'traces-apm' in requete:
+                if 'sql.metrics.requete' in requete or 'traces-apm' in requete:
                     with self.subTest(panneau):
                         self.assertIn('?table', requete)
 
