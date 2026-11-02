@@ -76,6 +76,11 @@ class TestScalingoDatabaseStats(unittest.TestCase):
         self.base('postgresql-api-prod', 'addon-pg')
         self.assertNotIn('ca_expire_le', self.evenements()[0]['scalingo']['database'])
 
+    def test_nom_de_la_base_dans_labels(self):
+        self.base('postgresql-api-prod', 'addon-pg')
+        self.base('redis-en-panne', faux_scalingo.ADDON_EN_ERREUR)
+        self.assertEqual(sorted(e['labels']['base'] for e in self.evenements()), ['postgresql-api-prod', 'redis-en-panne'])
+
     def test_base_en_erreur_n_arrete_pas_les_autres(self):
         self.base('postgresql-api-prod', 'addon-pg')
         self.base('redis-en-panne', faux_scalingo.ADDON_EN_ERREUR)

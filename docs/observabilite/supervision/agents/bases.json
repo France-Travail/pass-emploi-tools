@@ -1,0 +1,10 @@
+{
+  "prod": {
+    "pass-emploi-api-prod": ["postgresql", "redis-bull"],
+    "pass-emploi-connect-prod": ["redis"]
+  },
+  "perf": {
+    "pass-emploi-api-perf": ["postgresql", "redis-bull"],
+    "pass-emploi-connect-perf": ["redis"]
+  }
+}

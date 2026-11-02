@@ -1,0 +1,1 @@
+"⚠️ FICHIER GÉNÉRÉ par docs/observabilite/supervision/agents/generer-integrations.py : NE PAS LE MODIFIER, il serait écrasé. Modifier bases.json, requetes-sql.json, modeles/ ou integrations/, puis lancer python3 -I docs/observabilite/supervision/agents/generer-integrations.py. Les repères @@…@@ sont remplis par « pousser », depuis Scalingo."

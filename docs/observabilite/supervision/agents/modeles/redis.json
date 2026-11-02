@@ -1,0 +1,16 @@
+{
+  "package": {"name": "redis", "version": "1.21.2"},
+  "inputs": {
+    "redis-logfile": {"enabled": false, "streams": {"redis.log": {"enabled": false}}},
+    "redis-redis": {"enabled": false, "streams": {"redis.slowlog": {"enabled": false}}},
+    "redis-redis/metrics": {
+      "enabled": true,
+      "vars": {"hosts": ["@@HOTE_PORT@@"], "password": "@@MOT_DE_PASSE@@", "ssl": "@@SSL@@", "username": "", "network": "tcp", "maxconn": 10, "idle_timeout": "20s"},
+      "streams": {
+        "redis.info": {"enabled": true, "vars": {"period": "1m"}},
+        "redis.keyspace": {"enabled": true, "vars": {"period": "1m"}},
+        "redis.key": {"enabled": false, "vars": {"period": "1m", "key.patterns": ""}}
+      }
+    }
+  }
+}

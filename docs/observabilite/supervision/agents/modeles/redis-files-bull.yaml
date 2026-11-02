@@ -1,0 +1,10 @@
+- limit: 1
+  pattern: 'bull:JobQueue:wait'
+- limit: 1
+  pattern: 'bull:JobQueue:active'
+- limit: 1
+  pattern: 'bull:JobQueue:delayed'
+- limit: 1
+  pattern: 'bull:JobQueue:failed'
+- limit: 1
+  pattern: 'bull:JobQueue:completed'

@@ -1,0 +1,14 @@
+{
+  "package": {"name": "cel", "version": "1.21.0"},
+  "inputs": {
+    "cel-cel": {
+      "enabled": true,
+      "streams": {
+        "cel.cel": {
+          "enabled": true,
+          "vars": {"data_stream.dataset": "scalingo.database_stats", "data_stream.type": "logs", "resource_url": "https://api.osc-secnum-fr1.scalingo.com", "resource_interval": "1m", "program": "@@PROGRAMME@@", "state": "@@ETAT@@", "secret_state": "api_token: @@API_TOKEN@@", "tags": ["forwarded"]}
+        }
+      }
+    }
+  }
+}

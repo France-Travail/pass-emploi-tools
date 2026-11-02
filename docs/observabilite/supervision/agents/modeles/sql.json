@@ -1,0 +1,14 @@
+{
+  "package": {"name": "sql", "version": "1.2.0"},
+  "inputs": {
+    "sql-sql/metrics": {
+      "enabled": true,
+      "streams": {
+        "sql.sql": {
+          "enabled": true,
+          "vars": {"hosts": "@@URL_AVEC_IDENTIFIANTS@@", "driver": "postgres", "data_stream.type": "metrics", "data_stream.dataset": "@@DATASET@@", "period": "@@PERIODE@@", "sql_queries": "@@REQUETE@@", "merge_results": false, "ssl": ""}
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "_avertissement": "⚠️ FICHIER GÉNÉRÉ par docs/observabilite/supervision/agents/generer-integrations.py : NE PAS LE MODIFIER, il serait écrasé. Modifier bases.json, requetes-sql.json, modeles/ ou integrations/, puis lancer python3 -I docs/observabilite/supervision/agents/generer-integrations.py. Les repères @@…@@ sont remplis par « pousser », depuis Scalingo.",
+  "description": "Généré par docs/observabilite/supervision/agents/generer-integrations.py",
+  "inputs": {
+    "sql-sql/metrics": {
+      "enabled": true,
+      "streams": {
+        "sql.sql": {
+          "enabled": true,
+          "vars": {
+            "data_stream.dataset": "sql.postgresql_index_stats",
+            "data_stream.type": "metrics",
+            "driver": "postgres",
+            "hosts": "@@URL_AVEC_IDENTIFIANTS@@",
+            "merge_results": false,
+            "period": "10m",
+            "processors": "- add_fields:\n    target: labels\n    fields:\n      base: postgresql-api-perf\n",
+            "sql_queries": "- query: |\n    select\n      s.schemaname as schema,\n      s.relname as \"table\",\n      s.indexrelname as index,\n      s.idx_scan,\n      s.idx_tup_read,\n      s.idx_tup_fetch,\n      pg_relation_size(s.indexrelid) as taille_octets,\n      pg_table_size(s.relid) as taille_table_octets,\n      (select t.n_live_tup from pg_stat_user_tables t where t.relid = s.relid) as lignes_table,\n      (i.indisprimary or i.indisunique\n        or exists (select 1 from pg_constraint c where c.conindid = s.indexrelid)) as contrainte,\n      coalesce((select stats_reset from pg_stat_database where datname = current_database())::text, 'jamais') as stats_reset\n    from pg_stat_user_indexes s\n    join pg_index i on i.indexrelid = s.indexrelid\n    where s.schemaname not in ('tiger', 'tiger_data', 'topology');\n  response_format: table\n",
+            "ssl": ""
+          }
+        }
+      }
+    }
+  },
+  "name": "postgresql-index-stats-perf",
+  "namespace": "",
+  "package": {
+    "name": "sql",
+    "version": "1.2.0"
+  },
+  "policy_ids": [
+    "6eee0d15-68d9-4135-96fe-e20d467f0042"
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "_avertissement": "⚠️ FICHIER GÉNÉRÉ par docs/observabilite/supervision/agents/generer-integrations.py : NE PAS LE MODIFIER, il serait écrasé. Modifier bases.json, requetes-sql.json, modeles/ ou integrations/, puis lancer python3 -I docs/observabilite/supervision/agents/generer-integrations.py. Les repères @@…@@ sont remplis par « pousser », depuis Scalingo.",
+  "description": "Généré par docs/observabilite/supervision/agents/generer-integrations.py",
+  "inputs": {
+    "redis-logfile": {
+      "enabled": false,
+      "streams": {
+        "redis.log": {
+          "enabled": false
+        }
+      }
+    },
+    "redis-redis": {
+      "enabled": false,
+      "streams": {
+        "redis.slowlog": {
+          "enabled": false
+        }
+      }
+    },
+    "redis-redis/metrics": {
+      "enabled": true,
+      "streams": {
+        "redis.info": {
+          "enabled": true,
+          "vars": {
+            "period": "1m",
+            "processors": "- add_fields:\n    target: labels\n    fields:\n      base: redis-connect-prod\n"
+          }
+        },
+        "redis.key": {
+          "enabled": false,
+          "vars": {
+            "key.patterns": "",
+            "period": "1m"
+          }
+        },
+        "redis.keyspace": {
+          "enabled": true,
+          "vars": {
+            "period": "1m",
+            "processors": "- add_fields:\n    target: labels\n    fields:\n      base: redis-connect-prod\n"
+          }
+        }
+      },
+      "vars": {
+        "hosts": [
+          "@@HOTE_PORT@@"
+        ],
+        "idle_timeout": "20s",
+        "maxconn": 10,
+        "network": "tcp",
+        "password": "@@MOT_DE_PASSE@@",
+        "ssl": "@@SSL@@",
+        "username": ""
+      }
+    }
+  },
+  "name": "redis-connect-prod",
+  "namespace": "",
+  "package": {
+    "name": "redis",
+    "version": "1.21.2"
+  },
+  "policy_ids": [
+    "9d009fa8-7a42-418c-ad47-ef1ceb196552"
+  ]
+}

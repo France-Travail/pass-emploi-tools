@@ -1,0 +1,34 @@
+{
+  "_avertissement": "⚠️ FICHIER GÉNÉRÉ par docs/observabilite/supervision/agents/generer-integrations.py : NE PAS LE MODIFIER, il serait écrasé. Modifier bases.json, requetes-sql.json, modeles/ ou integrations/, puis lancer python3 -I docs/observabilite/supervision/agents/generer-integrations.py. Les repères @@…@@ sont remplis par « pousser », depuis Scalingo.",
+  "description": "Généré par docs/observabilite/supervision/agents/generer-integrations.py",
+  "inputs": {
+    "sql-sql/metrics": {
+      "enabled": true,
+      "streams": {
+        "sql.sql": {
+          "enabled": true,
+          "vars": {
+            "data_stream.dataset": "sql.postgresql_index_hygiene",
+            "data_stream.type": "metrics",
+            "driver": "postgres",
+            "hosts": "@@URL_AVEC_IDENTIFIANTS@@",
+            "merge_results": false,
+            "period": "1h",
+            "processors": "- add_fields:\n    target: labels\n    fields:\n      base: postgresql-api-perf\n",
+            "sql_queries": "- query: |\n    with index_de_l_app as (\n      select\n        n.nspname as schema,\n        t.relname as \"table\",\n        c.relname as index,\n        i.indexrelid,\n        i.indrelid,\n        i.indisvalid and i.indisready as valide,\n        i.indkey::text as colonnes,\n        coalesce(pg_get_expr(i.indpred, i.indrelid), '') as predicat,\n        coalesce(pg_get_expr(i.indexprs, i.indrelid), '') as expressions\n      from pg_index i\n      join pg_class c on c.oid = i.indexrelid\n      join pg_class t on t.oid = i.indrelid\n      join pg_namespace n on n.oid = t.relnamespace\n      where n.nspname not in ('pg_catalog', 'information_schema', 'pg_toast', 'tiger', 'tiger_data', 'topology')\n    )\n    select\n      a.schema,\n      a.\"table\",\n      a.index,\n      a.valide,\n      coalesce((\n        select string_agg(b.index, ',' order by b.index)\n        from index_de_l_app b\n        where b.indrelid = a.indrelid and b.indexrelid <> a.indexrelid\n          and b.predicat = a.predicat and b.expressions = a.expressions\n          and (b.colonnes = a.colonnes or b.colonnes like a.colonnes || ' %')\n      ), '') as doublon_de,\n      (select count(*) from index_de_l_app b where b.indrelid = a.indrelid) as index_de_la_table,\n      pg_relation_size(a.indexrelid) as taille_index_octets,\n      pg_table_size(a.indrelid) as taille_table_octets,\n      pg_indexes_size(a.indrelid) as taille_index_table_octets\n    from index_de_l_app a;\n  response_format: table\n",
+            "ssl": ""
+          }
+        }
+      }
+    }
+  },
+  "name": "postgresql-index-hygiene-perf",
+  "namespace": "",
+  "package": {
+    "name": "sql",
+    "version": "1.2.0"
+  },
+  "policy_ids": [
+    "6eee0d15-68d9-4135-96fe-e20d467f0042"
+  ]
+}

@@ -1,0 +1,7 @@
+[
+  {"nom": "statements", "fichier": "statements.sql", "dataset": "sql.postgresql_statements", "periode": "10m"},
+  {"nom": "index-stats", "fichier": "index_stats.sql", "dataset": "sql.postgresql_index_stats", "periode": "10m"},
+  {"nom": "table-stats", "fichier": "table_stats.sql", "dataset": "sql.postgresql_table_stats", "periode": "10m"},
+  {"nom": "index-hygiene", "fichier": "index_hygiene.sql", "dataset": "sql.postgresql_index_hygiene", "periode": "1h"},
+  {"nom": "activite", "fichier": "activite.sql", "dataset": "sql.postgresql_activite", "periode": "1m"}
+]

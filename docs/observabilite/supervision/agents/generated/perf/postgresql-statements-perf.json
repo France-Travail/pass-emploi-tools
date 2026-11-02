@@ -1,0 +1,34 @@
+{
+  "_avertissement": "⚠️ FICHIER GÉNÉRÉ par docs/observabilite/supervision/agents/generer-integrations.py : NE PAS LE MODIFIER, il serait écrasé. Modifier bases.json, requetes-sql.json, modeles/ ou integrations/, puis lancer python3 -I docs/observabilite/supervision/agents/generer-integrations.py. Les repères @@…@@ sont remplis par « pousser », depuis Scalingo.",
+  "description": "Généré par docs/observabilite/supervision/agents/generer-integrations.py",
+  "inputs": {
+    "sql-sql/metrics": {
+      "enabled": true,
+      "streams": {
+        "sql.sql": {
+          "enabled": true,
+          "vars": {
+            "data_stream.dataset": "sql.postgresql_statements",
+            "data_stream.type": "metrics",
+            "driver": "postgres",
+            "hosts": "@@URL_AVEC_IDENTIFIANTS@@",
+            "merge_results": false,
+            "period": "10m",
+            "processors": "- add_fields:\n    target: labels\n    fields:\n      base: postgresql-api-perf\n",
+            "sql_queries": "- query: |\n    with miennes as (\n      select * from pg_stat_statements\n      where userid = (select oid from pg_roles where rolname = current_user)\n        and dbid = (select oid from pg_database where datname = current_database())\n        and toplevel\n        -- Avant PostgreSQL 16, les commandes utilitaires gardent leurs valeurs en clair dans le texte.\n        and query !~* '^\\s*(copy|set|show|do|call|vacuum|analyze|create|alter|drop|truncate|grant|revoke|begin|start|commit|rollback|savepoint|release|reset|lock|refresh|cluster|reindex|discard|deallocate|prepare|execute|listen|notify|unlisten|checkpoint|explain|comment|security|declare|fetch|close|move|load)\\M'\n    ),\n    par_temps as (select queryid from miennes order by total_exec_time desc limit 200),\n    par_appels as (select queryid from miennes order by calls desc limit 200)\n    select\n      m.queryid::text as queryid,\n      left(regexp_replace(m.query, '\\s+', ' ', 'g'), 10000) as requete,\n      m.calls,\n      round(m.total_exec_time::numeric, 3)::float8 as total_exec_time_ms,\n      round(m.mean_exec_time::numeric, 3)::float8 as mean_exec_time_ms,\n      round(m.stddev_exec_time::numeric, 3)::float8 as stddev_exec_time_ms,\n      m.rows,\n      m.shared_blks_hit,\n      m.shared_blks_read,\n      concat_ws(',',\n        case when m.queryid in (select queryid from par_temps) then 'temps' end,\n        case when m.queryid in (select queryid from par_appels) then 'appels' end) as classement,\n      (select stats_reset from pg_stat_statements_info)::text as stats_reset,\n      (select dealloc from pg_stat_statements_info) as requetes_evincees\n    from miennes m\n    where m.queryid in (select queryid from par_temps union select queryid from par_appels);\n  response_format: table\n",
+            "ssl": ""
+          }
+        }
+      }
+    }
+  },
+  "name": "postgresql-statements-perf",
+  "namespace": "",
+  "package": {
+    "name": "sql",
+    "version": "1.2.0"
+  },
+  "policy_ids": [
+    "6eee0d15-68d9-4135-96fe-e20d467f0042"
+  ]
+}

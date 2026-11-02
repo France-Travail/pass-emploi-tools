@@ -1,0 +1,16 @@
+{
+  "package": {"name": "postgresql", "version": "1.32.1"},
+  "inputs": {
+    "postgresql-logfile": {"enabled": false, "streams": {"postgresql.log": {"enabled": false}}},
+    "postgresql-postgresql/metrics": {
+      "enabled": true,
+      "vars": {"hosts": ["@@URL_SANS_IDENTIFIANTS@@"], "username": "@@UTILISATEUR@@", "password": "@@MOT_DE_PASSE@@"},
+      "streams": {
+        "postgresql.activity": {"enabled": true, "vars": {"period": "1m"}},
+        "postgresql.bgwriter": {"enabled": true, "vars": {"period": "1m"}},
+        "postgresql.database": {"enabled": true, "vars": {"period": "1m"}},
+        "postgresql.statement": {"enabled": false, "vars": {"period": "1m"}}
+      }
+    }
+  }
+}
