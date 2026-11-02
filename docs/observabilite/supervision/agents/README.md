@@ -25,12 +25,12 @@ Les intégrations des bases (Redis, PostgreSQL, SQL Input, métriques des
 instances) sont **générées** : ne pas les modifier dans Fleet, sinon la
 prochaine poussée écrase la modification et « verifier » la signale.
 
-| Je veux… | Je fais… |
-|---|---|
-| superviser une base de plus | une entrée dans [`bases.json`](bases.json) (`postgresql`, `redis`, ou `redis-bull` pour un Redis avec les files Bull), puis générer et pousser |
-| changer une requête SQL, un programme CEL, un réglage | le fichier dans `integrations/`, [`requetes-sql.json`](requetes-sql.json) ou `modeles/`, puis générer et pousser |
-| réparer la collecte après un mot de passe changé par Scalingo | pousser, sans rien modifier |
-| savoir si Fleet a divergé du repo | vérifier |
+| Je veux…                                                      | Je fais…                                                                                                                                       |
+|---------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| superviser une base de plus                                   | une entrée dans [`bases.json`](bases.json) (`postgresql`, `redis`, ou `redis-bull` pour un Redis avec les files Bull), puis générer et pousser |
+| changer une requête SQL, un programme CEL, un réglage         | le fichier dans `integrations/`, [`requetes-sql.json`](requetes-sql.json) ou `modeles/`, puis générer et pousser                               |
+| réparer la collecte après un mot de passe changé par Scalingo | pousser, sans rien modifier                                                                                                                    |
+| savoir si Fleet a divergé du repo                             | vérifier                                                                                                                                       |
 
 ```bash
 cd docs/observabilite/supervision/agents
@@ -72,60 +72,38 @@ POST /_security/api_key
 
 Les intégrations de la stack d'observabilité, elles, restent configurées dans
 Kibana → Fleet (cf. [pilotage](../../pilotage.md)).
-## Policy Fleet recommandée
 
-Créer une policy Fleet dédiée (ex: `pass-emploi-elastic-agent-perf`) avec :
-- Intégration **Redis**, une par Redis : *Hosts* `hôte:port` (lus dans `SCALINGO_REDIS_URL` de l'app qui porte le Redis), mot de passe dans *Password* (secret Fleet), bloc *SSL* seulement si le Redis a *Force TLS* (cf. « Ajout d'un nouveau Redis à monitorer »).
-  - Redis de l'api : `key` sur les files Bull `bull:JobQueue:{wait,active,delayed,failed,completed}` (`limit: 1` par motif ; jamais `pattern: '*'`, qui parcourrait toutes les clés) ;
-  - Redis de connect : `key` désactivé (une clé par grant d'authentification, nombre non borné) : la croissance se lit dans `keyspace` et la mémoire.
-  - **Désactiver « Collect Redis slow logs »** : cet input n'a pas d'option TLS
-    dans le package (`hosts` + `password` seulement), or le Redis Scalingo
-    n'accepte que TLS → `error sending slowlog get: EOF` toutes les ~10 s.
-- Intégration **System** (optionnel) : métriques système du container
-- Intégration **Custom API** : mémoire des conteneurs Scalingo (ci-dessous)
+Choix portés par les modèles (`modeles/`), à ne pas défaire :
+
+- **Redis** : `slowlog` désactivé (l'input n'a pas d'option TLS, or un Redis
+  avec *Force TLS* n'accepte que TLS → `error sending slowlog get: EOF`) ; `key`
+  limité aux files Bull (`redis-bull`), jamais `pattern: '*'`, qui parcourrait
+  toutes les clés ; désactivé sur le Redis de connect (une clé par grant
+  d'authentification, nombre non borné : la croissance se lit dans `keyspace`).
+  Le bloc *SSL* n'est posé que si le Redis a *Force TLS* : sans, il n'accepte
+  que le clair (`TLS handshake timeout`).
 
 ## PostgreSQL et statistiques SQL
 
-Policy `pass-emploi-elastic-agent-<env>`, une intégration PostgreSQL et trois
-SQL Input, toutes sur la même URL et le même utilisateur (cf. « PostgreSQL :
-connexion vérifiée ») :
+Une intégration PostgreSQL et cinq SQL Input, toutes sur la même URL et le même
+utilisateur :
 
-| Intégration | Package | Dataset | Réglages |
-|---|---|---|---|
-| `postgresql-api-<env>` | PostgreSQL | `postgresql.database`, `.activity`, `.bgwriter` (1 min) | **`statement` désactivé** : une ligne par requête suivie à chaque relevé (≈ 5 000 en prod) ; les requêtes passent par le SQL Input, limité au top 200 ×2. Logs désactivés : pas de fichier de log dans le conteneur |
-| `postgresql-statements-<env>` | SQL Input | `sql.postgresql_statements` | requête de [`integrations/postgresql/statements.sql`](integrations/postgresql/statements.sql) |
-| `postgresql-index-stats-<env>` | SQL Input | `sql.postgresql_index_stats` | requête de [`integrations/postgresql/index_stats.sql`](integrations/postgresql/index_stats.sql) |
-| `postgresql-table-stats-<env>` | SQL Input | `sql.postgresql_table_stats` | requête de [`integrations/postgresql/table_stats.sql`](integrations/postgresql/table_stats.sql) |
-| `postgresql-index-hygiene-<env>` | SQL Input | `sql.postgresql_index_hygiene` | requête de [`integrations/postgresql/index_hygiene.sql`](integrations/postgresql/index_hygiene.sql), *Period* `1h` |
-| `postgresql-activite-<env>` | SQL Input | `sql.postgresql_activite` | requête de [`integrations/postgresql/activite.sql`](integrations/postgresql/activite.sql), *Period* `1m` |
+| Intégration                      | Package    | Dataset                                                 | Réglages                                                                                                                                                                                                            |
+|----------------------------------|------------|---------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `postgresql-api-<env>`           | PostgreSQL | `postgresql.database`, `.activity`, `.bgwriter` (1 min) | **`statement` désactivé** : une ligne par requête suivie à chaque relevé (≈ 5 000 en prod) ; les requêtes passent par le SQL Input, limité au top 200 ×2. Logs désactivés : pas de fichier de log dans le conteneur |
+| `postgresql-statements-<env>`    | SQL Input  | `sql.postgresql_statements`                             | requête de [`integrations/postgresql/statements.sql`](integrations/postgresql/statements.sql)                                                                                                                       |
+| `postgresql-index-stats-<env>`   | SQL Input  | `sql.postgresql_index_stats`                            | requête de [`integrations/postgresql/index_stats.sql`](integrations/postgresql/index_stats.sql)                                                                                                                     |
+| `postgresql-table-stats-<env>`   | SQL Input  | `sql.postgresql_table_stats`                            | requête de [`integrations/postgresql/table_stats.sql`](integrations/postgresql/table_stats.sql)                                                                                                                     |
+| `postgresql-index-hygiene-<env>` | SQL Input  | `sql.postgresql_index_hygiene`                          | requête de [`integrations/postgresql/index_hygiene.sql`](integrations/postgresql/index_hygiene.sql), *Period* `1h`                                                                                                  |
+| `postgresql-activite-<env>`      | SQL Input  | `sql.postgresql_activite`                               | requête de [`integrations/postgresql/activite.sql`](integrations/postgresql/activite.sql), *Period* `1m`                                                                                                            |
 
-Pour les SQL Input : type **Metrics** (le dataset doit donner
-`metrics-sql.<dataset>-default`, sinon ni rétention ni dashboards), driver
-`postgres`, *Period* `10m` (sauf mention dans le tableau), *SSL Configuration* vide, requête collée au format
-YAML, avec le format de réponse `table` :
-
-```bash
-f=statements; { echo "- query: |"; sed 's/^/    /' docs/observabilite/supervision/agents/integrations/postgresql/$f.sql; echo "  response_format: table"; }
-```
+Les SQL Input sont de type **Metrics** : le dataset doit donner
+`metrics-sql.<dataset>-default`, sinon ni rétention ni dashboards. Périodes :
+[`requetes-sql.json`](requetes-sql.json).
 
 Une requête modifiée se vérifie d'abord sur une base, en lecture seule :
 [`integrations/postgresql/verifier.sh`](integrations/postgresql/verifier.sh),
 dans un conteneur ponctuel de l'app qui porte la base.
-
-## Ajout d'un nouveau Redis à monitorer
-
-**TLS selon le réglage du Redis** : un Redis Scalingo avec *Force TLS* n'accepte
-que TLS (bloc `ssl.certificate_authorities` dans l'intégration, cf.
-`logs/README.md`) ; **sans *Force TLS*, il n'accepte que le clair** : laisser le
-champ *SSL* vide, sinon `TLS handshake timeout` (cas des Redis de l'api et de
-connect, qui n'ont pas *Force TLS*). Réglage d'un addon :
-`scalingo --app <app> addons-info <addon_id>`.
-
-1. Lire l'hôte et le port du Redis, sans afficher le mot de passe :
-   `scalingo --app <app> env-get SCALINGO_REDIS_URL | sed -E 's#^.*@##'`
-2. Ajouter une intégration Redis dans la policy Fleet de l'agent : *Hosts* =
-   `hôte:port`, *Password* = le mot de passe de cette URL, *SSL* selon le réglage
-   ci-dessus. Aucune variable à poser sur l'app de l'agent.
 
 ## Mémoire des conteneurs Scalingo (intégration Custom API)
 
@@ -207,31 +185,10 @@ Le compte qui porte le token doit être **collaborateur** (pas *limited*) sur
 chaque app qui porte une base : un collaborateur limité ne lit pas les
 métriques des bases.
 
-Installation : comme la mémoire des conteneurs, avec ces valeurs :
-
-| Champ                        | Valeur                                       |
-|------------------------------|----------------------------------------------|
-| Integration name             | `scalingo-database-stats-<env>`              |
-| Dataset name                 | `scalingo.database_stats`                    |
-| Resource URL                 | `https://api.osc-secnum-fr1.scalingo.com`    |
-| Resource Interval            | `1m`                                         |
-| Secret CEL evaluation state  | `api_token: <Bitwarden « API Token Scalingo pour Elastic »>` |
-
-*Initial CEL evaluation state* (prod) :
-
-```yaml
-auth_url: https://auth.scalingo.com/v1/tokens/exchange
-db_api_url: https://db-api.osc-secnum-fr1.scalingo.com
-bases:
-  - {app: pass-emploi-api-prod, addon_id: ad-a402741f-8751-409c-b602-a645998335ef, nom: postgresql-api-prod, disque_inclus_octets: 171798691840, connexions_max: 480}
-  - {app: pass-emploi-api-prod, addon_id: ad-a1a0483d-c0b0-4e75-afb8-d53afb90bc9c, nom: redis-api-prod, disque_inclus_octets: 171798691840}
-  - {app: pass-emploi-connect-prod, addon_id: ad-82bc06a9-c3b8-431e-acd7-c62382fcda2c, nom: redis-connect-prod, disque_inclus_octets: 21474836480}
-```
-
-`disque_inclus_octets` et `connexions_max` recopient la description du plan de
-l'addon (`GET https://api.osc-secnum-fr1.scalingo.com/v1/addon_providers/<postgresql|redis>/plans`) :
-à mettre à jour si le plan change. Le disque inclus est un quota facturé au-delà,
-pas une limite qui bloque la base.
+La liste des bases, leurs addons, les quotas de leur plan (`disque_inclus_octets`,
+`connexions_max`, lus dans la description du plan) et la date de l'autorité sont
+remplis à chaque poussée (cf. « Générer, pousser, vérifier »). Le disque inclus
+est un quota facturé au-delà, pas une limite qui bloque la base.
 
 **Tests** : contre un faux Scalingo local, avec [`mito`](https://github.com/elastic/mito)
 (sans release binaire : `go install github.com/elastic/mito/cmd/mito@latest`) :
