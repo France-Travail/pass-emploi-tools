@@ -1,0 +1,1 @@
+FROM @@INDEX@@ | WHERE @timestamp >= NOW() - 30 days AND event.action == "inventory_completed" | SORT @timestamp DESC | LIMIT 1 | KEEP labels.run_id, @timestamp, message

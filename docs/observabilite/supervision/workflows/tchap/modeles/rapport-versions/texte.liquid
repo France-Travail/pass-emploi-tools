@@ -1,0 +1,15 @@
+# Message en texte brut (version de repli de Tchap) : la ligne récapitulative de l'inventaire,
+# puis une ligne par document de cet envoi (steps.lignes, colonne 0 : message).
+@@EN_TETE@@
+{% if inventaire %}
+ℹ️ Rapport hebdomadaire des versions — inventaire du {{ inventaire[1] | date: '%d/%m/%Y' }}
+{% if age_en_jours > 7 %}
+\n⚠️ Inventaire de plus de 7 jours : relancer inventaire/inventaire-versions.sh --envoyer
+{% endif %}
+\n{{ inventaire[2] | replace: '=', '＝' }}
+{% for ligne in steps.lignes.output.values %}
+\n• {{ ligne[0] | replace: '=', '＝' }}
+{% endfor %}
+{% else %}
+⚠️ Rapport hebdomadaire des versions : aucun inventaire reçu depuis 30 jours. Lancer inventaire/inventaire-versions.sh --envoyer
+{% endif %}

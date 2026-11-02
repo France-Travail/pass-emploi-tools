@@ -8,7 +8,9 @@ import glob, json, os, shutil, subprocess, sys, tempfile, unittest, warnings
 
 SUPERVISION = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WORKFLOWS = 'system-connector-.workflows'
-SALONS = list(json.load(open(os.path.join(SUPERVISION, 'workflows', 'tchap', 'salons.json'))))
+IDENTIFIANTS_SALONS = json.load(open(os.path.join(SUPERVISION, 'workflows', 'tchap', 'salons.json')))
+SALONS = list(IDENTIFIANTS_SALONS)
+RAPPORTS_VERSIONS = [r['salon'] + '-rapport' for r in json.load(open(os.path.join(SUPERVISION, 'workflows', 'tchap', 'rapports-versions.json')))]
 
 
 def setUpModule():
@@ -65,8 +67,15 @@ class TestFichiersGeneresAJour(unittest.TestCase):
         with CopieDuRepo() as repo:
             r = repo.generer_workflows()
             self.assertEqual(r.returncode, 0, r.stderr)
-            for salon in SALONS:
+            for salon in SALONS + RAPPORTS_VERSIONS:
                 self.assertEqual(repo.workflow(salon), open(os.path.join(SUPERVISION, 'workflows', 'tchap', 'generated', f'tchap-{salon}.console')).read(), salon)
+
+    def test_identifiants_des_salons_au_format_tchap(self):
+        """Un salon ajouté sans son identifiant fait échouer la vérification, pas l'envoi en silence."""
+        for salon, identifiant in IDENTIFIANTS_SALONS.items():
+            self.assertRegex(identifiant, r'^![A-Za-z0-9]+:[a-z0-9.-]+$',
+                             f'workflows/tchap/salons.json : identifiant Tchap du salon {salon} à compléter '
+                             '(Tchap → paramètres du salon → Avancé), puis relancer generer-workflows.py')
 
 
 class TestFeatureMattermost(unittest.TestCase):

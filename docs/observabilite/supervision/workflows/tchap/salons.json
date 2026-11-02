@@ -4,5 +4,6 @@
   "o11y-production": "!GcUrxqTFizBjxwmsBO:agent.dinum.tchap.gouv.fr",
   "o11y-staging": "!EGmOEFBsJoXIngQOvU:agent.dinum.tchap.gouv.fr",
   "jobs-production": "!vZkZkmTRLjAJTdkonL:agent.dinum.tchap.gouv.fr",
-  "jobs-staging": "!SmJcAqcZyoguQAJTho:agent.dinum.tchap.gouv.fr"
+  "jobs-staging": "!SmJcAqcZyoguQAJTho:agent.dinum.tchap.gouv.fr",
+  "cve-montees-de-version": "A-COMPLETER-identifiant-Tchap-du-salon-CVE-et-montees-de-version"
 }

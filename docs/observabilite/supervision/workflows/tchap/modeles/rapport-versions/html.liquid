@@ -1,0 +1,17 @@
+# Message affiché : la ligne récapitulative de l'inventaire, puis une ligne par document de cet
+# envoi, dans l'ordre de la requête (violations, fins de vie urgentes, puis à 6 mois, retards, écarts).
+@@EN_TETE@@
+{% if inventaire %}
+<p><font data-mx-color="#808080" color="#808080">ℹ️ <strong>Rapport hebdomadaire des versions</strong> — inventaire du {{ inventaire[1] | date: '%d/%m/%Y' }}</font></p>
+{% if age_en_jours > 7 %}
+<p>⚠️ Inventaire de plus de 7 jours : relancer <code>inventaire/inventaire-versions.sh --envoyer</code></p>
+{% endif %}
+<p>{{ inventaire[2] | replace: '=', '＝' | escape }}</p><ul>
+{% for ligne in steps.lignes.output.values %}
+<li>{{ ligne[0] | replace: '=', '＝' | escape }}</li>
+{% endfor %}
+</ul>
+{% else %}
+<p>⚠️ <strong>Rapport hebdomadaire des versions</strong> : aucun inventaire reçu depuis 30 jours. Lancer <code>inventaire/inventaire-versions.sh --envoyer</code></p>
+{% endif %}
+<p><strong>Liens</strong><br/>Inventaire des versions - https://github.com/France-Travail/pass-emploi-tools/blob/master/inventaire/README.md</p>

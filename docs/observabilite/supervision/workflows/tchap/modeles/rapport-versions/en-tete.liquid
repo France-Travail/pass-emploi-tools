@@ -1,0 +1,7 @@
+# Le dernier inventaire envoyé, sur 30 jours, et son âge en jours.
+# Colonnes de steps.inventaire : 0 identifiant de l'envoi (labels.run_id), 1 date, 2 ligne récapitulative.
+{% assign inventaire = steps.inventaire.output.values[0] %}
+{% if inventaire %}
+{% assign envoye_le = inventaire[1] | date: '%s' | plus: 0 %}
+{% assign age_en_jours = 'now' | date: '%s' | plus: 0 | minus: envoye_le | divided_by: 86400 %}
+{% endif %}

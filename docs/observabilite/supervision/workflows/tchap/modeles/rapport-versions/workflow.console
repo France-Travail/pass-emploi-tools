@@ -1,0 +1,43 @@
+# Rapport hebdomadaire des versions, chaque lundi à 9 h 30 (heure de Paris), dans
+# le salon Tchap @@SALON@@ : les lignes du dernier inventaire envoyé par
+# inventaire/inventaire-versions.sh --envoyer. Généré par generer-workflows.py :
+# ne pas modifier à la main. Spécification : ../../../../format/webhooks/conventions.md.
+# Mise à jour : PUT kbn:/api/workflows/workflow/tchap-@@SALON@@-rapport avec {"yaml": …}.
+POST kbn:/api/workflows/workflow
+{
+  "id": "tchap-@@SALON@@-rapport",
+  "yaml": """
+name: Tchap - @@SALON@@ - rapport hebdomadaire des versions
+description: Écarts de version, stack Elastic et fins de vie du dernier inventaire, dans le salon Tchap @@SALON@@
+enabled: true
+triggers:
+  - type: scheduled
+    with:
+      rrule:
+        freq: WEEKLY
+        interval: 1
+        tzid: Europe/Paris
+        byweekday: [MO]
+        byhour: [9]
+        byminute: [30]
+consts:
+  salon: "@@ID_SALON@@"
+steps:
+  - name: inventaire
+    type: elasticsearch.esql.query
+    with:
+      query: "@@REQUETE_DERNIER_INVENTAIRE@@"
+  - name: lignes
+    type: elasticsearch.esql.query
+    with:
+      query: "@@REQUETE_LIGNES@@"
+  - name: envoyer
+    type: workflow.execute
+    with:
+      workflow-id: tchap-client
+      inputs:
+        salon: "{{ consts.salon }}"
+        texte: "@@TEXTE@@"
+        html: "@@HTML@@"
+"""
+}

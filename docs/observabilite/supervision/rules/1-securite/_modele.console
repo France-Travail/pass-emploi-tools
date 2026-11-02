@@ -19,3 +19,9 @@
 # dans l'interface.
 
 @@REGLE V1@@
+
+# MV1 lit logs-alertes-versions-default par son nom d'index (esQuery), sans data
+# view : à créer avec POST, après le data stream et son pipeline
+# (../../stockage/logs/, ../../pipelines/webhooks/ingest-alertes-versions-default.console).
+
+@@REGLE MV1@@

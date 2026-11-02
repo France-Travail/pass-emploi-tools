@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """Génère, dans generated/, les Workflows de salon tchap-<salon>.console depuis les règles
-de ../../rules/generated/, et les rapports des jobs tchap-jobs-<env>-rapport.console.
+de ../../rules/generated/, les rapports des jobs tchap-jobs-<env>-rapport.console et le
+rapport hebdomadaire des versions tchap-<salon>-rapport.console.
 
 Chaque règle qui a une action .workflows reçoit, dans le Workflow de son salon, son message,
 lu dans son fichier JSON (../../rules/<n>-<périmètre>/<code>.json) et traduit en Liquid.
 Les gabarits des Workflows sont dans modeles/, les salons dans salons.json, les rapports
-des jobs dans rapports-jobs.json : ce script ne fait que les assembler.
+dans rapports-jobs.json et rapports-versions.json : ce script ne fait que les assembler.
 
 Usage : python3 -I generer-workflows.py [--sans-rapports-jobs]
   --sans-rapports-jobs : ne régénère pas les rapports des jobs (pas besoin de pass-emploi-api ;
   utilisé par les tests).
 """
-import glob, html, json, os, re
+import glob, html, json, os, re, sys
 
 ICI = os.path.dirname(os.path.abspath(__file__))
 REGLES = os.path.join(ICI, '..', '..', 'rules')
@@ -335,6 +336,12 @@ def main(args=()):
         sortie = gabarit(salon, any(rid in esql for rid, _ in regles)).replace('@@TEXTE@@', texte).replace('@@HTML@@', corps)
         ecrire(f'tchap-{salon}.console', sortie)
         print(f'tchap-{salon}.console : {len(regles)} règle(s), {len(sortie) // 1024} Ko')
+    for r in json.load(open(os.path.join(ICI, 'rapports-versions.json'))):
+        ecrire(f"tchap-{r['salon']}-rapport.console", rapport_versions(r))
+        print(f"tchap-{r['salon']}-rapport.console : rapport hebdomadaire des versions")
+    for salon in salons_a_completer():
+        print(f'⚠️ salons.json : identifiant Tchap du salon {salon} à compléter (Tchap → paramètres du salon → Avancé), '
+              'puis relancer ce script ; le test des générateurs échoue d\'ici là', file=sys.stderr)
     if '--sans-rapports-jobs' in args:
         return
     jobs = jobs_suivis()
@@ -441,6 +448,30 @@ def rapport(r, jobs):
     return t
 
 
+def rapport_versions(r):
+    """Le Workflow du rapport hebdomadaire des versions (modeles/rapport-versions/)."""
+    def remplir(texte):
+        return texte.replace('@@INDEX@@', r['index']).replace('"', '\\"')
+
+    en_tete = colle('rapport-versions/en-tete.liquid')
+    html = remplir(colle('rapport-versions/html.liquid').replace('@@EN_TETE@@', en_tete))
+    texte = remplir(colle('rapport-versions/texte.liquid').replace('@@EN_TETE@@', en_tete))
+    t = modele('rapport-versions/workflow.console')
+    for repere, valeur in [('@@REQUETE_DERNIER_INVENTAIRE@@', remplir(modele('rapport-versions/dernier-inventaire.esql').strip())),
+                           ('@@REQUETE_LIGNES@@', remplir(modele('rapport-versions/lignes-de-l-inventaire.esql').strip())),
+                           ('@@TEXTE@@', texte), ('@@HTML@@', html),
+                           ('@@ID_SALON@@', SALONS[r['salon']]), ('@@SALON@@', r['salon'])]:
+        t = t.replace(repere, valeur)
+    return t
+
+
+ID_SALON = re.compile(r'^![A-Za-z0-9]+:[a-z0-9.-]+$')
+
+
+def salons_a_completer():
+    return [s for s, identifiant in SALONS.items() if not ID_SALON.match(identifiant)]
+
+
 VIDE = "Sous le seuil à la relecture : l'incident est peut-être en train de se résorber."
 
 
@@ -463,5 +494,4 @@ def lignes_resultat(gabarit, en_html, vide=VIDE):
 
 
 if __name__ == '__main__':
-    import sys
     main(sys.argv[1:])
