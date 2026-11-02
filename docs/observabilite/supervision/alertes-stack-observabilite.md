@@ -10,8 +10,9 @@ dans [alertes-applicatives](alertes-applicatives.md). Hors alertes 11 et 12
 > Les Kibana Rules notifient Tchap par les [Workflows Tchap](workflows/tchap/README.md),
 > et Mattermost tant que leurs actions Mattermost ne sont pas retirées
 > (cf. [`FEATURE_NOTIFIER_ALERTES_MATTERMOST`](rules/README.md#feature_notifier_alertes_mattermost)). Les
-> alertes émises hors Kibana, **11 et 12 (AutoOps)**, postent directement dans
-> Tchap, par un connecteur Webhook AutoOps en `POST` (cf. leur section,
+> alertes émises hors Kibana, **11 et 12 (AutoOps)**, préviennent l'équipe par
+> e-mail et postent directement dans Tchap, par un connecteur Webhook AutoOps en
+> `POST` (cf. leur section,
 > [ADR-004](../../decisions/ADR-004-notifications-tchap-kibana-workflows.md#alertes-émises-hors-kibana-autoops)).
 > Elles ne passent surtout pas par Elasticsearch : elles doivent alerter quand le
 > cluster va mal.
@@ -890,34 +891,14 @@ version).
 > palier**, pas un seuil absolu : 85 sur l'événement flood stage le déclencherait
 > à 10 %, en permanence.
 
-**Connecteur** (onglet *Connector settings*) : type **Webhook**, nom
-`Mattermost o11y production - Monitoring disque et santé Elasticsearch`, URL du webhook entrant Mattermost de
-`#o11y-production` (secret : ne pas la versionner), méthode `POST`, en-tête
-`Content-Type: application/json`. Tester avec **Run to test** avant **Save**.
+**Connecteur Email** (onglet *Connector settings*), commun aux alertes 11 et 12 :
+type **Email**, nom `Email production - Monitoring disque, santé et indexation Elasticsearch`,
+destinataires de l'équipe (adresses dans le connecteur, non versionnées),
+notification de clôture cochée. AutoOps rédige lui-même le message : ni corps
+personnalisable, ni lien vers le runbook, à retrouver depuis le titre de
+l'événement dans le tableau ci-dessus. Tester avec **Run to test** avant **Save**.
 
-**Body du webhook** :
-```json
-{
-  "text": "🚨 **AutoOps — ${TITLE}** (${SEVERITY}, ${STATUS}) — ${RESOURCE_NAME}",
-  "attachments": [
-    {
-      "color": "#d00000",
-      "fields": [
-        { "title": "Détail", "value": "${MESSAGE}" },
-        { "title": "Description", "value": "${DESCRIPTION}" },
-        { "title": "Nœuds concernés", "value": "${AFFECTED_NODES}", "short": true },
-        { "title": "Index concernés", "value": "${AFFECTED_INDICES}", "short": true },
-        { "title": "Début", "value": "`${START_TIME}`", "short": true },
-        { "title": "Fin", "value": "`${END_TIME}`", "short": true },
-        { "title": "À vérifier", "value": "[L'événement dans AutoOps](${EVENT_LINK})" },
-        { "title": "Runbook", "value": "[Disque des nœuds Elasticsearch](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-disque-elasticsearch.md)" }
-      ]
-    }
-  ]
-}
-```
-
-**Connecteur Tchap** (même filtre que l'ancien connecteur Mattermost) : type **Webhook**, nom
+**Connecteur Tchap** (même filtre que le connecteur Email) : type **Webhook**, nom
 `Tchap o11y-production - Monitoring disque et santé Elasticsearch`, méthode `POST`, URL
 `https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/%21GcUrxqTFizBjxwmsBO%3Aagent.dinum.tchap.gouv.fr/send/m.room.message`
 (ID du salon `o11y-production`, encodé),
@@ -983,43 +964,18 @@ Les 3 mesures successives au-dessus du seuil ignorent les montées brèves de ce
 files aux pics de logs (:00 et :30). En cas de bruit, augmenter d'abord ce nombre
 de mesures (réglage personnalisé), avant de toucher aux seuils.
 
-**Connecteur** (onglet *Connector settings*) : type **Webhook**, nom
-`Mattermost o11y production - Monitoring indexation Elasticsearch`, même URL de webhook
-entrant que l'alerte 11 (secret : ne pas la versionner), méthode `POST`, en-tête
-`Content-Type: application/json`. Tester avec **Run to test** avant **Save** : les
-variables `${…}` arrivent non remplies au test, c'est normal.
+**Connecteur Email** : celui de l'[alerte 11](#11--configuration-dans-autoops-critical),
+ajouté à ce filtre.
 
 > **Constaté sur un événement réel** (management queue) :
 > toutes les variables sont remplies. AutoOps envoie un message à l'ouverture
 > (`OPENED`, `${END_TIME}` vaut alors `N/A`) puis un à la clôture
 > (`RESOLVED`). Les heures sont en UTC (`+0000`). `${MESSAGE}` contient des
-> `<br />` que Mattermost affiche tels quels, et il était identique à
+> `<br />`, affichés tels quels en texte brut, et il était identique à
 > `${DESCRIPTION}` sur cet événement. L'émoji 🚨 et la couleur sont fixes,
 > quelle que soit la sévérité (`LOW` ici) : seul le texte la donne.
 
-**Body du webhook** :
-```json
-{
-  "text": "🚨 **AutoOps — ${TITLE}** (${SEVERITY}, ${STATUS}) — ${RESOURCE_NAME}",
-  "attachments": [
-    {
-      "color": "#d00000",
-      "fields": [
-        { "title": "Détail", "value": "${MESSAGE}" },
-        { "title": "Description", "value": "${DESCRIPTION}" },
-        { "title": "Nœuds concernés", "value": "${AFFECTED_NODES}", "short": true },
-        { "title": "Index concernés", "value": "${AFFECTED_INDICES}", "short": true },
-        { "title": "Début", "value": "`${START_TIME}`", "short": true },
-        { "title": "Fin", "value": "`${END_TIME}`", "short": true },
-        { "title": "À vérifier", "value": "[L'événement dans AutoOps](${EVENT_LINK}), puis la backpressure Logstash dans le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)" },
-        { "title": "Runbook", "value": "[Backpressure Elasticsearch](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch)" }
-      ]
-    }
-  ]
-}
-```
-
-**Connecteur Tchap** (même filtre que l'ancien connecteur Mattermost) : type **Webhook**, nom
+**Connecteur Tchap** (même filtre que le connecteur Email) : type **Webhook**, nom
 `Tchap o11y-production - Monitoring indexation Elasticsearch`, méthode `POST`, URL
 `https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/%21GcUrxqTFizBjxwmsBO%3Aagent.dinum.tchap.gouv.fr/send/m.room.message`
 (ID du salon `o11y-production`, encodé),
