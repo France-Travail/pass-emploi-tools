@@ -196,8 +196,23 @@ PUT _index_template/logs-alertes-github@template-custom
   "version": 1
 }
 
-# Création à l'avance des 4 data streams et de leur failure store, à rejouer
-# juste après leurs templates. Les règles A4a, A4b, 6a, 6b, 14, V1 et leurs sessions Discover
+PUT _index_template/logs-alertes-versions@template-custom
+{
+  "index_patterns": ["logs-alertes-versions-default"],
+  "priority": 250,
+  "composed_of": ["logs@mappings", "logs@settings", "ecs@mappings", "pass-emploi-logs@mappings", "logs-alertes@mappings", "logs-alertes-versions@mappings", "logs-prod-retention-custom"],
+  "template": {
+    "settings": { "index": { "mode": "logsdb", "mapping": { "source": { "mode": "synthetic" } }, "default_pipeline": "ingest-alertes-versions-default" } },
+    "data_stream_options": { "failure_store": { "enabled": true } }
+  },
+  "data_stream": { "hidden": false, "allow_custom_routing": false },
+  "allow_auto_create": true,
+  "_meta": { "description": "Rapport de versions envoyé par inventaire/inventaire-versions.sh --envoyer", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+# Création à l'avance des 5 data streams et de leur failure store, à rejouer
+# juste après leurs templates. Les règles A4a, A4b, 6a, 6b, 14, V1, MV1 et leurs sessions Discover
 # partagent des data views : tant qu'aucun document n'est arrivé, ces data
 # views ne trouvent aucun champ et les règles tombent en erreur (« Data view …
 # no longer contains a time field »). Le failure store, lu par la règle 14, n'est créé
@@ -208,10 +223,12 @@ PUT _data_stream/logs-alertes-scalingo-prod-default
 PUT _data_stream/logs-alertes-scalingo-staging-default
 PUT _data_stream/logs-alertes-scalingo-perf-default
 PUT _data_stream/logs-alertes-github-default
+PUT _data_stream/logs-alertes-versions-default
 POST logs-alertes-scalingo-prod-default::failures/_rollover
 POST logs-alertes-scalingo-staging-default::failures/_rollover
 POST logs-alertes-scalingo-perf-default::failures/_rollover
 POST logs-alertes-github-default::failures/_rollover
+POST logs-alertes-versions-default::failures/_rollover
 
 # ═════════════════════════════════════════════════════════════════════════════
 # ROLLOVER (matérialisation) — action one-shot après un changement de template

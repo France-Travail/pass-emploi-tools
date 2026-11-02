@@ -1,0 +1,82 @@
+{
+  "_id": "5421526d-e51a-4358-a587-12a7b0bb0fc8",
+  "_methode": "POST",
+  "_commentaire": [
+    "# MV1 — Ligne urgente du rapport de versions (event.kind: alert) : brique de la stack Elastic",
+    "# au-dessus du cluster, fin de vie dépassée ou à moins de 30 jours (Critical). Un message à chaque",
+    "# envoi de l'inventaire ; le reste du rapport attend le rapport hebdomadaire."
+  ],
+  "_message": {
+    "text": "🚨 **Versions à traiter sans attendre le rapport hebdomadaire** ({{context.value}})",
+    "attachments": [
+      {
+        "color": "#d00000",
+        "text": "",
+        "fields": [
+          {
+            "title": "À vérifier",
+            "value": "1. Le fichier `inventaire.md` de l'inventaire envoyé, section « Fins de vie » ou « Stack Elastic » : où tourne la version, et depuis quelle source\n2. Une brique Elastic au-dessus du cluster : la redescendre à la version du cluster, ou monter le cluster d'abord\n3. Une fin de vie : la montée de version, ou un ticket qui la porte"
+          },
+          {
+            "title": "Documentation",
+            "value": "[Inventaire des versions](https://github.com/France-Travail/pass-emploi-tools/blob/master/inventaire/README.md)"
+          }
+        ]
+      }
+    ]
+  },
+  "name": "Versions - Fin de vie proche ou brique Elastic au-dessus du cluster",
+  "tags": [
+    "critical",
+    "prod",
+    "securite",
+    "tchap-lignes"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nL'inventaire des versions (`inventaire/inventaire-versions.sh --envoyer`) a trouvé une version à traiter sans attendre le rapport hebdomadaire : une brique de la stack Elastic au-dessus de la version du cluster, ou une version en fin de vie (dépassée ou dans moins de 30 jours, d'après endoflife.date).\n\n## À vérifier\n\n1. Le fichier `inventaire.md` de l'inventaire envoyé, section « Fins de vie » ou « Stack Elastic » : où tourne la version, et depuis quelle source\n2. Une brique Elastic au-dessus du cluster : la redescendre à la version du cluster, ou monter le cluster d'abord\n3. Une fin de vie : la montée de version, ou un ticket qui la porte\n\n## Documentation\n\n[Inventaire des versions](https://github.com/France-Travail/pass-emploi-tools/blob/master/inventaire/README.md)\n"
+    }
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchType": "esQuery",
+    "esQuery": "{\"query\":{\"term\":{\"event.kind\":\"alert\"}}}",
+    "index": [
+      "logs-alertes-versions-default"
+    ],
+    "timeField": "@timestamp",
+    "timeWindowSize": 10,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": true,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-cve-montees-de-version",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ],
+  "rule_type_id": ".es-query",
+  "consumer": "alerts"
+}

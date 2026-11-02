@@ -1,7 +1,8 @@
 # Conventions ECS des webhooks : correspondance avec les champs ECS
 
 Comment chaque ingest pipeline transforme le payload d'une source externe
-(notifier Scalingo, alerte Dependabot) en document ECS : quel champ source donne
+(notifier Scalingo, alerte Dependabot) en document ECS, ou vérifie celui que
+l'émetteur a déjà écrit (rapport de versions) : quel champ source donne
 quel champ ECS, avec quelle règle, et comment se construit la ligne `message`
 que les règles et Tchap affichent. C'est l'équivalent, pour ces sources, des
 [conventions des logs ECS](../logs/conventions.md) pour les logs des apps.
@@ -19,10 +20,10 @@ La chaîne, les accès et la mise en service : [collecte par webhook](../../coll
 
 | Principe | Règle |
 |---|---|
-| Un data stream par source | `logs-alertes-<source>-<env>-default` (Scalingo, un par environnement) ou `logs-alertes-<source>-default` (GitHub). Le pipeline est le `default_pipeline` du data stream : l'émetteur n'a rien à préciser. |
+| Un data stream par source | `logs-alertes-<source>-<env>-default` (Scalingo, un par environnement) ou `logs-alertes-<source>-default` (GitHub, versions). Le pipeline est le `default_pipeline` du data stream : l'émetteur n'a rien à préciser. |
 | Payload brut gardé | Tout le payload est déplacé sous `<source>.*` (`scalingo.*`, `github.*`), en `dynamic: false` : lisible dans le document, **non indexé** (on ne cherche pas dedans). Seule exception : l'email de l'auteur Scalingo, supprimé. |
 | Champs ECS indexés | Uniquement ceux des tableaux ci-dessous. Mappings : `logs-alertes@mappings` (`event.id`, `.kind`, `.provider`, `.reason`) et `logs-alertes-<source>@mappings`, dans [`stockage/logs/2-component-templates.console`](../../stockage/logs/2-component-templates.console) ; le reste suit `ecs@mappings` (`labels.*` en keyword). |
-| `event.provider` | Le nom de la source : `scalingo`, `github`. |
+| `event.provider` | Le nom de la source : `scalingo`, `github` ; pour le rapport de versions, celui de l'émetteur (`inventaire-versions`). |
 | `event.action` | Verbe au passé, snake_case, comme pour les logs (cf. [taxonomie](../logs/conventions.md#taxonomie-eventaction)). Un type inconnu de la source n'est pas rejeté : il sort en `<source>_<type>`. |
 | `message` | **La ligne de notification** de l'événement, en texte brut, construite par le pipeline. Les règles et les Workflows Tchap l'affichent telle quelle, une ligne par document (tag `tchap-lignes`). C'est la seule différence assumée avec les logs ECS des apps, où `message` = `event.action` : ici, un document = une notification. |
 | Rejet | Un document qui n'a pas la forme attendue de sa source est **rejeté** (processeur `fail` ou erreur d'un processeur) et part dans le failure store de son data stream (`<data stream>::failures`), que lit la règle 14. Il n'est jamais indexé à moitié. |
@@ -240,6 +241,103 @@ Exemple : `pass-emploi-api : CVE-2026-00000 — axios (high) : Exemple de vulné
 |---|---|
 | `security_advisory` absent | `Pas une alerte Dependabot : security_advisory absent` |
 
+## Rapport de versions (`logs-alertes-versions-default`)
+
+Pipeline : `ingest-alertes-versions-default`, pipeline par défaut du data stream.
+
+Différence assumée avec les autres sources : l'émetteur est à nous et écrit des
+documents **déjà ECS**, `message` compris. Le pipeline ne transforme rien, il
+fait respecter le contrat ci-dessous et rejette le reste. Il n'y a donc pas de
+payload brut : les détails de l'émetteur vont sous `versions.*`.
+
+### Payload attendu
+
+Un document par ligne du rapport, envoyé dans un `_bulk` par
+`inventaire/inventaire-versions.sh --envoyer` (mode d'emploi :
+[`inventaire/README.md`](../../../../inventaire/README.md)). Un autre émetteur
+(le passage hebdomadaire des dépendances) écrit ses propres lignes avec le même
+contrat et son propre `event.provider`.
+
+```json
+{"@timestamp": "2026-11-02T17:40:04Z",
+ "event": {"provider": "inventaire-versions", "kind": "alert", "action": "end_of_life_detected",
+           "id": "inventaire-versions-20261102T174004Z/fin-de-vie/api/postgresql/14"},
+ "service": {"name": "api"},
+ "message": "⏰ api : postgresql 14 en fin de vie le 2026-11-12, dans 10 j — ci 14, local 14",
+ "labels": {"run_id": "inventaire-versions-20261102T174004Z", "categorie": "fin_de_vie", "echeance": "moins_de_30_j", …},
+ "versions": {"jours_restants": 10, "ou": […]}}
+```
+
+### Matrice
+
+| Champ ECS | Posé par | Règle | Si absent |
+|---|---|---|---|
+| `@timestamp` | émetteur | heure de l'envoi, la même pour tous les documents d'un envoi | heure d'ingestion |
+| `event.provider` | émetteur | nom de l'émetteur : `inventaire-versions` | rejet |
+| `event.kind` | émetteur | `alert` (notifié tout de suite par MV1) ou `event` (rapport hebdomadaire seulement), cf. [catégories](#catégories) | rejet ; toute autre valeur aussi |
+| `event.action` | émetteur | verbe au passé, cf. [catégories](#catégories) | rejet |
+| `event.id` | émetteur | `<labels.run_id>/<catégorie>/<composant>/…` : unique dans un envoi | rejet |
+| `event.outcome` | émetteur | récapitulatif seulement : `failure` s'il y a des erreurs de collecte, sinon `success` | champ absent |
+| `event.ingested` | pipeline | heure d'ingestion | — |
+| `service.name` | émetteur | composant de l'inventaire (`api`, `keycloak`, `logstash-process`…) ; `inventaire-versions` pour le récapitulatif | rejet |
+| `service.environment` | émetteur | `prod`, `staging` ou `perf`, pour la stack Elastic seulement | champ absent |
+| `message` | émetteur | cf. [gabarit](#gabarit-du-message-2) : une seule ligne, 500 caractères au plus | rejet |
+| `labels.run_id` | émetteur | identifiant de l'envoi, `inventaire-versions-<AAAAMMJJTHHMMSSZ>` : le rapport hebdomadaire lit les documents du dernier | — |
+| `labels.categorie` | émetteur | `ecart`, `stack_elastic_violation`, `stack_elastic_retard`, `fin_de_vie`, `recapitulatif` | — |
+| `labels.brique`, `.version`, `.app`, `.source`, `.cluster_version` | émetteur | la ligne de l'inventaire : brique, version trouvée, app Scalingo, source (`déployé`, `variable LOGSTASH_VERSION`…), version du cluster | champ absent |
+| `labels.produit`, `.cycle`, `.eol`, `.echeance`, `.derniere_version` | émetteur | fin de vie : produit et cycle endoflife.date, date de fin de vie, `depassee` / `moins_de_30_j` / `moins_de_6_mois`, dernière version du cycle | champ absent |
+| `labels.inventaire_genere_le`, `.erreurs_collecte` | émetteur | récapitulatif : date de collecte de l'inventaire (différente de l'envoi avec `--depuis`), appels en échec | champ absent |
+| `versions.jours_restants` | émetteur | fin de vie : jours avant la date, négatif si dépassée (`long`) | champ absent |
+| `versions.compteurs.*` | émetteur | récapitulatif : `ecarts`, `violations`, `retards`, `fins_de_vie_depassees`, `fins_de_vie_moins_de_30_j`, `fins_de_vie_moins_de_6_mois`, `erreurs_collecte` (`long`) | champ absent |
+| `versions.*` (le reste) | émetteur | détail lisible, non indexé : `cellules` d'un écart, `ou` d'une fin de vie | — |
+
+### Catégories
+
+| `labels.categorie` | `event.action` | `event.kind` | Émoji |
+|---|---|---|---|
+| `stack_elastic_violation` : brique Elastic au-dessus du cluster | `elastic_stack_version_ahead_detected` | `alert` | 🚨 |
+| `fin_de_vie`, dépassée | `end_of_life_detected` | `alert` | ⛔ |
+| `fin_de_vie`, dans moins de 30 jours | `end_of_life_detected` | `alert` | ⏰ |
+| `fin_de_vie`, dans moins de 6 mois | `end_of_life_detected` | `event` | ⏳ |
+| `stack_elastic_retard` : brique Elastic sous le cluster | `elastic_stack_version_behind_detected` | `event` | 🐢 |
+| `ecart` : valeurs incompatibles entre environnements | `version_mismatch_detected` | `event` | 🔀 |
+| `recapitulatif` : un par envoi | `inventory_completed` | `event` | 📋, ⚠️ si collecte incomplète ou cluster non lu |
+
+### Gabarit du message
+
+```
+🔀 <composant> : <brique> en écart — <colonne> <valeurs>, …
+🚨 <app> : <brique> <version> au-dessus du cluster Elastic <version du cluster> (<source>)
+🐢 <app> : <brique> <version> en retard sur le cluster Elastic <version du cluster> (<source>)
+⛔ <composant> : <brique> <cycle>[ (<produit>)] en fin de vie depuis le <date> — <contexte> <version>, …
+⏰ <composant> : <brique> <cycle>[ (<produit>)] en fin de vie le <date>, dans <n> j — <contexte> <version>, …
+⏳ (même gabarit que ⏰)
+📋 Inventaire des versions : <n> écart(s), <n> violation(s) et <n> retard(s) de la stack Elastic, <n> fin(s) de vie à moins de 6 mois dont <n> dépassée(s), <n> erreur(s) de collecte[ : <3 premiers appels en échec>…]
+```
+
+Le produit n'est écrit que pour `java` (`azul-zulu` sur Scalingo, `eclipse-temurin`
+en CI et dans les images) et `stack` (`ubuntu`). Exemples (inventaire réel du
+2026-11-02, tests du pipeline) :
+
+| Ligne | `message` |
+|---|---|
+| écart | `🔀 api : postgresql en écart — prod 15.13.0, staging 16.9.0, perf 17.11.0, ci 14, local 14` |
+| retard Elastic | `🐢 pass-emploi-heartbeat-prod : heartbeat 9.4.7 en retard sur le cluster Elastic 9.4.8 (déployé)` |
+| fin de vie dépassée | `⛔ keycloak : keycloak 24.0 en fin de vie depuis le 2024-06-10 — prod 24.0.5, staging 24.0.5` |
+| fin de vie à 30 jours | `⏰ api : postgresql 14 en fin de vie le 2026-11-12, dans 10 j — ci 14, local 14` |
+| récapitulatif | `📋 Inventaire des versions : 17 écart(s), 0 violation(s) et 5 retard(s) de la stack Elastic, 11 fin(s) de vie à moins de 6 mois dont 4 dépassée(s), 0 erreur(s) de collecte` |
+
+### Rejets
+
+Un message par document, les causes séparées par ` ; ` :
+
+| Cause | Message d'erreur (failure store) |
+|---|---|
+| `event`, `event.provider`, `.kind`, `.action`, `.id`, `service.name` ou `message` absent | `Pas une ligne du rapport de versions : <champ> absent` |
+| `event.kind` ni `alert` ni `event` | `… : event.kind <valeur> au lieu de alert ou event` |
+| `message` sur plusieurs lignes, ou de plus de 500 caractères | `… : message sur plusieurs lignes`, `… : message de plus de 500 caractères` |
+| champ racine hors `@timestamp`, `event`, `service`, `message`, `labels`, `versions` | `… : champ racine non prévu (<champs>) : détails sous versions.*, dimensions sous labels.*` |
+
 ## Qui lit quels champs
 
 | Règle | Data streams | Champs lus |
@@ -247,7 +345,9 @@ Exemple : `pass-emploi-api : CVE-2026-00000 — axios (high) : Exemple de vulné
 | A4a, A4b | `logs-alertes-scalingo-prod-default` ; `-staging-` et `-perf-default` | `service.name` (hors apps de la stack), `message` |
 | 6a, 6b | mêmes data streams | `service.name` (apps de la stack : Logstash, Elastic Agent, Heartbeat), `message` |
 | V1 | `logs-alertes-github-default` | `vulnerability.severity` (`high`, `critical`), `message` |
-| 14 | les 4 failure stores | le document rejeté et son erreur |
+| MV1 | `logs-alertes-versions-default` | `event.kind` (`alert`), `message` |
+| rapport hebdomadaire des versions (Workflow) | `logs-alertes-versions-default` | `event.action` (`inventory_completed`), `labels.run_id`, `labels.categorie`, `event.kind`, `versions.jours_restants`, `message` |
+| 14 | les 5 failure stores | le document rejeté et son erreur |
 
 ## Ajouter une source
 
