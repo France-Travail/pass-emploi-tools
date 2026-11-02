@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-r"""Parité notifiers Scalingo → Elasticsearch, avant de désactiver les notifiers Mattermost*.
+r"""Parité notifiers Scalingo → Elasticsearch : chaque événement des apps suivies est-il arrivé ?
 
 Pour chaque app qui a un notifier « Elastic … », compare son historique Scalingo
 (scalingo timeline) aux documents de logs-alertes-scalingo-<env>-default sur la
@@ -13,7 +13,7 @@ import argparse, base64, datetime, json, os, re, subprocess, sys, time, urllib.r
 
 APPS = {
     'osc-secnum-fr1': ['pass-emploi-api-prod', 'pass-emploi-web-prod', 'pass-emploi-connect-prod', 'pass-emploi-metabase-prod',
-                       'pass-emploi-logstash-prod', 'pass-emploi-logstash-process-prod', 'pass-emploi-heartbeat-prod',
+                       'pass-emploi-logstash-prod', 'pass-emploi-logstash-process-prod', 'pass-emploi-heartbeat-prod', 'pass-emploi-elastic-agent-prod',
                        'pass-emploi-logstash-perf', 'pass-emploi-logstash-process-perf', 'pass-emploi-keycloak-staging'],
     'osc-fr1': ['pass-emploi-api-staging', 'pass-emploi-web-staging', 'pass-emploi-connect-staging'],
 }
