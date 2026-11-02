@@ -33,12 +33,25 @@ mock-externes	pass-emploi-tools	perf/mock-externes
 EOF
 )
 
+DEPUIS=
+SIMULER=false
+ENVOYER=false
+DATA_STREAM=logs-alertes-versions-default
+EOL_API=https://endoflife.date/api/v1/products
+
 usage() {
   cat <<EOF
-Usage : $(basename "$0") [--sortie DIR] [--sans-fetch]
+Usage : $(basename "$0") [--sortie DIR] [--sans-fetch] [--depuis FICHIER] [--simuler | --envoyer]
 
 Produit l'inventaire des versions Pass Emploi (Scalingo ${REGIONS[*]} + repos de $WORKSPACE)
-dans DIR/inventaire.json et DIR/inventaire.md (défaut : $SORTIE).
+dans DIR/inventaire.json et DIR/inventaire.md (défaut : $SORTIE), avec les fins de vie
+lues sur endoflife.date.
+
+  --depuis FICHIER  repart d'un inventaire.json existant, sans Scalingo ni repos :
+                    recalcule les fins de vie, le markdown et les documents d'alerte
+  --simuler         écrit le corps _bulk des documents d'alerte dans DIR/alertes-versions.ndjson
+  --envoyer         idem, puis l'envoie à $DATA_STREAM
+                    (ELASTIC_URL et ELASTIC_ALERTES_VERSIONS_API_KEY requises)
 
 Version du cluster Elastic Cloud : lue si ELASTIC_URL et ELASTIC_INVENTAIRE_API_KEY sont définies
 (clé API limitée au privilège cluster monitor).
@@ -49,6 +62,9 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --sortie) SORTIE=$2; shift 2 ;;
     --sans-fetch) FETCH=false; shift ;;
+    --depuis) DEPUIS=$2; shift 2 ;;
+    --simuler) SIMULER=true; shift ;;
+    --envoyer) ENVOYER=true; shift ;;
     -h|--help) usage; exit 0 ;;
     *) usage >&2; exit 2 ;;
   esac
@@ -56,9 +72,19 @@ done
 
 log() { printf '%s\n' "$*" >&2; }
 
-for outil in scalingo jq git; do
+prerequis=(jq git curl)
+[ -n "$DEPUIS" ] || prerequis+=(scalingo)
+for outil in "${prerequis[@]}"; do
   command -v "$outil" >/dev/null || { log "Prérequis manquant : $outil"; exit 1; }
 done
+if $ENVOYER && { [ -z "${ELASTIC_URL:-}" ] || [ -z "${ELASTIC_ALERTES_VERSIONS_API_KEY:-}" ]; }; then
+  log "--envoyer : ELASTIC_URL et ELASTIC_ALERTES_VERSIONS_API_KEY sont requises"
+  exit 1
+fi
+if [ -n "$DEPUIS" ] && ! jq -e '.faits and .matrice and .stackElastic' "$DEPUIS" >/dev/null 2>&1; then
+  log "--depuis : $DEPUIS n'est pas un inventaire.json"
+  exit 1
+fi
 
 TRAVAIL=$(mktemp -d)
 trap 'rm -rf "$TRAVAIL"' EXIT
@@ -91,8 +117,6 @@ scalingo_lecture() {
 tableau_en_tsv() {
   grep '^│' | sed -E 's/^│ *//; s/ *│$//; s/ *│ */\t/g' || true
 }
-
-scalingo_lecture "${REGIONS[0]}" whoami | grep -q . || { log "CLI Scalingo non connectée : lancer 'scalingo login'"; exit 1; }
 
 env_de_app() {
   local nom=$1 projet=$2
@@ -201,16 +225,18 @@ collecter_app() {
   log "  $nom"
 }
 
-log "Scalingo"
-for region in "${REGIONS[@]}"; do
-  scalingo_lecture "$region" stacks | tableau_en_tsv | tail -n +2 \
-    | jq -R -s -c --arg region "$region" 'split("\n") | map(select(length > 0) | split("\t") | {region: $region, nom: .[1], description: .[2], parDefaut: (.[3] == "Yes")})' \
-    >"$TRAVAIL/stacks-$region.json"
-  while IFS=$'\t' read -r nom _role statut projet; do
-    [ -n "${nom:-}" ] || continue
-    collecter_app "$region" "$nom" "$statut" "$projet"
-  done < <(scalingo_lecture "$region" apps | tableau_en_tsv | tail -n +2)
-done
+collecter_scalingo() {
+  log "Scalingo"
+  for region in "${REGIONS[@]}"; do
+    scalingo_lecture "$region" stacks | tableau_en_tsv | tail -n +2 \
+      | jq -R -s -c --arg region "$region" 'split("\n") | map(select(length > 0) | split("\t") | {region: $region, nom: .[1], description: .[2], parDefaut: (.[3] == "Yes")})' \
+      >"$TRAVAIL/stacks-$region.json"
+    while IFS=$'\t' read -r nom _role statut projet; do
+      [ -n "${nom:-}" ] || continue
+      collecter_app "$region" "$nom" "$statut" "$projet"
+    done < <(scalingo_lecture "$region" apps | tableau_en_tsv | tail -n +2)
+  done
+}
 
 normaliser() {
   sed -E 's/^[[:space:]"'"'"']+//; s/[[:space:]"'"'"',]+$//; s/^[~^>=<v ]+//'
@@ -329,26 +355,28 @@ composants_du_fichier() {
 
 MOTIF_FICHIERS='(^|/)(\.nvmrc|\.node-version|\.python-version|runtime\.txt|\.fvmrc|package\.json|\.yarnrc\.yml|system\.properties|gradle-wrapper\.properties|\.buildpacks|pubspec\.yaml|[^/]*\.tf|Dockerfile[^/]*|docker-compose[^/]*\.ya?ml|compose[^/]*\.ya?ml)$|^\.github/(workflows|actions)/.*\.ya?ml$|^\.github/variables/'
 
-log "Repos"
-: >"$TRAVAIL/faits-repos.tsv"
-: >"$TRAVAIL/repos.tsv"
-for repo in "${REPOS[@]}"; do
-  if [ "$repo" = pass-emploi-tools ]; then dossier=$TOOLS_ROOT; else dossier=$WORKSPACE/$repo; fi
-  if [ ! -d "$dossier" ]; then log "  $repo : absent de $WORKSPACE, ignoré"; continue; fi
-  if $FETCH; then git -C "$dossier" fetch --quiet origin 2>/dev/null || log "  $repo : fetch impossible, lecture des refs locales"; fi
-  branche=$(git -C "$dossier" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || echo origin/main)
-  printf '%s\t%s\t%s\t%s\n' "$repo" "$branche" "$(git -C "$dossier" rev-parse --short "$branche")" \
-    "$(git -C "$dossier" log -1 --format=%cs "$branche")" >>"$TRAVAIL/repos.tsv"
-  git -C "$dossier" ls-tree -r --name-only "$branche" | { grep -E "$MOTIF_FICHIERS" || true; } | sed '/node_modules/d' | while read -r fichier; do
-    contenu=$(git -C "$dossier" show "$branche:$fichier")
-    extraire_fichier "$fichier" "$contenu" | while IFS=$'\t' read -r f contexte brique valeur brut; do
-      composants_du_fichier "$repo" "$f" | while read -r composant; do
-        printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$composant" "$brique" "$contexte" "$valeur" "$repo" "$f" "$brut"
+collecter_repos() {
+  log "Repos"
+  : >"$TRAVAIL/faits-repos.tsv"
+  : >"$TRAVAIL/repos.tsv"
+  for repo in "${REPOS[@]}"; do
+    if [ "$repo" = pass-emploi-tools ]; then dossier=$TOOLS_ROOT; else dossier=$WORKSPACE/$repo; fi
+    if [ ! -d "$dossier" ]; then log "  $repo : absent de $WORKSPACE, ignoré"; continue; fi
+    if $FETCH; then git -C "$dossier" fetch --quiet origin 2>/dev/null || log "  $repo : fetch impossible, lecture des refs locales"; fi
+    branche=$(git -C "$dossier" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || echo origin/main)
+    printf '%s\t%s\t%s\t%s\n' "$repo" "$branche" "$(git -C "$dossier" rev-parse --short "$branche")" \
+      "$(git -C "$dossier" log -1 --format=%cs "$branche")" >>"$TRAVAIL/repos.tsv"
+    git -C "$dossier" ls-tree -r --name-only "$branche" | { grep -E "$MOTIF_FICHIERS" || true; } | sed '/node_modules/d' | while read -r fichier; do
+      contenu=$(git -C "$dossier" show "$branche:$fichier")
+      extraire_fichier "$fichier" "$contenu" | while IFS=$'\t' read -r f contexte brique valeur brut; do
+        composants_du_fichier "$repo" "$f" | while read -r composant; do
+          printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$composant" "$brique" "$contexte" "$valeur" "$repo" "$f" "$brut"
+        done
       done
-    done
-  done >>"$TRAVAIL/faits-repos.tsv"
-  log "  $repo ($branche)"
-done
+    done >>"$TRAVAIL/faits-repos.tsv"
+    log "  $repo ($branche)"
+  done
+}
 
 lire_version_cluster_elastic() {
   if [ -z "${ELASTIC_URL:-}" ] || [ -z "${ELASTIC_INVENTAIRE_API_KEY:-}" ]; then
@@ -366,133 +394,322 @@ lire_version_cluster_elastic() {
   fi
 }
 
-log "Elastic Cloud"
-lire_version_cluster_elastic >"$TRAVAIL/elastic.json"
+assembler_inventaire() {
+  jq -s -c '.' "$TRAVAIL"/apps/*.json >"$TRAVAIL/apps.json"
+  jq -s -c 'add' "$TRAVAIL"/stacks-*.json >"$TRAVAIL/stacks.json"
+  jq -R -s -c 'split("\n") | map(select(length > 0) | split("\t") | {repo: .[0], branche: .[1], commit: .[2], dateCommit: .[3]})' "$TRAVAIL/repos.tsv" >"$TRAVAIL/repos.json"
+  jq -R -s -c 'split("\n") | map(select(length > 0) | split("\t")
+    | {composant: .[0], brique: .[1], contexte: .[2], valeur: .[3], source: (.[4] + ":" + .[5]), brut: .[6]}) | unique' \
+    "$TRAVAIL/faits-repos.tsv" >"$TRAVAIL/faits-repos.json"
 
-jq -s -c '.' "$TRAVAIL"/apps/*.json >"$TRAVAIL/apps.json"
-jq -s -c 'add' "$TRAVAIL"/stacks-*.json >"$TRAVAIL/stacks.json"
-jq -R -s -c 'split("\n") | map(select(length > 0) | split("\t") | {repo: .[0], branche: .[1], commit: .[2], dateCommit: .[3]})' "$TRAVAIL/repos.tsv" >"$TRAVAIL/repos.json"
-jq -R -s -c 'split("\n") | map(select(length > 0) | split("\t")
-  | {composant: .[0], brique: .[1], contexte: .[2], valeur: .[3], source: (.[4] + ":" + .[5]), brut: .[6]}) | unique' \
-  "$TRAVAIL/faits-repos.tsv" >"$TRAVAIL/faits-repos.json"
+  jq -R -s -c 'split("\n") | map(select(length > 0) | split("\t") | {region: .[0], commande: .[1], arguments: .[2]})' \
+    "$TRAVAIL/erreurs.tsv" >"$TRAVAIL/erreurs.json"
 
-jq -R -s -c 'split("\n") | map(select(length > 0) | split("\t") | {region: .[0], commande: .[1], arguments: .[2]})' \
-  "$TRAVAIL/erreurs.tsv" >"$TRAVAIL/erreurs.json"
+  jq -n \
+    --arg genereLe "$(date -Iseconds)" \
+    --argjson regions "$(printf '%s\n' "${REGIONS[@]}" | jq -R -s -c 'split("\n") | map(select(length > 0))')" \
+    --slurpfile apps "$TRAVAIL/apps.json" --slurpfile stacks "$TRAVAIL/stacks.json" \
+    --slurpfile repos "$TRAVAIL/repos.json" --slurpfile faitsRepos "$TRAVAIL/faits-repos.json" \
+    --slurpfile erreurs "$TRAVAIL/erreurs.json" --slurpfile elastic "$TRAVAIL/elastic.json" '
+    def semver: split(".") | map(tonumber? // 0);
+    def norm: ascii_downcase | sub("^v"; "");
+    def compatibles($a; $b): ($a | norm) as $x | ($b | norm) as $y
+      | $x != "latest" and $y != "latest"
+        and ($x == $y or ($x | startswith($y + ".")) or ($y | startswith($x + ".")));
+    def faits_scalingo: $apps[0][] as $app
+      | ( {brique: "stack", valeur: $app.stack, source: "stack"} | select(.valeur != "")),
+        ($app.versionsDeployees | to_entries[] | .key as $k | .value | split(" ")[] | {brique: (if $k == "buildpack" then "buildpack déployé" else $k end), valeur: ., source: "déployé"}),
+        ($app.variablesVersion | to_entries[] | {brique: (.key | if . == "JRE_MAJOR_VERSION" or . == "JAVA_VERSION" then "java" else sub("_VERSION$"; "") | ascii_downcase | gsub("_"; "-") end), valeur: (.value | sub("^v"; "")), source: ("variable " + .key)}),
+        ($app.addons[] | {brique: .type, valeur: (.version | sub("-[0-9]+$"; "")), source: ("addon " + .plan)})
+      | . + {composant: $app.composant, contexte: $app.env, app: $app.nom};
+    ([faits_scalingo] + $faitsRepos[0]) as $faits
+    | ["prod", "staging", "perf", "depot", "ci", "local"] as $colonnes
+    | ($faits | group_by(.composant, .brique) | map(
+        . as $groupe
+        | ([$groupe[].valeur] | unique) as $valeurs
+        | {
+            composant: $groupe[0].composant,
+            brique: $groupe[0].brique,
+            cellules: ($colonnes | map(. as $c | {key: $c, value: ([$groupe[] | select(.contexte == $c) | {valeur, source}] | unique)}) | from_entries),
+            ecart: ([$valeurs[] as $a | $valeurs[] as $b | select(compatibles($a; $b) | not)] | length > 0)
+          })) as $matrice
+    | $elastic[0] as $cluster
+    | ($faits | map(select(.brique == "logstash" or .brique == "elastic-agent" or .brique == "heartbeat")
+        | . + {statut: (if $cluster.version == null then "inconnu"
+            elif (.valeur | semver) > ($cluster.version | semver) then "violation"
+            elif (.valeur | semver) == ($cluster.version | semver) then "aligné"
+            else "en retard" end)})
+        | sort_by((.statut != "violation"), (.statut != "en retard"), .app, .brique, .source)) as $stackElastic
+    | {
+        genereLe: $genereLe,
+        regions: $regions,
+        erreursCollecte: $erreurs[0],
+        elasticCloud: $cluster,
+        stackElastic: $stackElastic,
+        repos: $repos[0],
+        stacks: $stacks[0],
+        apps: ($apps[0] | sort_by(.composant, .env)),
+        faits: $faits,
+        matrice: ($matrice | sort_by((.ecart | not), .composant, .brique))
+      }' >"$TRAVAIL/inventaire.json"
+}
 
-jq -n \
-  --arg genereLe "$(date -Iseconds)" \
-  --argjson regions "$(printf '%s\n' "${REGIONS[@]}" | jq -R -s -c 'split("\n") | map(select(length > 0))')" \
-  --slurpfile apps "$TRAVAIL/apps.json" --slurpfile stacks "$TRAVAIL/stacks.json" \
-  --slurpfile repos "$TRAVAIL/repos.json" --slurpfile faitsRepos "$TRAVAIL/faits-repos.json" \
-  --slurpfile erreurs "$TRAVAIL/erreurs.json" --slurpfile elastic "$TRAVAIL/elastic.json" '
-  def semver: split(".") | map(tonumber? // 0);
-  def norm: ascii_downcase | sub("^v"; "");
-  def compatibles($a; $b): ($a | norm) as $x | ($b | norm) as $y
-    | $x != "latest" and $y != "latest"
-      and ($x == $y or ($x | startswith($y + ".")) or ($y | startswith($x + ".")));
-  def faits_scalingo: $apps[0][] as $app
-    | ( {brique: "stack", valeur: $app.stack, source: "stack"} | select(.valeur != "")),
-      ($app.versionsDeployees | to_entries[] | .key as $k | .value | split(" ")[] | {brique: (if $k == "buildpack" then "buildpack déployé" else $k end), valeur: ., source: "déployé"}),
-      ($app.variablesVersion | to_entries[] | {brique: (.key | if . == "JRE_MAJOR_VERSION" or . == "JAVA_VERSION" then "java" else sub("_VERSION$"; "") | ascii_downcase | gsub("_"; "-") end), valeur: (.value | sub("^v"; "")), source: ("variable " + .key)}),
-      ($app.addons[] | {brique: .type, valeur: (.version | sub("-[0-9]+$"; "")), source: ("addon " + .plan)})
-    | . + {composant: $app.composant, contexte: $app.env, app: $app.nom};
-  ([faits_scalingo] + $faitsRepos[0]) as $faits
-  | ["prod", "staging", "perf", "depot", "ci", "local"] as $colonnes
-  | ($faits | group_by(.composant, .brique) | map(
-      . as $groupe
-      | ([$groupe[].valeur] | unique) as $valeurs
-      | {
-          composant: $groupe[0].composant,
-          brique: $groupe[0].brique,
-          cellules: ($colonnes | map(. as $c | {key: $c, value: ([$groupe[] | select(.contexte == $c) | {valeur, source}] | unique)}) | from_entries),
-          ecart: ([$valeurs[] as $a | $valeurs[] as $b | select(compatibles($a; $b) | not)] | length > 0)
-        })) as $matrice
-  | $elastic[0] as $cluster
-  | ($faits | map(select(.brique == "logstash" or .brique == "elastic-agent" or .brique == "heartbeat")
-      | . + {statut: (if $cluster.version == null then "inconnu"
-          elif (.valeur | semver) > ($cluster.version | semver) then "violation"
-          elif (.valeur | semver) == ($cluster.version | semver) then "aligné"
-          else "en retard" end)})
-      | sort_by((.statut != "violation"), (.statut != "en retard"), .app, .brique, .source)) as $stackElastic
-  | {
-      genereLe: $genereLe,
-      regions: $regions,
-      erreursCollecte: $erreurs[0],
-      elasticCloud: $cluster,
-      stackElastic: $stackElastic,
-      repos: $repos[0],
-      stacks: $stacks[0],
-      apps: ($apps[0] | sort_by(.composant, .env)),
-      faits: $faits,
-      matrice: ($matrice | sort_by((.ecart | not), .composant, .brique))
-    }' >"$SORTIE/inventaire.json"
+ecrire_markdown() {
+  jq -r '
+    def cellule: if length == 0 then "" elif ([.[].valeur] | unique | length) == 1 then .[0].valeur
+      else (group_by(.valeur) | map(.[0].valeur + " (" + (map(.source | split(":")[-1] | split(" ")[0]) | unique | join(", ")) + ")") | join(" / ")) end;
+    def ligne: "| " + (map(tostring | gsub("\\|"; "\\|")) | join(" | ")) + " |";
+    def tableau_matrice: (["Composant", "Brique", "prod", "staging", "perf", "dépôt", "CI", "local"] | ligne),
+      "|---|---|---|---|---|---|---|---|",
+      (.[] | [(if .ecart then "**" + .composant + "**" else .composant end), .brique,
+        (.cellules.prod | cellule), (.cellules.staging | cellule), (.cellules.perf | cellule),
+        (.cellules.depot | cellule), (.cellules.ci | cellule), (.cellules.local | cellule)] | ligne);
+    "# Inventaire des versions Pass Emploi",
+    "",
+    "Généré le \(.genereLe) par `inventaire/inventaire-versions.sh`. Sortie datée : ne pas commiter.",
+    "",
+    "Sources : Scalingo (\(.regions | join(", "))) ; " + (.repos | map("\(.repo) `\(.branche)` \(.commit) (\(.dateCommit))") | join(", ")) + ".",
+    "",
+    (if (.erreursCollecte | length) > 0 then
+      "**Collecte incomplète** : \(.erreursCollecte | length) appel(s) en échec, les cellules correspondantes sont vides à tort : " + (.erreursCollecte | map("`\(.commande) \(.arguments)` (\(.region))") | join(", ")) + ".", ""
+    else empty end),
+    "Colonnes : prod / staging / perf = Scalingo (version déployée au dernier déploiement réussi, variables `*_VERSION`, addons, stack) ; dépôt = fichiers lus au build Scalingo ; CI = `.github/` ; local = Dockerfiles et docker-compose.",
+    "",
+    "## Fins de vie (endoflife.date, au \(.finsDeVieCalculeesLe))",
+    "",
+    (.finsDeVie | map(select(.echeance != null))) as $aSignaler
+    | (if ($aSignaler | length) > 0 then
+        (["Échéance", "Composant", "Brique", "Produit endoflife.date", "Cycle", "Fin de vie", "Jours restants", "Où"] | ligne),
+        "|---|---|---|---|---|---|---|---|",
+        ($aSignaler[] | [(if .echeance == "dépassée" or .echeance == "< 30 j" then "**" + .echeance + "**" else .echeance end),
+          .composant, .brique, .produit, .cycle, .eol, .joursRestants, .ouTexte] | ligne)
+      else "Aucune fin de vie dépassée ni à moins de 6 mois." end),
+    "",
+    "\(.finsDeVie | map(select(.echeance == null)) | length) cycle(s) suivi(s) sans échéance à moins de 6 mois.",
+    "",
+    (if (.finsDeVieNonSuivies | length) > 0 then
+      "Non suivi : " + (.finsDeVieNonSuivies | map("\(.brique) (\(.raison))") | join(", ")) + ".", ""
+    else empty end),
+    "## Stack Elastic : cluster \(.elasticCloud.version // .elasticCloud.statut)",
+    "",
+    "Invariant : aucune brique au-dessus de la version du cluster (violation). À chaque montée du cluster, aligner les briques en retard.",
+    "",
+    (if .elasticCloud.version == null then "Version du cluster \(.elasticCloud.statut) : comparaison impossible.", "" else empty end),
+    (.stackElastic | map(select(.statut != "aligné"))) as $aSignaler
+    | (if ($aSignaler | length) > 0 then
+        (["Statut", "App", "Env", "Brique", "Version", "Source"] | ligne),
+        "|---|---|---|---|---|---|",
+        ($aSignaler[] | [(if .statut == "violation" then "**violation**" else .statut end), .app, .contexte, .brique, .valeur, .source] | ligne)
+      else "Toutes les briques sont alignées sur le cluster." end),
+    "",
+    "\(.stackElastic | map(select(.statut == "aligné")) | length) ligne(s) alignée(s).",
+    "",
+    "## Écarts (\(.matrice | map(select(.ecart)) | length))",
+    "",
+    "Une ligne est en écart quand deux valeurs ne sont pas compatibles (l’une n’est pas un préfixe de l’autre), ou quand une valeur vaut `latest`.",
+    "",
+    (.matrice | map(select(.ecart)) | tableau_matrice),
+    "",
+    "## Matrice complète",
+    "",
+    (.matrice | tableau_matrice),
+    "",
+    "## Addons",
+    "",
+    (["App", "Env", "Type", "Plan", "Version", "Fenêtre de maintenance"] | ligne),
+    "|---|---|---|---|---|---|",
+    (.apps[] | . as $a | .addons[] | [$a.nom, $a.env, .type, .plan, .version, .maintenance] | ligne),
+    "",
+    "## Apps",
+    "",
+    (["App", "Région", "Env", "Statut", "Stack", "Conteneurs", "Dernier déploiement", "Dépôt lié", "Source (convention)", "BUILDPACK_URL"] | ligne),
+    "|---|---|---|---|---|---|---|---|---|---|",
+    (.apps[] | [.nom, .region, .env, .statut, .stack,
+       (.conteneurs | map("\(.type) \(.nombre)×\(.taille)") | join(", ")),
+       (if .dernierDeploiement then "\(.dernierDeploiement.date) `\(.dernierDeploiement.gitRef[0:7])`" else "aucun" end),
+       (.depotLie // ""),
+       (if .source then "\(.source.repo)/\(.source.dossier)" else "" end),
+       (if .buildpackUrlDefinie then "définie" else "" end)] | ligne),
+    "",
+    "## Stacks disponibles",
+    "",
+    (["Région", "Stack", "Description", "Par défaut"] | ligne),
+    "|---|---|---|---|",
+    (.stacks[] | [.region, .nom, .description, (if .parDefaut then "oui" else "" end)] | ligne)
+  ' "$SORTIE/inventaire.json" >"$SORTIE/inventaire.md"
+}
 
-jq -r '
-  def cellule: if length == 0 then "" elif ([.[].valeur] | unique | length) == 1 then .[0].valeur
-    else (group_by(.valeur) | map(.[0].valeur + " (" + (map(.source | split(":")[-1] | split(" ")[0]) | unique | join(", ")) + ")") | join(" / ")) end;
-  def ligne: "| " + (map(tostring | gsub("\\|"; "\\|")) | join(" | ")) + " |";
-  def tableau_matrice: (["Composant", "Brique", "prod", "staging", "perf", "dépôt", "CI", "local"] | ligne),
-    "|---|---|---|---|---|---|---|---|",
-    (.[] | [(if .ecart then "**" + .composant + "**" else .composant end), .brique,
-      (.cellules.prod | cellule), (.cellules.staging | cellule), (.cellules.perf | cellule),
-      (.cellules.depot | cellule), (.cellules.ci | cellule), (.cellules.local | cellule)] | ligne);
-  "# Inventaire des versions Pass Emploi",
-  "",
-  "Généré le \(.genereLe) par `inventaire/inventaire-versions.sh`. Sortie datée : ne pas commiter.",
-  "",
-  "Sources : Scalingo (\(.regions | join(", "))) ; " + (.repos | map("\(.repo) `\(.branche)` \(.commit) (\(.dateCommit))") | join(", ")) + ".",
-  "",
-  (if (.erreursCollecte | length) > 0 then
-    "**Collecte incomplète** : \(.erreursCollecte | length) appel(s) en échec, les cellules correspondantes sont vides à tort : " + (.erreursCollecte | map("`\(.commande) \(.arguments)` (\(.region))") | join(", ")) + ".", ""
-  else empty end),
-  "Colonnes : prod / staging / perf = Scalingo (version déployée au dernier déploiement réussi, variables `*_VERSION`, addons, stack) ; dépôt = fichiers lus au build Scalingo ; CI = `.github/` ; local = Dockerfiles et docker-compose.",
-  "",
-  "## Stack Elastic : cluster \(.elasticCloud.version // .elasticCloud.statut)",
-  "",
-  "Invariant : aucune brique au-dessus de la version du cluster (violation). À chaque montée du cluster, aligner les briques en retard.",
-  "",
-  (if .elasticCloud.version == null then "Version du cluster \(.elasticCloud.statut) : comparaison impossible.", "" else empty end),
-  (.stackElastic | map(select(.statut != "aligné"))) as $aSignaler
-  | (if ($aSignaler | length) > 0 then
-      (["Statut", "App", "Env", "Brique", "Version", "Source"] | ligne),
-      "|---|---|---|---|---|---|",
-      ($aSignaler[] | [(if .statut == "violation" then "**violation**" else .statut end), .app, .contexte, .brique, .valeur, .source] | ligne)
-    else "Toutes les briques sont alignées sur le cluster." end),
-  "",
-  "\(.stackElastic | map(select(.statut == "aligné")) | length) ligne(s) alignée(s).",
-  "",
-  "## Écarts (\(.matrice | map(select(.ecart)) | length))",
-  "",
-  "Une ligne est en écart quand deux valeurs ne sont pas compatibles (l’une n’est pas un préfixe de l’autre), ou quand une valeur vaut `latest`.",
-  "",
-  (.matrice | map(select(.ecart)) | tableau_matrice),
-  "",
-  "## Matrice complète",
-  "",
-  (.matrice | tableau_matrice),
-  "",
-  "## Addons",
-  "",
-  (["App", "Env", "Type", "Plan", "Version", "Fenêtre de maintenance"] | ligne),
-  "|---|---|---|---|---|---|",
-  (.apps[] | . as $a | .addons[] | [$a.nom, $a.env, .type, .plan, .version, .maintenance] | ligne),
-  "",
-  "## Apps",
-  "",
-  (["App", "Région", "Env", "Statut", "Stack", "Conteneurs", "Dernier déploiement", "Dépôt lié", "Source (convention)", "BUILDPACK_URL"] | ligne),
-  "|---|---|---|---|---|---|---|---|---|---|",
-  (.apps[] | [.nom, .region, .env, .statut, .stack,
-     (.conteneurs | map("\(.type) \(.nombre)×\(.taille)") | join(", ")),
-     (if .dernierDeploiement then "\(.dernierDeploiement.date) `\(.dernierDeploiement.gitRef[0:7])`" else "aucun" end),
-     (.depotLie // ""),
-     (if .source then "\(.source.repo)/\(.source.dossier)" else "" end),
-     (if .buildpackUrlDefinie then "définie" else "" end)] | ligne),
-  "",
-  "## Stacks disponibles",
-  "",
-  (["Région", "Stack", "Description", "Par défaut"] | ligne),
-  "|---|---|---|---|",
-  (.stacks[] | [.region, .nom, .description, (if .parDefaut then "oui" else "" end)] | ligne)
-' "$SORTIE/inventaire.json" >"$SORTIE/inventaire.md"
 
+# Scalingo installe Azul Zulu (buildpack jvm-common) ; la CI (setup-java) et les images, Temurin.
+JQ_PRODUITS='
+  def produit($brique; $contexte):
+    if $brique == "java" then (if (["prod", "staging", "perf"] | index($contexte)) then "azul-zulu" else "eclipse-temurin" end)
+    else {postgresql: "postgresql", redis: "redis", node: "nodejs", keycloak: "keycloak", python: "python",
+      logstash: "logstash", heartbeat: "beats", yarn: "yarn", gradle: "gradle", terraform: "terraform",
+      nginx: "nginx", metabase: "metabase", stack: "ubuntu", elasticsearch: "elasticsearch"}[$brique] end;
+  def faits_suivis: .faits
+    + (if .elasticCloud.version then [{composant: "elastic-cloud", brique: "elasticsearch", contexte: "prod", valeur: .elasticCloud.version, source: "cluster"}] else [] end)
+    | map(. + {produit: produit(.brique; .contexte)});
+'
+
+calculer_fins_de_vie() {
+  local entree=$1 produit fichier
+  mkdir -p "$TRAVAIL/eol"
+  : >"$TRAVAIL/erreurs-eol.tsv"
+  jq -r "$JQ_PRODUITS"' faits_suivis | map(.produit // empty) | unique[]' "$entree" | while read -r produit; do
+    fichier="$TRAVAIL/eol/$produit.json"
+    if ! curl --silent --fail --max-time 20 -o "$fichier" "$EOL_API/$produit/" || ! jq -e '.result.releases' "$fichier" >/dev/null 2>&1; then
+      rm -f "$fichier"
+      printf '%s\t%s\t%s\n' endoflife.date GET "/api/v1/products/$produit/" >>"$TRAVAIL/erreurs-eol.tsv"
+    fi
+  done
+  for fichier in "$TRAVAIL"/eol/*.json; do
+    if [ -e "$fichier" ]; then jq -c --arg p "$(basename "$fichier" .json)" '{($p): .result.releases}' "$fichier"; fi
+  done | jq -s -c 'add // {}' >"$TRAVAIL/eol.json"
+  jq -R -s -c 'split("\n") | map(select(length > 0) | split("\t") | {region: .[0], commande: .[1], arguments: .[2]})' \
+    "$TRAVAIL/erreurs-eol.tsv" >"$TRAVAIL/erreurs-eol.json"
+
+  jq --slurpfile eol "$TRAVAIL/eol.json" --slurpfile erreursEol "$TRAVAIL/erreurs-eol.json" --arg aujourdhui "$(date +%F)" "$JQ_PRODUITS"'
+    def semver: split(".") | map(tonumber? // 0);
+    def version_produit: if .brique == "stack" then ((.valeur | capture("^scalingo-(?<n>[0-9]+)$").n + ".04") // .valeur) else .valeur end;
+    def cycle($releases; $v):
+      ([$releases[] | .name as $n | select($n == $v or ($v | startswith($n + ".")))] | sort_by(.name | length) | last)
+      // ([$releases[] | select(.name | startswith($v + "."))] | sort_by(.name | semver) | last);
+    def jours($date): (($date + "T00:00:00Z" | fromdateiso8601) - ($aujourdhui + "T00:00:00Z" | fromdateiso8601)) / 86400 | floor;
+    def echeance: if . == null then null elif . <= 0 then "dépassée" elif . < 30 then "< 30 j" elif . < 183 then "< 6 mois" else null end;
+    $eol[0] as $releases
+    | faits_suivis as $faits
+    | [$faits[] | select(.produit != null and $releases[.produit] != null) | . + {cycle: cycle($releases[.produit]; version_produit)}] as $rattaches
+    | ($rattaches | map(select(.cycle != null)) | group_by(.composant, .brique, .produit, .cycle.name) | map(
+        .[0].cycle.eolFrom as $date
+        | (if $date then jours($date) else null end) as $j
+        | {composant: .[0].composant, brique: .[0].brique, produit: .[0].produit, cycle: .[0].cycle.name,
+           eol: $date, joursRestants: $j, echeance: ($j | echeance), derniereVersion: .[0].cycle.latest.name,
+           versions: ([.[].valeur] | unique),
+           ou: ([.[] | {contexte, valeur, source} + (if .app then {app} else {} end)] | unique),
+           ouTexte: (sort_by(.contexte as $c | ["prod", "staging", "perf", "depot", "ci", "local"] | index($c))
+             | map((if .contexte == "depot" then "dépôt" else .contexte end) + " " + .valeur)
+             | reduce .[] as $o ([]; if any(.[]; . == $o) then . else . + [$o] end) | join(", "))})
+      | sort_by((.joursRestants == null), .joursRestants, .composant, .brique)) as $finsDeVie
+    | (([$faits[] | select(.produit == null) | .brique | select(. != "buildpacks" and . != "buildpack déployé")] | unique
+        | map({brique: ., raison: "absent d’endoflife.date"}))
+      + ([$faits[] | select(.produit != null and $releases[.produit] == null) | .produit] | unique
+        | map({brique: ., raison: "endoflife.date injoignable"}))
+      + ($rattaches | map(select(.cycle == null)) | group_by(.brique, .valeur)
+        | map({brique: (.[0].brique + " " + .[0].valeur), raison: ("aucun cycle " + .[0].produit + " correspondant")})))
+      as $nonSuivies
+    | . + {finsDeVieCalculeesLe: $aujourdhui, finsDeVie: $finsDeVie, finsDeVieNonSuivies: $nonSuivies,
+           erreursCollecte: ((.erreursCollecte | map(select(.region != "endoflife.date"))) + $erreursEol[0])}
+  ' "$entree"
+}
+
+ecrire_corps_bulk() {
+  jq -c '
+    (now | floor) as $t
+    | ($t | todate) as $horodatage
+    | ("inventaire-versions-" + ($t | strftime("%Y%m%dT%H%M%SZ"))) as $run
+    | .elasticCloud.version as $cluster
+    | def sans_nuls: with_entries(select(.value != null) | .value |= tostring);
+      def doc($kind; $action; $categorie; $id; $service; $message; $labels; $details):
+        {"@timestamp": $horodatage,
+         event: {provider: "inventaire-versions", kind: $kind, action: $action, id: ($run + "/" + ($id | gsub(" "; "_")))},
+         service: $service,
+         message: $message,
+         labels: ({run_id: $run, categorie: $categorie} + $labels | sans_nuls)}
+        + (if $details then {versions: $details} else {} end);
+      def colonnes: [["prod", "prod"], ["staging", "staging"], ["perf", "perf"], ["depot", "dépôt"], ["ci", "ci"], ["local", "local"]];
+      def code_echeance: {"dépassée": "depassee", "< 30 j": "moins_de_30_j", "< 6 mois": "moins_de_6_mois"}[.];
+    (.matrice | map(select(.ecart))) as $ecarts
+    | (.stackElastic | map(select(.statut == "violation"))) as $violations
+    | (.stackElastic | map(select(.statut == "en retard"))) as $retards
+    | (.finsDeVie | map(select(.echeance != null))) as $finsDeVie
+    | [
+        ($ecarts[] | . as $m
+          | ([colonnes[] | . as [$cle, $libelle] | $m.cellules[$cle] | select(length > 0)
+              | "\($libelle) \([.[].valeur] | unique | join("/"))"] | join(", ")) as $cellules
+          | doc("event"; "version_mismatch_detected"; "ecart"; "ecart/\(.composant)/\(.brique)"; {name: .composant};
+              "🔀 \(.composant) : \(.brique) en écart — \($cellules)"; {brique: .brique}; {cellules: .cellules})),
+        ($violations[]
+          | doc("alert"; "elastic_stack_version_ahead_detected"; "stack_elastic_violation"; "stack-elastic/\(.app)/\(.brique)/\(.source)";
+              {name: .composant, environment: .contexte};
+              "🚨 \(.app) : \(.brique) \(.valeur) au-dessus du cluster Elastic \($cluster) (\(.source))";
+              {brique: .brique, version: .valeur, app: .app, source: .source, cluster_version: $cluster}; null)),
+        ($retards[]
+          | doc("event"; "elastic_stack_version_behind_detected"; "stack_elastic_retard"; "stack-elastic/\(.app)/\(.brique)/\(.source)";
+              {name: .composant, environment: .contexte};
+              "🐢 \(.app) : \(.brique) \(.valeur) en retard sur le cluster Elastic \($cluster) (\(.source))";
+              {brique: .brique, version: .valeur, app: .app, source: .source, cluster_version: $cluster}; null)),
+        ($finsDeVie[]
+          | (.brique + " " + .cycle + (if .brique == "java" or .brique == "stack" then " (" + .produit + ")" else "" end)) as $quoi
+          | (if .echeance == "dépassée" then "⛔ \(.composant) : \($quoi) en fin de vie depuis le \(.eol) — \(.ouTexte)"
+             elif .echeance == "< 30 j" then "⏰ \(.composant) : \($quoi) en fin de vie le \(.eol), dans \(.joursRestants) j — \(.ouTexte)"
+             else "⏳ \(.composant) : \($quoi) en fin de vie le \(.eol), dans \(.joursRestants) j — \(.ouTexte)" end) as $message
+          | doc((if .echeance == "< 6 mois" then "event" else "alert" end); "end_of_life_detected"; "fin_de_vie";
+              "fin-de-vie/\(.composant)/\(.produit)/\(.cycle)"; {name: .composant}; $message;
+              {brique: .brique, produit: .produit, cycle: .cycle, eol: .eol, echeance: (.echeance | code_echeance), derniere_version: .derniereVersion};
+              {jours_restants: .joursRestants, ou: .ou})),
+        ({ecarts: ($ecarts | length), violations: ($violations | length), retards: ($retards | length),
+          fins_de_vie_depassees: ($finsDeVie | map(select(.echeance == "dépassée")) | length),
+          fins_de_vie_moins_de_30_j: ($finsDeVie | map(select(.echeance == "< 30 j")) | length),
+          fins_de_vie_moins_de_6_mois: ($finsDeVie | map(select(.echeance == "< 6 mois")) | length),
+          erreurs_collecte: (.erreursCollecte | length)} as $n
+          | (.erreursCollecte | map("\(.commande) \(.arguments) (\(.region))" | sub(" +\\("; " ("))) as $erreurs
+          | (if $n.erreurs_collecte > 0 or $cluster == null then "⚠️" else "📋" end) as $emoji
+          | doc("event"; "inventory_completed"; "recapitulatif"; "recapitulatif"; {name: "inventaire-versions"};
+              "\($emoji) Inventaire des versions : \($n.ecarts) écart(s), \($n.violations) violation(s) et \($n.retards) retard(s) de la stack Elastic, "
+              + "\($finsDeVie | length) fin(s) de vie à moins de 6 mois dont \($n.fins_de_vie_depassees) dépassée(s), \($n.erreurs_collecte) erreur(s) de collecte"
+              + (if $cluster == null then ", version du cluster Elastic non lue" else "" end)
+              + (if $n.erreurs_collecte > 0 then " : " + ($erreurs[0:3] | join(", ")) + (if $n.erreurs_collecte > 3 then "…" else "" end) else "" end);
+              {cluster_version: $cluster, inventaire_genere_le: .genereLe, erreurs_collecte: (if $n.erreurs_collecte > 0 then $erreurs | join(", ") else null end)};
+              {compteurs: $n})
+          | .event.outcome = (if $n.erreurs_collecte > 0 then "failure" else "success" end))
+      ]
+    | .[] | ({create: {}}, .)
+  ' "$SORTIE/inventaire.json" >"$SORTIE/alertes-versions.ndjson"
+}
+
+envoyer_bulk() {
+  local code
+  code=$(curl --silent --show-error --max-time 60 -o "$TRAVAIL/bulk-reponse.json" -w '%{http_code}' -X POST \
+      -H @<(printf 'Authorization: ApiKey %s\n' "$ELASTIC_ALERTES_VERSIONS_API_KEY") \
+      -H 'Content-Type: application/x-ndjson' --data-binary @"$SORTIE/alertes-versions.ndjson" \
+      "${ELASTIC_URL%/}/$DATA_STREAM/_bulk") || { log "Envoi impossible : Elasticsearch injoignable"; exit 1; }
+  if [ "$code" != 200 ]; then
+    log "Envoi refusé (HTTP $code) : $(jq -r '.error.type // "réponse illisible"' "$TRAVAIL/bulk-reponse.json" 2>/dev/null || echo 'réponse illisible')"
+    exit 1
+  fi
+  jq -r '
+    [.items[].create] as $items
+    | ($items | map(select(.error))) as $refuses
+    | ($items | map(select(.failure_store == "used"))) as $rejetes
+    | "\($items | length - ($refuses | length) - ($rejetes | length)) document(s) indexé(s), \($refuses | length) refusé(s), \($rejetes | length) rejeté(s) par le pipeline (failure store, règle 14)",
+      ($refuses[] | "  refusé : \(.error.type) : \(.error.reason)")
+  ' "$TRAVAIL/bulk-reponse.json" >&2
+  jq -e '[.items[].create | select(.error or .failure_store == "used")] | length == 0' "$TRAVAIL/bulk-reponse.json" >/dev/null
+}
+
+if [ -n "$DEPUIS" ]; then
+  log "Inventaire repris de $DEPUIS"
+  cp "$DEPUIS" "$TRAVAIL/inventaire.json"
+else
+  scalingo_lecture "${REGIONS[0]}" whoami | grep -q . || { log "CLI Scalingo non connectée : lancer 'scalingo login'"; exit 1; }
+  collecter_scalingo
+  collecter_repos
+  log "Elastic Cloud"
+  lire_version_cluster_elastic >"$TRAVAIL/elastic.json"
+  assembler_inventaire
+fi
+
+log "Fins de vie (endoflife.date)"
+calculer_fins_de_vie "$TRAVAIL/inventaire.json" >"$SORTIE/inventaire.json"
+ecrire_markdown
 log "Écrit : $SORTIE/inventaire.json et $SORTIE/inventaire.md"
+
+if $SIMULER || $ENVOYER; then
+  ecrire_corps_bulk
+  log "Écrit : $SORTIE/alertes-versions.ndjson ($(($(wc -l <"$SORTIE/alertes-versions.ndjson") / 2)) document(s))"
+fi
+if $ENVOYER; then
+  log "Envoi à $DATA_STREAM"
+  envoyer_bulk
+fi
