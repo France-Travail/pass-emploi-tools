@@ -235,7 +235,9 @@ Value: https://mattermost.example.com/hooks/...
 1. Faire les modifications dans ce repo (pass-emploi-tools)
 2. Tester via une PR de test
 3. Merger sur `master`
-4. Modifier le hash de commit dans les repos appelants
+4. Si `setup-node-yarn` a changé : mettre à jour son hash de commit dans `lint-and-typecheck` et
+   `test-and-upload`, qui l'appellent épinglée, puis merger
+5. Modifier le hash de commit dans les repos appelants
 
 ---
 
