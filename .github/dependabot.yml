@@ -1,0 +1,88 @@
+version: 2
+
+updates:
+  # ===========================================
+  # Docker (perf)
+  # ===========================================
+  - package-ecosystem: docker
+    directory: /perf
+    schedule:
+      interval: daily
+      time: '07:00'
+      timezone: Europe/Paris
+    commit-message:
+      prefix: 'chore(deps):'
+    groups:
+      # Docker images - patch and minor
+      docker-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - patch
+          - minor
+      # Majors : pas de groupe, chaque image a sa propre PR
+
+  # ===========================================
+  # Pip (mock-externes)
+  # ===========================================
+  - package-ecosystem: pip
+    directory: /perf/mock-externes
+    schedule:
+      interval: daily
+      time: '07:00'
+      timezone: Europe/Paris
+    commit-message:
+      prefix: 'chore(deps):'
+    allow:
+      - update-types:
+          - version-update:semver-patch
+          - version-update:semver-minor
+    groups:
+      # Python dependencies - patch and minor
+      pip-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - patch
+          - minor
+
+  # ===========================================
+  # Gradle (perf - Gatling)
+  # ===========================================
+  - package-ecosystem: gradle
+    directory: /perf
+    schedule:
+      interval: daily
+      time: '07:00'
+      timezone: Europe/Paris
+    commit-message:
+      prefix: 'chore(deps):'
+    allow:
+      - update-types:
+          - version-update:semver-patch
+          - version-update:semver-minor
+    groups:
+      # Gradle dependencies - patch and minor
+      gradle-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - patch
+          - minor
+
+  # ===========================================
+  # GitHub Actions
+  # ===========================================
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: daily
+      time: '07:00'
+      timezone: Europe/Paris
+    commit-message:
+      prefix: 'ci(deps):'
+    groups:
+      # GitHub Actions - patch and minor
+      actions-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - patch
+          - minor
+      # Majors : pas de groupe, chaque action a sa propre PR
