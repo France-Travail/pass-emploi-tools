@@ -144,10 +144,10 @@ def dashboard(id_, titre, description, panneaux, controles):
         'type': 'dashboard', 'typeMigrationVersion': '10.3.0'}
 
 
-def encadre(contenu, hauteur):
+def encadre(contenu, hauteur, x=0, y=0, largeur=48):
     indice = str(uuid.uuid5(uuid.NAMESPACE_URL, 'encadre ' + contenu[:40]))
     return {'type': 'markdown', 'embeddableConfig': {'content': contenu, 'settings': {'open_links_in_new_tab': True}},
-            'panelIndex': indice, 'gridData': {'x': 0, 'y': 0, 'w': 48, 'h': hauteur, 'i': indice}}
+            'panelIndex': indice, 'gridData': {'x': x, 'y': y, 'w': largeur, 'h': hauteur, 'i': indice}}
 
 
 def sous_l_encadre(encadre_, panneaux):
@@ -169,7 +169,8 @@ FILTRE_TABLE_REQUETE = ('(?table == "toutes" OR LOCATE(sql.metrics.requete, CONC
 
 
 def postgresql():
-    return sous_l_encadre(encadre(modele('investiguer-postgresql.md'), 16), panneaux_postgresql())
+    return [encadre(modele('investiguer-postgresql-infrastructure.md'), 9, largeur=36),
+            encadre(modele('investiguer-postgresql-requetes.md'), 16, y=56, largeur=36)] + panneaux_postgresql()
 
 
 def panneaux_postgresql():
@@ -184,62 +185,62 @@ def panneaux_postgresql():
     return [
         panneau('Mémoire des nœuds de données (% de la limite)', 'Mémoire du conteneur de chaque nœud de données, rapportée à sa limite (API des bases Scalingo). 100 % la nuit est normal : le cache des sauvegardes et exports compte dans cette mémoire et se libère au besoin. Le signal d\'alarme est le swap qui monte (panneau Swap).',
                 instances + f'\n| STATS memoire_pct = MAX(scalingo.memory.pct) * 100 BY {TRANCHE}, scalingo.database.instance',
-                p, 'lnsXY', 0, 0, 16, 12, 'tranche', ['memoire_pct'], 'scalingo.database.instance', 100),
+                p, 'lnsXY', 0, 9, 16, 12, 'tranche', ['memoire_pct'], 'scalingo.database.instance', 100),
         panneau('Disque des nœuds de données (% du quota du plan)', 'Place sur disque rapportée au disque inclus dans le plan (prod : 160 Go par nœud ; perf : 10 Go). Quota facturé au-delà, pas une limite qui bloque la base.',
                 instances + f'\n| STATS disque_pct = MAX(scalingo.disk.pct) * 100 BY {TRANCHE}, scalingo.database.instance',
-                p, 'lnsXY', 16, 0, 16, 12, 'tranche', ['disque_pct'], 'scalingo.database.instance', 100),
+                p, 'lnsXY', 16, 9, 16, 12, 'tranche', ['disque_pct'], 'scalingo.database.instance', 100),
         panneau('CPU des nœuds de données (%)', 'CPU du conteneur de chaque nœud de données (API des bases Scalingo).',
                 instances + f'\n| STATS cpu_pct = MAX(scalingo.cpu.usage) BY {TRANCHE}, scalingo.database.instance',
-                p, 'lnsXY', 32, 0, 16, 12, 'tranche', ['cpu_pct'], 'scalingo.database.instance'),
+                p, 'lnsXY', 32, 9, 16, 12, 'tranche', ['cpu_pct'], 'scalingo.database.instance'),
         panneau('Connexions ouvertes (max du plan : 480 en prod, 30 en perf)', 'Connexions de tout le serveur (base de l\'app et bases système), au relevé le plus chargé de chaque tranche : c\'est ce total que borne le plan.',
                 f'FROM metrics-postgresql.database-*\n| WHERE {BASE}\n| STATS serveur = SUM(postgresql.database.number_of_backends) BY @timestamp\n| STATS connexions = MAX(serveur) BY {TRANCHE}',
-                p, 'lnsXY', 0, 12, 24, 12, 'tranche', ['connexions']),
+                p, 'lnsXY', 16, 21, 16, 12, 'tranche', ['connexions']),
         panneau('Connexions en train d\'exécuter une requête', 'Connexions actives ou ouvertes dans une transaction (idle in transaction), au relevé le plus chargé de chaque tranche. Elles grimpent quand les requêtes s\'empilent ; le total des connexions, lui, reste plat.',
                 f'FROM metrics-postgresql.activity-*\n| WHERE {BASE} AND postgresql.activity.state IN ("active", "idle in transaction")\n| STATS n = COUNT(*) BY @timestamp, postgresql.activity.state\n| STATS connexions = MAX(n) BY {TRANCHE}, postgresql.activity.state',
-                p, 'lnsXY', 24, 12, 24, 12, 'tranche', ['connexions'], 'postgresql.activity.state'),
+                p, 'lnsXY', 32, 21, 16, 12, 'tranche', ['connexions'], 'postgresql.activity.state'),
         panneau('Requêtes les plus lentes, en moyenne (pg_stat_statements)', 'Temps moyen par appel sur la période (écart entre relevés, par segment entre deux remises à zéro), relevé toutes les 10 min : choisir au moins 20 min. Exports COPY exclus.',
                 requetes + '| SORT moyenne_ms DESC\n| KEEP requete, moyenne_ms, appels, temps_total_s\n| LIMIT 20',
-                p, 'lnsDatatable', 0, 24, 24, 16),
+                p, 'lnsDatatable', 0, 72, 24, 16),
         panneau('Requêtes SQL les plus lentes, P95 et P99 (APM, par table)', 'Centiles des requêtes SQL de l\'api vues par l\'APM, regroupées par le résumé de l\'agent APM (opération et première table). Le texte complet n\'est pas affiché ici : celui de l\'APM contient les valeurs en clair. La requête complète, sans valeurs, est dans le tableau « Requêtes les plus lentes, en moyenne (pg_stat_statements) » : choisir la table dans le sélecteur « Table » en haut du dashboard, les deux tableaux n\'affichent alors que les requêtes de cette table. Traces conservées 21 j.',
                 'FROM traces-apm*\n| WHERE span.subtype == "postgresql" AND service.name LIKE "pass-emploi-api-*" AND MV_CONTAINS(?base, CASE(' + ', '.join(f'service.name == "{app}", "{nom}"' for _, app, nom in bases('postgresql')) + ', "autre"))\n| EVAL table_apm = REPLACE(REPLACE(MV_LAST(SPLIT(span.name, " ")), "\\"", ""), ",", "")\n| WHERE ?table == "toutes" OR table_apm == ?table\n| STATS p95_ms = ROUND(PERCENTILE(span.duration.us, 95) / 1000, 1), p99_ms = ROUND(PERCENTILE(span.duration.us, 99) / 1000, 1), appels = COUNT(*) BY span.name\n| SORT p95_ms DESC\n| KEEP span.name, p95_ms, p99_ms, appels\n| LIMIT 20',
-                p, 'lnsDatatable', 24, 24, 24, 16),
+                p, 'lnsDatatable', 24, 72, 24, 16),
         panneau('Requêtes les plus appelées', 'Nombre d\'appels sur la période (écart entre relevés), relevé toutes les 10 min.',
                 requetes + '| SORT appels DESC\n| KEEP requete, appels, moyenne_ms, temps_total_s\n| LIMIT 20',
-                p, 'lnsDatatable', 0, 40, 24, 16),
+                p, 'lnsDatatable', 0, 88, 24, 16),
         panneau('Tables les plus lues sans index', 'Lignes parcourues sans index sur la période (seq_tup_read) : candidates à un index. Relevé toutes les 10 min.',
                 f'FROM metrics-sql.postgresql_table_stats-*\n| WHERE {BASE}\n| STATS lignes_lues_sans_index = MAX(sql.metrics.seq_tup_read) - MIN(sql.metrics.seq_tup_read), lectures_sans_index = MAX(sql.metrics.seq_scan) - MIN(sql.metrics.seq_scan), lectures_par_index = MAX(sql.metrics.idx_scan) - MIN(sql.metrics.idx_scan), lignes = MAX(sql.metrics.n_live_tup) BY sql.metrics.table, sql.metrics.stats_reset\n| STATS lignes_lues_sans_index = SUM(lignes_lues_sans_index), lectures_sans_index = SUM(lectures_sans_index), lectures_par_index = SUM(lectures_par_index), lignes = MAX(lignes) BY sql.metrics.table\n| WHERE lignes_lues_sans_index > 0\n| SORT lignes_lues_sans_index DESC\n| KEEP sql.metrics.table, lignes_lues_sans_index, lectures_sans_index, lectures_par_index, lignes\n| LIMIT 20',
-                p, 'lnsDatatable', 24, 40, 24, 16),
+                p, 'lnsDatatable', 24, 88, 24, 16),
         panneau('Index jamais utilisés (hors contraintes)', 'Index sans aucune utilisation depuis la dernière remise à zéro des statistiques (colonne « Depuis » : une date récente, après une bascule de nœud ou un redémarrage, ne prouve rien), qui ne garantissent ni clé primaire ni unicité : candidats à la suppression, à vérifier avant.',
                 f'FROM metrics-sql.postgresql_index_stats-*\n| WHERE {BASE} AND sql.metrics.contrainte == false\n| INLINE STATS derniere_remise_a_zero = MAX(sql.metrics.stats_reset)\n| WHERE sql.metrics.stats_reset == derniere_remise_a_zero\n| STATS utilisations = MAX(sql.metrics.idx_scan), taille_mo = ROUND(MAX(sql.metrics.taille_octets) / 1048576.0, 1) BY sql.metrics.table, sql.metrics.index, derniere_remise_a_zero\n| WHERE utilisations == 0\n| SORT taille_mo DESC\n| KEEP sql.metrics.table, sql.metrics.index, taille_mo, derniere_remise_a_zero',
-                p, 'lnsDatatable', 0, 56, 48, 10),
+                p, 'lnsDatatable', 0, 104, 48, 10),
         panneau('Sélectivité des index', 'Sur la période (écarts entre relevés, par segment de remise à zéro) : lignes lues par scan, part de la table lue à chaque scan, part des lignes lues réellement récupérées. Un index qui lit une grande part de sa table à chaque scan est peu sélectif.',
                 f'FROM metrics-sql.postgresql_index_stats-*\n| WHERE {BASE}\n| STATS scans = MAX(sql.metrics.idx_scan) - MIN(sql.metrics.idx_scan), lues = MAX(sql.metrics.idx_tup_read) - MIN(sql.metrics.idx_tup_read), recuperees = MAX(sql.metrics.idx_tup_fetch) - MIN(sql.metrics.idx_tup_fetch), lignes = MAX(sql.metrics.lignes_table) BY sql.metrics.table, sql.metrics.index, sql.metrics.stats_reset\n| STATS scans = SUM(scans), lues = SUM(lues), recuperees = SUM(recuperees), lignes = MAX(lignes) BY sql.metrics.table, sql.metrics.index\n| WHERE scans > 0\n| EVAL lignes_par_scan = ROUND(lues / scans, 0), part_table_par_scan = CASE(lignes > 0, ROUND(lues * 100.0 / scans / lignes, 1), null), part_recuperee = CASE(lues > 0, ROUND(recuperees * 100.0 / lues, 1), null)\n| SORT part_table_par_scan DESC\n| KEEP sql.metrics.table, sql.metrics.index, scans, lignes_par_scan, part_table_par_scan, part_recuperee\n| LIMIT 20',
-                p, 'lnsDatatable', 0, 76, 48, 14),
+                p, 'lnsDatatable', 0, 114, 48, 14),
         panneau('Hygiène des index', 'Par table, au dernier relevé (toutes les heures) : nombre d\'index, poids des index face à la table, écritures depuis la remise à zéro. Beaucoup d\'index sur une table très écrite, ou plus lourds qu\'elle : à alléger.',
                 f'FROM metrics-sql.postgresql_index_hygiene-*\n| WHERE {BASE}\n| INLINE STATS dernier = MAX(@timestamp)\n| WHERE @timestamp == dernier\n| STATS index_de_la_table = MAX(sql.metrics.index_de_la_table), index_octets = MAX(sql.metrics.taille_index_table_octets), table_octets = MAX(sql.metrics.taille_table_octets) BY sql.metrics.table\n| EVAL poids_index_table = CASE(table_octets > 0, ROUND(index_octets * 1.0 / table_octets, 2), null), taille_index_mo = ROUND(index_octets / 1048576.0, 1), taille_table_mo = ROUND(table_octets / 1048576.0, 1)\n| SORT poids_index_table DESC NULLS LAST, taille_index_mo DESC\n| KEEP sql.metrics.table, index_de_la_table, taille_index_mo, taille_table_mo, poids_index_table\n| LIMIT 20',
-                p, 'lnsDatatable', 0, 90, 24, 14),
+                p, 'lnsDatatable', 0, 128, 24, 14),
         panneau('Index invalides ou en doublon', 'Au dernier relevé : index invalide (création interrompue, ignoré par le planificateur) ou en doublon d\'un autre (mêmes colonnes ou colonnes en préfixe, même prédicat). Vide : rien à signaler.',
                 f'FROM metrics-sql.postgresql_index_hygiene-*\n| WHERE {BASE}\n| INLINE STATS dernier = MAX(@timestamp)\n| WHERE @timestamp == dernier AND (sql.metrics.valide == false OR sql.metrics.doublon_de != "")\n| EVAL probleme = CASE(sql.metrics.valide == false, "invalide", CONCAT("doublon de ", sql.metrics.doublon_de)), taille_mo = ROUND(sql.metrics.taille_index_octets / 1048576.0, 1)\n| KEEP sql.metrics.table, sql.metrics.index, probleme, taille_mo',
-                p, 'lnsDatatable', 24, 90, 24, 14),
+                p, 'lnsDatatable', 24, 128, 24, 14),
         panneau('Entretien des tables', 'Au dernier relevé, tables d\'au moins 1 000 lignes : part de lignes mortes, modifications depuis le dernier ANALYZE, derniers ANALYZE et VACUUM (manuels ou automatiques). En tête, les tables les plus en retard.',
                 f'FROM metrics-sql.postgresql_table_stats-*\n| WHERE {BASE}\n| INLINE STATS dernier = MAX(@timestamp)\n| WHERE @timestamp == dernier AND sql.metrics.n_live_tup + sql.metrics.n_dead_tup >= 1000\n| EVAL part_lignes_mortes = CASE(sql.metrics.n_live_tup + sql.metrics.n_dead_tup > 0, ROUND(sql.metrics.n_dead_tup * 100.0 / (sql.metrics.n_live_tup + sql.metrics.n_dead_tup), 1), 0.0), part_modifiee = CASE(sql.metrics.n_live_tup > 0, ROUND(sql.metrics.n_mod_since_analyze * 100.0 / sql.metrics.n_live_tup, 1), 0.0)\n| SORT part_lignes_mortes DESC, part_modifiee DESC\n| KEEP sql.metrics.table, part_lignes_mortes, part_modifiee, sql.metrics.last_autoanalyze, sql.metrics.last_analyze, sql.metrics.last_autovacuum, sql.metrics.last_vacuum, sql.metrics.n_live_tup\n| LIMIT 20',
-                p, 'lnsDatatable', 0, 104, 48, 14),
+                p, 'lnsDatatable', 0, 142, 48, 14),
         panneau('Verrous et transactions longues', 'Chaque minute : plus vieille transaction ouverte, sessions ouvertes dans une transaction sans rien faire, sessions qui attendent un verrou. Une transaction qui dure bloque le vacuum et peut bloquer les écritures.',
                 f'FROM metrics-sql.postgresql_activite-*\n| WHERE {BASE}\n| STATS transaction_la_plus_longue_s = MAX(sql.metrics.plus_vieille_transaction_s), sessions_idle_in_transaction = MAX(sql.metrics.sessions_idle_in_transaction), sessions_en_attente_de_verrou = MAX(sql.metrics.sessions_en_attente_verrou) BY {TRANCHE}',
-                p, 'lnsXY', 0, 118, 32, 12, 'tranche', ['transaction_la_plus_longue_s', 'sessions_idle_in_transaction', 'sessions_en_attente_de_verrou']),
+                p, 'lnsXY', 0, 33, 32, 12, 'tranche', ['transaction_la_plus_longue_s', 'sessions_idle_in_transaction', 'sessions_en_attente_de_verrou']),
         panneau('Deadlocks (cumul)', 'Deadlocks de la base depuis la remise à zéro des statistiques : une pente = des deadlocks en cours.',
                 f'FROM metrics-postgresql.database-*\n| WHERE {BASE} AND postgresql.database.name IS NOT NULL AND postgresql.database.name NOT IN ("postgres", "template0", "template1", "")\n| STATS deadlocks = MAX(TO_LONG(postgresql.database.deadlocks)) BY {TRANCHE}',
-                p, 'lnsXY', 32, 118, 16, 12, 'tranche', ['deadlocks']),
+                p, 'lnsXY', 32, 33, 16, 12, 'tranche', ['deadlocks']),
         panneau('Swap des nœuds de données', 'Le vrai signal de manque de mémoire : un swap qui monte. La mémoire à 100 % la nuit, elle, est le cache des sauvegardes.',
                 instances + f'\n| STATS swap_mo = MAX(scalingo.swap.usage.bytes) / 1048576.0 BY {TRANCHE}, scalingo.database.instance',
-                p, 'lnsXY', 0, 130, 24, 10, 'tranche', ['swap_mo'], 'scalingo.database.instance'),
+                p, 'lnsXY', 0, 21, 16, 12, 'tranche', ['swap_mo'], 'scalingo.database.instance'),
         panneau('Certificat de l\'autorité', 'Autorité de certification des bases Scalingo, qui sert à vérifier le serveur (verify-full) : date d\'expiration et jours restants.',
                 instances + '\n| STATS expire_le = MAX(scalingo.database.ca_expire_le)\n| EVAL jours_restants = DATE_DIFF("day", NOW(), expire_le)',
-                p, 'lnsDatatable', 24, 130, 12, 10),
+                p, 'lnsDatatable', 36, 0, 12, 9),
         panneau('Remise à zéro des statistiques', 'Depuis quand les compteurs courent : pg_stat_statements (requêtes) et statistiques de la base (tables, index). Jamais = depuis la création de la base.',
                 f'FROM metrics-sql.postgresql_statements-*, metrics-sql.postgresql_table_stats-*\n| WHERE {BASE}\n| EVAL statistiques = CASE(data_stream.dataset == "sql.postgresql_statements", "requêtes", "tables et index")\n| STATS depuis = MAX(sql.metrics.stats_reset) BY statistiques',
-                p, 'lnsDatatable', 36, 130, 12, 10),
-        erreurs_de_collecte(['postgresql', 'sql'], 140, p),
+                p, 'lnsDatatable', 36, 56, 12, 16),
+        erreurs_de_collecte(['postgresql', 'sql'], 45, p),
     ]
 
 

@@ -65,6 +65,42 @@ class TestDashboardsBasesDeDonnees(unittest.TestCase):
                 with self.subTest(f'{titre} / {panneau}'):
                     self.assertNotIn('span.db.statement', requete)
 
+    def test_aucun_panneau_ne_se_chevauche(self):
+        for ligne in open(FICHIER):
+            attributs = json.loads(ligne)['attributes']
+            cases = {}
+            for panneau in json.loads(attributs['panelsJSON']):
+                g = panneau['gridData']
+                for x in range(g['x'], g['x'] + g['w']):
+                    for y in range(g['y'], g['y'] + g['h']):
+                        with self.subTest(attributs['title'], case=(x, y)):
+                            self.assertNotIn((x, y), cases)
+                        cases[(x, y)] = g['i']
+
+    def test_postgresql_infrastructure_puis_requetes(self):
+        infrastructure = {'Certificat de l\'autorité', 'Mémoire des nœuds de données (% de la limite)', 'CPU des nœuds de données (%)',
+                          'Swap des nœuds de données', 'Connexions en train d\'exécuter une requête', 'Verrous et transactions longues',
+                          'Deadlocks (cumul)', 'Erreurs de collecte'}
+        requetes = {'Requêtes les plus lentes, en moyenne (pg_stat_statements)', 'Requêtes les plus appelées', 'Sélectivité des index',
+                    'Hygiène des index', 'Entretien des tables', 'Remise à zéro des statistiques', 'Index jamais utilisés (hors contraintes)'}
+        for ligne in open(FICHIER):
+            attributs = json.loads(ligne)['attributes']
+            if 'PostgreSQL' not in attributs['title']:
+                continue
+            panneaux = json.loads(attributs['panelsJSON'])
+            titres = {p['embeddableConfig']['attributes']['title']: p['gridData'] for p in panneaux if p['type'] == 'vis'}
+            encadres = sorted((p['gridData']['y'], p['embeddableConfig']['content']) for p in panneaux if p['type'] == 'markdown')
+            self.assertEqual([c.splitlines()[0] for _, c in encadres], ['**Investiguer : l\'infrastructure**', '**Investiguer : les requêtes**'])
+            y_encadre_requetes = encadres[1][0]
+            for titre in infrastructure:
+                with self.subTest(titre):
+                    self.assertLess(titres[titre]['y'] + titres[titre]['h'], y_encadre_requetes + 1)
+            for titre in requetes:
+                with self.subTest(titre):
+                    self.assertGreaterEqual(titres[titre]['y'], y_encadre_requetes)
+            certificat = titres['Certificat de l\'autorité']
+            self.assertEqual((certificat['y'], certificat['x'] + certificat['w']), (0, 48))
+
     def test_encadre_investiguer_en_tete(self):
         for ligne in open(FICHIER):
             attributs = json.loads(ligne)['attributes']
@@ -72,7 +108,7 @@ class TestDashboardsBasesDeDonnees(unittest.TestCase):
             with self.subTest(attributs['title']):
                 self.assertEqual(premier['type'], 'markdown')
                 contenu = premier['embeddableConfig']['content']
-                self.assertTrue(contenu.startswith('**Investiguer**'))
+                self.assertTrue(contenu.startswith('**Investiguer'))
                 self.assertLessEqual(sum(1 for l in contenu.splitlines() if l.lstrip()[:2] in ('- ', '1.', '2.', '3.', '4.', '5.', '6.', '7.', '8.', '9.')), 10)
 
     def test_panneaux_d_investigation_presents(self):
