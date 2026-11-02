@@ -55,3 +55,24 @@ POST _security/api_key
   },
   "metadata": { "managed_by": "pass-emploi-tools", "emetteur": "security-alerts.yml" }
 }
+
+# Rapport de versions (inventaire/inventaire-versions.sh --envoyer, lancé à la
+# main puis en CI) : même mécanisme que GitHub Actions, une API Key en écriture
+# seule sur son data stream. Copier le champ "encoded" de la réponse dans le
+# coffre de l'équipe ; elle se passe au script par ELASTIC_ALERTES_VERSIONS_API_KEY
+# (mode d'emploi : inventaire/README.md), et deviendra un secret GitHub avec la CI.
+POST _security/api_key
+{
+  "name": "alertes-versions-inventaire",
+  "role_descriptors": {
+    "alertes-versions-writer": {
+      "indices": [
+        {
+          "names": ["logs-alertes-versions-default"],
+          "privileges": ["create_doc", "auto_configure"]
+        }
+      ]
+    }
+  },
+  "metadata": { "managed_by": "pass-emploi-tools", "emetteur": "inventaire/inventaire-versions.sh" }
+}

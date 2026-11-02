@@ -1,0 +1,114 @@
+# Pipeline par défaut de logs-alertes-versions-default. Spécification :
+# README.md.
+#
+# L'émetteur (inventaire/inventaire-versions.sh --envoyer, plus tard le passage
+# hebdomadaire des dépendances) écrit des documents déjà ECS, une ligne du
+# rapport par document, message compris. Le pipeline ne transforme rien : il
+# fait respecter ce contrat, pour qu'une ligne mal formée parte au failure store
+# (règle 14) au lieu d'arriver illisible dans Tchap.
+PUT _ingest/pipeline/ingest-alertes-versions-default
+{
+  "description": "Ligne du rapport de versions, déjà ECS → contrat vérifié",
+  "processors": [
+    {
+      "script": {
+        "description": "Champs obligatoires, event.kind, message d'une seule ligne, champs racine prévus",
+        "source": """
+          List erreurs = new ArrayList();
+          if (ctx.event instanceof Map) {
+            for (String champ : ['provider', 'kind', 'action', 'id']) {
+              if (!(ctx.event[champ] instanceof String) || ctx.event[champ].isEmpty()) {
+                erreurs.add('event.' + champ + ' absent');
+              }
+            }
+            if (ctx.event.kind instanceof String && ctx.event.kind != 'alert' && ctx.event.kind != 'event') {
+              erreurs.add('event.kind ' + ctx.event.kind + ' au lieu de alert ou event');
+            }
+          } else {
+            erreurs.add('event absent');
+          }
+          if (!(ctx.service instanceof Map) || !(ctx.service.name instanceof String) || ctx.service.name.isEmpty()) {
+            erreurs.add('service.name absent');
+          }
+          if (!(ctx.message instanceof String) || ctx.message.trim().isEmpty()) {
+            erreurs.add('message absent');
+          } else if (ctx.message.indexOf(10) >= 0 || ctx.message.indexOf(13) >= 0) {
+            erreurs.add('message sur plusieurs lignes');
+          } else if (ctx.message.length() > 500) {
+            erreurs.add('message de plus de 500 caractères');
+          }
+          List prevus = ['@timestamp', 'event', 'service', 'message', 'labels', 'versions'];
+          List inattendus = new ArrayList();
+          for (String cle : ctx.keySet()) {
+            if (!cle.startsWith('_') && !prevus.contains(cle)) {
+              inattendus.add(cle);
+            }
+          }
+          if (!inattendus.isEmpty()) {
+            Collections.sort(inattendus);
+            erreurs.add('champ racine non prévu (' + String.join(', ', inattendus) + ') : détails sous versions.*, dimensions sous labels.*');
+          }
+          if (!erreurs.isEmpty()) {
+            ctx.rejet_versions = String.join(' ; ', erreurs);
+          }
+        """
+      }
+    },
+    {
+      "fail": {
+        "if": "ctx.rejet_versions != null",
+        "message": "Pas une ligne du rapport de versions : {{{rejet_versions}}}"
+      }
+    },
+    {
+      "set": {
+        "field": "@timestamp",
+        "value": "{{{_ingest.timestamp}}}",
+        "override": false
+      }
+    },
+    {
+      "set": {
+        "field": "event.ingested",
+        "value": "{{{_ingest.timestamp}}}"
+      }
+    }
+  ]
+}
+
+# ═════════════════════════════════════════════════════════════════════════════
+# TESTS — rejouer après toute modification.
+#
+# Documents 1 à 6 : tirés de inventaire-versions.sh --simuler sur l'inventaire
+# réel du 2026-11-02 → indexés tels quels, avec event.ingested en plus :
+#   1. écart          event.kind: event, message "🔀 api : postgresql en écart — …"
+#   2. retard Elastic event.kind: event, service.environment: prod
+#   3. fin de vie dépassée  event.kind: alert, versions.jours_restants: -875
+#   4. fin de vie < 30 j    event.kind: alert
+#   5. fin de vie < 6 mois  event.kind: event
+#   6. récapitulatif  event.outcome: success, versions.compteurs.ecarts: 17
+# Document 7 : le retard 2 modifié en violation (aucune violation dans
+#   l'inventaire réel) → event.kind: alert, message "🚨 … au-dessus du cluster …"
+# Document 8 : sans @timestamp → @timestamp = heure d'ingestion
+# Rejets (failure store en réel), message d'erreur attendu :
+#   9.  message sur deux lignes → "Pas une ligne du rapport de versions : message sur plusieurs lignes"
+#   10. sans service ni event.id, event.kind inconnu → "… : event.id absent ; event.kind info au lieu de alert ou event ; service.name absent"
+#   11. champ racine hors contrat → "… : champ racine non prévu (cellules) : détails sous versions.*, dimensions sous labels.*"
+#   12. payload d'une autre source → "… : event absent ; service.name absent ; message absent ; champ racine non prévu (security_advisory) : …"
+POST _ingest/pipeline/ingest-alertes-versions-default/_simulate
+{
+  "docs": [
+    { "_source": {"@timestamp":"2026-11-02T17:40:04Z","event":{"provider":"inventaire-versions","kind":"event","action":"version_mismatch_detected","id":"inventaire-versions-20261102T174004Z/ecart/api/postgresql"},"service":{"name":"api"},"message":"🔀 api : postgresql en écart — prod 15.13.0, staging 16.9.0, perf 17.11.0, ci 14, local 14","labels":{"run_id":"inventaire-versions-20261102T174004Z","categorie":"ecart","brique":"postgresql"},"versions":{"cellules":{"prod":[{"valeur":"15.13.0","source":"addon postgresql-business-8192"}],"staging":[{"valeur":"16.9.0","source":"addon postgresql-starter-512"}],"perf":[{"valeur":"17.11.0","source":"addon postgresql-starter-512"}],"depot":[],"ci":[{"valeur":"14","source":"pass-emploi-api:.github/workflows/tests-and-quality-checks.yml"}],"local":[{"valeur":"14","source":"pass-emploi-api:docker-compose.yml"}]}}} },
+    { "_source": {"@timestamp":"2026-11-02T17:40:04Z","event":{"provider":"inventaire-versions","kind":"event","action":"elastic_stack_version_behind_detected","id":"inventaire-versions-20261102T174004Z/stack-elastic/pass-emploi-heartbeat-prod/heartbeat/déployé"},"service":{"name":"heartbeat","environment":"prod"},"message":"🐢 pass-emploi-heartbeat-prod : heartbeat 9.4.7 en retard sur le cluster Elastic 9.4.8 (déployé)","labels":{"run_id":"inventaire-versions-20261102T174004Z","categorie":"stack_elastic_retard","brique":"heartbeat","version":"9.4.7","app":"pass-emploi-heartbeat-prod","source":"déployé","cluster_version":"9.4.8"}} },
+    { "_source": {"@timestamp":"2026-11-02T17:40:04Z","event":{"provider":"inventaire-versions","kind":"alert","action":"end_of_life_detected","id":"inventaire-versions-20261102T174004Z/fin-de-vie/keycloak/keycloak/24.0"},"service":{"name":"keycloak"},"message":"⛔ keycloak : keycloak 24.0 en fin de vie depuis le 2024-06-10 — prod 24.0.5, staging 24.0.5","labels":{"run_id":"inventaire-versions-20261102T174004Z","categorie":"fin_de_vie","brique":"keycloak","produit":"keycloak","cycle":"24.0","eol":"2024-06-10","echeance":"depassee","derniere_version":"24.0.5"},"versions":{"jours_restants":-875,"ou":[{"contexte":"prod","valeur":"24.0.5","source":"déployé","app":"pass-emploi-keycloak-prod"},{"contexte":"prod","valeur":"24.0.5","source":"variable KEYCLOAK_VERSION","app":"pass-emploi-keycloak-prod"},{"contexte":"staging","valeur":"24.0.5","source":"déployé","app":"pass-emploi-keycloak-staging"},{"contexte":"staging","valeur":"24.0.5","source":"variable KEYCLOAK_VERSION","app":"pass-emploi-keycloak-staging"}]}} },
+    { "_source": {"@timestamp":"2026-11-02T17:40:04Z","event":{"provider":"inventaire-versions","kind":"alert","action":"end_of_life_detected","id":"inventaire-versions-20261102T174004Z/fin-de-vie/api/postgresql/14"},"service":{"name":"api"},"message":"⏰ api : postgresql 14 en fin de vie le 2026-11-12, dans 10 j — ci 14, local 14","labels":{"run_id":"inventaire-versions-20261102T174004Z","categorie":"fin_de_vie","brique":"postgresql","produit":"postgresql","cycle":"14","eol":"2026-11-12","echeance":"moins_de_30_j","derniere_version":"14.24"},"versions":{"jours_restants":10,"ou":[{"contexte":"ci","valeur":"14","source":"pass-emploi-api:.github/workflows/tests-and-quality-checks.yml"},{"contexte":"local","valeur":"14","source":"pass-emploi-api:docker-compose.yml"}]}} },
+    { "_source": {"@timestamp":"2026-11-02T17:40:04Z","event":{"provider":"inventaire-versions","kind":"event","action":"end_of_life_detected","id":"inventaire-versions-20261102T174004Z/fin-de-vie/api/nodejs/22"},"service":{"name":"api"},"message":"⏳ api : node 22 en fin de vie le 2027-04-30, dans 179 j — prod 22.14.0, staging 22.14.0, perf 22.14.0, dépôt 22.14.0","labels":{"run_id":"inventaire-versions-20261102T174004Z","categorie":"fin_de_vie","brique":"node","produit":"nodejs","cycle":"22","eol":"2027-04-30","echeance":"moins_de_6_mois","derniere_version":"22.23.4"},"versions":{"jours_restants":179,"ou":[{"contexte":"perf","valeur":"22.14.0","source":"déployé","app":"pass-emploi-api-perf"},{"contexte":"prod","valeur":"22.14.0","source":"déployé","app":"pass-emploi-api-prod"},{"contexte":"staging","valeur":"22.14.0","source":"déployé","app":"pass-emploi-api-staging"},{"contexte":"depot","valeur":"22.14.0","source":"pass-emploi-api:.nvmrc"},{"contexte":"depot","valeur":"22.14.0","source":"pass-emploi-api:package.json"}]}} },
+    { "_source": {"@timestamp":"2026-11-02T17:40:04Z","event":{"provider":"inventaire-versions","kind":"event","action":"inventory_completed","id":"inventaire-versions-20261102T174004Z/recapitulatif","outcome":"success"},"service":{"name":"inventaire-versions"},"message":"📋 Inventaire des versions : 17 écart(s), 0 violation(s) et 5 retard(s) de la stack Elastic, 11 fin(s) de vie à moins de 6 mois dont 4 dépassée(s), 0 erreur(s) de collecte","labels":{"run_id":"inventaire-versions-20261102T174004Z","categorie":"recapitulatif","cluster_version":"9.4.8","inventaire_genere_le":"2026-11-02T16:42:23+01:00"},"versions":{"compteurs":{"ecarts":17,"violations":0,"retards":5,"fins_de_vie_depassees":4,"fins_de_vie_moins_de_30_j":4,"fins_de_vie_moins_de_6_mois":3,"erreurs_collecte":0}}} },
+    { "_source": {"@timestamp":"2026-11-02T17:40:04Z","event":{"provider":"inventaire-versions","kind":"alert","action":"elastic_stack_version_ahead_detected","id":"inventaire-versions-20261102T174004Z/stack-elastic/pass-emploi-logstash-perf/logstash/déployé"},"service":{"name":"logstash","environment":"perf"},"message":"🚨 pass-emploi-logstash-perf : logstash 9.5.0 au-dessus du cluster Elastic 9.4.8 (déployé)","labels":{"run_id":"inventaire-versions-20261102T174004Z","categorie":"stack_elastic_violation","brique":"logstash","version":"9.5.0","app":"pass-emploi-logstash-perf","source":"déployé","cluster_version":"9.4.8"}} },
+    { "_source": {"event":{"provider":"inventaire-versions","kind":"event","action":"inventory_completed","id":"test/sans-timestamp"},"service":{"name":"inventaire-versions"},"message":"📋 Inventaire des versions : 0 écart(s)"} },
+    { "_source": {"@timestamp":"2026-11-02T17:40:04Z","event":{"provider":"inventaire-versions","kind":"event","action":"version_mismatch_detected","id":"test/deux-lignes"},"service":{"name":"api"},"message":"🔀 api : redis en écart\nprod 7.2.11"} },
+    { "_source": {"@timestamp":"2026-11-02T17:40:04Z","event":{"provider":"inventaire-versions","kind":"info","action":"version_mismatch_detected"},"message":"🔀 api : redis en écart"} },
+    { "_source": {"@timestamp":"2026-11-02T17:40:04Z","event":{"provider":"inventaire-versions","kind":"event","action":"version_mismatch_detected","id":"test/racine"},"service":{"name":"api"},"message":"🔀 api : redis en écart","cellules":{"prod":[]}} },
+    { "_source": {"security_advisory":{"ghsa_id":"GHSA-xxxx-xxxx-xxxx"}} }
+  ]
+}

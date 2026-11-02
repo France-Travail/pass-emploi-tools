@@ -183,8 +183,9 @@ PUT _component_template/logs-apm.error@custom
 }
 
 # Alertes émises hors Elastic, une famille de data streams par source :
-# logs-alertes-scalingo-<env>-default (notifiers Scalingo) et
-# logs-alertes-github-default (CVE Dependabot). Rétention : les briques
+# logs-alertes-scalingo-<env>-default (notifiers Scalingo),
+# logs-alertes-github-default (CVE Dependabot) et logs-alertes-versions-default
+# (rapport de versions de inventaire/inventaire-versions.sh). Rétention : les briques
 # logs-<env>-retention-custom ci-dessus, comme les logs applicatifs du même env.
 # Champs posés par les ingest pipelines de ../../supervision/pipelines/webhooks/.
 PUT _component_template/logs-alertes@mappings
@@ -239,5 +240,36 @@ PUT _component_template/logs-alertes-github@mappings
     }
   },
   "_meta": { "description": "CVE Dependabot ; alerte brute sous github.* non indexée", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+# L'émetteur écrit des documents déjà ECS (cf. ../../format/webhooks/conventions.md) ;
+# ses détails vont sous versions.*, en dynamic:false, sauf les compteurs et les
+# jours restants, typés pour être triés et sommés.
+PUT _component_template/logs-alertes-versions@mappings
+{
+  "template": {
+    "mappings": {
+      "properties": {
+        "versions": {
+          "type": "object",
+          "dynamic": false,
+          "properties": {
+            "jours_restants": { "type": "long" },
+            "compteurs": { "properties": {
+              "ecarts":                      { "type": "long" },
+              "violations":                  { "type": "long" },
+              "retards":                     { "type": "long" },
+              "fins_de_vie_depassees":       { "type": "long" },
+              "fins_de_vie_moins_de_30_j":   { "type": "long" },
+              "fins_de_vie_moins_de_6_mois": { "type": "long" },
+              "erreurs_collecte":            { "type": "long" }
+            } }
+          }
+        }
+      }
+    }
+  },
+  "_meta": { "description": "Rapport de versions ; détails sous versions.* non indexés, sauf compteurs et jours restants", "managed_by": "pass-emploi-tools" },
   "version": 1
 }
