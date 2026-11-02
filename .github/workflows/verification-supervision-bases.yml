@@ -1,0 +1,38 @@
+# Vérifie contre la prod la supervision des bases : chaque requête des dashboards
+# « [Pass Emploi] Bases de données » s'exécute sur les vraies données et rend les colonnes
+# du catalogue, et les intégrations Fleet de l'agent dédié n'ont pas divergé des fichiers
+# générés (modification faite à la main dans Fleet). Chaque jour, et sur une PR qui touche
+# ces sources. Lecture seule : rien n'est écrit dans Kibana ni dans Fleet.
+
+name: Supervision - Bases de données vérifiées contre la prod
+
+on:
+  pull_request:
+    paths:
+      - 'docs/observabilite/supervision/agents/**'
+      - 'docs/observabilite/supervision/dashboards/**'
+      - '.github/workflows/verification-supervision-bases.yml'
+  schedule:
+    - cron: '30 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verifier:
+    name: Dashboards et intégrations Fleet des bases conformes à la prod
+    runs-on: ubuntu-latest
+    env:
+      ES_URL: ${{ vars.ES_URL }}
+      KIBANA_URL: ${{ vars.KIBANA_URL }}
+      ES_API_KEY: ${{ secrets.ES_LECTURE_API_KEY }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Requêtes des dashboards valides sur les données de prod
+        run: python3 -I docs/observabilite/supervision/dashboards/generer-dashboards-bases.py --valider
+
+      - name: Intégrations Fleet de prod identiques aux fichiers générés
+        if: always()
+        run: python3 -I docs/observabilite/supervision/agents/generer-integrations.py verifier --env prod

@@ -1,7 +1,8 @@
-# Vérifie les règles d'alerte Kibana et les Workflows Kibana qui envoient ces alertes
-# dans Tchap (docs/observabilite/supervision/rules/ et workflows/tchap/) : leurs fichiers
-# générés (à coller dans Kibana → Dev Tools) doivent correspondre à leurs sources, et
-# passer les contrôles et les tests des générateurs.
+# Vérifie les règles d'alerte Kibana, les Workflows Kibana qui envoient ces alertes dans
+# Tchap, les intégrations Fleet de l'agent dédié et les dashboards des bases
+# (docs/observabilite/supervision/rules/, workflows/tchap/, agents/, dashboards/) : leurs
+# fichiers générés doivent correspondre à leurs sources, et passer les contrôles et les
+# tests des générateurs.
 #
 # Les générateurs se lancent à la main (cf. docs/observabilite/supervision/workflows/tchap/README.md) :
 # ce workflow échoue si l'un d'eux a été oublié, ou si une règle viole une de leurs
@@ -77,6 +78,22 @@ jobs:
           fi
           if [ -n "$(git status --porcelain --untracked-files=all -- docs/observabilite/supervision/workflows/tchap/generated/)" ]; then
             git status --short -- docs/observabilite/supervision/workflows/tchap/generated/
+            echo "::error::Fichiers générés non commités : les ajouter à la PR"
+            exit 1
+          fi
+
+      - name: Intégrations Fleet et dashboards des bases à jour (agents/generated/, dashboards/)
+        working-directory: pass-emploi-tools
+        run: |
+          python3 -I docs/observabilite/supervision/agents/generer-integrations.py
+          python3 -I docs/observabilite/supervision/dashboards/generer-dashboards-bases.py
+          generes="docs/observabilite/supervision/agents/generated/ docs/observabilite/supervision/dashboards/dashboard-bases-de-donnees.ndjson"
+          if ! git diff --exit-code --stat -- $generes; then
+            echo "::error::Les intégrations Fleet ou les dashboards des bases ne correspondent plus à leurs sources. Ils sont générés : ne pas les modifier directement. Lancer generer-integrations.py et generer-dashboards-bases.py (python3 -I) et commiter le résultat."
+            exit 1
+          fi
+          if [ -n "$(git status --porcelain --untracked-files=all -- $generes)" ]; then
+            git status --short -- $generes
             echo "::error::Fichiers générés non commités : les ajouter à la PR"
             exit 1
           fi
