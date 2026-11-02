@@ -168,7 +168,7 @@ Garde-fou de l'époque (PQ) :
 3. **Métriques à surveiller avec la nouvelle architecture** : 
    **Elastic Agent de monitoring installé en mode colocalisé** (buildpack `pass-emploi-tools/elastic-agent/`, lancé 
    via `start.sh`). Pour avoir dans Kibana les métriques Logstash (débit pipelines, taille PQ, latence, alertes), 
-   il faut configurer Fleet. Voir [pilotage.md](../../pilotage.md) et [`elastic-agent/README.md`](../../../../elastic-agent/README.md).
+   il faut configurer Fleet. Voir [pilotage.md](../../pilotage.md) et [`supervision/agents/README.md`](../../supervision/agents/README.md).
 
 > Au **2026-09-14** (migration buffer PQ → Redis, cf. [ADR-002](../../../decisions/ADR-002-buffer-redis-logstash.md)) :
 > dimensionnement et risque Redis consignés dans [infrastructure.md](../../infrastructure.md#dimensionnement-au-2026-09-14).

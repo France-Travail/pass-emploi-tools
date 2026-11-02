@@ -240,7 +240,7 @@ PUT _component_template/metrics-postgresql.bgwriter@custom
   "_meta": { "description": "Retention bgwriter PostgreSQL (checkpoints)", "managed_by": "pass-emploi-tools" }
 }
 
-# ─── PostgreSQL de l'api (package SQL, requêtes de elastic-agent/integrations/postgresql/) ───
+# ─── PostgreSQL de l'api (package SQL, requêtes de docs/observabilite/supervision/agents/integrations/postgresql/) ───
 PUT _component_template/metrics-sql.postgresql_statements@custom
 {
   "template": {

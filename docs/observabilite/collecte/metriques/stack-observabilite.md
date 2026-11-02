@@ -12,7 +12,7 @@ qu'elle ne soit visible côté apps (cf. philosophie des
 - **Dédié** (`pass-emploi-elastic-agent-<env>`) : mesure les ressources
   **partagées** entre plusieurs apps — aujourd'hui le Redis attaché à
   `pass-emploi-logstash-process-<env>` — et la mémoire des conteneurs Logstash via
-  l'API Scalingo ([intégration Custom API](../../../../elastic-agent/README.md#mémoire-des-conteneurs-scalingo-intégration-custom-api)). Un agent co-localisé dans l'un ou l'autre
+  l'API Scalingo ([intégration Custom API](../../supervision/agents/README.md#mémoire-des-conteneurs-scalingo-intégration-custom-api)). Un agent co-localisé dans l'un ou l'autre
   service Logstash produirait ces métriques en double.
 
 ## Data streams

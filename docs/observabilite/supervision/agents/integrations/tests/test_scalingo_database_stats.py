@@ -1,6 +1,6 @@
 """Tests du programme CEL des métriques des bases Scalingo, contre un faux Scalingo local.
 
-Lancer depuis la racine du repo : MITO=<chemin de mito> python3 -I -m unittest discover -s elastic-agent/integrations/tests -v
+Lancer depuis la racine du repo : MITO=<chemin de mito> python3 -I -m unittest discover -s docs/observabilite/supervision/agents/integrations/tests -v
 """
 import json, os, shutil, subprocess, sys, tempfile, unittest
 

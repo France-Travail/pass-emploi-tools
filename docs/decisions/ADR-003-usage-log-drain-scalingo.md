@@ -339,7 +339,7 @@ plusieurs mois »*.
       l'annonce, ce qui a probablement contribué à l'incident du 14/09/2026 dont la
       cause racine du crash de `logstash-process` est restée indéterminée.
       Collecte préparée le 2026-10-02 (`logs-scalingo.container_stats-*`, API
-      Scalingo `/stats`, cf. [`elastic-agent/README.md`](../../elastic-agent/README.md#mémoire-des-conteneurs-scalingo-intégration-custom-api)) ;
+      Scalingo `/stats`, cf. [`supervision/agents/README.md`](../observabilite/supervision/agents/README.md#mémoire-des-conteneurs-scalingo-intégration-custom-api)) ;
       reste l'alerte, à calibrer sur une semaine de données.
 * [ ] Vérifier le plafond d'ingestion Scalingo (**16 384 lignes/min** et **64 MiB/min**
       par conteneur) face au débit réel mesuré de `pass-emploi-api` — risque de perte
