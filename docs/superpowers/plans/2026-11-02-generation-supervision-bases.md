@@ -199,7 +199,7 @@ Expected : `verif` (requête ES|QL et comparaison Fleet en lecture) sans écart.
 - Create: `.github/workflows/verification-supervision-bases.yml`
 
 - [ ] **Step 1 : Check existant** : une étape « Intégrations Fleet et dashboards des bases à jour » qui lance les deux générateurs hors ligne puis échoue sur `git diff --exit-code` ou des fichiers non suivis dans `agents/generated/` et sur le `.ndjson`, comme l'étape des Workflows Tchap.
-- [ ] **Step 2 : Nouveau workflow** : `on: pull_request` (chemins `docs/observabilite/supervision/agents/**`, `docs/observabilite/supervision/dashboards/**`) et `schedule` quotidien ; lance `generer-dashboards-bases.py --valider` et `generer-integrations.py verifier --env prod` ; secrets `ES_LECTURE_API_KEY`, variables `ES_URL`, `KIBANA_URL`.
+- [ ] **Step 2 : Nouveau workflow** : `on: pull_request` (chemins `docs/observabilite/supervision/agents/**`, `docs/observabilite/supervision/dashboards/**`) et `schedule` quotidien ; lance `generer-dashboards-bases.py --valider` et `generer-integrations.py verifier --env prod` ; secrets `ELASTICSEARCH_API_KEY_RESTRICTED_READ_ONLY`, variables `ES_URL`, `KIBANA_URL`.
 - [ ] **Step 3 : Vérifier** : une PR de test qui modifie un `.sql` sans régénérer fait échouer le check ; le workflow de vérification passe avec la clé de l'utilisateur (il la crée en lecture seule, données et Fleet, et la pose dans les secrets GitHub).
 - [ ] **Step 4 : Commit.**
 
