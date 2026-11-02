@@ -19,22 +19,59 @@ pass-emploi-elastic-agent-perf   ← cette app (1 seule instance)
         └── Intégration Custom API (CEL) → API des bases Scalingo /metrics (instances des bases)
 ```
 
-## Configuration des intégrations (Fleet)
+## Générer, pousser, vérifier
 
-La configuration de ce que supervise Elastic Agent **n'est pas dans ce repo**.
-Elle est gérée centralement dans **Kibana → Fleet → Agent Policies**.
+Les intégrations des bases (Redis, PostgreSQL, SQL Input, métriques des
+instances) sont **générées** : ne pas les modifier dans Fleet, sinon la
+prochaine poussée écrase la modification et « verifier » la signale.
 
-Au démarrage, l'agent (`elastic-agent container`) se connecte au Fleet Server
-avec le `FLEET_ENROLLMENT_TOKEN`, télécharge sa policy et applique les
-intégrations configurées. Aucun fichier de config local n'est nécessaire.
+| Je veux… | Je fais… |
+|---|---|
+| superviser une base de plus | une entrée dans [`bases.json`](bases.json) (`postgresql`, `redis`, ou `redis-bull` pour un Redis avec les files Bull), puis générer et pousser |
+| changer une requête SQL, un programme CEL, un réglage | le fichier dans `integrations/`, [`requetes-sql.json`](requetes-sql.json) ou `modeles/`, puis générer et pousser |
+| réparer la collecte après un mot de passe changé par Scalingo | pousser, sans rien modifier |
+| savoir si Fleet a divergé du repo | vérifier |
 
-Pour configurer les intégrations :
-1. Aller dans **Kibana → Fleet → Agent Policies**
-2. Créer une policy dédiée (ex: `pass-emploi-elastic-agent-perf`)
-3. Ajouter les intégrations souhaitées (Redis, PostgreSQL, System...)
-4. Générer un **Enrollment Token** pour cette policy
-5. Renseigner ce token dans la variable `FLEET_ENROLLMENT_TOKEN` de l'app Scalingo
+```bash
+cd docs/observabilite/supervision/agents
+python3 -I generer-integrations.py                      # génère generated/<env>/, sans réseau ni secret
+python3 -I generer-integrations.py pousser --env perf   # SCALINGO_API_TOKEN, KIBANA_URL, KIBANA_FLEET_API_KEY
+python3 -I generer-integrations.py verifier --env prod  # KIBANA_URL, ES_API_KEY (lecture)
+```
 
+- **Générer** écrit un fichier par intégration dans `generated/<env>/`, à
+  commiter ; les repères `@@…@@` (hôtes, mots de passe, identifiants d'addon,
+  quotas des plans, date de l'autorité) y restent.
+- **Pousser** lit dans Scalingo l'hôte, le port, l'utilisateur et le mot de
+  passe de chaque base (`SCALINGO_POSTGRESQL_URL`, `SCALINGO_REDIS_URL` de
+  l'app), son addon, son plan, son réglage *Force TLS* et la date de l'autorité
+  de certification, remplit les repères à la volée et crée ou met à jour chaque
+  intégration par son nom. Les mots de passe vont dans les secrets Fleet ; rien
+  de secret n'est écrit ni affiché. Une base illisible dans Scalingo est
+  signalée et sautée, les autres sont poussées. **Rien n'est jamais supprimé.**
+- **Vérifier** compare Fleet aux fichiers générés (hors valeurs remplies à la
+  poussée) et liste, sans échouer, les intégrations de la policy que le script
+  ne gère pas (stack d'observabilité : Redis de Logstash, mémoire des
+  conteneurs, System).
+
+Clés : `SCALINGO_API_TOKEN`, le token Bitwarden « API Token Scalingo pour
+Elastic » (son compte doit être collaborateur des apps qui portent les bases) ;
+`KIBANA_FLEET_API_KEY`, une clé de courte durée qui peut écrire dans Fleet,
+créée au moment de pousser :
+
+```
+POST /_security/api_key
+{
+  "name": "pousser-integrations-bases",
+  "expiration": "1h",
+  "role_descriptors": { "fleet": { "applications": [
+    { "application": "kibana-.kibana", "privileges": ["feature_fleet.all", "feature_fleetv2.all"], "resources": ["*"] }
+  ] } }
+}
+```
+
+Les intégrations de la stack d'observabilité, elles, restent configurées dans
+Kibana → Fleet (cf. [pilotage](../../pilotage.md)).
 ## Policy Fleet recommandée
 
 Créer une policy Fleet dédiée (ex: `pass-emploi-elastic-agent-perf`) avec :

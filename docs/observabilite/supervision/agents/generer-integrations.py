@@ -1,10 +1,14 @@
-"""Génère les intégrations Fleet de l'agent dédié, une par fichier dans generated/<env>/.
+"""Génère les intégrations Fleet de l'agent dédié, une par fichier dans generated/<env>/, et les pousse dans Fleet.
 
-Usage : python3 -I generer-integrations.py
+Usage :
+  python3 -I generer-integrations.py                    génère, sans réseau ni secret
+  python3 -I generer-integrations.py pousser --env perf  remplit les repères depuis Scalingo et écrit dans Fleet
+                                                         (SCALINGO_API_TOKEN, KIBANA_URL, KIBANA_FLEET_API_KEY)
+  python3 -I generer-integrations.py verifier --env prod compare Fleet au généré (KIBANA_URL, ES_API_KEY)
 Sources : bases.json (bases à superviser), policies.json, requetes-sql.json, modeles/, integrations/.
-Aucun accès réseau ni secret : les repères @@…@@ restent dans les fichiers générés, « pousser » les remplit.
 """
-import copy, json, os, shutil, sys
+import argparse, copy, json, os, re, shutil, sys, urllib.error
+from urllib.parse import quote
 
 ICI = os.path.dirname(os.path.abspath(__file__))
 TYPES = ('postgresql', 'redis', 'redis-bull')
@@ -119,6 +123,175 @@ def generer(dossier_sortie):
     return ecrits
 
 
+SECRETS = set()
+
+
+def masquer(texte):
+    for secret in sorted(SECRETS, key=len, reverse=True):
+        if secret:
+            texte = texte.replace(secret, '***').replace(quote(secret, safe=''), '***')
+    return texte
+
+
+def dire(texte, erreur=False):
+    print(masquer(texte), file=sys.stderr if erreur else sys.stdout)
+
+
+def detail(exception):
+    if isinstance(exception, urllib.error.HTTPError):
+        return f'HTTP {exception.code} {exception.read().decode(errors="replace")[:500]}'
+    return str(exception)
+
+
+def remplacer(valeur, reperes):
+    if isinstance(valeur, str):
+        for nom, remplacement in reperes.items():
+            valeur = valeur.replace(f'@@{nom}@@', str(remplacement))
+        return valeur
+    if isinstance(valeur, list):
+        return [remplacer(v, reperes) for v in valeur]
+    if isinstance(valeur, dict):
+        return {k: remplacer(v, reperes) for k, v in valeur.items()}
+    return valeur
+
+
+def generees(env):
+    dossier = os.path.join(ICI, 'generated', env)
+    if not os.path.isdir(dossier):
+        sys.exit(f'{dossier} absent : lancer d\'abord la génération')
+    return {f[:-5]: json_de('generated', env, f) for f in sorted(os.listdir(dossier)) if f.endswith('.json')}
+
+
+def reperes_de_base(nom, type_, info, pem):
+    if type_ == 'postgresql':
+        adresse = f"{info['hote']}:{info['port']}/{info['base_de_donnees']}?sslmode=verify-full&sslrootcert=/app/certs/postgresql-ca.pem"
+        identifiants = f"{quote(info['utilisateur'], safe='')}:{quote(info['mot_de_passe'], safe='')}@"
+        return {'URL_SANS_IDENTIFIANTS': 'postgres://' + adresse, 'URL_AVEC_IDENTIFIANTS': 'postgres://' + identifiants + adresse,
+                'UTILISATEUR': info['utilisateur'], 'MOT_DE_PASSE': info['mot_de_passe']}
+    ssl_ = 'ssl.certificate_authorities: |\n' + ''.join('  ' + l for l in pem.splitlines(True)) if info['force_tls'] else ''
+    return {'HOTE_PORT': f"{info['hote']}:{info['port']}", 'MOT_DE_PASSE': info['mot_de_passe'], 'SSL': ssl_}
+
+
+def pousser(env):
+    import fleet as fleet_, scalingo as scalingo_
+    token, cle = os.environ['SCALINGO_API_TOKEN'], os.environ['KIBANA_FLEET_API_KEY']
+    SECRETS.update((token, cle))
+    bases, erreurs = bases_de(env, json_de('bases.json')[env])
+    if erreurs:
+        sys.exit('\n'.join(erreurs))
+    echecs = 0
+    try:
+        plateforme = scalingo_.Scalingo(token)
+        pem, ca_expire_le = scalingo_.autorite_de_certification()
+    except Exception as e:
+        dire(f'Scalingo inaccessible : {detail(e)}', erreur=True)
+        return 1
+    infos, reperes, reperes_cel = {}, {}, {'CA_EXPIRE_LE': ca_expire_le, 'API_TOKEN': token}
+    for nom, type_, app in bases:
+        try:
+            info = plateforme.base(app, 'postgresql' if type_ == 'postgresql' else 'redis')
+        except Exception as e:
+            dire(f'{nom} : non poussée, {detail(e)}', erreur=True)
+            echecs += 1
+            continue
+        SECRETS.add(info['mot_de_passe'])
+        infos[nom] = info
+        reperes[nom] = reperes_de_base(nom, type_, info, pem)
+        reperes_cel.update({f'ADDON_ID:{nom}': info['addon_id'], f'DISQUE_INCLUS:{nom}': info['disque_inclus_octets'],
+                            f'CONNEXIONS_MAX:{nom}': info['connexions_max']})
+    base_postgresql = next((nom for nom, t, _ in bases if t == 'postgresql'), None)
+    client = fleet_.Fleet(cle)
+    try:
+        existantes = client.toutes()
+    except Exception as e:
+        dire(f'Fleet inaccessible : {detail(e)}', erreur=True)
+        return 1
+    for nom, contenu in generees(env).items():
+        corps = {k: v for k, v in contenu.items() if not k.startswith('_')}
+        if nom.startswith('scalingo-database-stats-'):
+            variables = corps['inputs']['cel-cel']['streams']['cel.cel']['vars']
+            variables['state'] = ''.join(l for l in variables['state'].splitlines(True)
+                                         if not re.search(r'@@ADDON_ID:([^@]+)@@', l) or re.search(r'@@ADDON_ID:([^@]+)@@', l).group(1) in infos)
+            corps = remplacer(corps, reperes_cel)
+        else:
+            base = nom if nom in dict((b[0], b) for b in bases) else base_postgresql
+            if base not in reperes:
+                dire(f'{nom} : non poussée, la base {base} n\'a pas pu être lue dans Scalingo', erreur=True)
+                continue
+            corps = remplacer(corps, reperes[base])
+        try:
+            if nom in existantes:
+                client.mettre_a_jour(existantes[nom]['id'], corps)
+                dire(f'{nom} : mise à jour')
+            else:
+                client.creer(corps)
+                dire(f'{nom} : créée')
+        except Exception as e:
+            dire(f'{nom} : échec Fleet, {detail(e)}', erreur=True)
+            echecs += 1
+    return 1 if echecs else 0
+
+
+def ecarts(attendu, reel, chemin=''):
+    if isinstance(attendu, dict):
+        if not isinstance(reel, dict):
+            return [chemin or '.']
+        if attendu.get('enabled') is False:
+            return [] if reel.get('enabled') is False else [f'{chemin}.enabled'.lstrip('.')]
+        return [e for k, v in attendu.items() if not k.startswith('_') for e in ecarts(v, reel.get(k), f'{chemin}.{k}'.lstrip('.'))]
+    if isinstance(attendu, list):
+        if not isinstance(reel, list) or len(attendu) != len(reel):
+            return [chemin]
+        return [e for i, (a, r) in enumerate(zip(attendu, reel)) for e in ecarts(a, r, f'{chemin}[{i}]')]
+    if isinstance(attendu, str) and '@@' in attendu:
+        if isinstance(reel, dict) and reel.get('isSecretRef'):
+            return []
+        motif = re.escape(attendu)
+        motif = re.sub(r'@@[^@]+@@', '.*?', motif.replace(re.escape('@@'), '@@'))
+        return [] if isinstance(reel, str) and re.fullmatch(motif, reel, re.S) else [chemin]
+    if isinstance(attendu, str) and isinstance(reel, str):
+        return [] if attendu.strip() == reel.strip() else [chemin]
+    return [] if attendu == reel else [chemin]
+
+
+def verifier(env):
+    import fleet as fleet_
+    cle = os.environ['ES_API_KEY']
+    SECRETS.add(cle)
+    policy = json_de('policies.json')[env]
+    client = fleet_.Fleet(cle)
+    try:
+        existantes, de_la_policy = client.toutes(), client.integrations(policy)
+    except Exception as e:
+        dire(f'Fleet inaccessible : {detail(e)}', erreur=True)
+        return 1
+    attendues, nb_ecarts = generees(env), 0
+    for nom, contenu in attendues.items():
+        if nom not in existantes:
+            dire(f'{nom} : absente de Fleet')
+            nb_ecarts += 1
+            continue
+        champs = ecarts({k: contenu[k] for k in ('inputs', 'package') if k in contenu}, existantes[nom])
+        champs = [c for c in champs if not c.startswith('package.') or c == 'package.name']
+        if champs:
+            nb_ecarts += 1
+            dire(f'{nom} : écart sur {", ".join(champs[:5])}')
+    for nom in sorted(set(de_la_policy) - set(attendues)):
+        dire(f'{nom} : présente dans la policy, non gérée par ce script')
+    dire(f'{nb_ecarts} écart(s)')
+    return 1 if nb_ecarts else 0
+
+
 if __name__ == '__main__':
-    for chemin in generer(os.path.join(ICI, 'generated')):
-        print(os.path.relpath(chemin, ICI))
+    sys.path.insert(0, ICI)
+    analyse = argparse.ArgumentParser()
+    analyse.add_argument('commande', nargs='?', choices=('pousser', 'verifier'))
+    analyse.add_argument('--env')
+    arguments = analyse.parse_args()
+    if arguments.commande is None:
+        for chemin in generer(os.path.join(ICI, 'generated')):
+            print(os.path.relpath(chemin, ICI))
+    else:
+        if arguments.env not in json_de('policies.json'):
+            sys.exit(f'--env : un environnement de policies.json ({", ".join(json_de("policies.json"))})')
+        sys.exit((pousser if arguments.commande == 'pousser' else verifier)(arguments.env))
