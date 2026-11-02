@@ -97,10 +97,12 @@ connexion vérifiée ») :
 | `postgresql-statements-<env>` | SQL Input | `sql.postgresql_statements` | requête de [`integrations/postgresql/statements.sql`](integrations/postgresql/statements.sql) |
 | `postgresql-index-stats-<env>` | SQL Input | `sql.postgresql_index_stats` | requête de [`integrations/postgresql/index_stats.sql`](integrations/postgresql/index_stats.sql) |
 | `postgresql-table-stats-<env>` | SQL Input | `sql.postgresql_table_stats` | requête de [`integrations/postgresql/table_stats.sql`](integrations/postgresql/table_stats.sql) |
+| `postgresql-index-hygiene-<env>` | SQL Input | `sql.postgresql_index_hygiene` | requête de [`integrations/postgresql/index_hygiene.sql`](integrations/postgresql/index_hygiene.sql), *Period* `1h` |
+| `postgresql-activite-<env>` | SQL Input | `sql.postgresql_activite` | requête de [`integrations/postgresql/activite.sql`](integrations/postgresql/activite.sql), *Period* `1m` |
 
-Pour les trois SQL Input : type **Metrics** (le dataset doit donner
+Pour les SQL Input : type **Metrics** (le dataset doit donner
 `metrics-sql.<dataset>-default`, sinon ni rétention ni dashboards), driver
-`postgres`, *Period* `10m`, *SSL Configuration* vide, requête collée au format
+`postgres`, *Period* `10m` (sauf mention dans le tableau), *SSL Configuration* vide, requête collée au format
 YAML, avec le format de réponse `table` :
 
 ```bash
