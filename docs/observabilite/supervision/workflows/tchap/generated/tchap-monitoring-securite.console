@@ -1,0 +1,42 @@
+# ⚠️ FICHIER GÉNÉRÉ par ../generer-workflows.py : NE PAS LE MODIFIER, il serait écrasé.
+# Il se construit depuis les règles (../../../rules/generated/), leurs définitions
+# (../../../rules/<n>-<périmètre>/<code>.json) et, pour les rapports
+# des jobs, la liste des CRON de pass-emploi-api. Pour changer un message : la définition
+# de la règle (../../../rules/README.md). Puis : python3 -I ../generer-workflows.py
+# La CI de chaque PR vérifie que ce fichier correspond à ses sources.
+#
+# Workflow du salon Tchap monitoring-securite, généré par generer-workflows.py depuis les
+# règles de ../../../rules/generated/ : ne pas modifier à la main. Spécification : ../README.md.
+#
+# ID du salon : Tchap → paramètres du salon → Avancé. Ce n'est pas un secret :
+# le salon est privé, sur invitation.
+# Le foreach écarte les alertes en attente de rétablissement
+# (pending_recovered_count > 0) : une alerte qui bagote reste « active », à 0
+# document, plusieurs exécutions, et l'action .workflows la transmet quand même.
+# Mise à jour : PUT kbn:/api/workflows/workflow/tchap-monitoring-securite avec {"yaml": …}.
+POST kbn:/api/workflows/workflow
+{
+  "id": "tchap-monitoring-securite",
+  "yaml": """
+name: Tchap - monitoring-securite
+description: Envoie les alertes des règles dans le salon Tchap monitoring-securite
+enabled: true
+triggers:
+  - type: alert
+consts:
+  salon: "!KyybnZFjgagyAMYdSM:agent.dinum.tchap.gouv.fr"
+steps:
+  - name: chaque-alerte
+    type: foreach
+    foreach: "{{ event.alerts | where_exp: 'a', 'a.kibana.alert.pending_recovered_count == blank or a.kibana.alert.pending_recovered_count == 0' | json }}"
+    steps:
+      - name: notifier
+        type: workflow.execute
+        with:
+          workflow-id: tchap-client
+          inputs:
+            salon: "{{ consts.salon }}"
+            texte: "{% case event.rule.id %}{% else %}{{ event.rule.name | replace: '=', '＝' }}\n{{ foreach.item.kibana.alert.reason | replace: '=', '＝' }}\n{{ event.ruleUrl }}{% endcase %}"
+            html: "{% case event.rule.id %}{% else %}<p><strong>{{ event.rule.name | replace: '=', '＝' | escape }}</strong></p><p>{{ foreach.item.kibana.alert.reason | replace: '=', '＝' | escape }}</p><p>{{ event.ruleUrl }}</p>{% endcase %}"
+"""
+}
