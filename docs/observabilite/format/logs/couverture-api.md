@@ -49,6 +49,13 @@ Spécificités api :
   en non-objet → tenter un objet donne `can't merge a non object mapping`, 400.
   Chaîne 3 repos : api (`external-api-logger.helpers.ts`) → tools (renames logstash
   `[msg][http][response][...]` + `pass-emploi-logs@mappings` keyword). Générique tous clients.
+- **Claims JWT du Bearer** (`jwt.{iss,azp,exp,iat,has_preferred_username}`) :
+  **uniquement sur `external_api_call` en `failure`** quand l'appel portait un header
+  `Authorization: Bearer <jwt>`. Quelques claims décodés (issuer, audience, dates de
+  validité, présence de `preferred_username`), rien de rejouable (pas de signature).
+  Diagnostic token expiré, mauvais issuer, username manquant. `jwt.exp`/`iat` en date
+  ISO. Générique tous clients. Même chaîne 3 repos que ci-dessus : rename logstash
+  `[msg][jwt]` + `pass-emploi-logs@mappings`.
 
 ## Envoi de communications
 
