@@ -4,6 +4,7 @@ Usage :
   python3 -I generer-dashboards-bases.py              génère, sans réseau (colonnes lues dans modeles/bases/colonnes.json)
   python3 -I generer-dashboards-bases.py --valider    exécute chaque requête contre Elasticsearch (ES_URL, ES_API_KEY)
                                                       et compare ses colonnes au catalogue
+  python3 -I generer-dashboards-bases.py --valider --sauf <motif>   sans interroger les index dont le nom contient le motif
 Sources : ../agents/bases.json (sélecteurs « Base »), modeles/bases/ (encadrés, colonnes).
 """
 import argparse, hashlib, json, os, sys, urllib.error, urllib.request, uuid
@@ -315,9 +316,12 @@ def executer(esql, params):
     return [[c['name'], c['type']] for c in json.load(urllib.request.urlopen(requete, timeout=120))['columns']]
 
 
-def valider():
+def valider(sauf=()):
     ecarts = 0
     for cle, (esql, params) in sorted(REQUETES.items()):
+        if any(motif in esql.partition('\n')[0] for motif in sauf):
+            print(f'{cle} : ignorée (--sauf)')
+            continue
         try:
             reelles = executer(esql, params)
         except urllib.error.HTTPError as e:
@@ -335,10 +339,11 @@ if __name__ == '__main__':
     analyse = argparse.ArgumentParser()
     analyse.add_argument('--sortie', default=os.path.join(ICI, 'dashboard-bases-de-donnees.ndjson'))
     analyse.add_argument('--valider', action='store_true')
+    analyse.add_argument('--sauf', action='append', default=[], help='avec --valider : ne pas interroger les index dont le nom contient ce motif')
     arguments = analyse.parse_args()
     objets = dashboards()
     if arguments.valider:
-        sys.exit(valider())
+        sys.exit(valider(arguments.sauf))
     with open(arguments.sortie, 'w', encoding='utf-8') as sortie:
         for objet in objets:
             sortie.write(json.dumps(objet, ensure_ascii=False) + '\n')

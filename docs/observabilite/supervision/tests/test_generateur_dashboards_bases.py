@@ -1,5 +1,5 @@
 """Lancer depuis la racine du repo : python3 -I -m unittest discover -s docs/observabilite/supervision/tests -v"""
-import json, os, subprocess, sys, tempfile, unittest
+import http.server, json, os, subprocess, sys, tempfile, threading, unittest
 
 SUPERVISION = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCRIPT = os.path.join(SUPERVISION, 'dashboards', 'generer-dashboards-bases.py')
@@ -40,3 +40,32 @@ class TestGenerateurDashboardsBases(unittest.TestCase):
             type_ = 'postgresql' if 'PostgreSQL' in attributs['title'] else 'redis'
             with self.subTest(attributs['title']):
                 self.assertEqual(set(controles['base']['available_options']), noms[type_])
+
+
+class FauxElasticsearch(http.server.BaseHTTPRequestHandler):
+    requetes = []
+
+    def do_POST(self):
+        FauxElasticsearch.requetes.append(json.loads(self.rfile.read(int(self.headers['Content-Length'])))['query'])
+        corps = json.dumps({'columns': []}).encode()
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.end_headers()
+        self.wfile.write(corps)
+
+    def log_message(self, *args):
+        pass
+
+
+class TestValiderSauf(unittest.TestCase):
+    def test_sauf_n_interroge_pas_les_index_exclus(self):
+        serveur = http.server.HTTPServer(('127.0.0.1', 0), FauxElasticsearch)
+        threading.Thread(target=serveur.serve_forever, daemon=True).start()
+        self.addCleanup(serveur.shutdown)
+        FauxElasticsearch.requetes = []
+        env = {**os.environ, 'ES_URL': f'http://127.0.0.1:{serveur.server_port}', 'ES_API_KEY': 'cle'}
+        resultat = subprocess.run([sys.executable, '-I', SCRIPT, '--valider', '--sauf', 'logs-elastic_agent'],
+                                  capture_output=True, text=True, env=env, timeout=60)
+        self.assertTrue(FauxElasticsearch.requetes)
+        self.assertFalse([r for r in FauxElasticsearch.requetes if 'logs-elastic_agent' in r])
+        self.assertIn('ignorée', resultat.stdout)
