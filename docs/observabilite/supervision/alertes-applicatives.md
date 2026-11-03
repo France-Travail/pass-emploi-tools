@@ -514,8 +514,12 @@ ne passent ni par le log drain ni par Logstash : chacune prévient le notifier
 Elastic de son app, qui écrit directement dans `logs-alertes-scalingo-<env>-default`,
 puis A4a (A4b hors prod) en fait une ligne ⚠️ au dépassement et ℹ️ au retour à
 la normale. Elles restent donc audibles quand la chaîne de logs est tombée,
-comme le 23/10/2026. Chaque alerte prévient aussi le notifier e-mail de l'app,
-en secours si Elastic Cloud est indisponible.
+comme le 23/10/2026. Les alertes `rpm` et `5XX`, celles d'une attaque,
+préviennent aussi l'équipe par e-mail (notifier `Email production - Alertes RPM
+et 5xx` de l'app, adresses de l'équipe dans le notifier) : un second canal,
+indépendant de Kibana. Le notifier e-mail par défaut de l'app, qui écrit aux
+collaborateurs, ne transmet pas les alertes de métriques : constaté le
+03/11/2026, un notifier aux adresses explicites, si.
 
 | App (`-prod`) | Requêtes par minute (`rpm`) | Erreurs 5xx par minute (`5XX`) | Temps de réponse p95 (`p95_response_time`) | Mémoire (`memory`) |
 |---|---|---|---|---|
@@ -541,7 +545,8 @@ Dans le webhook, Scalingo nomme les métriques par leur libellé (`labels.metric
 qu'en texte (`2.0 rpm`, `≥ 1.0 rpm`) ; l'émetteur est `router` ou le conteneur.
 
 **Création** (une alerte par ligne et par métrique, rattachée au notifier
-Elastic de l'app et à son notifier e-mail, identifiants donnés par
+Elastic de l'app, plus son notifier `Email production - Alertes RPM et 5xx`
+pour `rpm` et `5XX` ; identifiants donnés par
 `scalingo --region osc-secnum-fr1 --app <app> notifiers`) :
 
 ```bash
