@@ -48,7 +48,7 @@ flowchart LR
 
   CONN["Connecteur .http « Tchap »<br/>URL + jeton du bot"]
   CLIENT -- "étape http" --> CONN
-  CONN -- "PUT …/send/m.room.message" --> TCHAP(["Tchap : 6 salons"])
+  CONN -- "PUT …/send/m.room.message" --> TCHAP(["Tchap : 7 salons"])
 
   AUTO["AutoOps (alertes 11 et 12)"] -. "Webhook POST direct,<br/>sans passer par Kibana" .-> TCHAP
 
