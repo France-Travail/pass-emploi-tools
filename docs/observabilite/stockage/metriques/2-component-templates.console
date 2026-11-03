@@ -176,7 +176,7 @@ PUT _component_template/logs-elastic_agent.metricbeat@custom
   "_meta": { "managed_by": "pass-emploi-tools" }
 }
 
-# Journal des changements de statut (source de l'alerte 8). La policy du package
+# Journal des changements de statut (source de l'alerte M8). La policy du package
 # (logs-elastic_agent.status_change_logs-default_policy) n'a qu'une phase delete
 # à 90 j, sans rollover : un seul index, supprimé d'un bloc à 90 j d'âge.
 PUT _component_template/logs-elastic_agent.status_change@custom

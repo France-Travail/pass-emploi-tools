@@ -12,7 +12,7 @@ logs des apps.
 
 | #  | Signal                    | Data stream                   | Condition                                 | Fréquence | Throttle | Sévérité    |
 |----|---------------------------|-------------------------------|-------------------------------------------|-----------|----------|-------------|
-| V1 | CVE high/critical ouverte | `logs-alertes-github-default` | `vulnerability.severity` high ou critical | 5 min     | —        | 🚨 Critical |
+| S1 | CVE high/critical ouverte | `logs-alertes-github-default` | `vulnerability.severity` high ou critical | 5 min     | —        | 🚨 Critical |
 | S2a | Suspicion d'attaque DDoS, prod | `logs-alertes-scalingo-prod-default` | alertes `rpm` et `5XX` de la même app à moins de 10 min, non revenues à la normale | 1 min | — | 🚨 Critical |
 | S2b | Suspicion d'attaque DDoS, staging / perf | `logs-alertes-scalingo-staging-default`, `-perf-default` | idem | 1 min | — | 🚨 Critical |
 
@@ -20,12 +20,12 @@ logs des apps.
 dans Dev Tools, après les sessions Discover de
 [`discovers/webhooks/`](discovers/webhooks/).
 
-## V1 — CVE high ou critical ouverte (Critical)
+## S1 — CVE high ou critical ouverte (Critical)
 
 **Objectif** : qu'aucune CVE high ou critical ne reste ouverte sans être vue.
 
 `security-alerts.yml` renvoie **à chaque passage** toutes les CVE encore
-ouvertes : V1 les notifie donc à chaque passage, une ligne par CVE (repo, CVE,
+ouvertes : S1 les notifie donc à chaque passage, une ligne par CVE (repo, CVE,
 paquet, sévérité, résumé, lien vers l'alerte Dependabot ; le nom du repo mène à
 la page de ses alertes, `labels.dependabot_url` posé par le pipeline), comme le faisait
 l'envoi direct vers Mattermost. Chaque exécution ne compte que les documents
@@ -81,7 +81,7 @@ seuils retenus, elle n'aurait sonné que les 21 et 23/10, sur connect.
    métriques (onglet Metrics) dans le **[Scalingo] Dashboard des apps**.
 2. Un événement légitime l'explique-t-il : mise en service, notification de
    masse, campagne de communication.
-3. D'où vient le trafic : si les logs du routeur arrivent encore (règle 3b au
+3. D'où vient le trafic : si les logs du routeur arrivent encore (règle M3b au
    repos), le Discover **[Pass Emploi] Logs de Prod - Trafic du routeur par IP** ;
    sinon, les logs du routeur lus chez Scalingo, sans drain ni Logstash
    (cf. [runbook](../runbooks/investigation-incident.md#suspicion-de-ddos-ou-surcharge-de-linfra)),

@@ -3,12 +3,12 @@
 Les alertes sur des pannes **visibles des utilisateurs et impactantes pour le
 métier**, en cinq couches :
 
-- **alertes SLO** (S1 à S3) — la promesse de [sli-slo](sli-slo.md) est-elle
+- **alertes SLO** (SLO1 à SLO3) — la promesse de [sli-slo](sli-slo.md) est-elle
   menacée ? Déduites des SLO Kibana ;
 - **alertes de diagnostic** (A1 à A3, A6, A7) — pourquoi : un partenaire qui
   tombe, des 5xx qui s'accumulent, une vague de refus d'authentification, la
   base de données en erreur, le front en erreur ;
-- **disponibilité** (A10 à A13) — les services répondent-ils, leurs
+- **disponibilité** (A8 à A11) — les services répondent-ils, leurs
   certificats sont-ils valides ? Règles Uptime sur les moniteurs Heartbeat ;
 - **événements Scalingo** (A4a, A4b) — ce qui arrive aux apps : crash, arrêt,
   redémarrage, seuil de ressource, mais aussi déploiements et opérations
@@ -17,10 +17,10 @@ métier**, en cinq couches :
 
 Elles s'appuient sur les logs ECS (`event.action` / `event.outcome`, cf.
 [format/logs/conventions](../format/logs/conventions.md)), sur l'APM (A2, A7,
-cf. [données APM](#données-apm)) et sur Heartbeat (A10 à A13). Les pannes de la
+cf. [données APM](#données-apm)) et sur Heartbeat (A8 à A11). Les pannes de la
 chaîne de télémétrie elle-même sont dans
 [alertes-stack-observabilite](alertes-stack-observabilite.md) : si elle est
-aveugle (alerte 3 « silence »), ces alertes-ci ne peuvent pas se déclencher.
+aveugle (alerte M3 « silence »), ces alertes-ci ne peuvent pas se déclencher.
 
 Toutes notifient le salon Tchap `monitoring-production`, sauf A4b
 (`monitoring-staging`) et A5a / A5b (salons des jobs, `jobs-production` /
@@ -30,9 +30,9 @@ Toutes notifient le salon Tchap `monitoring-production`, sauf A4b
 
 | #  | Signal                     | Index / source      | Condition                                             | Fréquence | Throttle | Sévérité    |
 |----|----------------------------|---------------------|-------------------------------------------------------|-----------|----------|-------------|
-| S1 | SLO disponibilité api      | SLO Kibana          | burn rate ≥ 6 par parcours critique                   | 1 min     | —        | 🚨 Critical |
-| S2 | SLO latence api            | SLO Kibana          | burn rate ≥ 6 par parcours critique                   | 1 min     | —        | 🚨 Critical |
-| S3 | SLO réussite login         | SLO Kibana          | burn rate ≥ 6 par mode d'authentification             | 1 min     | —        | 🚨 Critical |
+| SLO1 | SLO disponibilité api      | SLO Kibana          | burn rate ≥ 6 par parcours critique                   | 1 min     | —        | 🚨 Critical |
+| SLO2 | SLO latence api            | SLO Kibana          | burn rate ≥ 6 par parcours critique                   | 1 min     | —        | 🚨 Critical |
+| SLO3 | SLO réussite login         | SLO Kibana          | burn rate ≥ 6 par mode d'authentification             | 1 min     | —        | 🚨 Critical |
 | A1 | Pic d'échecs partenaire    | `logs-prod-default` | `external_api_call` `failure` > 100 / 5 min par domaine (5xx, 429, 4xx, timeout) | 1 min     | 1h       | ⚠️Warning  |
 | A2 | Erreurs serveur 5xx        | APM `metrics-apm.transaction.1m-*` | requêtes api + connect en 5xx > 50 / 5 min, par template | 1 min     | 1h       | 🚨 Critical |
 | A3 | Pic d'auth refusées        | `logs-prod-default` | `auth_failed` > 3 × même heure sur 7 j, ≥ 20 / 10 min | 5 min     | 1h       | 🚨 Critical |
@@ -42,10 +42,10 @@ Toutes notifient le salon Tchap `monitoring-production`, sauf A4b
 | A5b | Jobs en échec — staging, perf | `logs-{staging,perf}-default` | idem A5a, canal jobs-staging | 5 min | — | ❌ par ligne |
 | A6 | Erreurs base de données | `logs-prod-default` | `error.type` Sequelize* > 20 / 5 min | 1 min | 1h | 🚨 Critical |
 | A7 | Erreurs du front | APM `logs-apm.error-*` | erreurs JavaScript de `rum-pass-emploi-web-prod` > 200 / 5 min | 1 min | 1h | ⚠️Warning |
-| A10 | API injoignable | Uptime `pa-back-prod-status` | moniteur Heartbeat en échec | 1 min | — | 🚨 Critical, ✅ au rétablissement |
-| A11 | Web conseiller injoignable | Uptime `pa-web-prod-status` | idem | 1 min | — | 🚨 Critical, ✅ au rétablissement |
-| A12 | Authentification injoignable | Uptime `pass-emploi-connect-status` | idem | 1 min | — | 🚨 Critical, ✅ au rétablissement |
-| A13 | Certificat TLS bientôt expiré | Uptime (TLS) | certificat qui expire bientôt | 1 jour | — | ⚠️Warning |
+| A8 | API injoignable | Uptime `pa-back-prod-status` | moniteur Heartbeat en échec | 1 min | — | 🚨 Critical, ✅ au rétablissement |
+| A9 | Web conseiller injoignable | Uptime `pa-web-prod-status` | idem | 1 min | — | 🚨 Critical, ✅ au rétablissement |
+| A10 | Authentification injoignable | Uptime `pass-emploi-connect-status` | idem | 1 min | — | 🚨 Critical, ✅ au rétablissement |
+| A11 | Certificat TLS bientôt expiré | Uptime (TLS) | certificat qui expire bientôt | 1 jour | — | ⚠️Warning |
 
 > **Prod uniquement** (sauf A4b) : en staging, ces signaux reflètent les tests
 > en cours, pas une panne. A4b garde le fil d'activité Scalingo de staging et de
@@ -82,7 +82,7 @@ d'alerte, y compris celles de la [stack](alertes-stack-observabilite.md) et de
    `supervision/`), titré par son origine (`[Pass Emploi]`, `[Scalingo]`…), et
    repris à l'identique dans « Dashboards », « Discover sessions »,
    l'Investigation guide et les Related dashboards de la règle.
-6. **Pas d'acronyme d'alerte** (« A1 », « 6a »…) dans le texte : on nomme ce
+6. **Pas d'acronyme d'alerte** (« A1 », « M6a »…) dans le texte : on nomme ce
    qu'il faut regarder.
 
 ## Alertes SLO — la promesse est menacée
@@ -94,10 +94,10 @@ longue et une fenêtre courte : la longue évite de déclencher sur un pic isol�
 la courte fait retomber l'alerte dès que le problème cesse. La règle s'évalue
 instance par instance : un parcours ou un mode d'authentification à la fois.
 
-- **S1** — SLO « API — disponibilité des parcours critiques », à ne créer
+- **SLO1** — SLO « API — disponibilité des parcours critiques », à ne créer
   qu'avec le correctif api, cf. [sli-slo](sli-slo.md#slo--api--disponibilité-des-parcours-critiques-) ;
-- **S2** — SLO « API — latence des parcours critiques » ;
-- **S3** — SLO « Login — réussite jeune France Travail » et « Login — réussite par mode d'authentification ».
+- **SLO2** — SLO « API — latence des parcours critiques » ;
+- **SLO3** — SLO « Login — réussite jeune France Travail » et « Login — réussite par mode d'authentification ».
   Pour « Login — réussite invité » et « Login — réussite conseiller
   départemental », une seule fenêtre longue, notifiée en High : quelques
   tentatives par jour, un échec isolé sur 1 h vaudrait 100 % d'échecs.
@@ -413,13 +413,13 @@ exécution » à « au changement d'état ».
 
 | # | Rule name | Moniteur | URL | Message de panne / de rétablissement |
 |---|---|---|---|---|
-| A10 | `API - Prod - Disponibilité` | `pa-back-prod-status` | `https://api.pass-emploi.beta.gouv.fr/health` | 🚨 API injoignable — prod (pass-emploi-api) / ✅ API de nouveau joignable |
-| A11 | `Web - Prod - Disponibilité` | `pa-web-prod-status` | `https://web.pass-emploi.beta.gouv.fr/api/health` | 🚨 Application web conseiller injoignable / ✅ de nouveau joignable |
-| A12 | `Connect - Prod - Disponibilité` | `pass-emploi-connect-status` | `https://id.pass-emploi.beta.gouv.fr/health` | 🚨 Service d'authentification injoignable / ✅ de nouveau joignable |
-| A13 | `TLS - Certificat bientôt expiré` | tous les moniteurs HTTPS | — | ⚠️ Certificat TLS bientôt expiré — `<domaine>` : expire le …, dans N jours (un message par certificat et par jour) |
+| A8 | `API - Prod - Disponibilité` | `pa-back-prod-status` | `https://api.pass-emploi.beta.gouv.fr/health` | 🚨 API injoignable — prod (pass-emploi-api) / ✅ API de nouveau joignable |
+| A9 | `Web - Prod - Disponibilité` | `pa-web-prod-status` | `https://web.pass-emploi.beta.gouv.fr/api/health` | 🚨 Application web conseiller injoignable / ✅ de nouveau joignable |
+| A10 | `Connect - Prod - Disponibilité` | `pass-emploi-connect-status` | `https://id.pass-emploi.beta.gouv.fr/health` | 🚨 Service d'authentification injoignable / ✅ de nouveau joignable |
+| A11 | `TLS - Certificat bientôt expiré` | tous les moniteurs HTTPS | — | ⚠️ Certificat TLS bientôt expiré — `<domaine>` : expire le …, dans N jours (un message par certificat et par jour) |
 
 Tchap reçoit les mêmes messages par le Workflow `tchap-monitoring-production`
-(alertes nouvelles et rétablies ; pour A13, aussi les alertes en cours, une
+(alertes nouvelles et rétablies ; pour A11, aussi les alertes en cours, une
 fois par jour). Kibana donne l'échéance d'un certificat en anglais
 (`state.summary`) : le Workflow la traduit, le message Mattermost la garde
 telle quelle.
@@ -460,7 +460,7 @@ Exemple : `🚨 pass-emploi-api-prod : app_crashed (oom) sur web, par scalingo-p
 Les apps de la stack d'observabilité (`pass-emploi-logstash`,
 `pass-emploi-logstash-process`, `pass-emploi-elastic-agent`,
 `pass-emploi-heartbeat`, quel que soit l'environnement) sont exclues : leurs
-événements vont aux règles 6a / 6b des
+événements vont aux règles M6a / M6b des
 [alertes de la stack](alertes-stack-observabilite.md). Une nouvelle app est
 couverte d'office, sans toucher aux règles.
 
@@ -560,7 +560,7 @@ scalingo --region osc-secnum-fr1 --app pass-emploi-connect-prod alerts-add \
 Si l'équipe veut isoler les lignes ℹ️ (déploiements…) dans des salons
 `infra-{env}` : créer les salons Tchap `infra-production` et `infra-staging`,
 copier un Workflow de salon en `tchap-infra-{env}.console`, puis, pour A4a, A4b
-(et 6a, 6b), ajouter `and labels.categorie : "incident"` à la requête et
+(et M6a, M6b), ajouter `and labels.categorie : "incident"` à la requête et
 dupliquer la règle avec `labels.categorie : "infra"` vers `tchap-infra-{env}`.
 Aucun changement de pipeline ni de données ; réversible.
 

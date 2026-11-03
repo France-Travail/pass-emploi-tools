@@ -59,15 +59,15 @@ trou**, pas sur une fenêtre saine. C'est la source n°1 de temps perdu.
 
 | Métrique                                                                          | Data stream                         | Dashboard Fleet                                     | Signal d'alarme                               |
 | --------------------------------------------------------------------------------- |-------------------------------------|-----------------------------------------------------|-----------------------------------------------|
-| `logstash.pipeline.total.flow.queue_backpressure.current`                         | `metrics-logstash.pipeline-default` | [Metrics Logstash] Logstash Single Pipeline View (*Time spent pushing to queues*) | `ingest` ≥ 1 en continu sur 15 min → **Alerte Kibana 4a** |
+| `logstash.pipeline.total.flow.queue_backpressure.current`                         | `metrics-logstash.pipeline-default` | [Metrics Logstash] Logstash Single Pipeline View (*Time spent pushing to queues*) | `ingest` ≥ 1 en continu sur 15 min → **Alerte Kibana M4a** |
 | `logstash.pipeline.total.queues.events`                                           | `metrics-logstash.pipeline-default` | [Metrics Logstash] Pipelines Overview               | Montée continue (diagnostic post-alerte)      |
 | `logstash.node.stats.pipelines.process.plugins.outputs.bulk_requests.with_errors` | `metrics-logstash.plugins-default`  | [Metrics Logstash] Elasticsearch output plugin info | Compteur qui monte (confirme rejet ES)        |
 | `logstash.node.stats.events.out`                                                  | `metrics-logstash.node-default`     | [Metrics Logstash] Logstash Overview                | Chute ou plateau à 0                          |
 | CPU Logstash (Scalingo)                                                           | Dashboard Scalingo                  | Dashboard Scalingo                                  | **0 % sur tous les conteneurs simultanément** |
 
-**Premier signal** : l'[alerte 12](../supervision/alertes-stack-observabilite.md#alerte-12--saturation-de-lindexation-elasticsearch-autoops)
+**Premier signal** : l'[alerte M12](../supervision/alertes-stack-observabilite.md#alerte-m12--saturation-de-lindexation-elasticsearch-autoops)
 (AutoOps), management queue ou index queue haute, arrive avant la backpressure
-de l'alerte 4a.
+de l'alerte M4a.
 
 **Signature caractéristique** : 0 % CPU sur **tous** les conteneurs Logstash en même
 temps, mémoire plate. Les workers sont bloqués en attente d'ES (I/O bloquant = pas de
@@ -166,7 +166,7 @@ HTTP ralentit → les drains reçoivent des 429 → quarantaine.
 
 | Métrique                                                                | Data stream                     | Dashboard Fleet                              | Signal d'alarme               |
 | ----------------------------------------------------------------------- | ------------------------------- | -------------------------------------------- | ----------------------------- |
-| `logstash.node.stats.jvm.mem.heap_used_percent`                         | `metrics-logstash.node-default` | [Metrics Logstash] Single Node Overview      | reste ≥ 90 % sur 15 min → **Alerte Kibana 5a** |
+| `logstash.node.stats.jvm.mem.heap_used_percent`                         | `metrics-logstash.node-default` | [Metrics Logstash] Single Node Overview      | reste ≥ 90 % sur 15 min → **Alerte Kibana M5a** |
 | `logstash.node.stats.events.out`                                        | `metrics-logstash.node-default` | [Metrics Logstash] Logstash Overview         | Tombe à 0 pendant la pause GC |
 
 **Signature caractéristique** : pic de latence **bimodal** (temps de réponse normal
@@ -218,8 +218,8 @@ dans les logs Scalingo de l'app `pass-emploi-logstash-prod`, chercher les lignes
 
 | Signal                                             | Source                      | Seuil d'alarme        |
 | -------------------------------------------------- | --------------------------- | --------------------- |
-| Documents dans `logs-logstash-dlq-prod-default`    | Discover / Alerte Kibana 1a | `count > 0` sur 5 min |
-| Documents dans `logs-logstash-errors-prod-default` | Discover / Alerte Kibana 2a | `count > 0` sur 5 min |
+| Documents dans `logs-logstash-dlq-prod-default`    | Discover / Alerte Kibana M1a | `count > 0` sur 5 min |
+| Documents dans `logs-logstash-errors-prod-default` | Discover / Alerte Kibana M2a | `count > 0` sur 5 min |
 
 > **Note** : la métrique `dead_letter_queue.queue_size_in_bytes` n'est **pas** exposée
 > dans les data streams `metrics-logstash.*` d'Elastic Agent. La détection se fait
@@ -300,13 +300,13 @@ Des `_ignored` indiquent un dépassement de `total_fields.limit` → prévoir un
 
 | Signal                                  | Source                | Description                                           |
 |-----------------------------------------|-----------------------| ----------------------------------------------------- |
-| Alerte Kibana 6a                        | notifier Scalingo → `logs-alertes-scalingo-prod-default` | ligne 🚨 `app_crashed…` ou ⚠️ `app_restarted` avec sa raison (OOM, SIGKILL…) |
-| Silence dans `logs-prod-default`        | Alerte Kibana 3a      | `Is below or equals 0` sur 5 min                      |
-| Silence dans `logs-router-prod-default` | Alerte Kibana 3b      | `Is below or equals 0` sur 5 min                      |
+| Alerte Kibana M6a                        | notifier Scalingo → `logs-alertes-scalingo-prod-default` | ligne 🚨 `app_crashed…` ou ⚠️ `app_restarted` avec sa raison (OOM, SIGKILL…) |
+| Silence dans `logs-prod-default`        | Alerte Kibana M3a      | `Is below or equals 0` sur 5 min                      |
+| Silence dans `logs-router-prod-default` | Alerte Kibana M3b      | `Is below or equals 0` sur 5 min                      |
 | Absence de métriques Fleet              | Kibana Fleet → Agents | Agent Elastic Agent passe en `offline`                |
 
-**Signature caractéristique** : les deux alertes 3a et 3b se déclenchent
-**simultanément** (silence total = crash Logstash). Si seulement 3a se déclenche
+**Signature caractéristique** : les deux alertes M3a et M3b se déclenchent
+**simultanément** (silence total = crash Logstash). Si seulement M3a se déclenche
 (router continue), c'est une quarantaine du drain applicatif (voir ci-dessous).
 
 ### Distinguer crash vs quarantaine drain
@@ -365,7 +365,7 @@ http.response.status_code: (429 OR 499) AND service.environment: "prod"
 
 - [drain-scalingo.md — Quarantaine](../collecte/logs/drain-scalingo.md)
 - [postmortem-2026-07-blackout-logs.md — §3 Mode B](../post-mortems/postmortem-2026-07-blackout-logs.md)
-- [supervision/alertes-stack-observabilite.md — Alerte 6 (événements Scalingo de la stack)](../supervision/alertes-stack-observabilite.md#alerte-6--événements-scalingo-des-apps-de-la-stack)
+- [supervision/alertes-stack-observabilite.md — Alerte M6 (événements Scalingo de la stack)](../supervision/alertes-stack-observabilite.md#alerte-m6--événements-scalingo-des-apps-de-la-stack)
 
 ---
 
@@ -401,7 +401,7 @@ Un backlog signale que le pipeline `process` ne consomme plus Redis. Causes poss
 
 | Métrique            | Data stream                 | Dashboard                                                                        | Signal d'alarme                |
 |---------------------|-----------------------------|----------------------------------------------------------------------------------|--------------------------------|
-| `redis.key.length`  | `metrics-redis.key-default` | **[Metrics Redis] Keys** → graphe **Lists length** → clé `db0 › logstash:ingest` | reste > 1 000 sur 15 min → **Alerte Kibana 7a** (des pics à :00 et :30 en journée sont nominaux) |
+| `redis.key.length`  | `metrics-redis.key-default` | **[Metrics Redis] Keys** → graphe **Lists length** → clé `db0 › logstash:ingest` | reste > 1 000 sur 15 min → **Alerte Kibana M7a** (des pics à :00 et :30 en journée sont nominaux) |
 
 ### Diagnostic
 
@@ -443,7 +443,7 @@ Un backlog signale que le pipeline `process` ne consomme plus Redis. Causes poss
 
 ### Références
 
-- [supervision/alertes-stack-observabilite.md — Alerte 7](../supervision/alertes-stack-observabilite.md#alerte-7--backlog-redis-logstashingest-pipeline-process-découplé)
+- [supervision/alertes-stack-observabilite.md — Alerte M7](../supervision/alertes-stack-observabilite.md#alerte-m7--backlog-redis-logstashingest-pipeline-process-découplé)
 
 ---
 

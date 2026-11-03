@@ -34,6 +34,6 @@ complète des variables : [`logs/README.md`](../../../../logs/README.md#variable
 ## Quand Redis ne se vide plus
 
 Si `process` ou ES sont indisponibles, `ingest` continue d'acquitter et la liste
-Redis grossit **sans aucun symptôme côté drain** — invisible sans l'alerte 7
+Redis grossit **sans aucun symptôme côté drain** — invisible sans l'alerte M7
 ([supervision/alertes](../../supervision/alertes-stack-observabilite.md)). Saturation Redis possible
 en < 50 min à 256 Mo. Procédure : [runbook scénario 5](../../runbooks/runbook-logstash.md).

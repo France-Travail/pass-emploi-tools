@@ -1,6 +1,6 @@
 # Runbook — disque des nœuds Elasticsearch
 
-> **Type** : tutoriel (Diataxis). Quoi faire quand l'[alerte 11](../supervision/alertes-stack-observabilite.md#alerte-11--disque-des-nœuds-elasticsearch-autoops)
+> **Type** : tutoriel (Diataxis). Quoi faire quand l'[alerte M11](../supervision/alertes-stack-observabilite.md#alerte-m11--disque-des-nœuds-elasticsearch-autoops)
 > (AutoOps) signale un nœud Elasticsearch qui se remplit.
 >
 > Rétentions et volumétrie attendues : [`stockage/`](../stockage/README.md).

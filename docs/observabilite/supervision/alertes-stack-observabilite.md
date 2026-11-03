@@ -3,7 +3,7 @@
 Les alertes sur **notre infra de télémétrie** (Logstash, Redis, agents Fleet, Elasticsearch) :
 elles signalent que la chaîne de logs et de métriques est en panne ou aveugle,
 pas que les utilisateurs sont touchés. Les pannes visibles des utilisateurs sont
-dans [alertes-applicatives](alertes-applicatives.md). Hors alertes 11 et 12
+dans [alertes-applicatives](alertes-applicatives.md). Hors alertes M11 et M12
 (AutoOps), ce sont des **Kibana Rules** qui notifient les canaux
 `o11y-production` et `o11y-staging` (même nom dans Mattermost et dans Tchap).
 
@@ -15,7 +15,7 @@ dans [alertes-applicatives](alertes-applicatives.md). Hors alertes 11 et 12
 > Elles ne passent surtout pas par Elasticsearch : elles doivent alerter quand le
 > cluster va mal.
 
-**Création** : les alertes 1 à 10 et 14 sont versionnées dans
+**Création** : les alertes M1 à M10 et M13 sont versionnées dans
 [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console),
 qui reprend les tableaux et bodies de cette page, à rejouer dans Dev Tools.
 
@@ -30,34 +30,34 @@ qui reprend les tableaux et bodies de cette page, à rejouer dans Dev Tools.
 
 | #  | Signal                                        | Index / source                                  | Condition                                                | Fréquence  | Throttle | Sévérité    |
 | -- |-----------------------------------------------|-------------------------------------------------|----------------------------------------------------------|------------|----------|-------------|
-| 1a | DLQ non vide — prod                           | `logs-logstash-dlq-prod-default`                | `Is above 0` / 5 min                                     | 1 min      | 6h       | 🚨 Critical |
-| 1b | DLQ non vide — staging/perf                   | `logs-logstash-dlq-staging/perf-default`        | `Is above 0` / 5 min                                     | 5 min      | 6h       | ⚠️Warning  |
-| 2a | Erreurs traitement — prod                     | `logs-logstash-errors-prod-default`             | `Is above 0` / 24 h                                      | 1 h        | 1 / jour, 9 h 30 | ⚠️Warning  |
-| 2b | Erreurs traitement — staging/perf             | `logs-logstash-errors-staging/perf-default`     | `Is above 0` / 5 min                                     | 5 min      | 6h       | ⚠️Warning  |
-| 3a | Silence logs applicatifs — prod               | `logs-prod-default`                             | `Is below or equals 0` / 5 min                           | 2 min      | 6h       | 🚨 Critical |
-| 3b | Silence logs router — prod                    | `logs-router-prod-default`                      | `Is below or equals 0` / 5 min                           | 2 min      | 6h       | 🚨 Critical |
-| 3c | Silence logs applicatifs — staging/perf       | `logs-staging/perf-default`                     | `Is below or equals 0` / 5 min                           | 5 min      | 6h       | ⚠️Warning  |
-| 3d | Silence logs router — staging/perf            | `logs-router-staging/perf-default`              | `Is below or equals 0` / 5 min                           | 5 min      | 6h       | ⚠️Warning  |
-| 4a | Backpressure ingest — prod                    | `metrics-logstash.pipeline-default`             | `Min` `≥ 1` / 15 min, par nœud                           | 2 min      | 6h       | 🚨 Critical |
-| 4b | Backpressure ingest — staging/perf            | `metrics-logstash.pipeline-default`             | `Min` `≥ 1` / 15 min, par nœud                           | 5 min      | 6h       | ⚠️Warning  |
-| 5a | Heap JVM élevé — prod                         | `metrics-logstash.node-default`                 | `Min` `≥ 90` / 15 min, par nœud                          | 2 min      | 6h       | 🚨 Critical |
-| 5b | Heap JVM élevé — staging/perf                 | `metrics-logstash.node-default`                 | `Min` `≥ 90` / 15 min, par nœud                          | 5 min      | 6h       | ⚠️Warning  |
-| 6a | Événements Scalingo des apps de la stack — prod | `logs-alertes-scalingo-prod-default`          | tout événement d'une app de la stack                     | 1 min      | —        | par ligne 🚨/⚠️/ℹ️ |
-| 6b | Événements Scalingo des apps de la stack — staging/perf | `logs-alertes-scalingo-staging/perf-default` | tout événement d'une app de la stack               | 5 min      | —        | par ligne ⚠️/ℹ️ |
-| 7a | Backlog Redis `logstash:ingest` — prod        | `metrics-redis.key-default`                     | `Min` `Is above 1 000` / 15 min                          | 2 min      | 6h       | 🚨 Critical |
-| 7b | Backlog Redis `logstash:ingest` — staging/perf| `metrics-redis.key-default`                     | `Min` `Is above 1 000` / 15 min                          | 5 min      | 6h       | ⚠️Warning  |
-| 8a | Elastic Agent en défaut — prod                | status_change + `metrics-elastic_agent.*beat-*` | offline/unenrolled/unhealthy ou > 25 err. output / 5 min | 1 min      | 6h       | 🚨 Critical |
-| 8b | Elastic Agent en défaut — staging             | status_change + `metrics-elastic_agent.*beat-*` | offline/unenrolled/unhealthy ou > 25 err. output / 5 min | 1 min      | 6h       | ⚠️Warning  |
-| 9a | Mémoire conteneur Logstash — prod             | `logs-scalingo.container_stats-default`         | `Max` `≥ 95 %` / 5 min, par conteneur                    | 1 min      | 6h       | 🚨 Critical |
-| 9b | Mémoire conteneur Logstash — staging/perf     | `logs-scalingo.container_stats-default`         | `Max` `≥ 95 %` / 5 min, par conteneur                    | 5 min      | 6h       | ⚠️Warning  |
-| 10 | ILM en échec ou policy sans suppression       | historique ILM (`ilm-history-7`)                | étape en échec ou policy par défaut / 24 h               | 1 h        | 1 / jour, 9 h 30 | ⚠️Warning  |
-| 11 | Disque des nœuds Elasticsearch                | AutoOps (Elastic Cloud)                         | préavis 75 %, paliers 85 / 90 / 95 %, cluster red       | —          | —        | 🚨 Critical |
-| 12 | Saturation de l'indexation Elasticsearch      | AutoOps (Elastic Cloud)                         | management queue ou index queue haute                    | —          | —        | 🚨 Critical |
-| 14 | Événement externe rejeté                      | les 4 `logs-alertes-*`, sélecteur `::failures`  | tout document / 10 min                                   | 5 min      | —        | ⚠️Warning  |
+| M1a | DLQ non vide — prod                           | `logs-logstash-dlq-prod-default`                | `Is above 0` / 5 min                                     | 1 min      | 6h       | 🚨 Critical |
+| M1b | DLQ non vide — staging/perf                   | `logs-logstash-dlq-staging/perf-default`        | `Is above 0` / 5 min                                     | 5 min      | 6h       | ⚠️Warning  |
+| M2a | Erreurs traitement — prod                     | `logs-logstash-errors-prod-default`             | `Is above 0` / 24 h                                      | 1 h        | 1 / jour, 9 h 30 | ⚠️Warning  |
+| M2b | Erreurs traitement — staging/perf             | `logs-logstash-errors-staging/perf-default`     | `Is above 0` / 5 min                                     | 5 min      | 6h       | ⚠️Warning  |
+| M3a | Silence logs applicatifs — prod               | `logs-prod-default`                             | `Is below or equals 0` / 5 min                           | 2 min      | 6h       | 🚨 Critical |
+| M3b | Silence logs router — prod                    | `logs-router-prod-default`                      | `Is below or equals 0` / 5 min                           | 2 min      | 6h       | 🚨 Critical |
+| M3c | Silence logs applicatifs — staging/perf       | `logs-staging/perf-default`                     | `Is below or equals 0` / 5 min                           | 5 min      | 6h       | ⚠️Warning  |
+| M3d | Silence logs router — staging/perf            | `logs-router-staging/perf-default`              | `Is below or equals 0` / 5 min                           | 5 min      | 6h       | ⚠️Warning  |
+| M4a | Backpressure ingest — prod                    | `metrics-logstash.pipeline-default`             | `Min` `≥ 1` / 15 min, par nœud                           | 2 min      | 6h       | 🚨 Critical |
+| M4b | Backpressure ingest — staging/perf            | `metrics-logstash.pipeline-default`             | `Min` `≥ 1` / 15 min, par nœud                           | 5 min      | 6h       | ⚠️Warning  |
+| M5a | Heap JVM élevé — prod                         | `metrics-logstash.node-default`                 | `Min` `≥ 90` / 15 min, par nœud                          | 2 min      | 6h       | 🚨 Critical |
+| M5b | Heap JVM élevé — staging/perf                 | `metrics-logstash.node-default`                 | `Min` `≥ 90` / 15 min, par nœud                          | 5 min      | 6h       | ⚠️Warning  |
+| M6a | Événements Scalingo des apps de la stack — prod | `logs-alertes-scalingo-prod-default`          | tout événement d'une app de la stack                     | 1 min      | —        | par ligne 🚨/⚠️/ℹ️ |
+| M6b | Événements Scalingo des apps de la stack — staging/perf | `logs-alertes-scalingo-staging/perf-default` | tout événement d'une app de la stack               | 5 min      | —        | par ligne ⚠️/ℹ️ |
+| M7a | Backlog Redis `logstash:ingest` — prod        | `metrics-redis.key-default`                     | `Min` `Is above 1 000` / 15 min                          | 2 min      | 6h       | 🚨 Critical |
+| M7b | Backlog Redis `logstash:ingest` — staging/perf| `metrics-redis.key-default`                     | `Min` `Is above 1 000` / 15 min                          | 5 min      | 6h       | ⚠️Warning  |
+| M8a | Elastic Agent en défaut — prod                | status_change + `metrics-elastic_agent.*beat-*` | offline/unenrolled/unhealthy ou > 25 err. output / 5 min | 1 min      | 6h       | 🚨 Critical |
+| M8b | Elastic Agent en défaut — staging             | status_change + `metrics-elastic_agent.*beat-*` | offline/unenrolled/unhealthy ou > 25 err. output / 5 min | 1 min      | 6h       | ⚠️Warning  |
+| M9a | Mémoire conteneur Logstash — prod             | `logs-scalingo.container_stats-default`         | `Max` `≥ 95 %` / 5 min, par conteneur                    | 1 min      | 6h       | 🚨 Critical |
+| M9b | Mémoire conteneur Logstash — staging/perf     | `logs-scalingo.container_stats-default`         | `Max` `≥ 95 %` / 5 min, par conteneur                    | 5 min      | 6h       | ⚠️Warning  |
+| M10 | ILM en échec ou policy sans suppression       | historique ILM (`ilm-history-7`)                | étape en échec ou policy par défaut / 24 h               | 1 h        | 1 / jour, 9 h 30 | ⚠️Warning  |
+| M11 | Disque des nœuds Elasticsearch                | AutoOps (Elastic Cloud)                         | préavis 75 %, paliers 85 / 90 / 95 %, cluster red       | —          | —        | 🚨 Critical |
+| M12 | Saturation de l'indexation Elasticsearch      | AutoOps (Elastic Cloud)                         | management queue ou index queue haute                    | —          | —        | 🚨 Critical |
+| M13 | Événement externe rejeté                      | les 4 `logs-alertes-*`, sélecteur `::failures`  | tout document / 10 min                                   | 5 min      | —        | ⚠️Warning  |
 
 ---
 
-## Alerte 1 — Dead Letter Queue non vide
+## Alerte M1 — Dead Letter Queue non vide
 
 **Objectif** : signaler des **logs non indexés pour une cause que Logstash n'a pas
 détectée**. Un log applicatif qui n'arrive pas dans les logs consultables
@@ -65,7 +65,7 @@ détectée**. Un log applicatif qui n'arrive pas dans les logs consultables
 l'a traité sans erreur, mais son enregistrement a échoué en fin de pipeline, le
 plus souvent refusé par Elasticsearch (par exemple un conflit de mapping). La cause
 exacte est dans `logstash.dlq.reason`. Les erreurs que Logstash détecte lui-même
-relèvent de l'[alerte 2](#alerte-2--index-erreurs-de-traitement-non-vide).
+relèvent de l'[alerte M2](#alerte-m2--index-erreurs-de-traitement-non-vide).
 
 Session Discover : onglet « Logs non indexés : Échec de process Logstash indéterminé ».
 
@@ -95,7 +95,7 @@ Session Discover : onglet « Logs non indexés : Échec de process Logstash ind�
 >
 > Data view à créer dans Kibana : index pattern `metrics-logstash*`, timestamp `@timestamp`.
 
-### 1a — DLQ prod (Critical)
+### M1a — DLQ prod (Critical)
 
 | Paramètre               | Valeur                                                                                                                                                                                   |
 | ----------------------- |------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -113,7 +113,7 @@ Session Discover : onglet « Logs non indexés : Échec de process Logstash ind�
 
 **Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
-### 1b — DLQ staging / perf (Warning)
+### M1b — DLQ staging / perf (Warning)
 
 | Paramètre               | Valeur                                                                                                                                                                                     |
 | ----------------------- |--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -145,7 +145,7 @@ complet de l'event fautif en JSON stringifié).
 
 ---
 
-## Alerte 2 — Index erreurs de traitement non vide
+## Alerte M2 — Index erreurs de traitement non vide
 
 **Objectif** : signaler des **logs non indexés à cause d'une erreur de transformation
 que Logstash a détectée**. Un log applicatif qui n'arrive pas dans les logs
@@ -156,7 +156,7 @@ Une hausse signale une régression du pipeline de transformation.
 
 Session Discover : onglet « Logs non indexés : Erreur de transformation Logstash ».
 
-### 2a — Erreurs prod (Warning, bilan quotidien)
+### M2a — Erreurs prod (Warning, bilan quotidien)
 
 | Paramètre               | Valeur                                                                                                                                                                                                         |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -181,7 +181,7 @@ fait ce travail.
 
 **Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
-### 2b — Erreurs staging / perf (Warning)
+### M2b — Erreurs staging / perf (Warning)
 
 | Paramètre               | Valeur                                                                                                                                                                                                         |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -213,13 +213,13 @@ Trier par `@timestamp` desc. Les champs `tags` indiquent la cause
 
 ---
 
-## Alerte 3 — Absence de logs (quarantaine drain ou crash Logstash)
+## Alerte M3 — Absence de logs (quarantaine drain ou crash Logstash)
 
 **Objectif** : détecter une quarantaine du drain Scalingo ou un crash Logstash.
 L'absence de logs dans les index applicatifs et router pendant > 5 min est le signal
 d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 
-### 3a — Absence dans `logs-prod-default`
+### M3a — Absence dans `logs-prod-default`
 
 | Paramètre                 | Valeur                                                                                                                                                                                                      |
 |---------------------------| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -236,7 +236,7 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 
 **Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
-### 3b — Absence dans `logs-router-prod-default`
+### M3b — Absence dans `logs-router-prod-default`
 
 | Paramètre                 | Valeur                                                                                                                                                                                                      |
 |---------------------------| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -253,7 +253,7 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 
 **Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
-### 3c — Absence dans `logs-staging-default` / `logs-perf-default`
+### M3c — Absence dans `logs-staging-default` / `logs-perf-default`
 
 | Paramètre               | Valeur                                                                                                                                                                                                      |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -271,7 +271,7 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 
 **Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
-### 3d — Absence dans `logs-router-staging-default` / `logs-router-perf-default`
+### M3d — Absence dans `logs-router-staging-default` / `logs-router-perf-default`
 
 | Paramètre               | Valeur                                                                                                                                                                                                      |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -289,13 +289,13 @@ d'un arrêt complet de l'ingestion (scénario 4 du runbook).
 
 **Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
-> **Corrélation** : si les deux alertes (3a+3b ou 3c+3d) se déclenchent simultanément,
+> **Corrélation** : si les deux alertes (M3a+M3b ou M3c+M3d) se déclenchent simultanément,
 > c'est un crash Logstash ou un arrêt de l'app Scalingo. Si seulement l'alerte
 > applicatifs se déclenche (router continue), c'est une quarantaine du drain applicatif.
 
 ---
 
-## Alerte 4 — Backpressure (inputs bloqués sur la queue)
+## Alerte M4 — Backpressure (inputs bloqués sur la queue)
 
 **Objectif** : détecter un pipeline qui n'absorbe plus son entrée **avant** que des
 logs ne se perdent. `queue_backpressure.current` mesure le temps que les **inputs**
@@ -307,7 +307,7 @@ pour `ingest`).
 
 **Seul `ingest` est alerté** : c'est son input HTTP qui répond au drain Scalingo, et
 un drain qui attend finit en quarantaine. Sur `process`, l'input Redis bloqué est
-attendu : Redis absorbe, et un backlog qui ne se vide pas relève de l'alerte 7.
+attendu : Redis absorbe, et un backlog qui ne se vide pas relève de l'alerte M7.
 
 > **Champ surveillé** : `logstash.pipeline.total.flow.queue_backpressure.current`
 > dans le data stream `metrics-logstash.pipeline-default`.
@@ -336,7 +336,7 @@ attendu : Redis absorbe, et un backlog qui ne se vide pas relève de l'alerte 7.
 > À consulter dans le dashboard `[Metrics Logstash] Pipelines Overview` pour
 > confirmer l'accumulation une fois l'alerte déclenchée.
 
-### 4a — Backpressure prod (Critical)
+### M4a — Backpressure prod (Critical)
 
 | Paramètre                 | Valeur                                                                                                                                                                                                   |
 |---------------------------| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -356,7 +356,7 @@ attendu : Redis absorbe, et un backlog qui ne se vide pas relève de l'alerte 7.
 
 **Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
-### 4b — Backpressure staging / perf (Warning)
+### M4b — Backpressure staging / perf (Warning)
 
 | Paramètre               | Valeur                                                                                                                                                                                                   |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -379,12 +379,12 @@ attendu : Redis absorbe, et un backlog qui ne se vide pas relève de l'alerte 7.
 
 ---
 
-## Alerte 5 — Heap JVM élevé (risque GC agressif)
+## Alerte M5 — Heap JVM élevé (risque GC agressif)
 
 **Objectif** : détecter un heap JVM Logstash que le GC n'arrive plus à libérer, signe
 de pauses stop-the-world (scénario 2 du runbook) puis d'un `OutOfMemoryError`. La
 mémoire totale du conteneur, qui déclenche l'OOM-kill Scalingo, n'est pas couverte
-ici : c'est l'[alerte 9](#alerte-9--mémoire-du-conteneur-logstash-oom-kill-scalingo).
+ici : c'est l'[alerte M9](#alerte-m9--mémoire-du-conteneur-logstash-oom-kill-scalingo).
 
 > **Champ surveillé** : `logstash.node.stats.jvm.mem.heap_used_percent`
 > dans le data stream `metrics-logstash.node-default`.
@@ -403,7 +403,7 @@ ici : c'est l'[alerte 9](#alerte-9--mémoire-du-conteneur-logstash-oom-kill-scal
 > au-dessus de 90 %, mais le minimum de `process-prod-worker-2` est monté à
 > 89 %. Marge mince, à surveiller.
 
-### 5a — Heap élevé prod (Critical)
+### M5a — Heap élevé prod (Critical)
 
 | Paramètre               | Valeur                                                                                                                                                                   |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -424,7 +424,7 @@ ici : c'est l'[alerte 9](#alerte-9--mémoire-du-conteneur-logstash-oom-kill-scal
 
 **Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
-### 5b — Heap élevé staging / perf (Warning)
+### M5b — Heap élevé staging / perf (Warning)
 
 | Paramètre               | Valeur                                                                                                                                                                   |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -447,7 +447,7 @@ ici : c'est l'[alerte 9](#alerte-9--mémoire-du-conteneur-logstash-oom-kill-scal
 
 ---
 
-## Alerte 6 — Événements Scalingo des apps de la stack
+## Alerte M6 — Événements Scalingo des apps de la stack
 
 **Objectif** : savoir ce qui arrive aux apps de la stack d'observabilité
 (`pass-emploi-logstash`, `pass-emploi-logstash-process`,
@@ -471,7 +471,7 @@ Chaque exécution ne compte que les documents arrivés depuis la précédente
 throttle. Scalingo n'envoie `app_crashed` qu'aux 2ᵉ, 5ᵉ et 12ᵉ crashs, et
 `app_crashed_repeatedly` à chaque crash : le notifier doit sélectionner les deux.
 
-### 6a — Événements Scalingo des apps de la stack, prod
+### M6a — Événements Scalingo des apps de la stack, prod
 
 | Paramètre               | Valeur |
 |-------------------------|--------|
@@ -492,18 +492,18 @@ throttle. Scalingo n'envoie `app_crashed` qu'aux 2ᵉ, 5ᵉ et 12ᵉ crashs, et
 3. Les métriques (onglet Metrics) et l'activité (onglet Activity) de l'app dans
    le **[Scalingo] Dashboard des apps**.
 
-### 6b — Événements Scalingo des apps de la stack, staging / perf
+### M6b — Événements Scalingo des apps de la stack, staging / perf
 
 | Paramètre               | Valeur |
 |-------------------------|--------|
 | **Rule name**           | `Scalingo - Hors-Prod - Événements des apps de la stack` |
 | **Type**                | Elasticsearch query rule (KQL), data view `logs-alertes-scalingo-staging-default,logs-alertes-scalingo-perf-default` |
-| **Requête**             | celle de 6a |
+| **Requête**             | celle de M6a |
 | **Fenêtre / fréquence** | 10 min / 5 min |
 | **Actions**             | Tchap via le Workflow `tchap-o11y-staging` |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 
-**À vérifier** : comme 6a, avec le Discover **[Pass Emploi] Alertes externes
+**À vérifier** : comme M6a, avec le Discover **[Pass Emploi] Alertes externes
 Hors-Prod - Événements Scalingo** et les Discover **Logs Hors-Prod** de Logstash
 Process.
 
@@ -520,14 +520,14 @@ Process.
 }
 ```
 
-> **Alternative** : utiliser l'alerte 3 (absence de logs) comme proxy indirect du
+> **Alternative** : utiliser l'alerte M3 (absence de logs) comme proxy indirect du
 > crash — un crash Logstash se traduit immédiatement par un silence dans
-> `logs-prod-default`. Les deux alertes sont complémentaires : l'alerte 6
-> donne la **cause** (OOM), l'alerte 3 donne l'**effet** (silence logs).
+> `logs-prod-default`. Les deux alertes sont complémentaires : l'alerte M6
+> donne la **cause** (OOM), l'alerte M3 donne l'**effet** (silence logs).
 
 ---
 
-## Alerte 7 — Backlog Redis `logstash:ingest` (pipeline PROCESS découplé)
+## Alerte M7 — Backlog Redis `logstash:ingest` (pipeline PROCESS découplé)
 
 **Objectif** : détecter une accumulation anormale d'événements dans la liste Redis
 `logstash:ingest`, buffer inter-services entre le pipeline `ingest` et le pipeline
@@ -557,7 +557,7 @@ sévère côté `process`.
 > 11 500) y passent. L'alerte part 15 à 17 min après le début de la coupure ;
 > le 14/09, la saturation est arrivée ~1 h 20 après.
 
-### 7a — Backlog Redis prod (Critical)
+### M7a — Backlog Redis prod (Critical)
 
 | Paramètre                 | Valeur                                                                                                                                                                                     |
 |---------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -576,7 +576,7 @@ sévère côté `process`.
 
 **Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
-### 7b — Backlog Redis staging / perf (Warning)
+### M7b — Backlog Redis staging / perf (Warning)
 
 | Paramètre               | Valeur                                                                                                          |
 |-------------------------|-----------------------------------------------------------------------------------------------------------------|
@@ -598,10 +598,10 @@ sévère côté `process`.
 
 ---
 
-## Alerte 8 — Elastic Agent en défaut
+## Alerte M8 — Elastic Agent en défaut
 
 **Objectif** : détecter qu'un Elastic Agent a décroché, quelle qu'en soit la
-forme. Un agent en défaut, c'est une **supervision aveugle** : les alertes 4, 5
+forme. Un agent en défaut, c'est une **supervision aveugle** : les alertes M4, M5
 et 7 lisent ses métriques et ne peuvent plus se déclencher — le silence d'un
 agent ressemble à une infra saine. Contexte :
 [pilotage.md](../pilotage.md#savoir-quun-agent-a-décroché).
@@ -650,7 +650,7 @@ agent ressemble à une infra saine. Contexte :
 > l'agent est toujours en défaut** — d'où l'absence de message de résolution.
 > L'état courant se lit dans Kibana → Fleet → Agents.
 
-### 8a — Elastic Agent en défaut prod (Critical)
+### M8a — Elastic Agent en défaut prod (Critical)
 
 | Paramètre                 | Valeur                                                                                                                                                                                                                                                                                                         |
 |---------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -682,7 +682,7 @@ FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*
 
 **Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
-### 8b — Elastic Agent en défaut staging (Warning)
+### M8b — Elastic Agent en défaut staging (Warning)
 
 | Paramètre               | Valeur                                                                                                                                                                                                                                                                                                         |
 |-------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -716,11 +716,11 @@ FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*
 
 ---
 
-## Alerte 9 — Mémoire du conteneur Logstash (OOM-kill Scalingo)
+## Alerte M9 — Mémoire du conteneur Logstash (OOM-kill Scalingo)
 
 **Objectif** : prévenir avant que Scalingo ne tue un conteneur Logstash qui atteint
-sa limite mémoire. L'OOM-kill provoque les redémarrages en série (alerte 6, qui
-arrive après coup) et, sur `ingest`, la quarantaine du drain. L'alerte 5 ne voit
+sa limite mémoire. L'OOM-kill provoque les redémarrages en série (alerte M6, qui
+arrive après coup) et, sur `ingest`, la quarantaine du drain. L'alerte M5 ne voit
 que le heap : le reste de la mémoire du process (Netty, JRuby, metaspace, threads)
 et l'Elastic Agent co-localisé lui échappent (cf.
 [garde-fous JVM / Scalingo](../infrastructure.md#garde-fous-jvm--scalingo)).
@@ -738,7 +738,7 @@ et l'Elastic Agent co-localisé lui échappent (cf.
 > et un pic suffit à le tuer. **Seuil à recaler sur 30 jours de données**
 > (début novembre 2026).
 
-### 9a — Mémoire conteneur prod (Critical)
+### M9a — Mémoire conteneur prod (Critical)
 
 | Paramètre                 | Valeur                                                                                                                                                                                     |
 |---------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -758,7 +758,7 @@ et l'Elastic Agent co-localisé lui échappent (cf.
 
 **Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
-### 9b — Mémoire conteneur staging / perf (Warning)
+### M9b — Mémoire conteneur staging / perf (Warning)
 
 | Paramètre               | Valeur                                                                                                                                                                  |
 |-------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -781,7 +781,7 @@ et l'Elastic Agent co-localisé lui échappent (cf.
 
 ---
 
-## Alerte 10 — ILM en échec ou policy sans suppression
+## Alerte M10 — ILM en échec ou policy sans suppression
 
 **Objectif** : signaler un index de nos flux qui n'applique pas sa rétention. Soit
 une étape ILM a échoué (index bloqué), soit l'index est sur une policy par défaut
@@ -801,10 +801,10 @@ les métriques Fleet et les logs Elastic Agent sur `metrics@lifecycle` /
 > l'historique et échappe à l'alerte (cf. [runbook ILM, scénario 3](../runbooks/runbook-ilm.md#scénario-3--policy-inexistante-non-alerté)).
 >
 > **Bilan quotidien** : rien d'urgent, l'index grossit ou attend. Même réglage que
-> l'[alerte 2a](#2a--erreurs-prod-warning-bilan-quotidien) : fenêtre de 24 h, un
+> l'[alerte M2a](#m2a--erreurs-prod-warning-bilan-quotidien) : fenêtre de 24 h, un
 > message par jour à 9 h 30, un seul pour tous les index concernés.
 
-### 10 — ILM en échec ou policy sans suppression (Warning, bilan quotidien)
+### M10 — ILM en échec ou policy sans suppression (Warning, bilan quotidien)
 
 | Paramètre               | Valeur                                                                                                                                                                                                         |
 |-------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -838,7 +838,7 @@ FROM .ds-ilm-history-7-*
 
 ---
 
-## Alerte 11 — Disque des nœuds Elasticsearch (AutoOps)
+## Alerte M11 — Disque des nœuds Elasticsearch (AutoOps)
 
 **Objectif** : prévenir avant qu'un nœud Elasticsearch plein ne bloque l'écriture,
 et donc l'ingestion de tous les logs. Elasticsearch durcit son comportement en
@@ -852,7 +852,7 @@ palier et quoi faire : [runbook disque](../runbooks/runbook-disque-elasticsearch
 > (`.monitoring-*`) ne tourne pas.
 >
 > **Configuration hors repo** (console Elastic Cloud → AutoOps → *Notifications
-> settings*), comme l'alerte 6 : à refaire à la main sur un nouveau déploiement.
+> settings*), comme l'alerte M6 : à refaire à la main sur un nouveau déploiement.
 > Le cluster est unique et porte tous les environnements : connecteurs et filtres
 > ne sont pas nommés par environnement.
 >
@@ -860,7 +860,7 @@ palier et quoi faire : [runbook disque](../runbooks/runbook-disque-elasticsearch
 > soumis à des seuils à part. Il ne doit pas déclencher ces événements ; à
 > vérifier au premier événement reçu (champ « Nœuds concernés »).
 
-### 11 — Configuration dans AutoOps (Critical)
+### M11 — Configuration dans AutoOps (Critical)
 
 **Événements** : filtre `Disque et santé Elasticsearch` de l'onglet *Filter settings* qui envoie ces 5 événements
 du déploiement `Pass Emploi` au connecteur ci-dessous. Un événement garde ses
@@ -884,7 +884,7 @@ version).
 > palier**, pas un seuil absolu : 85 sur l'événement flood stage le déclencherait
 > à 10 %, en permanence.
 
-**Connecteur Email** (onglet *Connector settings*), commun aux alertes 11 et 12 :
+**Connecteur Email** (onglet *Connector settings*), commun aux alertes M11 et M12 :
 type **Email**, nom `Email production - Monitoring disque, santé et indexation Elasticsearch`,
 destinataires de l'équipe (adresses dans le connecteur, non versionnées),
 notification de clôture cochée. AutoOps rédige lui-même le message : ni corps
@@ -925,25 +925,25 @@ non remplies.
 
 ---
 
-## Alerte 12 — Saturation de l'indexation Elasticsearch (AutoOps)
+## Alerte M12 — Saturation de l'indexation Elasticsearch (AutoOps)
 
 **Objectif** : voir Elasticsearch ralentir **avant** que Logstash ne se bloque.
 Quand les files internes d'Elasticsearch saturent, l'indexation ralentit, les
 workers `process` de Logstash attendent, puis `ingest` se bloque et le drain
 Scalingo part en quarantaine (cause racine de l'incident de juillet 2026, cf.
 [runbook Logstash, scénario 1](../runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch)).
-Cette alerte précède l'[alerte 4](#alerte-4--backpressure-inputs-bloqués-sur-la-queue).
+Cette alerte précède l'[alerte M4](#alerte-m4--backpressure-inputs-bloqués-sur-la-queue).
 
-> **Configuration hors repo**, comme l'[alerte 11](#alerte-11--disque-des-nœuds-elasticsearch-autoops) :
+> **Configuration hors repo**, comme l'[alerte M11](#alerte-m11--disque-des-nœuds-elasticsearch-autoops) :
 > console Elastic Cloud → AutoOps → *Notifications settings*. Connecteur et
-> filtre distincts de l'alerte 11, pour que le message pointe vers le bon runbook.
+> filtre distincts de l'alerte M11, pour que le message pointe vers le bon runbook.
 >
 > **Écartés** : *Slow search detected* (personne d'autre que l'équipe et nos
 > règles n'interroge Elasticsearch, et les recherches sur le frozen sont lentes
 > par nature) et *Long running index task* (déclenché par les fusions et
 > snapshots d'ILM à chaque passage en frozen).
 
-### 12 — Configuration dans AutoOps (Critical)
+### M12 — Configuration dans AutoOps (Critical)
 
 **Événements** : filtre `Saturation indexation Elasticsearch` de l'onglet
 *Filter settings*, déploiement `Pass Emploi`, vers le connecteur ci-dessous.
@@ -957,7 +957,7 @@ Les 3 mesures successives au-dessus du seuil ignorent les montées brèves de ce
 files aux pics de logs (:00 et :30). En cas de bruit, augmenter d'abord ce nombre
 de mesures (réglage personnalisé), avant de toucher aux seuils.
 
-**Connecteur Email** : celui de l'[alerte 11](#11--configuration-dans-autoops-critical),
+**Connecteur Email** : celui de l'[alerte M11](#m11--configuration-dans-autoops-critical),
 ajouté à ce filtre.
 
 > **Constaté sur un événement réel** (management queue) :
@@ -1004,7 +1004,7 @@ non remplies.
 
 ---
 
-## Alerte 14 — Événement externe rejeté
+## Alerte M13 — Événement externe rejeté
 
 **Objectif** : ne pas perdre en silence une notification Scalingo ou GitHub.
 Un document rejeté par son ingest pipeline (ou par Elasticsearch) part au
@@ -1013,7 +1013,7 @@ succès** : sans cette règle, un changement de format chez Scalingo ou GitHub,
 ou un notifier qui vise le mauvais environnement, passerait inaperçu, et
 l'alerte que portait le document ne serait pas levée.
 
-### 14 — Événement externe rejeté (Warning)
+### M13 — Événement externe rejeté (Warning)
 
 | Paramètre               | Valeur |
 |-------------------------|--------|
@@ -1046,25 +1046,25 @@ Une ligne par rejet : `error.type` et `error.message`.
 >
 > **Chaîne causale type (backpressure ES) :**
 > ```
-> ES ralentit / heap monte           → Alerte 5a       ← intervenir ici
+> ES ralentit / heap monte           → Alerte M5a       ← intervenir ici
 >   → queue process se remplit       → Logstash process rejette les events
->     → backlog Redis croît          → Alerte 7a          ← filet inter-services
->       → ingest ne peut plus écrire → Alerte 4a (ingest bloqué)
+>     → backlog Redis croît          → Alerte M7a          ← filet inter-services
+>       → ingest ne peut plus écrire → Alerte M4a (ingest bloqué)
 >         → 429 sur les apps         → (signal de réaction — pas alerté)
->           → drain en quarantaine   → Alertes 3a/3b (filet de sécurité final)
+>           → drain en quarantaine   → Alertes M3a/M3b (filet de sécurité final)
 >             → silence total        → trop tard, perte avérée
 > ```
 >
 > **Chaîne causale type (redémarrage/blocage de `process` ou coupure réseau Redis) :**
 > ```
 > process tombe ou perd Redis       → pipeline process ne consomme plus
->   → backlog Redis croît           → Alerte 7a          ← intervenir ici
->     → pipeline ingest continue    → (pas de 429, drain OK — invisible sans alerte 7)
+>   → backlog Redis croît           → Alerte M7a          ← intervenir ici
+>     → pipeline ingest continue    → (pas de 429, drain OK — invisible sans alerte M7)
 >       → saturation Redis possible → crash Redis si le backlog dépasse 256 Mo
 > ```
 > L'incident du 14/09/2026 illustre ce scénario : ~180 000 événements accumulés
 > pendant ~13h, saturation Redis → crash à 20:37. Cause racine inconnue (logs
-> archivés). Sans l'alerte 7, l'incident serait passé inaperçu jusqu'au lendemain.
+> archivés). Sans l'alerte M7, l'incident serait passé inaperçu jusqu'au lendemain.
 >
 > **Règles pour toute nouvelle alerte :**
 >
@@ -1082,6 +1082,6 @@ Une ligne par rejet : `error.type` et `error.message`.
 >    déclencher assez tôt pour qu'une action corrective soit possible avant que la
 >    situation ne devienne critique (ex : un heap qui ne redescend plus sous 90 % laisse
 >    le temps d'agir avant l'`OutOfMemoryError`).
-> 5. **Les alertes de silence** (alerte 3) sont des filets de sécurité de dernier
+> 5. **Les alertes de silence** (alerte M3) sont des filets de sécurité de dernier
 >    recours — elles signalent que tous les mécanismes d'anticipation ont échoué.
 >    Leur déclenchement doit être traité comme une urgence maximale.

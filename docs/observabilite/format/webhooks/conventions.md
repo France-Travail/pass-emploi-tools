@@ -25,7 +25,7 @@ La chaîne, les accès et la mise en service : [collecte par webhook](../../coll
 | `event.provider` | Le nom de la source : `scalingo`, `github`. |
 | `event.action` | Verbe au passé, snake_case, comme pour les logs (cf. [taxonomie](../logs/conventions.md#taxonomie-eventaction)). Un type inconnu de la source n'est pas rejeté : il sort en `<source>_<type>`. |
 | `message` | **La ligne de notification** de l'événement, en texte brut, construite par le pipeline. Les règles et les Workflows Tchap l'affichent telle quelle, une ligne par document (tag `tchap-lignes`). C'est la seule différence assumée avec les logs ECS des apps, où `message` = `event.action` : ici, un document = une notification. |
-| Rejet | Un document qui n'a pas la forme attendue de sa source est **rejeté** (processeur `fail` ou erreur d'un processeur) et part dans le failure store de son data stream (`<data stream>::failures`), que lit la règle 14. Il n'est jamais indexé à moitié. |
+| Rejet | Un document qui n'a pas la forme attendue de sa source est **rejeté** (processeur `fail` ou erreur d'un processeur) et part dans le failure store de son data stream (`<data stream>::failures`), que lit la règle M13. Il n'est jamais indexé à moitié. |
 | Données personnelles | Ni email ni valeur de variable d'environnement : `user.name` porte l'identifiant de l'auteur, `labels.details` les **noms** des variables. |
 
 ## Scalingo (`logs-alertes-scalingo-<env>-default`)
@@ -203,7 +203,7 @@ workflow.
 
 | Champ ECS | Source | Règle de transformation | Si absent |
 |---|---|---|---|
-| `@timestamp` | — | **heure d'ingestion** (`_ingest.timestamp`), pas la date de création de l'alerte GitHub : le workflow renvoie à chaque passage toutes les CVE ouvertes, que V1 compte à chaque passage | — |
+| `@timestamp` | — | **heure d'ingestion** (`_ingest.timestamp`), pas la date de création de l'alerte GitHub : le workflow renvoie à chaque passage toutes les CVE ouvertes, que S1 compte à chaque passage | — |
 | `event.provider` | — | `github` | — |
 | `event.kind` | — | `alert` | — |
 | `event.action` | — | `dependency_vulnerability_detected` | — |
@@ -224,7 +224,7 @@ workflow.
 
 Pas d'`event.outcome`, de `service.environment` ni de `labels.categorie` : une
 CVE ne dépend pas d'un environnement, et la gravité est portée par
-`vulnerability.severity` (V1 filtre `high` et `critical`).
+`vulnerability.severity` (S1 filtre `high` et `critical`).
 
 ### Gabarit du message
 
@@ -245,8 +245,8 @@ Exemple : `pass-emploi-api : CVE-2026-00000 — axios (high) : Exemple de vulné
 | Règle | Data streams | Champs lus |
 |---|---|---|
 | A4a, A4b | `logs-alertes-scalingo-prod-default` ; `-staging-` et `-perf-default` | `service.name` (hors apps de la stack), `message` |
-| 6a, 6b | mêmes data streams | `service.name` (apps de la stack : Logstash, Elastic Agent, Heartbeat), `message` |
-| V1 | `logs-alertes-github-default` | `vulnerability.severity` (`high`, `critical`), `message` |
+| M6a, M6b | mêmes data streams | `service.name` (apps de la stack : Logstash, Elastic Agent, Heartbeat), `message` |
+| S1 | `logs-alertes-github-default` | `vulnerability.severity` (`high`, `critical`), `message` |
 | 14 | les 4 failure stores | le document rejeté et son erreur |
 
 ## Ajouter une source
@@ -261,4 +261,4 @@ Exemple : `pass-emploi-api : CVE-2026-00000 — axios (high) : Exemple de vulné
 3. Ajouter sa section ici : payload attendu, matrice, gabarit du message, rejets.
 4. Créer son accès en écriture seule
    ([`acces-webhooks.console`](../../supervision/pipelines/webhooks/acces-webhooks.console))
-   et sa règle, puis ajouter son failure store à la règle 14.
+   et sa règle, puis ajouter son failure store à la règle M13.

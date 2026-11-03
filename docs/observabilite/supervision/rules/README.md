@@ -14,9 +14,9 @@ Ce qu'elles signalent et pourquoi : [alertes applicatives](../alertes-applicativ
 rules/
 ├── 1-securite/                 ← un répertoire par périmètre
 │   ├── _modele.console         ←   le texte du fichier généré autour des règles
-│   └── V1.json                 ←   une règle = un fichier JSON
-├── 2-applicatives/             ←   S2, S3…, A1 à A13…
-├── 3-stack-observabilite/      ←   1a à 10, 6a, 6b, 14
+│   └── S1.json                 ←   une règle = un fichier JSON
+├── 2-applicatives/             ←   SLO2, SLO3…, A1 à A11…
+├── 3-stack-observabilite/      ←   M1a à M10, M6a, M6b, M13
 ├── 4-tchap/                    ←   Tchap - Envoi en échec
 ├── 5-tchap-expiration-bot/     ←   expiration du compte bot (et son pipeline, son index)
 ├── generer-regles.py           ← le générateur (aucune règle dedans)

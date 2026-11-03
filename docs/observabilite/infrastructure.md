@@ -123,7 +123,7 @@ Migration buffer PQ → Redis, cf. [ADR-002](../decisions/ADR-002-buffer-redis-l
   tenir sans OOM.
 - **⚠️ Risque Redis** : si ES ou `logstash-process` sont indisponibles, le buffer
   grossit sans être consommé → saturation mémoire Redis possible en < 50 min à
-  256 Mo. Surveillé par l'alerte 7 ([supervision/alertes](supervision/alertes-stack-observabilite.md)).
+  256 Mo. Surveillé par l'alerte M7 ([supervision/alertes](supervision/alertes-stack-observabilite.md)).
 
 Historique des dimensionnements précédents et résultats des tirs :
 [process/logs/performances.md](process/logs/performances.md).

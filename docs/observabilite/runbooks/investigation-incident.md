@@ -38,7 +38,7 @@ décrocher le log drain et Logstash : ne pas compter sur nos logs.
    l'app (onglet Metrics : requêtes par minute, 5xx, temps de réponse,
    conteneurs). Elles ne passent pas par nos logs. Un événement légitime
    (mise en service, notification de masse, campagne) l'explique-t-il ?
-2. **Nos logs arrivent-ils encore** : règle 3b (absence d'ingestion des logs du
+2. **Nos logs arrivent-ils encore** : règle M3b (absence d'ingestion des logs du
    routeur) au repos. Si oui, le Discover **[Pass Emploi] Logs de Prod - Trafic
    du routeur par IP** donne les requêtes et les 5xx par IP, chemin et user agent
    (les IP `10.x` sont des appels internes à Scalingo).

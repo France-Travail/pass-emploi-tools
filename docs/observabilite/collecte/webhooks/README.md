@@ -12,8 +12,8 @@ et lus par des Kibana Rules rangées par périmètre :
 | Données                                                                       | Alertes                                                                                 |
 |-------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
 | Événements Scalingo des apps applicatives                                     | A4a, A4b dans les [alertes applicatives](../../supervision/alertes-applicatives.md)     |
-| Événements Scalingo des apps de la stack (Logstash, Elastic Agent, Heartbeat) | 6a, 6b dans les [alertes de la stack](../../supervision/alertes-stack-observabilite.md) |
-| CVE Dependabot                                                                | V1 dans les [alertes de sécurité](../../supervision/alertes-securite.md)                |
+| Événements Scalingo des apps de la stack (Logstash, Elastic Agent, Heartbeat) | M6a, M6b dans les [alertes de la stack](../../supervision/alertes-stack-observabilite.md) |
+| CVE Dependabot                                                                | S1 dans les [alertes de sécurité](../../supervision/alertes-securite.md)                |
 | Événements rejetés (failure store)                                            | 14 dans les [alertes de la stack](../../supervision/alertes-stack-observabilite.md)     |
 
 ## La chaîne
@@ -37,7 +37,7 @@ flowchart LR
 
   subgraph regles["Règles Kibana"]
     direction TB
-    R["A4a / A4b, 6a / 6b, V1"]
+    R["A4a / A4b, M6a / M6b, S1"]
     R14["14 (rejets)"]
   end
 
@@ -67,7 +67,7 @@ et listent chacun sur une ligne. Elles ne sont **pas** groupées par app : avec
 un `groupBy`, Kibana ignore `excludeHitsFromPreviousRun` et renotifie le même
 événement à chaque exécution tant qu'il reste dans la fenêtre (constaté en
 test). `security-alerts.yml` renvoie à chaque passage toutes les CVE encore
-ouvertes : V1 les notifie donc à chaque passage.
+ouvertes : S1 les notifie donc à chaque passage.
 
 ## Champs ECS produits
 
@@ -103,10 +103,10 @@ Tchap listent telle quelle. Le payload brut est gardé sous `scalingo.*` ou
    (cf. [importer](../../supervision/objets-kibana.md#importer)), **avant** les
    règles : leurs liens pointent vers ces sessions par leur id.
 5. **Règles** : A4a, A4b ([`2-rules-applicatives.console`](../../supervision/rules/generated/2-rules-applicatives.console)),
-   6a, 6b, 14 ([`3-rules-stack-observabilite.console`](../../supervision/rules/generated/3-rules-stack-observabilite.console)),
-   V1 ([`1-rules-securite.console`](../../supervision/rules/generated/1-rules-securite.console)).
+   M6a, M6b, M13 ([`3-rules-stack-observabilite.console`](../../supervision/rules/generated/3-rules-stack-observabilite.console)),
+   S1 ([`1-rules-securite.console`](../../supervision/rules/generated/1-rules-securite.console)).
    Elles reprennent les IDs des anciennes X1 à X5 : `PUT` les met à jour, sauf
-   **6b**, nouvelle, à créer avec `POST` (cf. l'en-tête de son bloc).
+   **M6b**, nouvelle, à créer avec `POST` (cf. l'en-tête de son bloc).
 6. **Test sans Scalingo** :
    ```bash
    printf 'Mot de passe : '; read -rs MDP; echo
@@ -130,7 +130,7 @@ Tchap listent telle quelle. Le payload brut est gardé sous `scalingo.*` ou
    Rattacher aussi les alertes de métriques Scalingo de l'app à ce notifier.
    Une app ajoutée ou retirée l'est aussi dans `APPS` de
    [`verifier-parite.py`](../../supervision/pipelines/webhooks/verifier-parite.py).
-   Les apps de la stack sont celles que filtrent 6a et 6b (`service.name`) :
+   Les apps de la stack sont celles que filtrent M6a et M6b (`service.name`) :
    une app de la stack ajoutée ici l'est aussi dans ces deux règles, sinon ses
    événements partent dans le salon applicatif (A4a, A4b). Non suivies : outils
    de tir et mocks de perf, apps de perf applicatives, `elastic-agent-perf`,
@@ -178,7 +178,7 @@ python3 -I docs/observabilite/supervision/pipelines/webhooks/verifier-parite.py 
 - **Événements au format Slack** : seules les modifications de variables ont été
   observées. Un autre type dans ce format passe par le même pipeline et sort en
   ℹ️ `scalingo_<libellé>` ; un format encore différent part au failure store
-  (règle 14).
+  (règle M13).
 - **Identifiants dans l'URL du notifier** : visibles de tous les collaborateurs
   de l'app Scalingo. Acceptable parce que l'utilisateur ne peut qu'ajouter des
   documents aux 3 data streams Scalingo (`create_doc` + `auto_configure`). Pour

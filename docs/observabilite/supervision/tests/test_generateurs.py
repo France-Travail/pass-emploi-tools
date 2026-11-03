@@ -97,21 +97,21 @@ class TestFeatureMattermost(unittest.TestCase):
 class TestControlesDesGenerateurs(unittest.TestCase):
     def test_json_de_regle_invalide(self):
         with CopieDuRepo() as repo:
-            open(repo.regle_json('1-securite', 'V1'), 'a').write('}')
+            open(repo.regle_json('1-securite', 'S1'), 'a').write('}')
             r = repo.generer_regles()
             self.assertNotEqual(r.returncode, 0)
-            self.assertIn('V1.json : JSON invalide', r.stdout + r.stderr)
+            self.assertIn('S1.json : JSON invalide', r.stdout + r.stderr)
 
     def test_regle_placee_dans_aucun_modele(self):
         with CopieDuRepo() as repo:
-            shutil.copy(repo.regle_json('1-securite', 'V1'), repo.regle_json('1-securite', 'V2'))
+            shutil.copy(repo.regle_json('1-securite', 'S1'), repo.regle_json('1-securite', 'V2'))
             r = repo.generer_regles()
             self.assertNotEqual(r.returncode, 0)
             self.assertIn('V2', r.stdout + r.stderr)
 
     def test_code_defini_deux_fois(self):
         with CopieDuRepo() as repo:
-            shutil.copy(repo.regle_json('1-securite', 'V1'), repo.regle_json('2-applicatives', 'V1'))
+            shutil.copy(repo.regle_json('1-securite', 'S1'), repo.regle_json('2-applicatives', 'S1'))
             r = repo.generer_regles()
             self.assertNotEqual(r.returncode, 0)
             self.assertIn('code déjà défini', r.stdout + r.stderr)
@@ -126,7 +126,7 @@ class TestControlesDesGenerateurs(unittest.TestCase):
 
     def test_salon_inconnu(self):
         with CopieDuRepo() as repo:
-            chemin = repo.regle_json('1-securite', 'V1')
+            chemin = repo.regle_json('1-securite', 'S1')
             regle = json.load(open(chemin))
             for action in regle['actions']:
                 if action['id'] == WORKFLOWS:

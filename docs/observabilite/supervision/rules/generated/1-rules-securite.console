@@ -27,7 +27,7 @@
 # règle). L'API publique ne les renvoie pas dans ses réponses : les vérifier
 # dans l'interface.
 
-# V1 — CVE high/critical encore ouvertes, à chaque passage de security-alerts.yml (Critical)
+# S1 — CVE high/critical encore ouvertes, à chaque passage de security-alerts.yml (Critical)
 PUT kbn:/api/alerting/rule/67846c2c-45d1-45be-89f5-ce9a340240a0
 {
   "name": "GitHub - CVE high ou critical ouverte",

@@ -15,9 +15,9 @@
 # et le même corps plus "rule_type_id" et "consumer" (slo.rules.burnRate / slo pour
 # Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
 # ../../objets-kibana.md#slo-et-règles-console.
-# S2 et S3, .es-query / alerts pour A1 à A7, A4a, A4b, A5a et A5b,
-# xpack.uptime.alerts.monitorStatus / uptime pour A10 à A12,
-# xpack.uptime.alerts.tlsCertificate / uptime pour A13).
+# SLO2 et SLO3, .es-query / alerts pour A1 à A7, A4a, A4b, A5a et A5b,
+# xpack.uptime.alerts.monitorStatus / uptime pour A8 à A10,
+# xpack.uptime.alerts.tlsCertificate / uptime pour A11).
 #
 # Règles ES|QL (A1, A2, A3, A6, A7) : le Workflow du salon relance leur requête.
 #
@@ -36,7 +36,7 @@
 # règle). L'API publique ne les renvoie pas dans ses réponses : les vérifier
 # dans l'interface.
 #
-# S2, S3 — SLO burn rate. Seuls Critical (slo.burnRate.alert) et High notifient.
+# SLO2, SLO3 — SLO burn rate. Seuls Critical (slo.burnRate.alert) et High notifient.
 #
 # maxBurnRateThreshold = 1 / (1 - objectif) : burn rate à 100 % d'échecs.
 #
@@ -1097,7 +1097,7 @@ PUT kbn:/api/alerting/rule/52c66a2a-2ee1-4de2-bc5c-642a96395405
   ]
 }
 
-# A10 — API injoignable — prod (pass-emploi-api) (Critical) : moniteur Heartbeat `pa-back-prod-status` (https://api.pass-emploi.beta.gouv.fr/health).
+# A8 — API injoignable — prod (pass-emploi-api) (Critical) : moniteur Heartbeat `pa-back-prod-status` (https://api.pass-emploi.beta.gouv.fr/health).
 # Règle Uptime existante : type et paramètres inchangés, PUT met à jour son message.
 PUT kbn:/api/alerting/rule/44d7b9b0-6e45-11ec-9757-c9700cd1bb4e
 {
@@ -1159,7 +1159,7 @@ PUT kbn:/api/alerting/rule/44d7b9b0-6e45-11ec-9757-c9700cd1bb4e
   ]
 }
 
-# A11 — Application web conseiller injoignable — prod (pass-emploi-web) (Critical) : moniteur Heartbeat `pa-web-prod-status` (https://web.pass-emploi.beta.gouv.fr/api/health).
+# A9 — Application web conseiller injoignable — prod (pass-emploi-web) (Critical) : moniteur Heartbeat `pa-web-prod-status` (https://web.pass-emploi.beta.gouv.fr/api/health).
 # Règle Uptime existante : type et paramètres inchangés, PUT met à jour son message.
 PUT kbn:/api/alerting/rule/45585b60-6e45-11ec-9757-c9700cd1bb4e
 {
@@ -1216,7 +1216,7 @@ PUT kbn:/api/alerting/rule/45585b60-6e45-11ec-9757-c9700cd1bb4e
   ]
 }
 
-# A12 — Service d'authentification injoignable — prod (pass-emploi-connect) (Critical) : moniteur Heartbeat `pass-emploi-connect-status` (https://id.pass-emploi.beta.gouv.fr/health).
+# A10 — Service d'authentification injoignable — prod (pass-emploi-connect) (Critical) : moniteur Heartbeat `pass-emploi-connect-status` (https://id.pass-emploi.beta.gouv.fr/health).
 # Règle Uptime existante : type et paramètres inchangés, PUT met à jour son message.
 PUT kbn:/api/alerting/rule/4439f310-6e45-11ec-9757-c9700cd1bb4e
 {
@@ -1273,7 +1273,7 @@ PUT kbn:/api/alerting/rule/4439f310-6e45-11ec-9757-c9700cd1bb4e
   ]
 }
 
-# A13 — Certificat TLS bientôt expiré (Warning), un message par certificat et par jour.
+# A11 — Certificat TLS bientôt expiré (Warning), un message par certificat et par jour.
 # Règle Uptime existante : type et paramètres inchangés, PUT met à jour son message.
 PUT kbn:/api/alerting/rule/6dd99b60-9886-11ec-9757-c9700cd1bb4e
 {
