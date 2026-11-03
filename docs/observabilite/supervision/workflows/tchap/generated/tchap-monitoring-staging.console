@@ -16,7 +16,14 @@
 # Règle ES|QL en groupBy all : son action ne transmet pas les lignes du résultat ; l'étape si-esql
 # relance sa requête, lue dans l'alerte, sur la fenêtre de la règle avant le début de
 # l'alerte (filtre sur @timestamp : une variable n'est pas remplacée dans un nom de champ).
-# Mise à jour : PUT kbn:/api/workflows/workflow/tchap-monitoring-staging avec {"yaml": …}.
+# Création : le POST ci-dessous, la première fois. Le Workflow existe déjà (409
+# « already exists ») : le mettre à jour par un PUT sur son URL, sans "id" dans le corps :
+#   PUT kbn:/api/workflows/workflow/tchap-monitoring-staging
+#   {
+#     "yaml": """
+#   …le yaml du bloc ci-dessous, inchangé…
+#   """
+#   }
 POST kbn:/api/workflows/workflow
 {
   "id": "tchap-monitoring-staging",

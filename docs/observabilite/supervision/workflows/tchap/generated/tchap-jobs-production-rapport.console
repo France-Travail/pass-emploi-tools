@@ -9,6 +9,14 @@
 # (heure de Paris), dans le salon Tchap jobs-production. Généré par generer-workflows.py
 # depuis la liste des CRON de pass-emploi-api (origin/develop) : ne pas modifier à
 # la main. Spécification : ../../../alertes-applicatives.md.
+# Création : le POST ci-dessous, la première fois. Le Workflow existe déjà (409
+# « already exists ») : le mettre à jour par un PUT sur son URL, sans "id" dans le corps :
+#   PUT kbn:/api/workflows/workflow/tchap-jobs-production-rapport
+#   {
+#     "yaml": """
+#   …le yaml du bloc ci-dessous, inchangé…
+#   """
+#   }
 POST kbn:/api/workflows/workflow
 {
   "id": "tchap-jobs-production-rapport",
