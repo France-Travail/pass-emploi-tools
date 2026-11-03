@@ -1,10 +1,11 @@
 # inventaire
 
-Matrice des versions de toutes les briques Pass Emploi (Scalingo + repos + Elastic Cloud), par environnement.
+Matrice des versions de toutes les briques Pass Emploi (Scalingo + repos + Elastic Cloud), par environnement,
+et exposition des apps Scalingo (domaines, firewall, accès direct, accès Internet des addons).
 
 ## Prérequis
 
-- `scalingo` connectée (`scalingo login`), `jq`, `git`, `curl`.
+- `scalingo` connectée (`scalingo login`) et récente : `app-firewall-rules` absente en 1.43 ; `jq`, `git`, `curl`.
 - Repos frères clonés à côté de `pass-emploi-tools` ; un repo absent est ignoré.
 - Optionnel, pour la version du cluster Elastic :
   - `ELASTIC_URL` : endpoint **Elasticsearch** (`….es.…`), pas Kibana ;
@@ -15,8 +16,8 @@ Matrice des versions de toutes les briques Pass Emploi (Scalingo + repos + Elast
 
 ## Lancer
 
-    inventaire/inventaire-versions.sh                          # ~6 min
-    inventaire/inventaire-versions.sh --sans-fetch --sortie /tmp/inv
+    inventaire/inventaire.sh                          # ~6 min
+    inventaire/inventaire.sh --sans-fetch --sortie /tmp/inv
 
 ## Sortie (`inventaire/sortie/`, ignorée par git)
 
@@ -30,6 +31,7 @@ Stack Elastic : `violation` = brique au-dessus du cluster, `en retard` = en dess
 ## Garanties et limites
 
 - Lecture seule : sous-commandes Scalingo en liste blanche ; seules les variables `*_VERSION` sont lues.
+- Accès direct : un `GET /` par domaine des apps avec process `web`, envoyé au routeur Scalingo sans passer par un front. Lancé depuis une IP de l'allowlist, il ne prouve rien.
 - L'auth Scalingo limite à ~30 appels CLI par minute : exécution séquentielle avec reprise, d'où la durée.
 - Version « déployée » = log du dernier déploiement réussi.
 - Repos lus sur `origin/HEAD`, jamais le working tree.
