@@ -207,17 +207,37 @@ PUT _component_template/logs-alertes@mappings
 
 # Le payload brut est gardé sous scalingo.* en dynamic:false : lisible dans le
 # _source pour enquêter, sans indexer les ~40 formes de type_data.
+# labels.metric, .value_text, .limit_text (alertes de métriques) déclarés d'avance :
+# les règles S2a / S2b les lisent en ES|QL, qui refuse une colonne absente du
+# mapping tant qu'aucune alerte n'est arrivée dans le data stream.
 PUT _component_template/logs-alertes-scalingo@mappings
 {
   "template": {
     "mappings": {
       "properties": {
-        "scalingo": { "type": "object", "dynamic": false }
+        "scalingo": { "type": "object", "dynamic": false },
+        "labels": { "properties": {
+          "metric":     { "type": "keyword", "ignore_above": 1024 },
+          "value_text": { "type": "keyword", "ignore_above": 1024 },
+          "limit_text": { "type": "keyword", "ignore_above": 1024 }
+        } }
       }
     }
   },
   "_meta": { "description": "Notifiers Scalingo ; payload brut sous scalingo.* non indexé", "managed_by": "pass-emploi-tools" },
-  "version": 1
+  "version": 2
+}
+
+# Data streams déjà créés : le template ne s'applique qu'au prochain rollover.
+PUT logs-alertes-scalingo-prod-default,logs-alertes-scalingo-staging-default,logs-alertes-scalingo-perf-default/_mapping
+{
+  "properties": {
+    "labels": { "properties": {
+      "metric":     { "type": "keyword", "ignore_above": 1024 },
+      "value_text": { "type": "keyword", "ignore_above": 1024 },
+      "limit_text": { "type": "keyword", "ignore_above": 1024 }
+    } }
+  }
 }
 
 PUT _component_template/logs-alertes-github@mappings
