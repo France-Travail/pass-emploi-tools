@@ -3,7 +3,16 @@
   "_commentaire": [
     "# D1a — Suspicion d'attaque DDoS, de prod (Critical) : alertes de métriques Scalingo RPM et 5xx",
     "# de la même app, à moins de 10 min d'intervalle, pas encore revenues à la normale.",
-    "# Nouvelle règle : la créer avec POST (même corps plus \"rule_type_id\": \".es-query\" et \"consumer\": \"alerts\")."
+    "# Nouvelle règle : la première fois, la créer avec POST sur la même URL, en ajoutant",
+    "# \"rule_type_id\" et \"consumer\" à la racine du corps, au même niveau que \"name\" (pas dans \"params\") :",
+    "#   POST kbn:/api/alerting/rule/4b2e9f71-6c3d-4a85-b0e7-9d1f2c3a5e68",
+    "#   {",
+    "#     \"rule_type_id\": \".es-query\",",
+    "#     \"consumer\": \"alerts\",",
+    "#     \"name\": \"Scalingo - Prod - Suspicion d'attaque DDoS\",",
+    "#     \"tags\": [...], \"artifacts\": {...}, \"schedule\": {...}, \"params\": {...}, \"actions\": [...]",
+    "#   }",
+    "# Ensuite, ce bloc tel quel, en PUT (qui refuse ces deux champs)."
   ],
   "_tchap": {
     "ligne": "`{0}` : {1}, 5xx : {2}— depuis {3}"
