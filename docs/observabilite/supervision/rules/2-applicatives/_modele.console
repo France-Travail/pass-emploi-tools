@@ -1,5 +1,5 @@
-# Règles Kibana des alertes applicatives, notifiées dans #monitoring-production
-# (connecteur Mattermost-monitoring-production). Spécification : ../../alertes-applicatives.md.
+# Règles Kibana des alertes applicatives, notifiées dans Tchap par les Workflows de
+# salon. Spécification : ../../alertes-applicatives.md.
 #
 # À rejouer dans Dev Tools, après ../../slo/1-slos.console. PUT met à jour une règle
 # existante ; sur un cluster vide, la créer avec POST kbn:/api/alerting/rule/<id>
@@ -12,11 +12,9 @@
 #
 # Règles ES|QL (A1, A2, A3, A6, A7) : le Workflow du salon relance leur requête.
 #
-# A4a / A4b : événements Scalingo des apps applicatives, #monitoring-production /
-# Mattermost-monitoring-staging ; Tchap via les Workflows de salon.
-# A5a / A5b : jobs en échec, Mattermost-jobs-production / -staging
-# (../../connecteurs/mattermost-jobs.console, à créer avant) ; Tchap jobs-production /
-# jobs-staging.
+# A4a / A4b : événements Scalingo des apps applicatives, Tchap monitoring-production /
+# monitoring-staging.
+# A5a / A5b : jobs en échec, Tchap jobs-production / jobs-staging.
 #
 # Messages Mattermost : une section (« À vérifier », « Dashboards », « Discover
 # sessions ») = un champ, un élément par ligne (`\n`). Chaque champ tient sur une

@@ -12,8 +12,9 @@ qu'aucune alerte ne signale. Pour enquêter sur un incident :
 >
 > Mattermost s'arrête le 1er novembre, et le compte du bot Tchap attend son
 > adresse e-mail, demandée mais pas encore créée. Entre les deux, **aucune
-> alerte n'arrive dans une messagerie**. Les règles continuent de tourner et
-> leurs alertes se déclenchent, mais on ne les voit que dans Kibana.
+> alerte Kibana n'arrive dans une messagerie**. Les règles continuent de tourner
+> et leurs alertes se déclenchent, mais on ne les voit que dans Kibana. Seules
+> les alertes AutoOps (11 et 12, disque et indexation) partent, par e-mail.
 >
 > Pendant cette période, on remplace la lecture des canaux par :
 >
@@ -26,8 +27,8 @@ qu'aucune alerte ne signale. Pour enquêter sur un incident :
 >    [[Pass Emploi] Logs de Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c0d38bba-66ef-4b68-8a10-4d786f6a9f4a),
 >    onglets « Jobs en échec » et « Exécutions », sur les dernières 24 h.
 > 3. **AutoOps, chaque matin** (alertes 11 et 12, disque et indexation) : la
->    page AutoOps du déploiement dans Elastic Cloud, qui ne prévient plus
->    Mattermost.
+>    page AutoOps du déploiement dans Elastic Cloud. Ses alertes arrivent par
+>    e-mail, une boîte que l'équipe ne surveille pas au fil de la journée.
 >
 > Le point 1 de la routine quotidienne ci-dessous, « Tchap - Envoi en échec »,
 > ne s'applique pas encore : rien n'est envoyé.

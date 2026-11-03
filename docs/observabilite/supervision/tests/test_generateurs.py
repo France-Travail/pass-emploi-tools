@@ -30,7 +30,7 @@ class CopieDuRepo:
     def chemin(self, *morceaux):
         return os.path.join(self.dossier, *morceaux)
 
-    def generer_regles(self, *options, mattermost=True):
+    def generer_regles(self, *options, mattermost=False):
         env = {k: v for k, v in os.environ.items() if k != 'FEATURE_NOTIFIER_ALERTES_MATTERMOST'}
         if mattermost:
             env['FEATURE_NOTIFIER_ALERTES_MATTERMOST'] = 'true'
