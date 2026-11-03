@@ -2,17 +2,17 @@
 # (heure de Paris), dans le salon Tchap @@SALON@@. Généré par generer-workflows.py
 # depuis la liste des CRON de pass-emploi-api (origin/develop) : ne pas modifier à
 # la main. Spécification : ../../../alertes-applicatives.md.
-# Création : le POST ci-dessous, la première fois. Le Workflow existe déjà (409
-# « already exists ») : le mettre à jour par un PUT sur son URL, sans "id" dans le corps :
-#   PUT kbn:/api/workflows/workflow/tchap-@@SALON@@-rapport
+# Mise à jour : le PUT ci-dessous, le Workflow existant déjà. Première création (404
+# sur le PUT) : POST, en ajoutant l'id au corps, à côté de "yaml" :
+#   POST kbn:/api/workflows/workflow
 #   {
+#     "id": "tchap-@@SALON@@-rapport",
 #     "yaml": """
 #   …le yaml du bloc ci-dessous, inchangé…
 #   """
 #   }
-POST kbn:/api/workflows/workflow
+PUT kbn:/api/workflows/workflow/tchap-@@SALON@@-rapport
 {
-  "id": "tchap-@@SALON@@-rapport",
   "yaml": """
 name: Tchap - @@SALON@@ - rapport quotidien des jobs
 description: Exécutions des jobs de pass-emploi-api sur 24 h, dans le salon Tchap @@SALON@@

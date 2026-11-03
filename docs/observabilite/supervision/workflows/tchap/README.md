@@ -174,9 +174,11 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
    reporter dans le document d'expiration (étape 7), et `device_id`, pour
    révoquer la session.
 5. **Kibana**, dans Dev Tools : rejouer [`../../connecteurs/tchap.console`](../../connecteurs/tchap.console) en
-   remplaçant `<jeton-du-bot>`, puis `tchap-client.console`, puis les 6
+   remplaçant `<jeton-du-bot>`, puis `tchap-client.console`, puis les 7
    `generated/tchap-<salon>.console` et les 2 `generated/tchap-jobs-<env>-rapport.console`
-   tels quels (ils portent l'ID de leur salon).
+   (ils portent l'ID de leur salon). Chaque fichier met à jour son Workflow par un
+   `PUT` ; un Workflow encore absent de Kibana (le `PUT` répond 404) se crée par
+   le `POST` donné dans l'en-tête du fichier.
 6. **Test** : poster dans chaque salon depuis Dev Tools.
    ```
    POST kbn:/api/workflows/workflow/tchap-client/run

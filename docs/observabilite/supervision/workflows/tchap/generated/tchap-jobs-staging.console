@@ -13,17 +13,17 @@
 # Le foreach écarte les alertes en attente de rétablissement
 # (pending_recovered_count > 0) : une alerte qui bagote reste « active », à 0
 # document, plusieurs exécutions, et l'action .workflows la transmet quand même.
-# Création : le POST ci-dessous, la première fois. Le Workflow existe déjà (409
-# « already exists ») : le mettre à jour par un PUT sur son URL, sans "id" dans le corps :
-#   PUT kbn:/api/workflows/workflow/tchap-jobs-staging
+# Mise à jour : le PUT ci-dessous, le Workflow existant déjà. Première création (404
+# sur le PUT) : POST, en ajoutant l'id au corps, à côté de "yaml" :
+#   POST kbn:/api/workflows/workflow
 #   {
+#     "id": "tchap-jobs-staging",
 #     "yaml": """
 #   …le yaml du bloc ci-dessous, inchangé…
 #   """
 #   }
-POST kbn:/api/workflows/workflow
+PUT kbn:/api/workflows/workflow/tchap-jobs-staging
 {
-  "id": "tchap-jobs-staging",
   "yaml": """
 name: Tchap - jobs-staging
 description: Envoie les alertes des règles dans le salon Tchap jobs-staging
