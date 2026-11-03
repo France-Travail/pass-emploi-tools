@@ -38,7 +38,7 @@ notification.
 | **Type**                | Elasticsearch query rule (KQL), data view `logs-alertes-github-default` |
 | **Requête**             | `vulnerability.severity : ("high" or "critical")` |
 | **Fenêtre / fréquence** | 10 min / 5 min |
-| **Actions**             | Tchap via le Workflow `tchap-monitoring-production` |
+| **Actions**             | Tchap via le Workflow `tchap-monitoring-securite` : à l'écart des pannes de `monitoring-production` |
 | **Dashboards**          | les pages d'alertes Dependabot des 3 repos (liens externes, hors Related dashboards) |
 
 **À vérifier** :

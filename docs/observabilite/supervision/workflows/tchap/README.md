@@ -9,8 +9,9 @@ comme elle choisissait un connecteur Mattermost par canal. Décision :
 flowchart LR
   subgraph regles["Règles Kibana"]
     direction TB
-    RMP["S1 à S3 (SLO), A4a, A10 à A13, V1"]
-    RMS["A4b"]
+    RMP["S1 à S3 (SLO), A4a, A10 à A13"]
+    RSEC["V1 (CVE), S2a (suspicion d'attaque DDoS)"]
+    RMS["A4b, S2b"]
     ROP["Stack prod : Logstash, Redis, Elastic Agent,<br/>ILM, 6a, 14, expiration du compte bot"]
     ROS["Stack hors prod : Logstash, Redis,<br/>Elastic Agent, 6b"]
     RJ["A5a / A5b (jobs en échec)"]
@@ -20,6 +21,7 @@ flowchart LR
   subgraph salons["Workflows de salon (générés)"]
     direction TB
     WMP["tchap-monitoring-production"]
+    WSEC["tchap-monitoring-securite"]
     WMS["tchap-monitoring-staging"]
     WOP["tchap-o11y-production"]
     WOS["tchap-o11y-staging"]
@@ -32,6 +34,7 @@ flowchart LR
   end
 
   RMP -- "action .workflows" --> WMP
+  RSEC --> WSEC
   RMS --> WMS
   ROP --> WOP
   ROS --> WOS
@@ -43,7 +46,7 @@ flowchart LR
   WR -- "requête ES|QL" --> ES
 
   CLIENT["tchap-client<br/>seul Workflow qui parle à Matrix"]
-  WMP & WMS & WOP & WOS & WJP & WJS -- "workflow.execute" --> CLIENT
+  WMP & WSEC & WMS & WOP & WOS & WJP & WJS -- "workflow.execute" --> CLIENT
   WR -- "workflow.execute" --> CLIENT
 
   CONN["Connecteur .http « Tchap »<br/>URL + jeton du bot"]

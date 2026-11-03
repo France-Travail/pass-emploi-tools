@@ -48,6 +48,11 @@ qu'aucune alerte ne signale. Pour enquêter sur un incident :
    le budget d'erreur restant de chaque promesse (cf. [ci-dessous](#promesses-utilisateurs-slo)).
 3. **Le rapport des jobs de 9 h 30**, dans le canal `jobs-production` : un job
    en échec, ou qui n'a pas tourné.
+4. **Le salon `monitoring-securite`**, suivi par ses membres : une 🚨 suspicion
+   d'attaque DDoS (S2a) se traite dès réception, avec le
+   [runbook](runbooks/investigation-incident.md#suspicion-de-ddos-ou-surcharge-de-linfra) ;
+   les CVE high ou critical (V1), répétées à chaque passage de
+   `security-alerts.yml` tant qu'elles restent ouvertes, dans la journée.
 
 ## Chaque semaine (15 min)
 
