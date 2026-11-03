@@ -13,8 +13,8 @@ logs des apps.
 | #  | Signal                    | Data stream                   | Condition                                 | Fréquence | Throttle | Sévérité    |
 |----|---------------------------|-------------------------------|-------------------------------------------|-----------|----------|-------------|
 | V1 | CVE high/critical ouverte | `logs-alertes-github-default` | `vulnerability.severity` high ou critical | 5 min     | —        | 🚨 Critical |
-| D1a | Suspicion d'attaque DDoS, prod | `logs-alertes-scalingo-prod-default` | alertes `rpm` et `5XX` de la même app à moins de 10 min, non revenues à la normale | 1 min | — | 🚨 Critical |
-| D1b | Suspicion d'attaque DDoS, staging / perf | `logs-alertes-scalingo-staging-default`, `-perf-default` | idem | 1 min | — | 🚨 Critical |
+| S2a | Suspicion d'attaque DDoS, prod | `logs-alertes-scalingo-prod-default` | alertes `rpm` et `5XX` de la même app à moins de 10 min, non revenues à la normale | 1 min | — | 🚨 Critical |
+| S2b | Suspicion d'attaque DDoS, staging / perf | `logs-alertes-scalingo-staging-default`, `-perf-default` | idem | 1 min | — | 🚨 Critical |
 
 **Création** : rejouer [`rules/generated/1-rules-securite.console`](rules/generated/1-rules-securite.console)
 dans Dev Tools, après les sessions Discover de
@@ -52,7 +52,7 @@ notification.
    CVE, sur son nom : une règle ne sait pas choisir les liens selon les CVE
    qu'elle liste ; l'Investigation guide, qui ne voit pas les CVE, garde les 3.
 
-## D1a / D1b — Suspicion d'attaque DDoS (Critical)
+## S2a / S2b — Suspicion d'attaque DDoS (Critical)
 
 **Objectif** : désigner l'app attaquée dès les premières minutes, même quand le
 log drain et Logstash ont décroché. Le 23/10/2026, 3 IP ont envoyé à connect
@@ -70,10 +70,10 @@ seuils retenus, elle n'aurait sonné que les 21 et 23/10, sur connect.
 
 | Paramètre               | Valeur |
 |-------------------------|--------|
-| **Rule name**           | `Scalingo - Prod - Suspicion d'attaque DDoS` (D1a), `Scalingo - Hors-Prod - Suspicion d'attaque DDoS` (D1b) |
+| **Rule name**           | `Scalingo - Prod - Suspicion d'attaque DDoS` (S2a), `Scalingo - Hors-Prod - Suspicion d'attaque DDoS` (S2b) |
 | **Type**                | Elasticsearch query rule (ES\|QL), `groupBy: all` |
 | **Fenêtre / fréquence** | 45 min / 1 min |
-| **Actions**             | Tchap via le Workflow `tchap-monitoring-securite` (D1a) ou `tchap-monitoring-staging` (D1b) |
+| **Actions**             | Tchap via le Workflow `tchap-monitoring-securite` (S2a) ou `tchap-monitoring-staging` (S2b) |
 | **Message**             | une ligne par app : nom, requêtes par minute et 5xx relevés par Scalingo, heure du premier dépassement |
 
 **À vérifier** :

@@ -534,7 +534,7 @@ gèrent les autoscalers.
 
 Un seuil dépassé seul reste ⚠️ : une surcharge peut être légitime. RPM **et**
 5xx dépassés ensemble sur la même app, c'est la règle 🚨
-[D1a / D1b](alertes-securite.md#d1a--d1b--suspicion-dattaque-ddos-critical).
+[S2a / S2b](alertes-securite.md#s2a--s2b--suspicion-dattaque-ddos-critical).
 
 Dans le webhook, Scalingo nomme les métriques par leur libellé (`labels.metric`) :
 `Requests per Minute`, `5xx Errors`, `RAM`, et ne transmet la valeur et le seuil

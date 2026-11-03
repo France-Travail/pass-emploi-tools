@@ -29,7 +29,7 @@ live** en tailant les logs. Pour le login, le funnel `login_*` de
 
 ## Suspicion de DDoS ou surcharge de l'infra
 
-Déclencheurs : la règle 🚨 « Suspicion d'attaque DDoS » (D1a), une alerte de
+Déclencheurs : la règle 🚨 « Suspicion d'attaque DDoS » (S2a), une alerte de
 métriques Scalingo ⚠️ (requêtes par minute, 5xx, temps de réponse) relayée par
 A4a, ou des apps qui ne répondent plus (heartbeat). Une surcharge fait souvent
 décrocher le log drain et Logstash : ne pas compter sur nos logs.

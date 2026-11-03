@@ -98,7 +98,7 @@ PUT kbn:/api/alerting/rule/67846c2c-45d1-45be-89f5-ce9a340240a0
   ]
 }
 
-# D1a — Suspicion d'attaque DDoS, de prod (Critical) : alertes de métriques Scalingo RPM et 5xx
+# S2a — Suspicion d'attaque DDoS, de prod (Critical) : alertes de métriques Scalingo RPM et 5xx
 # de la même app, à moins de 10 min d'intervalle, pas encore revenues à la normale.
 # Nouvelle règle : la première fois, la créer avec POST sur la même URL, en ajoutant
 # "rule_type_id" et "consumer" à la racine du corps, au même niveau que "name" (pas dans "params") :
@@ -169,7 +169,7 @@ PUT kbn:/api/alerting/rule/4b2e9f71-6c3d-4a85-b0e7-9d1f2c3a5e68
   ]
 }
 
-# D1b — Suspicion d'attaque DDoS, de staging ou de perf (Critical) : alertes de métriques Scalingo RPM et 5xx
+# S2b — Suspicion d'attaque DDoS, de staging ou de perf (Critical) : alertes de métriques Scalingo RPM et 5xx
 # de la même app, à moins de 10 min d'intervalle, pas encore revenues à la normale.
 # Nouvelle règle : la première fois, la créer avec POST sur la même URL, en ajoutant
 # "rule_type_id" et "consumer" à la racine du corps, au même niveau que "name" (pas dans "params") :
