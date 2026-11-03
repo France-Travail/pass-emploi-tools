@@ -98,7 +98,7 @@
       "params": {
         "subAction": "run",
         "subActionParams": {
-          "workflowId": "tchap-monitoring-production",
+          "workflowId": "tchap-monitoring-securite",
           "summaryMode": true,
           "alertStates": {
             "new": true,

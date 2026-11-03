@@ -9,9 +9,17 @@
 # (heure de Paris), dans le salon Tchap jobs-production. Généré par generer-workflows.py
 # depuis la liste des CRON de pass-emploi-api (origin/develop) : ne pas modifier à
 # la main. Spécification : ../../../alertes-applicatives.md.
-POST kbn:/api/workflows/workflow
+# Mise à jour : le PUT ci-dessous, le Workflow existant déjà. Première création (404
+# sur le PUT) : POST, en ajoutant l'id au corps, à côté de "yaml" :
+#   POST kbn:/api/workflows/workflow
+#   {
+#     "id": "tchap-jobs-production-rapport",
+#     "yaml": """
+#   …le yaml du bloc ci-dessous, inchangé…
+#   """
+#   }
+PUT kbn:/api/workflows/workflow/tchap-jobs-production-rapport
 {
-  "id": "tchap-jobs-production-rapport",
   "yaml": """
 name: Tchap - jobs-production - rapport quotidien des jobs
 description: Exécutions des jobs de pass-emploi-api sur 24 h, dans le salon Tchap jobs-production

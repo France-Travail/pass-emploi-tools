@@ -13,10 +13,17 @@
 # Le foreach écarte les alertes en attente de rétablissement
 # (pending_recovered_count > 0) : une alerte qui bagote reste « active », à 0
 # document, plusieurs exécutions, et l'action .workflows la transmet quand même.
-# Mise à jour : PUT kbn:/api/workflows/workflow/tchap-o11y-staging avec {"yaml": …}.
-POST kbn:/api/workflows/workflow
+# Mise à jour : le PUT ci-dessous, le Workflow existant déjà. Première création (404
+# sur le PUT) : POST, en ajoutant l'id au corps, à côté de "yaml" :
+#   POST kbn:/api/workflows/workflow
+#   {
+#     "id": "tchap-o11y-staging",
+#     "yaml": """
+#   …le yaml du bloc ci-dessous, inchangé…
+#   """
+#   }
+PUT kbn:/api/workflows/workflow/tchap-o11y-staging
 {
-  "id": "tchap-o11y-staging",
   "yaml": """
 name: Tchap - o11y-staging
 description: Envoie les alertes des règles dans le salon Tchap o11y-staging

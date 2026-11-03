@@ -27,6 +27,37 @@ live** en tailant les logs. Pour le login, le funnel `login_*` de
 `pass-emploi-connect` localise l'étape d'échec (cf.
 [supervision/sli-slo](../supervision/sli-slo.md#requêtes-kql-du-funnel-login)).
 
+## Suspicion de DDoS ou surcharge de l'infra
+
+Déclencheurs : la règle 🚨 « Suspicion d'attaque DDoS » (S2a), une alerte de
+métriques Scalingo ⚠️ (requêtes par minute, 5xx, temps de réponse) relayée par
+A4a, ou des apps qui ne répondent plus (heartbeat). Une surcharge fait souvent
+décrocher le log drain et Logstash : ne pas compter sur nos logs.
+
+1. **Quelle app, depuis quand** : ses métriques dans le dashboard Scalingo de
+   l'app (onglet Metrics : requêtes par minute, 5xx, temps de réponse,
+   conteneurs). Elles ne passent pas par nos logs. Un événement légitime
+   (mise en service, notification de masse, campagne) l'explique-t-il ?
+2. **Nos logs arrivent-ils encore** : règle 3b (absence d'ingestion des logs du
+   routeur) au repos. Si oui, le Discover **[Pass Emploi] Logs de Prod - Trafic
+   du routeur par IP** donne les requêtes et les 5xx par IP, chemin et user agent
+   (les IP `10.x` sont des appels internes à Scalingo).
+3. **Sinon, les IP en cause sans notre chaîne de logs** : les logs du routeur
+   lus directement chez Scalingo, l'IP du client dans `from=` :
+
+   ```bash
+   scalingo --region osc-secnum-fr1 --app pass-emploi-connect-prod logs --lines 5000 \
+     | grep ' router ' | grep -o 'from="\?[0-9.]*' | sort | uniq -c | sort -rn | head
+   ```
+
+   Puis le chemin le plus demandé par l'IP en tête :
+   `… | grep '<ip>' | grep -o 'path="[^"]*' | sort | uniq -c | sort -rn | head`.
+   Si rien ne ressort, le support Scalingo, qui voit le trafic en amont.
+4. **Bloquer** : sur connect, la variable `BLOCKED_IPS` de l'app, une liste JSON
+   d'adresses (`["1.2.3.4", "5.6.7.8"]`) dont les requêtes sont refusées en 403.
+   Ajouter l'IP à la liste existante, sans l'écraser, puis redémarrer l'app pour
+   l'appliquer. Une IP bloquée reste visible dans les logs du routeur (403).
+
 ## Dashboard « Investigation utilisateur »
 
 Data view `logs-*-default-*`, filtre global `user.id` : timeline `event.action`,

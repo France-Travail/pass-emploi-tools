@@ -1,0 +1,95 @@
+{
+  "_id": "4b2e9f71-6c3d-4a85-b0e7-9d1f2c3a5e68",
+  "_commentaire": [
+    "# S2a — Suspicion d'attaque DDoS, de prod (Critical) : alertes de métriques Scalingo RPM et 5xx",
+    "# de la même app, à moins de 10 min d'intervalle, pas encore revenues à la normale.",
+    "# Nouvelle règle : la première fois, la créer avec POST sur la même URL, en ajoutant",
+    "# \"rule_type_id\" et \"consumer\" à la racine du corps, au même niveau que \"name\" (pas dans \"params\") :",
+    "#   POST kbn:/api/alerting/rule/4b2e9f71-6c3d-4a85-b0e7-9d1f2c3a5e68",
+    "#   {",
+    "#     \"rule_type_id\": \".es-query\",",
+    "#     \"consumer\": \"alerts\",",
+    "#     \"name\": \"Scalingo - Prod - Suspicion d'attaque DDoS\",",
+    "#     \"tags\": [...], \"artifacts\": {...}, \"schedule\": {...}, \"params\": {...}, \"actions\": [...]",
+    "#   }",
+    "# Ensuite, ce bloc tel quel, en PUT (qui refuse ces deux champs)."
+  ],
+  "_tchap": {
+    "ligne": "`{0}` : {1}, 5xx : {2}— depuis {3}"
+  },
+  "_message": {
+    "text": "🚨 **Suspicion d'attaque DDoS — prod** — requêtes par minute et erreurs 5xx au-delà de leurs seuils sur la même app.",
+    "attachments": [
+      {
+        "color": "#d00000",
+        "text": "",
+        "fields": [
+          {
+            "title": "À vérifier",
+            "value": "1. Quelle app, depuis quand, et le trafic continue-t-il de monter : ses métriques (onglet Metrics) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n2. Un événement légitime l'explique-t-il : mise en service, notification de masse, campagne de communication\n3. D'où vient le trafic : si les logs du routeur arrivent encore (règle [Logstash - Prod - Détection absence ingestion logs router](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/management/insightsAndAlerting/triggersActions/rule/6c2a2a83-9c40-4f40-af8d-911402932417) au repos), le Discover [[Pass Emploi] Logs de Prod - Trafic du routeur par IP](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/7d3f1c2e-5b8a-4e6f-9c1d-2a4b6e8f0d13) sur la période ; sinon, les logs du routeur lus directement chez Scalingo, sans drain ni Logstash : `scalingo --region osc-secnum-fr1 --app <app> logs --lines 5000`, IP dans `from=`, puis le support Scalingo"
+          },
+          {
+            "title": "Dashboards",
+            "value": "[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+          },
+          {
+            "title": "Discover sessions",
+            "value": "[[Pass Emploi] Logs de Prod - Trafic du routeur par IP](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/7d3f1c2e-5b8a-4e6f-9c1d-2a4b6e8f0d13)"
+          },
+          {
+            "title": "Runbook",
+            "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md#suspicion-de-ddos-ou-surcharge-de-linfra)"
+          }
+        ]
+      }
+    ]
+  },
+  "name": "Scalingo - Prod - Suspicion d'attaque DDoS",
+  "tags": [
+    "critical",
+    "prod",
+    "securite",
+    "scalingo"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nSur une app applicative de prod, les alertes de métriques Scalingo des requêtes par minute (RPM) et des erreurs 5xx sont déclenchées à moins de 10 min d'intervalle, et aucune n'est revenue à la normale : le trafic dépasse ce que l'app absorbe et elle commence à refuser des requêtes. Signe d'une attaque par déni de service, d'un compte qui envoie des requêtes en masse, ou d'un pic légitime. Ne dépend pas des logs : les alertes arrivent de Scalingo par webhook.\n\n## À vérifier\n\n1. Quelle app, depuis quand, et le trafic continue-t-il de monter : ses métriques (onglet Metrics) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n2. Un événement légitime l'explique-t-il : mise en service, notification de masse, campagne de communication\n3. D'où vient le trafic : si les logs du routeur arrivent encore (règle [Logstash - Prod - Détection absence ingestion logs router](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/management/insightsAndAlerting/triggersActions/rule/6c2a2a83-9c40-4f40-af8d-911402932417) au repos), le Discover [[Pass Emploi] Logs de Prod - Trafic du routeur par IP](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/7d3f1c2e-5b8a-4e6f-9c1d-2a4b6e8f0d13) sur la période ; sinon, les logs du routeur lus directement chez Scalingo, sans drain ni Logstash : `scalingo --region osc-secnum-fr1 --app <app> logs --lines 5000`, IP dans `from=`, puis le support Scalingo\n\n## Dashboards\n\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Trafic du routeur par IP](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/7d3f1c2e-5b8a-4e6f-9c1d-2a4b6e8f0d13)\n\n## Runbook\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md#suspicion-de-ddos-ou-surcharge-de-linfra)\n\n## Documentation\n\n[Alertes de sécurité](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-securite.md)\n"
+    },
+    "dashboards": []
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": "FROM logs-alertes-scalingo-prod-default\n| WHERE event.kind == \"alert\" AND labels.metric IN (\"Requests per Minute\", \"5xx Errors\")\n| INLINE STATS dernier_evenement = MAX(@timestamp) BY service.name, service.environment, labels.metric\n| WHERE @timestamp == dernier_evenement AND event.action == \"resource_threshold_exceeded\"\n| STATS metriques = COUNT_DISTINCT(labels.metric), depuis = MIN(@timestamp), jusqu_a = MAX(@timestamp), rpm = MAX(CASE(labels.metric == \"Requests per Minute\", labels.value_text, null)), erreurs_5xx = MAX(CASE(labels.metric == \"5xx Errors\", labels.value_text, null)) BY service.name, service.environment\n| WHERE metriques == 2 AND DATE_DIFF(\"minute\", depuis, jusqu_a) <= 10\n| EVAL app = CONCAT(service.name, \"-\", service.environment)\n| KEEP app, rpm, erreurs_5xx, depuis"
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 45,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "groupBy": "all"
+  },
+  "actions": [
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-securite",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
