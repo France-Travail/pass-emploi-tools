@@ -29,7 +29,7 @@ télémétrie** (au sens ECS — logs / traces / métriques), pas par mode d'ing
 >
 > **Alertes** : hors de ce dossier, dans
 > [`supervision/`](../supervision/alertes-stack-observabilite.md) — une alerte mélange
-> souvent plusieurs télémétries (ex. l'alerte 4 lit `metrics-logstash.pipeline`
+> souvent plusieurs télémétries (ex. l'alerte M4 lit `metrics-logstash.pipeline`
 > pour détecter un problème qui impacte `logs-prod`).
 >
 > **Non versionné (volontaire)** : les
@@ -61,7 +61,7 @@ télémétrie** (au sens ECS — logs / traces / métriques), pas par mode d'ing
    GET .ds-*/_ilm/explain?only_managed=true&filter_path=indices.*.index,indices.*.policy
    ```
    Correction : [runbook ILM, scénario 1](../runbooks/runbook-ilm.md#scénario-1--index-sur-une-policy-par-défaut).
-   En continu, l'[alerte 10](../supervision/alertes-stack-observabilite.md#alerte-10--ilm-en-échec-ou-policy-sans-suppression)
+   En continu, l'[alerte M10](../supervision/alertes-stack-observabilite.md#alerte-m10--ilm-en-échec-ou-policy-sans-suppression)
    signale les nouveaux index dans ce cas. Les index frozen sont cachés :
    cf. [runbook ILM](../runbooks/runbook-ilm.md#index-frozen-introuvable).
 

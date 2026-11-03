@@ -9,10 +9,10 @@ comme elle choisissait un connecteur Mattermost par canal. Décision :
 flowchart LR
   subgraph regles["Règles Kibana"]
     direction TB
-    RMP["S1 à S3 (SLO), A4a, A10 à A13"]
-    RSEC["V1 (CVE), S2a (suspicion d'attaque DDoS)"]
+    RMP["SLO1 à SLO3 (SLO), A4a, A8 à A11"]
+    RSEC["S1 (CVE), S2a (suspicion d'attaque DDoS)"]
     RMS["A4b, S2b"]
-    ROP["Stack prod : Logstash, Redis, Elastic Agent,<br/>ILM, 6a, 14, expiration du compte bot"]
+    ROP["Stack prod : Logstash, Redis, Elastic Agent,<br/>ILM, M6a, M13, expiration du compte bot"]
     ROS["Stack hors prod : Logstash, Redis,<br/>Elastic Agent, 6b"]
     RJ["A5a / A5b (jobs en échec)"]
     RE["A1, A2, A3, A6, A7 (règles ES|QL)"]
@@ -53,7 +53,7 @@ flowchart LR
   CLIENT -- "étape http" --> CONN
   CONN -- "PUT …/send/m.room.message" --> TCHAP(["Tchap : 7 salons"])
 
-  AUTO["AutoOps (alertes 11 et 12)"] -. "Webhook POST direct,<br/>sans passer par Kibana" .-> TCHAP
+  AUTO["AutoOps (alertes M11 et M12)"] -. "Webhook POST direct,<br/>sans passer par Kibana" .-> TCHAP
 
   ECHEC["Règle « Tchap - Envoi en échec »<br/>sans action, lue par la routine"]
   CLIENT -. "exécutions failed<br/>(.workflows-executions)" .-> ECHEC
@@ -142,7 +142,7 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
    `francetravail.fr` donne `agent.tchap.gouv.fr`, l'URL utilisée dans cette
    doc. Pour un autre domaine (`beta.gouv.fr` → `agent.dinum.tchap.gouv.fr`),
    remplacer l'URL partout : connecteur, `curl` ci-dessous, connecteurs AutoOps
-   des [alertes 11 et 12](../../alertes-stack-observabilite.md#alerte-11--disque-des-nœuds-elasticsearch-autoops).
+   des [alertes M11 et M12](../../alertes-stack-observabilite.md#alerte-m11--disque-des-nœuds-elasticsearch-autoops).
 3. **Salons** : `monitoring-production`, `monitoring-staging`, `o11y-production`,
    `o11y-staging`, `jobs-production` et `jobs-staging`,
    **privés et non chiffrés**.
@@ -193,7 +193,7 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
    en remplaçant `<identifiant-du-bot>` par le `user_id` de l'étape 4 et
    `<date-expiration>` par la date d'inscription du bot + 11 mois + 60 jours.
 
-8. **AutoOps** : les alertes 11 et 12 postent par `POST …/send/m.room.message`
+8. **AutoOps** : les alertes M11 et M12 postent par `POST …/send/m.room.message`
    sans `txnId`. Le vérifier avec le compte du bot, dans un salon de test :
    ```bash
    curl -s -X POST "https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/<id du salon encodé>/send/m.room.message" \
@@ -239,7 +239,7 @@ et mettre à jour le jeton du connecteur.
 
    | Tag | Lignes | Règles |
    |---|---|---|
-   | `tchap-lignes` | le champ `message` des documents, une ligne de notification posée par l'ingest pipeline | A4a, A4b, 6a, 6b, V1 |
+   | `tchap-lignes` | le champ `message` des documents, une ligne de notification posée par l'ingest pipeline | A4a, A4b, M6a, M6b, S1 |
    | `jobs` | `❌ <job>` par `labels.job_type`, puis `Erreurs : …` (`error.message`, dédoublonnés : l'appariement job ↔ erreur est perdu dans le document d'alerte) | A5a, A5b |
    | aucun | la raison de l'alerte (`kibana.alert.reason`) | toutes les autres |
 
@@ -262,10 +262,10 @@ et mettre à jour le jeton du connecteur.
    refuse une règle ES|QL dont le champ de temps n'est pas `@timestamp` : Kibana
    ne remplace pas une variable dans un nom de champ. Une règle ES|QL en
    `groupBy: row` reçoit, elle, ses colonnes dans `kibana.alert.grouping`.
-5. **Règle Uptime** (A10 à A12) : `recovered: true`, et un second message
+5. **Règle Uptime** (A8 à A10) : `recovered: true`, et un second message
    Mattermost dans le groupe `recovered` ; le Workflow de salon envoie celui-ci
    pour une alerte rétablie (« ✅ … de nouveau joignable », « Rétablie à »). Les
-   variables `{{state.X}}` deviennent `kibana.alert.state.X`. A13 (TLS, une
+   variables `{{state.X}}` deviennent `kibana.alert.state.X`. A11 (TLS, une
    exécution par jour) n'a pas de rétablissement mais garde `ongoing: true` :
    un rappel par jour et par certificat, comme dans Mattermost.
 

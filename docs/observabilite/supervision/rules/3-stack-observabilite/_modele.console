@@ -23,46 +23,46 @@
 # règle). L'API publique ne les renvoie pas dans ses réponses : les vérifier
 # dans l'interface.
 
-@@REGLE 1a@@
+@@REGLE M1a@@
 
-@@REGLE 1b@@
+@@REGLE M1b@@
 
-@@REGLE 2a@@
+@@REGLE M2a@@
 
-@@REGLE 2b@@
+@@REGLE M2b@@
 
-@@REGLE 3a@@
+@@REGLE M3a@@
 
-@@REGLE 3b@@
+@@REGLE M3b@@
 
-@@REGLE 3c@@
+@@REGLE M3c@@
 
-@@REGLE 3d@@
+@@REGLE M3d@@
 
-@@REGLE 4a@@
+@@REGLE M4a@@
 
-@@REGLE 4b@@
+@@REGLE M4b@@
 
-@@REGLE 5a@@
+@@REGLE M5a@@
 
-@@REGLE 5b@@
+@@REGLE M5b@@
 
-@@REGLE 6a@@
+@@REGLE M6a@@
 
-@@REGLE 6b@@
+@@REGLE M6b@@
 
-@@REGLE 7a@@
+@@REGLE M7a@@
 
-@@REGLE 7b@@
+@@REGLE M7b@@
 
-@@REGLE 8a@@
+@@REGLE M8a@@
 
-@@REGLE 8b@@
+@@REGLE M8b@@
 
-@@REGLE 9a@@
+@@REGLE M9a@@
 
-@@REGLE 9b@@
+@@REGLE M9b@@
 
-@@REGLE 10@@
+@@REGLE M10@@
 
-@@REGLE 14@@
+@@REGLE M13@@

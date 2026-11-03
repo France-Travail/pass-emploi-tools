@@ -1,6 +1,6 @@
 # Runbook — rétention ILM
 
-> **Type** : tutoriel (Diataxis). Quoi faire quand l'[alerte 10](../supervision/alertes-stack-observabilite.md#alerte-10--ilm-en-échec-ou-policy-sans-suppression)
+> **Type** : tutoriel (Diataxis). Quoi faire quand l'[alerte M10](../supervision/alertes-stack-observabilite.md#alerte-m10--ilm-en-échec-ou-policy-sans-suppression)
 > sonne : un index n'applique pas la rétention prévue.
 >
 > Rétentions attendues et scripts : [`stockage/`](../stockage/README.md).
@@ -84,7 +84,7 @@ une étape (`step: ERROR`) et n'avance plus vers les phases suivantes.
 
 **Signature** : `step_info` contient `unable to parse steps for policy [...] as
 it doesn't exist`. ILM ne compte pas ce cas comme un échec d'étape :
-**l'alerte 10 ne le voit pas**.
+**l'alerte M10 ne le voit pas**.
 
 **Cause** : des index ont été rattachés à une policy avant sa création (cas du
 2026-10-05). Rejouer `stockage/<bundle>/1-ilm-policies.console`. Le message

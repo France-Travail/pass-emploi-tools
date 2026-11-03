@@ -19,13 +19,13 @@ qu'elle ne soit visible côté apps (cf. philosophie des
 
 | Data stream | Contenu | Usage |
 |---|---|---|
-| `metrics-logstash.node-default` | stats nœud : JVM heap, events in/out (champs GC mappés mais vides) | alerte 5 (heap) |
-| `metrics-logstash.pipeline-default` | stats pipeline : queue depth, workers, batch | alerte 4 (backpressure) |
+| `metrics-logstash.node-default` | stats nœud : JVM heap, events in/out (champs GC mappés mais vides) | alerte M5 (heap) |
+| `metrics-logstash.pipeline-default` | stats pipeline : queue depth, workers, batch | alerte M4 (backpressure) |
 | `metrics-logstash.plugins-default` | stats plugins : bulk requests ES, erreurs output | diagnostic (compteurs cumulatifs, non alertables) |
 | `metrics-logstash.health_report-default` | état de santé global du nœud | diagnostic |
-| `metrics-redis.{info,key,keyspace}-default` | mémoire, connexions, longueur de `logstash:ingest` (`redis.key.length`) | alerte 7 (backlog) |
+| `metrics-redis.{info,key,keyspace}-default` | mémoire, connexions, longueur de `logstash:ingest` (`redis.key.length`) | alerte M7 (backlog) |
 | `metrics-system.*-default` | 11 datasets — agent dédié uniquement | diagnostic |
-| `logs-scalingo.container_stats-default` | mémoire totale de chaque conteneur Logstash, vue par Scalingo (`scalingo.memory.*`) | dashboard, alerte 9 (mémoire conteneur) |
+| `logs-scalingo.container_stats-default` | mémoire totale de chaque conteneur Logstash, vue par Scalingo (`scalingo.memory.*`) | dashboard, alerte M9 (mémoire conteneur) |
 
 Data view Kibana : `metrics-logstash*` (timestamp `@timestamp`). La taille de la
 DLQ (`queue_size_in_bytes`) n'est **pas** exposée par l'intégration : l'alerte DLQ

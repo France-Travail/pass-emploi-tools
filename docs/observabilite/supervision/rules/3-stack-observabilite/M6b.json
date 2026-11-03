@@ -1,7 +1,7 @@
 {
   "_id": "5d1f7c2a-9b3e-4f6a-8c1d-2e7b4a9f0c63",
   "_commentaire": [
-    "# 6b — Événements Scalingo des apps de la stack, staging / perf (gravité par ligne)",
+    "# M6b — Événements Scalingo des apps de la stack, staging / perf (gravité par ligne)",
     "# Nouvelle règle : absente de la prod avant le 2026-10-19, la créer avec POST",
     "# (même corps plus \"rule_type_id\": \".es-query\" et \"consumer\": \"alerts\")."
   ],

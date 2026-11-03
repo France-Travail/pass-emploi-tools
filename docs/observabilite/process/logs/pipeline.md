@@ -35,7 +35,7 @@ Capte les events **rejetés définitivement par ES** (conflit de mapping, docume
 trop grand) : `dead_letter_queue.max_bytes: 256mb`, `storage_policy: drop_older`,
 `retain.age: 2d`, sous `/app/data/dead_letter_queue` (disque éphémère). Le
 pipeline `dead_letter_queue` y ajoute la cause Logstash et le payload d'origine
-avant indexation. Tout event en DLQ ou en index d'erreurs = alertes 1 et 2
+avant indexation. Tout event en DLQ ou en index d'erreurs = alertes M1 et M2
 ([supervision/alertes](../../supervision/alertes-stack-observabilite.md)), procédure au
 [runbook scénario 3](../../runbooks/runbook-logstash.md).
 

@@ -26,7 +26,7 @@ qu'aucune alerte ne signale. Pour enquêter sur un incident :
 > 2. **Les jobs, chaque matin**, à la place du rapport de 9 h 30 : le Discover
 >    [[Pass Emploi] Logs de Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c0d38bba-66ef-4b68-8a10-4d786f6a9f4a),
 >    onglets « Jobs en échec » et « Exécutions », sur les dernières 24 h.
-> 3. **AutoOps, chaque matin** (alertes 11 et 12, disque et indexation) : la
+> 3. **AutoOps, chaque matin** (alertes M11 et M12, disque et indexation) : la
 >    page AutoOps du déploiement dans Elastic Cloud. Ses alertes arrivent par
 >    e-mail, une boîte que l'équipe ne surveille pas au fil de la journée.
 >
@@ -51,7 +51,7 @@ qu'aucune alerte ne signale. Pour enquêter sur un incident :
 4. **Le salon `monitoring-securite`**, suivi par ses membres : une 🚨 suspicion
    d'attaque DDoS (S2a) se traite dès réception, avec le
    [runbook](runbooks/investigation-incident.md#suspicion-de-ddos-ou-surcharge-de-linfra) ;
-   les CVE high ou critical (V1), répétées à chaque passage de
+   les CVE high ou critical (S1), répétées à chaque passage de
    `security-alerts.yml` tant qu'elles restent ouvertes, dans la journée.
 
 ## Chaque semaine (15 min)

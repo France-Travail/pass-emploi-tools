@@ -18,7 +18,7 @@ SDK APM** (cf. [collecte/traces](collecte/traces/README.md)).
 
 **Environnement perf** : ses agents sont **volontairement désactivés** pour
 réduire les coûts d'infra — ni supervisés ni alertés (cf.
-[alerte 8](supervision/alertes-stack-observabilite.md#alerte-8--elastic-agent-en-défaut)).
+[alerte M8](supervision/alertes-stack-observabilite.md#alerte-m8--elastic-agent-en-défaut)).
 
 La configuration de ce que supervise un agent **n'est pas dans ce repo** : elle
 est gérée dans Kibana. Au démarrage, l'agent se connecte au Fleet Server avec
@@ -72,7 +72,7 @@ Récit complet : [postmortem-2026-09-unenrolled-elastic-agent.md](post-mortems/p
 
 ## Savoir qu'un agent a décroché
 
-Un agent offline ou UNENROLLED, c'est une supervision aveugle : les alertes 4, 5
-et 7 (métriques Logstash et Redis) cessent de pouvoir se déclencher. L'alerte 8
-**Elastic Agent en défaut** (offline, désenrôlé, unhealthy, erreurs d'écriture) couvre ce cas ([supervision/alertes](supervision/alertes-stack-observabilite.md#alerte-8--elastic-agent-en-défaut)).
+Un agent offline ou UNENROLLED, c'est une supervision aveugle : les alertes M4, M5
+et 7 (métriques Logstash et Redis) cessent de pouvoir se déclencher. L'alerte M8
+**Elastic Agent en défaut** (offline, désenrôlé, unhealthy, erreurs d'écriture) couvre ce cas ([supervision/alertes](supervision/alertes-stack-observabilite.md#alerte-m8--elastic-agent-en-défaut)).
 État courant : **Kibana → Fleet → Agents** (filtrer par tag).

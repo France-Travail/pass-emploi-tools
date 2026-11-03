@@ -1,7 +1,7 @@
 {
   "_id": "67846c2c-45d1-45be-89f5-ce9a340240a0",
   "_commentaire": [
-    "# V1 — CVE high/critical encore ouvertes, à chaque passage de security-alerts.yml (Critical)"
+    "# S1 — CVE high/critical encore ouvertes, à chaque passage de security-alerts.yml (Critical)"
   ],
   "name": "GitHub - CVE high ou critical ouverte",
   "tags": [
