@@ -7,7 +7,7 @@ se rejoue à l'identique sur un cluster vide. Deux formats :
   leurs data views et tags), importé par la page *Saved objects* ;
 - **`.console`** : requêtes Dev Tools (SLO, règles d'alerte, ILM et templates).
 
-Les identifiants sont conservés à l'import : les messages des alertes (Mattermost, Tchap)
+Les identifiants sont conservés à l'import : les messages des alertes Tchap
 et cette doc pointent vers les objets par leur id.
 
 ## Dashboards
@@ -57,7 +57,6 @@ les logs à examiner.
 | Fichier | Contenu |
 |---|---|
 | [`slo/1-slos.console`](slo/1-slos.console) | les SLO, cf. [sli-slo](sli-slo.md) |
-| [`connecteurs/mattermost-jobs.console`](connecteurs/mattermost-jobs.console) | connecteurs Mattermost des canaux jobs (A5a, A5b) |
 | [`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console) | règles S2, S3, A1 à A3, A4a, A4b, A5a et A5b, cf. [alertes applicatives](alertes-applicatives.md) |
 | [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console) | règles 1 à 10 et 14, cf. [alertes de la stack](alertes-stack-observabilite.md) |
 | [`rules/generated/1-rules-securite.console`](rules/generated/1-rules-securite.console) | règle V1, cf. [alertes de sécurité](alertes-securite.md) |
@@ -129,7 +128,7 @@ Modifier dans Kibana, puis réexporter par-dessus le fichier versionné :
 
   Puis régénérer et commiter le tout :
   ```bash
-  FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I rules/generer-regles.py
+  python3 -I rules/generer-regles.py
   python3 -I workflows/tchap/generer-workflows.py
   ```
   Déployer ensuite le bloc de `rules/generated/` dans Dev Tools (manuellement).
@@ -140,5 +139,5 @@ Modifier dans Kibana, puis réexporter par-dessus le fichier versionné :
   salon inconnu, règle ES|QL hors `@timestamp`).
   `FEATURE_NOTIFIER_ALERTES_MATTERMOST` suit la convention des features des apps
   (active seulement à `true`) : à `true`, les règles gardent leurs actions
-  Mattermost ; sans elle, elles n'ont plus que leur action Tchap. Le CI la fixe
-  à `true` jusqu'au décommissionnement de Mattermost.
+  Mattermost ; sans elle, elles n'ont plus que leur action Tchap. Mattermost étant
+  arrêté, le CI la fixe à `false`.

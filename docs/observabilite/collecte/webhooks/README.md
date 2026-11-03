@@ -115,23 +115,32 @@ Tchap listent telle quelle. Le payload brut est gardé sous `scalingo.*` ou
    La réponse doit contenir `"result":"created"` **sans** `"failure_store":"used"`.
    Sous 5 min, A4b le notifie. L'endpoint Elasticsearch est indiqué sur la page
    du déploiement Elastic Cloud (`….es.…`, pas l'adresse de Kibana).
-7. **Notifiers Scalingo** : pour chaque app qui a un notifier `Mattermost*`, un
-   notifier **Webhook** vers
+7. **Notifiers Scalingo** : sur chaque app suivie, **un seul** notifier
+   **Webhook** (deux écriraient deux fois les mêmes événements) vers
    `https://alertes-scalingo:<mdp>@<endpoint-es>/logs-alertes-scalingo-<env>-default/_doc`
-   (`<env>` = suffixe de l'app), avec **la même sélection d'événements** que le
-   notifier `Mattermost*`, et le même nom au préfixe près (`Mattermost
-   monitoring production` → `Elastic monitoring production`). Une app qui a deux
-   notifiers `Mattermost*` n'a qu'un notifier Elastic, avec l'union de leurs
-   événements : deux notifiers écriraient deux fois les événements communs.
+   (`<env>` = suffixe de l'app), nommé d'après son salon :
+
+   | Apps (région)                                                                                 | Notifier                             | Événements                                               |
+   |-----------------------------------------------------------------------------------------------|--------------------------------------|----------------------------------------------------------|
+   | `api`, `connect`, `metabase`, `web` de prod (`osc-secnum-fr1`)                                 | `Elastic monitoring production`      | tous, ou presque : déploiements, crashs, variables, addons, collaborateurs, domaines |
+   | `logstash`, `logstash-process`, `heartbeat`, `elastic-agent` de prod (`osc-secnum-fr1`)        | `Elastic monitoring o11y production` | `app_crashed_repeated`, `app_restarted`, `app_stopped`   |
+   | `logstash`, `logstash-process` de perf (`osc-secnum-fr1`)                                      | `Elastic monitoring o11y staging`    | `app_crashed_repeated`, `app_restarted`                  |
+   | `api`, `connect`, `web` de staging (`osc-fr1`), `keycloak-staging` (`osc-secnum-fr1`)          | `Elastic monitoring staging`         | déploiements, crashs et redémarrages selon l'app         |
+
    Rattacher aussi les alertes de métriques Scalingo de l'app à ce notifier.
-   Commencer par une app non critique (`pass-emploi-logstash-perf`).
+   Une app ajoutée ou retirée l'est aussi dans `APPS` de
+   [`verifier-parite.py`](../../supervision/pipelines/webhooks/verifier-parite.py).
+   Les apps de la stack sont celles que filtrent 6a et 6b (`service.name`) :
+   une app de la stack ajoutée ici l'est aussi dans ces deux règles, sinon ses
+   événements partent dans le salon applicatif (A4a, A4b). Non suivies : outils
+   de tir et mocks de perf, apps de perf applicatives, `elastic-agent-perf`,
+   `tfstate`, `nginx-rp`, `tchap-webhooks`.
 8. **GitHub Actions** : [`security-alerts.yml`](../../../../.github/workflows/security-alerts.yml)
    envoie les CVE vers `logs-alertes-github-default` (un `_bulk`, une CVE par
    document, plus `repository`) quand le repo appelant lui passe, tous deux
    optionnels, l'entrée `elastic-url` (sa variable `ELASTIC_URL`, l'endpoint
    Elasticsearch) et le secret `ELASTIC_ALERTES_GITHUB_API_KEY` (champ `encoded`
-   de l'API Key de l'étape 3). Sans eux, seul l'envoi Mattermost part, comme
-   avant. Repos appelants :
+   de l'API Key de l'étape 3). Repos appelants :
    `pass-emploi-api`, `pass-emploi-web`, `pass-emploi-connect` ; dans chacun,
    créer la variable et le secret puis, dans son `security-alerts.yml`,
    épingler le nouveau commit et les transmettre. Un rejet par Elasticsearch
@@ -146,12 +155,12 @@ Tchap listent telle quelle. Le payload brut est gardé sous `scalingo.*` ou
    | `CVE_ENVOI_MATTERMOST`    | message Mattermost, si le secret `MATTERMOST_WEBHOOK_URL` existe            | pas de message Mattermost |
    | `CVE_ENVOI_ELASTICSEARCH` | CVE envoyées, si `ELASTIC_URL` et `ELASTIC_ALERTES_GITHUB_API_KEY` existent | pas d'envoi               |
 
-   Pendant la migration, V1 poste déjà les CVE dans `#monitoring-production` :
-   `CVE_ENVOI_MATTERMOST=false` supprime le doublon de l'envoi direct. Avec les
-   deux à `false`, le workflow ne fait que lister les CVE dans son journal.
+   Mattermost étant arrêté, `CVE_ENVOI_MATTERMOST` vaut `false` dans les 3
+   repos : un webhook Mattermost injoignable ferait échouer l'étape, et sauter
+   l'envoi vers Elasticsearch qui la suit. Avec les deux à `false`, le workflow
+   ne fait que lister les CVE dans son journal.
 
-Pendant la migration vers Tchap, les notifiers `Mattermost*` sont
-**désactivés, jamais supprimés**, une fois la parité constatée :
+Contrôle de complétude :
 [`verifier-parite.py`](../../supervision/pipelines/webhooks/verifier-parite.py) compare, app par app, l'historique
 Scalingo (`scalingo timeline`, limité aux événements sélectionnés dans le
 notifier Elastic) aux documents reçus depuis une date, et liste le failure

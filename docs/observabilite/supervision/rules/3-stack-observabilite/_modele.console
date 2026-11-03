@@ -1,5 +1,5 @@
-# Règles Kibana de la stack d'observabilité, notifiées dans #o11y-production
-# (Mattermost-o11y-production) et #o11y-staging (Mattermost-o11y-staging).
+# Règles Kibana de la stack d'observabilité, notifiées dans Tchap o11y-production et
+# o11y-staging par les Workflows de salon.
 # Spécification et calibrage : ../../alertes-stack-observabilite.md.
 #
 # À rejouer dans Dev Tools. PUT met à jour une règle existante ; sur un cluster

@@ -7,7 +7,7 @@ Sources, dans un répertoire par périmètre (<n>-<périmètre>/) :
   - _modele.console : le texte du fichier généré autour des règles, où @@REGLE <code>@@
     marque la place de chaque règle.
 
-Usage : FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I generer-regles.py [--verifier]
+Usage : python3 -I generer-regles.py [--verifier]
   sans option : écrit generated/<n>-rules-<périmètre>.console ;
   --verifier  : compare generated/ à ses sources, code de sortie 1 au moindre écart (CI).
 Puis : ../workflows/tchap/generer-workflows.py, qui lit les messages des règles ici.
@@ -106,7 +106,7 @@ def entete(dossier):
 # À modifier à la place, dans ../{dossier}/ :
 #   - une règle : son fichier <code>.json (le JSON de la règle Kibana) ;
 #   - le texte autour des règles (commentaires, autres requêtes) : _modele.console.
-# Puis : FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I ../generer-regles.py
+# Puis : python3 -I ../generer-regles.py
 #        python3 -I ../../workflows/tchap/generer-workflows.py
 # La CI de chaque PR vérifie que ce fichier correspond à ses sources.
 # Ce fichier se colle tel quel dans Kibana → Dev Tools. Mode d'emploi : ../README.md.
@@ -156,7 +156,7 @@ def main(args):
             ecarts += 1
             print(f'generated/{nom} : sans source, à supprimer')
     if verifier:
-        print('identiques' if not ecarts else f'{ecarts} fichier(s) différent(s) : lancer FEATURE_NOTIFIER_ALERTES_MATTERMOST=true python3 -I generer-regles.py')
+        print('identiques' if not ecarts else f'{ecarts} fichier(s) différent(s) : lancer python3 -I generer-regles.py')
     sys.exit(1 if ecarts and verifier else 0)
 
 
