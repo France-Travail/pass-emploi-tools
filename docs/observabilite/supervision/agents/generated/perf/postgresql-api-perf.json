@@ -1,0 +1,62 @@
+{
+  "_avertissement": "⚠️ FICHIER GÉNÉRÉ par docs/observabilite/supervision/agents/generer-integrations.py : NE PAS LE MODIFIER, il serait écrasé. Modifier bases.json, requetes-sql.json, modeles/ ou integrations/, puis lancer python3 -I docs/observabilite/supervision/agents/generer-integrations.py. Les repères @@…@@ sont remplis par « pousser », depuis Scalingo.",
+  "description": "Généré par docs/observabilite/supervision/agents/generer-integrations.py",
+  "inputs": {
+    "postgresql-logfile": {
+      "enabled": false,
+      "streams": {
+        "postgresql.log": {
+          "enabled": false
+        }
+      }
+    },
+    "postgresql-postgresql/metrics": {
+      "enabled": true,
+      "streams": {
+        "postgresql.activity": {
+          "enabled": true,
+          "vars": {
+            "period": "1m",
+            "processors": "- add_fields:\n    target: labels\n    fields:\n      base: postgresql-api-perf\n"
+          }
+        },
+        "postgresql.bgwriter": {
+          "enabled": true,
+          "vars": {
+            "period": "1m",
+            "processors": "- add_fields:\n    target: labels\n    fields:\n      base: postgresql-api-perf\n"
+          }
+        },
+        "postgresql.database": {
+          "enabled": true,
+          "vars": {
+            "period": "1m",
+            "processors": "- add_fields:\n    target: labels\n    fields:\n      base: postgresql-api-perf\n"
+          }
+        },
+        "postgresql.statement": {
+          "enabled": false,
+          "vars": {
+            "period": "1m"
+          }
+        }
+      },
+      "vars": {
+        "hosts": [
+          "@@URL_SANS_IDENTIFIANTS@@"
+        ],
+        "password": "@@MOT_DE_PASSE@@",
+        "username": "@@UTILISATEUR@@"
+      }
+    }
+  },
+  "name": "postgresql-api-perf",
+  "namespace": "",
+  "package": {
+    "name": "postgresql",
+    "version": "1.32.1"
+  },
+  "policy_ids": [
+    "6eee0d15-68d9-4135-96fe-e20d467f0042"
+  ]
+}

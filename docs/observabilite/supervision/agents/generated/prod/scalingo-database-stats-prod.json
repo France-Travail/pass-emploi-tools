@@ -1,0 +1,35 @@
+{
+  "_avertissement": "⚠️ FICHIER GÉNÉRÉ par docs/observabilite/supervision/agents/generer-integrations.py : NE PAS LE MODIFIER, il serait écrasé. Modifier bases.json, requetes-sql.json, modeles/ ou integrations/, puis lancer python3 -I docs/observabilite/supervision/agents/generer-integrations.py. Les repères @@…@@ sont remplis par « pousser », depuis Scalingo.",
+  "description": "Généré par docs/observabilite/supervision/agents/generer-integrations.py",
+  "inputs": {
+    "cel-cel": {
+      "enabled": true,
+      "streams": {
+        "cel.cel": {
+          "enabled": true,
+          "vars": {
+            "data_stream.dataset": "scalingo.database_stats",
+            "data_stream.type": "logs",
+            "program": "state.?secret.api_token.orValue(state.?api_token.orValue(\"\")).as(api_token,\nrequest(\"POST\", state.auth_url).with({\n  \"Header\": {\"Authorization\": [\"Basic \" + (\":\" + api_token).base64()]},\n}).do_request().as(auth,\n  auth.StatusCode != 200 && auth.StatusCode != 201 ?\n    state.with({\n      \"events\": [{\"error\": {\"message\": \"Scalingo tokens/exchange : HTTP \" + string(auth.StatusCode)}}],\n      \"want_more\": false,\n    })\n  :\n    auth.Body.decode_json().token.as(jwt,\n      state.with({\n        \"events\": state.bases.map(base,\n          request(\"POST\", state.url + \"/v1/apps/\" + base.app + \"/addons/\" + base.addon_id + \"/token\").with({\n            \"Header\": {\"Authorization\": [\"Bearer \" + jwt], \"Accept\": [\"application/json\"]},\n          }).do_request().as(jeton,\n            jeton.StatusCode != 200 && jeton.StatusCode != 201 ?\n              dyn([{\"error\": {\"message\": \"Scalingo token de la base \" + base.nom + \" : HTTP \" + string(jeton.StatusCode)}, \"scalingo\": {\"database\": {\"nom\": base.nom}}, \"labels\": {\"base\": base.nom}}])\n            : !jeton.Body.decode_json().?addon.?token.hasValue() ?\n              dyn([{\"error\": {\"message\": \"Scalingo token de la base \" + base.nom + \" : réponse sans addon.token\"}, \"scalingo\": {\"database\": {\"nom\": base.nom}}, \"labels\": {\"base\": base.nom}}])\n            :\n              request(\"GET\", state.db_api_url + \"/api/databases/\" + base.addon_id + \"/metrics\").with({\n                \"Header\": {\n                  \"Authorization\": [\"Bearer \" + jeton.Body.decode_json().addon.token],\n                  \"Accept\": [\"application/json\"],\n                },\n              }).do_request().as(resp,\n                resp.StatusCode != 200 ?\n                  dyn([{\"error\": {\"message\": \"Scalingo métriques de la base \" + base.nom + \" : HTTP \" + string(resp.StatusCode)}, \"scalingo\": {\"database\": {\"nom\": base.nom}}, \"labels\": {\"base\": base.nom}}])\n                : !resp.Body.decode_json().?instances_metrics.hasValue() ?\n                  dyn([{\"error\": {\"message\": \"Scalingo métriques de la base \" + base.nom + \" : réponse sans instances_metrics\"}, \"scalingo\": {\"database\": {\"nom\": base.nom}}, \"labels\": {\"base\": base.nom}}])\n                :\n                  dyn(resp.Body.decode_json().as(m,\n                    m.instances_metrics.map(id, m.instances_metrics[id]).map(i, {\n                      \"labels\": {\"base\": base.nom},\n                      \"scalingo\": {\n                        \"database\": {\n                          \"nom\": base.nom,\n                          \"app\": base.app,\n                          \"addon_id\": base.addon_id,\n                          \"instance\": i.instance_id,\n                          \"role\": i.real_disk_size > 0.0 ? \"donnees\" : \"auxiliaire\",\n                        }.with(has(base.connexions_max) ? {\"connexions_max\": base.connexions_max} : {})\n                        .with(m.?database_stats.?data_size.hasValue() ? {\"data_size\": {\"bytes\": int(m.database_stats.data_size)}} : {})\n                        .with(has(state.ca_expire_le) ? {\"ca_expire_le\": state.ca_expire_le} : {}),\n                        \"cpu\": {\"usage\": i.cpu.usage_in_percents},\n                        \"memory\": {\n                          \"usage\": {\"bytes\": int(i.memory.memory_usage)},\n                          \"limit\": {\"bytes\": int(i.memory.memory_limit)},\n                          \"highest\": {\"bytes\": int(i.memory.max_memory_usage)},\n                          \"pct\": i.memory.memory_limit > 0.0 ? double(i.memory.memory_usage) / double(i.memory.memory_limit) : 0.0,\n                        },\n                        \"swap\": {\"usage\": {\"bytes\": int(i.memory.swap_usage)}},\n                        \"disk\": {\n                          \"usage\": {\"bytes\": int(i.real_disk_size)},\n                          \"inclus\": {\"bytes\": int(base.disque_inclus_octets)},\n                          \"pct\": base.disque_inclus_octets > 0 ? double(i.real_disk_size) / double(base.disque_inclus_octets) : 0.0,\n                        },\n                      },\n                    })\n                  ))\n              )\n          )\n        ).flatten(),\n        \"want_more\": false,\n      })\n    )\n)\n)\n",
+            "resource_interval": "1m",
+            "resource_url": "https://api.osc-secnum-fr1.scalingo.com",
+            "secret_state": "api_token: @@API_TOKEN@@",
+            "state": "auth_url: https://auth.scalingo.com/v1/tokens/exchange\ndb_api_url: https://db-api.osc-secnum-fr1.scalingo.com\nca_expire_le: \"@@CA_EXPIRE_LE@@\"\nbases:\n  - {app: pass-emploi-api-prod, addon_id: \"@@ADDON_ID:postgresql-api-prod@@\", nom: postgresql-api-prod, disque_inclus_octets: @@DISQUE_INCLUS:postgresql-api-prod@@, connexions_max: @@CONNEXIONS_MAX:postgresql-api-prod@@}\n  - {app: pass-emploi-api-prod, addon_id: \"@@ADDON_ID:redis-api-prod@@\", nom: redis-api-prod, disque_inclus_octets: @@DISQUE_INCLUS:redis-api-prod@@}\n  - {app: pass-emploi-connect-prod, addon_id: \"@@ADDON_ID:redis-connect-prod@@\", nom: redis-connect-prod, disque_inclus_octets: @@DISQUE_INCLUS:redis-connect-prod@@}\n",
+            "tags": [
+              "forwarded"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "name": "scalingo-database-stats-prod",
+  "namespace": "",
+  "package": {
+    "name": "cel",
+    "version": "1.21.0"
+  },
+  "policy_ids": [
+    "9d009fa8-7a42-418c-ad47-ef1ceb196552"
+  ]
+}

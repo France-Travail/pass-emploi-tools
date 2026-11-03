@@ -1,0 +1,36 @@
+{
+  "_avertissement": "⚠️ FICHIER GÉNÉRÉ par docs/observabilite/supervision/agents/generer-integrations.py : NE PAS LE MODIFIER, il serait écrasé. Modifier bases.json, requetes-sql.json, modeles/ ou integrations/, puis lancer python3 -I docs/observabilite/supervision/agents/generer-integrations.py. Les repères @@…@@ sont remplis par « pousser », depuis Scalingo.",
+  "description": "Généré par docs/observabilite/supervision/agents/generer-integrations.py",
+  "inputs": {
+    "sql-sql/metrics": {
+      "enabled": true,
+      "streams": {
+        "sql.sql": {
+          "enabled": true,
+          "vars": {
+            "data_stream.dataset": "sql.postgresql_activite",
+            "data_stream.type": "metrics",
+            "driver": "postgres",
+            "hosts": [
+              "@@URL_AVEC_IDENTIFIANTS@@"
+            ],
+            "merge_results": false,
+            "period": "1m",
+            "processors": "- add_fields:\n    target: labels\n    fields:\n      base: postgresql-api-prod\n",
+            "sql_queries": "- query: |\n    select\n      coalesce(round(extract(epoch from max(now() - xact_start)))::bigint, 0) as plus_vieille_transaction_s,\n      count(*) filter (where state like 'idle in transaction%') as sessions_idle_in_transaction,\n      count(*) filter (where wait_event_type = 'Lock') as sessions_en_attente_verrou,\n      coalesce(round(extract(epoch from max(now() - state_change) filter (where wait_event_type = 'Lock')))::bigint, 0) as plus_longue_attente_verrou_s\n    from pg_stat_activity\n    where datname = current_database()\n      and usename = current_user\n      and pid <> pg_backend_pid();\n  response_format: table\n",
+            "ssl": ""
+          }
+        }
+      }
+    }
+  },
+  "name": "postgresql-activite-prod",
+  "namespace": "",
+  "package": {
+    "name": "sql",
+    "version": "1.2.0"
+  },
+  "policy_ids": [
+    "9d009fa8-7a42-418c-ad47-ef1ceb196552"
+  ]
+}
