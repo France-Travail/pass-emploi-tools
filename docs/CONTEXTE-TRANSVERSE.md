@@ -234,24 +234,13 @@ npx dotvault encrypt
 - Fichier chiffré : `.vault` ou `.environment` (commité)
 - Template : `.env.local.template` ou `.environment.template`
 
-### Déploiement
-
-> Concerne les **repos Node** (`api`, `web`, `connect`). L'app mobile ne se
-> déploie pas : elle se **publie sur les stores** (voir Release ci-dessous).
-
-**Plateforme : Scalingo**
-
-- **Staging** : déploiement automatique sur push de la branche d'intégration (`develop`)
-- **Production** : déploiement automatique sur push de la branche de production
-- **Review Apps** : création automatique sur PR
-
 ### Release
 
 **Deux process distincts** — ne pas supposer qu'ils sont alignés.
 
 #### Repos Node (`api`, `web`, `connect`)
 
-Tag `vX.Y.Z`, livraison par merge dans la branche de production, déploiement continu.
+Tag `vX.Y.Z`, livraison par merge dans la branche de production.
 
 ```bash
 yarn release:patch  # ou :minor / :major
