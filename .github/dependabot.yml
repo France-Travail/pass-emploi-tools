@@ -1,0 +1,88 @@
+version: 2
+
+updates:
+  - package-ecosystem: docker
+    directory: /perf
+    schedule:
+      interval: daily
+      time: '07:00'
+      timezone: Europe/Paris
+    commit-message:
+      prefix: 'chore(deps):'
+    cooldown:
+      default-days: 3
+    groups:
+      docker-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - patch
+          - minor
+      docker-major:
+        applies-to: version-updates
+        update-types:
+          - major
+
+  - package-ecosystem: pip
+    directory: /perf/mock-externes
+    schedule:
+      interval: daily
+      time: '07:00'
+      timezone: Europe/Paris
+    commit-message:
+      prefix: 'chore(deps):'
+    cooldown:
+      default-days: 3
+      semver-major-days: 14
+    groups:
+      pip-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - patch
+          - minor
+      pip-major:
+        applies-to: version-updates
+        update-types:
+          - major
+
+  - package-ecosystem: gradle
+    directory: /perf
+    schedule:
+      interval: daily
+      time: '07:00'
+      timezone: Europe/Paris
+    commit-message:
+      prefix: 'chore(deps):'
+    cooldown:
+      default-days: 3
+      semver-major-days: 14
+    groups:
+      gradle-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - patch
+          - minor
+      gradle-major:
+        applies-to: version-updates
+        update-types:
+          - major
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: daily
+      time: '07:00'
+      timezone: Europe/Paris
+    commit-message:
+      prefix: 'ci(deps):'
+    cooldown:
+      default-days: 3
+    groups:
+      actions-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - patch
+          - minor
+      actions-major:
+        applies-to: version-updates
+        update-types:
+          - major
