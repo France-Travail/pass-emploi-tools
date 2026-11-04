@@ -56,7 +56,7 @@ done
 
 log() { printf '%s\n' "$*" >&2; }
 
-for outil in scalingo jq git; do
+for outil in scalingo jq git curl; do
   command -v "$outil" >/dev/null || { log "Prérequis manquant : $outil"; exit 1; }
 done
 
@@ -69,7 +69,7 @@ scalingo_lecture() {
   local region=$1 commande=$2
   shift 2
   case "$commande" in
-    whoami|apps|apps-info|addons|addons-info|ps|env|deployments|deployment-logs|integration-link|stacks) ;;
+    whoami|apps|apps-info|addons|addons-info|ps|env|deployments|deployment-logs|integration-link|stacks|domains|app-firewall-rules) ;;
     *) log "Commande Scalingo refusée (lecture seule) : $commande"; exit 1 ;;
   esac
   local sortie code tentative
@@ -140,6 +140,12 @@ variables_de_version() {
   '
 }
 
+code_http_direct() {
+  local domaine=$1 domaine_defaut=$2
+  curl --silent --output /dev/null --write-out '%{http_code}' --max-time 10 \
+    --connect-to "$domaine:443:$domaine_defaut:443" "https://$domaine/" 2>/dev/null || true
+}
+
 collecter_app() {
   local region=$1 nom=$2 statut=$3 projet=$4
   local env composant stack addons conteneurs variables depot deploiement versions source_ligne
@@ -157,7 +163,9 @@ collecter_app() {
       --arg type "$(awk -F'\t' '$1=="Database Type"{print $2}' <<<"$info")" \
       --arg version "$(awk -F'\t' '$1=="Version"{print $2}' <<<"$info")" \
       --arg maintenance "$(awk -F'\t' '$1=="Maintenance window"{print $2}' <<<"$info")" \
-      '. + [{fournisseur: $fournisseur, type: $type, plan: $plan, statut: $statut, version: $version, maintenance: $maintenance}]' <<<"$addons")
+      --arg accesInternet "$(awk -F'\t' '$1=="Internet Accessibility"{print $2}' <<<"$info")" \
+      --arg tlsForce "$(awk -F'\t' '$1=="Force TLS"{print $2}' <<<"$info")" \
+      '. + [{fournisseur: $fournisseur, type: $type, plan: $plan, statut: $statut, version: $version, maintenance: $maintenance, accesInternet: $accesInternet, tlsForce: $tlsForce}]' <<<"$addons")
   done < <(scalingo_lecture "$region" addons --app "$nom" | tableau_en_tsv | tail -n +2)
 
   conteneurs=$(scalingo_lecture "$region" ps --app "$nom" | tableau_en_tsv | tail -n +2 \
@@ -180,12 +188,37 @@ collecter_app() {
 
   source_ligne=$(awk -F'\t' -v c="$composant" '$1==c{print $2 "\t" $3; exit}' <<<"$SOURCES")
 
+  local domaines regles acces erreurs_avant sortie_firewall domaine_defaut domaine
+  domaines=$(scalingo_lecture "$region" domains --app "$nom" | tableau_en_tsv | tail -n +2 \
+    | jq -R -s -c 'split("\n") | map(select(length > 0) | split("\t") | {domaine: .[0], tls: .[1]})')
+
+  erreurs_avant=$(wc -l <"$TRAVAIL/erreurs.tsv")
+  sortie_firewall=$(scalingo_lecture "$region" app-firewall-rules --app "$nom")
+  if [ "$(wc -l <"$TRAVAIL/erreurs.tsv")" -gt "$erreurs_avant" ]; then
+    regles=null
+  else
+    regles=$(tableau_en_tsv <<<"$sortie_firewall" | { grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]{1,2})?' || true; } \
+      | jq -R -s -c 'split("\n") | map(select(length > 0))')
+  fi
+
+  acces='[]'
+  if jq -e 'any(.[]; .type == "web")' <<<"$conteneurs" >/dev/null; then
+    domaine_defaut="$nom.$region.scalingo.io"
+    acces=$(jq -c --arg d "$domaine_defaut" --arg c "$(code_http_direct "$domaine_defaut" "$domaine_defaut")" \
+      '. + [{domaine: $d, code: $c}]' <<<"$acces")
+    for domaine in $(jq -r '.[].domaine' <<<"$domaines"); do
+      acces=$(jq -c --arg d "$domaine" --arg c "$(code_http_direct "$domaine" "$domaine_defaut")" \
+        '. + [{domaine: $d, code: $c}]' <<<"$acces")
+    done
+  fi
+
   jq -n \
     --arg nom "$nom" --arg region "$region" --arg env "$env" --arg composant "$composant" \
     --arg projet "$projet" --arg statut "$statut" --arg stack "$stack" \
     --arg depotLie "$depot" --arg source "$source_ligne" --arg deploiement "$deploiement" \
     --argjson addons "$addons" --argjson conteneurs "$conteneurs" \
     --argjson variables "$variables" --argjson versions "$versions" \
+    --argjson domaines "$domaines" --argjson regles "$regles" --argjson acces "$acces" \
     '{
       nom: $nom, region: $region, env: $env, composant: $composant, projet: $projet, statut: $statut, stack: $stack,
       source: (if $source == "" then null else ($source | split("\t") | {repo: .[0], dossier: .[1]}) end),
@@ -196,7 +229,10 @@ collecter_app() {
       buildpackUrlDefinie: ($variables["#BUILDPACK_URL"] != null),
       projectDirDefinie: ($variables["#PROJECT_DIR"] != null),
       addons: $addons,
-      conteneurs: $conteneurs
+      conteneurs: $conteneurs,
+      domaines: $domaines,
+      reglesFirewall: $regles,
+      accesDirect: $acces
     }' >"$TRAVAIL/apps/$nom.json"
   log "  $nom"
 }
@@ -438,7 +474,7 @@ jq -r '
       (.cellules.depot | cellule), (.cellules.ci | cellule), (.cellules.local | cellule)] | ligne);
   "# Inventaire des versions Pass Emploi",
   "",
-  "Généré le \(.genereLe) par `inventaire/inventaire-versions.sh`. Sortie datée : ne pas commiter.",
+  "Généré le \(.genereLe) par `inventaire/inventaire.sh`. Sortie datée : ne pas commiter.",
   "",
   "Sources : Scalingo (\(.regions | join(", "))) ; " + (.repos | map("\(.repo) `\(.branche)` \(.commit) (\(.dateCommit))") | join(", ")) + ".",
   "",
@@ -473,9 +509,24 @@ jq -r '
   "",
   "## Addons",
   "",
-  (["App", "Env", "Type", "Plan", "Version", "Fenêtre de maintenance"] | ligne),
+  (["App", "Env", "Type", "Plan", "Version", "Fenêtre de maintenance", "Accès Internet", "TLS forcé"] | ligne),
+  "|---|---|---|---|---|---|---|---|",
+  (.apps[] | . as $a | .addons[] | [$a.nom, $a.env, .type, .plan, .version, .maintenance,
+     (if .accesInternet == "enabled" then "**enabled**" else .accesInternet end), .tlsForce] | ligne),
+  "",
+  "## Exposition",
+  "",
+  "Accès direct : code HTTP obtenu depuis la machine qui lance le script, en contournant tout front (Cloudflare…) : domaine par défaut, et chaque domaine custom envoyé directement au routeur Scalingo. Firewall posé : 403 attendu partout. Si l’IP de cette machine est dans l’allowlist, le résultat est faussé.",
+  "",
+  (["App", "Env", "Process web", "Domaines custom", "Firewall", "Accès direct"] | ligne),
   "|---|---|---|---|---|---|",
-  (.apps[] | . as $a | .addons[] | [$a.nom, $a.env, .type, .plan, .version, .maintenance] | ligne),
+  (.apps[] | (any(.conteneurs[]; .type == "web")) as $web
+    | [.nom, .env, (if $web then "oui" else "" end),
+       (.domaines | map(.domaine) | join(", ")),
+       (if .reglesFirewall == null then "non lu"
+        elif (.reglesFirewall | length) == 0 then (if $web then "**aucune règle**" else "aucune règle" end)
+        else "\(.reglesFirewall | length) règle(s) : \(.reglesFirewall | join(", "))" end),
+       (.accesDirect | map(if .code == "403" then "\(.domaine) 403" else "**\(.domaine) \(.code)**" end) | join(", "))] | ligne),
   "",
   "## Apps",
   "",
