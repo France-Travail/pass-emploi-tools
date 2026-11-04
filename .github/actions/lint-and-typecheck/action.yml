@@ -19,7 +19,7 @@ runs:
   using: 'composite'
   steps:
     - name: Setup Node.js and Yarn
-      uses: France-Travail/pass-emploi-tools/.github/actions/setup-node-yarn@master
+      uses: France-Travail/pass-emploi-tools/.github/actions/setup-node-yarn@f6b05aac7780c3e64f7d5da6bcddc7c9b4b8e727
       with:
         install-command: ${{ inputs.install-command }}
 
