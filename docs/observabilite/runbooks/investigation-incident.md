@@ -24,8 +24,17 @@ Champs pivots : `user.id`, `trace.id`, `http.request.id`, `log.level: error`.
 Un flux **non authentifié** (login) n'a ni `user.id` ni `trace.id` qui le
 traverse → pivoter sur `client.ip` + fenêtre temporelle, ou **reproduire en
 live** en tailant les logs. Pour le login, le funnel `login_*` de
-`pass-emploi-connect` localise l'étape d'échec (cf.
-[supervision/sli-slo](../supervision/sli-slo.md#requêtes-kql-du-funnel-login)).
+`pass-emploi-connect` (`login_initiated` → `login_redirected` →
+`login_completed` / `login_failed`, mode d'authentification dans `labels.idp`)
+localise l'échec, et `error.type` sa cause. `login.step` est vide en prod : se
+fier à `error.type`.
+
+| `error.type`                | Cause                                                                                   | Imputable à |
+|-----------------------------|-----------------------------------------------------------------------------------------|-------------|
+| `UTILISATEUR_NON_TRAITABLE` | refus voulu : l'utilisateur n'a pas droit à l'app                                       | métier      |
+| `OPError`, `RPError`        | l'IDP renvoie une erreur OIDC                                                           | partenaire  |
+| `SessionNotFound`           | connect perd l'interaction OIDC au retour de l'IDP (cookie purgé par webview ou ITP iOS) | nous        |
+| `ReplyError`, `TypeError`…  | Redis, bug                                                                              | nous        |
 
 ## Suspicion de DDoS ou surcharge de l'infra
 

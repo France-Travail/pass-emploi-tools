@@ -3,10 +3,10 @@
   "_methode": "POST",
   "rule_type_id": "slo.rules.burnRate",
   "consumer": "slo",
-  "name": "SLO - Prod - API — disponibilité des parcours critiques",
+  "name": "SLO - Prod - API — disponibilité par parcours",
   "artifacts": {
     "investigation_guide": {
-      "blob": "## Ce que signale l'alerte\n\nSLO menacé — disponibilité des parcours critiques (prod) : la marge d'erreur du SLO se consomme trop vite.\n\n**Promesse** : 99,5 % des requêtes des parcours critiques réussissent, sur 30 jours glissants. Les 401 et 403 comptent comme des succès.\n\n## À vérifier\n\n1. Quel parcours échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Si un partenaire échoue (France Travail, Milo…) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n3. Si l'api répond en erreur serveur : le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n\n## Dashboards\n\n- [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n- [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n\n## Documentation\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n"
+      "blob": "## Ce que signale l'alerte\n\nSLO menacé — disponibilité par parcours (prod) : la marge d'erreur du SLO se consomme trop vite.\n\n**Promesse** : 99,5 % des requêtes de chaque parcours réussissent, sur 30 jours glissants. Les 401 et 403 comptent comme des succès.\n\n## À vérifier\n\n1. Quel parcours échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Si un partenaire échoue (France Travail, Milo…) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n3. Si l'api répond en erreur serveur : le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n\n## Dashboards\n\n- [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n- [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n\n## Documentation\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n"
     },
     "dashboards": [
       {
@@ -91,7 +91,7 @@
       "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
       "params": {
         "body": {
-          "text": "🚨 **SLO menacé — disponibilité des parcours critiques (prod)**",
+          "text": "🚨 **SLO menacé — disponibilité par parcours (prod)**",
           "attachments": [
             {
               "color": "#d00000",
@@ -108,7 +108,7 @@
                 },
                 {
                   "title": "Promesse",
-                  "value": "99,5 % des requêtes des parcours critiques réussissent, sur 30 jours glissants. Les 401 et 403 comptent comme des succès."
+                  "value": "99,5 % des requêtes de chaque parcours réussissent, sur 30 jours glissants. Les 401 et 403 comptent comme des succès."
                 },
                 {
                   "title": "Parcours / mode",
@@ -155,7 +155,7 @@
       "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
       "params": {
         "body": {
-          "text": "🚨 **SLO menacé — disponibilité des parcours critiques (prod)**",
+          "text": "🚨 **SLO menacé — disponibilité par parcours (prod)**",
           "attachments": [
             {
               "color": "#d00000",
@@ -172,7 +172,7 @@
                 },
                 {
                   "title": "Promesse",
-                  "value": "99,5 % des requêtes des parcours critiques réussissent, sur 30 jours glissants. Les 401 et 403 comptent comme des succès."
+                  "value": "99,5 % des requêtes de chaque parcours réussissent, sur 30 jours glissants. Les 401 et 403 comptent comme des succès."
                 },
                 {
                   "title": "Parcours / mode",

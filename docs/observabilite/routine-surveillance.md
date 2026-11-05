@@ -73,7 +73,7 @@ Sur les **7 derniers jours** :
 |---|---|
 | **[Pass Emploi] SLO de Prod**, versionné dans [`supervision/dashboards/dashboard-slo.ndjson`](supervision/dashboards/dashboard-slo.ndjson) | statut et budget restant de chaque SLO, par parcours api et par mode de login ; alertes burn rate en cours ; budget et burn rate du login jeune France Travail |
 
-Les promesses elles-mêmes : [supervision/sli-slo](supervision/sli-slo.md).
+Leurs définitions : [`supervision/slo/1-slos.console`](supervision/slo/1-slos.console).
 
 ## Reporting métier
 

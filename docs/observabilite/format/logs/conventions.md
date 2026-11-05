@@ -63,7 +63,7 @@ chaque log porteur d'un `event.action`.
 
 Exception : sur la ligne de requête de l'api (`request_completed`,
 `request_failed`), l'outcome est le verdict du
-[SLO de disponibilité](../../supervision/sli-slo.md#slo--api--disponibilité-des-parcours-critiques-),
+[SLO de disponibilité](../../supervision/slo/1-slos.console),
 qui compte le 401 et le 403 en `success`. Le `handler_executed` de la même
 requête garde l'outcome de l'opération : un refus y sort en `failure`. Filtrer
 sur l'outcome sans `event.action` mélange les deux sens.
