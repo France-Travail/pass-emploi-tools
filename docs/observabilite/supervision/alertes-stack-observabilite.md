@@ -21,8 +21,8 @@ qui reprend les tableaux et bodies de cette page, à rejouer dans Dev Tools.
 
 > **Contexte** : les scénarios de panne et leurs indicateurs sont documentés dans
 > [`runbooks/runbook-logstash.md`](../runbooks/runbook-logstash.md). Dashboards
-> associés : [routine-surveillance](../routine-surveillance.md). Seuils de
-> service (SLO) : [sli-slo](sli-slo.md).
+> associés : [routine-surveillance](../routine-surveillance.md). SLO :
+> [`slo/1-slos.console`](slo/1-slos.console).
 
 ---
 

@@ -1,8 +1,8 @@
 # Observabilité du chantier perf — instrumentation requise
 
-> **Reference.** Sous-chantier du [chantier perf](./README.md). Les SLI/SLO
-> (seuil commun, I1-I5) sont définis dans
-> [`observabilite/supervision/sli-slo.md`](../observabilite/supervision/sli-slo.md) ;
+> **Reference.** Sous-chantier du [chantier perf](./README.md). Les SLO sont
+> définis dans
+> [`observabilite/supervision/slo/1-slos.console`](../observabilite/supervision/slo/1-slos.console) ;
 > ce fichier-ci pose **ce que l'app jeune doit émettre** pour qu'on puisse les
 > mesurer.
 
@@ -26,8 +26,7 @@ Règle de choix du mécanisme :
 
 - **L'étape est un use case api** → la convention existante **suffit** :
   `handler_executed` + `log.logger` + `event.outcome`/`event.duration`. Pas de
-  nouvel `event.action` ; on documente dans [sli-slo.md](../observabilite/supervision/sli-slo.md)
-  quel handler porte quel SLI (couplage au nom du handler assumé).
+  nouvel `event.action`.
 - **L'étape ne passe pas par l'api** (autre service, ou purement côté app) →
   événement dédié conforme à l'invariant ECS (`event.action` au passé +
   `event.outcome`, via `rootLogger`).
@@ -46,7 +45,7 @@ mobile), propagé sur tous les événements du funnel.
 
 ## Mise en œuvre
 
-- SLI, seuils et requêtes du funnel login : [supervision/sli-slo.md](../observabilite/supervision/sli-slo.md) ;
+- SLO : [`supervision/slo/1-slos.console`](../observabilite/supervision/slo/1-slos.console) ; causes d'échec du login : [runbook d'investigation](../observabilite/runbooks/investigation-incident.md#limite--les-flux-non-authentifiés) ;
   alertes : [applicatives](../observabilite/supervision/alertes-applicatives.md) et
   [stack d'observabilité](../observabilite/supervision/alertes-stack-observabilite.md) ;
   définitions de rétention versionnées sous [`stockage/`](../observabilite/stockage/README.md).

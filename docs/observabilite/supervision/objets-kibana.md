@@ -56,8 +56,8 @@ les logs à examiner.
 
 | Fichier | Contenu |
 |---|---|
-| [`slo/1-slos.console`](slo/1-slos.console) | les SLO, cf. [sli-slo](sli-slo.md) |
-| [`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console) | règles SLO2, SLO3, A1 à A3, A4a, A4b, A5a et A5b, cf. [alertes applicatives](alertes-applicatives.md) |
+| [`slo/1-slos.console`](slo/1-slos.console) | les SLO |
+| [`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console) | règles SLO1 à SLO3, A1 à A3, A4a, A4b, A5a et A5b, cf. [alertes applicatives](alertes-applicatives.md) |
 | [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console) | règles M1 à M10 et M13, cf. [alertes de la stack](alertes-stack-observabilite.md) |
 | [`rules/generated/1-rules-securite.console`](rules/generated/1-rules-securite.console) | règle S1, cf. [alertes de sécurité](alertes-securite.md) |
 | [`rules/generated/4-rules-tchap.console`](rules/generated/4-rules-tchap.console) | règle « Tchap - Envoi en échec », sans action |

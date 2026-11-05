@@ -15,7 +15,6 @@ Deux sortes de contenus, rangés séparément :
 
 | Page | Question à laquelle elle répond |
 |---|---|
-| [sli-slo.md](sli-slo.md) | Quelles promesses de service tient-on (SLI, SLO, seuils) ? |
 | [alertes-applicatives.md](alertes-applicatives.md) | Quelles alertes sur les pannes visibles des utilisateurs (SLO, partenaires, 5xx, base de données, front, disponibilité, événements Scalingo, jobs), et que vérifier quand elles sonnent ? |
 | [alertes-stack-observabilite.md](alertes-stack-observabilite.md) | Quelles alertes sur notre infra de télémétrie (Logstash, Redis, Elastic Agent, ILM, événements Scalingo de la stack) ? |
 | [alertes-securite.md](alertes-securite.md) | Quelles alertes sur les vulnérabilités des dépendances (CVE Dependabot) ? |
@@ -25,7 +24,7 @@ Deux sortes de contenus, rangés séparément :
 
 | Répertoire | Contenu | Mode d'emploi |
 |---|---|---|
-| [slo/](slo/) | les SLO (`1-slos.console`) | [sli-slo.md](sli-slo.md), [objets Kibana](objets-kibana.md#slo-et-règles-console) |
+| [slo/](slo/) | les SLO (`1-slos.console`) | [objets Kibana](objets-kibana.md#slo-et-règles-console) |
 | [rules/](rules/) | les règles d'alerte : une règle = un fichier JSON par périmètre, et les fichiers générés à coller dans Dev Tools (`rules/generated/`) | [rules/README.md](rules/README.md) |
 | [workflows/tchap/](workflows/tchap/) | l'envoi des alertes dans Tchap : `tchap-client`, et les Workflows générés par salon (`workflows/tchap/generated/`) | [workflows/tchap/README.md](workflows/tchap/README.md) |
 | [pipelines/webhooks/](pipelines/webhooks/) | les ingest pipelines qui transforment les événements reçus par webhook (Scalingo, Dependabot) en champs ECS, et l'accès de leurs émetteurs | [pipelines/webhooks/README.md](pipelines/webhooks/README.md) |

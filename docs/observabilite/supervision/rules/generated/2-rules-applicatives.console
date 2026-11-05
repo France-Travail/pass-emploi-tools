@@ -15,7 +15,7 @@
 # et le même corps plus "rule_type_id" et "consumer" (slo.rules.burnRate / slo pour
 # Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
 # ../../objets-kibana.md#slo-et-règles-console.
-# SLO2 et SLO3, .es-query / alerts pour A1 à A7, A4a, A4b, A5a et A5b,
+# SLO1 à SLO3, .es-query / alerts pour A1 à A7, A4a, A4b, A5a et A5b,
 # xpack.uptime.alerts.monitorStatus / uptime pour A8 à A10,
 # xpack.uptime.alerts.tlsCertificate / uptime pour A11).
 #
@@ -36,7 +36,7 @@
 # règle). L'API publique ne les renvoie pas dans ses réponses : les vérifier
 # dans l'interface.
 #
-# SLO2, SLO3 — SLO burn rate. Seuls Critical (slo.burnRate.alert) et High notifient.
+# SLO1 à SLO3 — SLO burn rate. Seuls Critical (slo.burnRate.alert) et High notifient.
 #
 # maxBurnRateThreshold = 1 / (1 - objectif) : burn rate à 100 % d'échecs.
 #
@@ -44,6 +44,111 @@
 # sur 1 h vaut 100 % d'échecs. Une seule fenêtre, longue, qui exige plusieurs
 # échecs : invité ≥ 20 % d'échecs sur 72 h (~18 tentatives), conseiller
 # départemental ≥ 20 % sur 168 h (~10 tentatives).
+
+POST kbn:/api/alerting/rule/ae2694af-e78e-497c-88cf-4cd43e4b01f8
+{
+  "rule_type_id": "slo.rules.burnRate",
+  "consumer": "slo",
+  "name": "SLO - Prod - API — disponibilité par parcours",
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nSLO menacé — disponibilité par parcours (prod) : la marge d'erreur du SLO se consomme trop vite.\n\n**Promesse** : 99,5 % des requêtes de chaque parcours réussissent, sur 30 jours glissants. Les 401 et 403 comptent comme des succès.\n\n## À vérifier\n\n1. Quel parcours échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Si un partenaire échoue (France Travail, Milo…) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n3. Si l'api répond en erreur serveur : le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n\n## Dashboards\n\n- [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n- [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n\n## Documentation\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14"
+      },
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "tags": [
+    "prod",
+    "slo"
+  ],
+  "params": {
+    "sloId": "57e45f52-6c4c-45a4-8aa0-c5885c35e55f",
+    "windows": [
+      {
+        "id": "alert",
+        "actionGroup": "slo.burnRate.alert",
+        "burnRateThreshold": 14.4,
+        "maxBurnRateThreshold": 200.0,
+        "longWindow": {
+          "value": 1,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 5,
+          "unit": "m"
+        }
+      },
+      {
+        "id": "high",
+        "actionGroup": "slo.burnRate.high",
+        "burnRateThreshold": 6,
+        "maxBurnRateThreshold": 200.0,
+        "longWindow": {
+          "value": 6,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 30,
+          "unit": "m"
+        }
+      },
+      {
+        "id": "medium",
+        "actionGroup": "slo.burnRate.medium",
+        "burnRateThreshold": 3,
+        "maxBurnRateThreshold": 200.0,
+        "longWindow": {
+          "value": 24,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 2,
+          "unit": "h"
+        }
+      },
+      {
+        "id": "low",
+        "actionGroup": "slo.burnRate.low",
+        "burnRateThreshold": 1,
+        "maxBurnRateThreshold": 200.0,
+        "longWindow": {
+          "value": 72,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 6,
+          "unit": "h"
+        }
+      }
+    ]
+  },
+  "actions": [
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
 
 PUT kbn:/api/alerting/rule/e41ef1d8-efd8-449b-b2a5-6fff758c8939
 {

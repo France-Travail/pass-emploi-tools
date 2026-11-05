@@ -3,8 +3,8 @@
 Les alertes sur des pannes **visibles des utilisateurs et impactantes pour le
 métier**, en cinq couches :
 
-- **alertes SLO** (SLO1 à SLO3) — la promesse de [sli-slo](sli-slo.md) est-elle
-  menacée ? Déduites des SLO Kibana ;
+- **alertes SLO** (SLO1 à SLO3) — une promesse de service est-elle menacée ?
+  Déduites des SLO Kibana ([`slo/1-slos.console`](slo/1-slos.console)) ;
 - **alertes de diagnostic** (A1 à A3, A6, A7) — pourquoi : un partenaire qui
   tombe, des 5xx qui s'accumulent, une vague de refus d'authentification, la
   base de données en erreur, le front en erreur ;
@@ -88,14 +88,13 @@ d'alerte, y compris celles de la [stack](alertes-stack-observabilite.md) et de
 ## Alertes SLO — la promesse est menacée
 
 Une règle **SLO burn rate** par SLO de
-[sli-slo § Mise en œuvre](sli-slo.md#mise-en-œuvre--slo-kibana). Elle mesure la
+[`slo/1-slos.console`](slo/1-slos.console). Elle mesure la
 vitesse à laquelle le budget d'erreur des 30 jours se consomme, sur une fenêtre
 longue et une fenêtre courte : la longue évite de déclencher sur un pic isolé,
 la courte fait retomber l'alerte dès que le problème cesse. La règle s'évalue
 instance par instance : un parcours ou un mode d'authentification à la fois.
 
-- **SLO1** — SLO « API — disponibilité des parcours critiques », à ne créer
-  qu'avec le correctif api, cf. [sli-slo](sli-slo.md#slo--api--disponibilité-des-parcours-critiques-) ;
+- **SLO1** — SLO « API — disponibilité par parcours » : tous les parcours, le 401 et le 403 comptent en succès ;
 - **SLO2** — SLO « API — latence des parcours critiques » ;
 - **SLO3** — SLO « Login — réussite jeune France Travail » et « Login — réussite par mode d'authentification ».
   Pour « Login — réussite invité » et « Login — réussite conseiller
@@ -148,8 +147,7 @@ noms dans la liste proposée par le bouton d'ajout de variable de l'action.
 ## Alertes de diagnostic — pourquoi ça casse
 
 Des **Elasticsearch query rules (ES|QL)**. Elles pointent une cause (partenaire,
-5xx, IDP), pas le respect d'une promesse : couche diagnostic de
-[sli-slo](sli-slo.md#principe--trois-usages-une-pyramide).
+5xx, IDP), pas le respect d'une promesse.
 
 **Création** : rejouer [`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console)
 dans Dev Tools, comme les alertes SLO.
