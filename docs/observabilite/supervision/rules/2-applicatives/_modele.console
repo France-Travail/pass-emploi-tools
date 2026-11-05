@@ -6,7 +6,7 @@
 # et le même corps plus "rule_type_id" et "consumer" (slo.rules.burnRate / slo pour
 # Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
 # ../../objets-kibana.md#slo-et-règles-console.
-# SLO2 et SLO3, .es-query / alerts pour A1 à A7, A4a, A4b, A5a et A5b,
+# SLO1 à SLO3, .es-query / alerts pour A1 à A7, A4a, A4b, A5a et A5b,
 # xpack.uptime.alerts.monitorStatus / uptime pour A8 à A10,
 # xpack.uptime.alerts.tlsCertificate / uptime pour A11).
 #
@@ -27,7 +27,7 @@
 # règle). L'API publique ne les renvoie pas dans ses réponses : les vérifier
 # dans l'interface.
 #
-# SLO2, SLO3 — SLO burn rate. Seuls Critical (slo.burnRate.alert) et High notifient.
+# SLO1 à SLO3 — SLO burn rate. Seuls Critical (slo.burnRate.alert) et High notifient.
 #
 # maxBurnRateThreshold = 1 / (1 - objectif) : burn rate à 100 % d'échecs.
 #
@@ -35,6 +35,8 @@
 # sur 1 h vaut 100 % d'échecs. Une seule fenêtre, longue, qui exige plusieurs
 # échecs : invité ≥ 20 % d'échecs sur 72 h (~18 tentatives), conseiller
 # départemental ≥ 20 % sur 168 h (~10 tentatives).
+
+@@REGLE SLO1@@
 
 @@REGLE SLO2@@
 

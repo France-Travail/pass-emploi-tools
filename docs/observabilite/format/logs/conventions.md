@@ -61,6 +61,13 @@ anticipation ni par souci de symétrie.
 `success` / `failure` uniquement → filtre transverse des dashboards. Posé sur
 chaque log porteur d'un `event.action`.
 
+Exception : sur la ligne de requête de l'api (`request_completed`,
+`request_failed`), l'outcome est le verdict du
+[SLO de disponibilité](../../supervision/sli-slo.md#slo--api--disponibilité-des-parcours-critiques-),
+qui compte le 401 et le 403 en `success`. Le `handler_executed` de la même
+requête garde l'outcome de l'opération : un refus y sort en `failure`. Filtrer
+sur l'outcome sans `event.action` mélange les deux sens.
+
 ## `log.level` — `info` / `error` pour l'opérationnel (`debug` opt-in en plus)
 
 Pour les logs **opérationnels** (ceux qu'on lit en continu), deux niveaux

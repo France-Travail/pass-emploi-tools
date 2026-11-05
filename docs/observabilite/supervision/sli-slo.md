@@ -146,7 +146,8 @@ glissants** ; les alertes en découlent par burn rate, cf.
 
 L'api pose un parcours métier sur chaque route via le décorateur
 `@UserJourney('<parcours>')` : sur le controller par défaut, surchargé par
-route. Il sort dans `labels.user_journey` sur les logs de la requête, cf.
+route. Il sort dans `labels.user_journey` sur la ligne de requête
+(`request_completed`, `request_failed`), cf.
 [couverture-api](../format/logs/couverture-api.md#couverture). Le SLO se
 découpe par parcours (`Group by`) : une instance, et donc un budget, par
 parcours.
@@ -180,7 +181,7 @@ login pour I1) :
 | **Type**             | Custom Query                                                                                              |
 | **Index**            | `logs-prod-default`, timestamp `@timestamp`                                                               |
 | **Query filter**     | voir ci-dessous                                                                                           |
-| **Good query**       | `event.action: request_completed and http.response.status_code < 500`                                     |
+| **Good query**       | `event.outcome: success`                                                                                  |
 | **Total query**      | *(vide : tout ce que retient le filtre)*                                                                  |
 | **Group by**         | `labels.user_journey`                                                                                     |
 | **Time window**      | 30 days, Rolling                                                                                          |
@@ -193,20 +194,18 @@ service.name: pass-emploi-api and event.action: (request_completed or request_fa
 ```
 
 `service.name` est indispensable : `logs-prod-default` reçoit aussi les
-requêtes du web et de connect. Un 4xx est un succès : c'est l'appelant qui se
-trompe (cf.
-[conventions](../format/logs/conventions.md#doctrine--choisir-le-level-test-dactionabilité)).
-Les 5xx sortent en `request_failed`.
+requêtes du web et de connect.
 
-> **Bloqué tant que l'api n'est pas corrigée.** Au 2026-09-30, aucune réponse
-> en erreur ne porte de parcours (0 sur 150 150 réponses 4xx et 8 492 réponses
-> 5xx en 7 jours) : le SLO ne verrait que des succès et afficherait 100 %.
-> Le parcours est posé par `ContextInterceptor` dans l'AsyncLocalStorage :
-> les refus des guards arrivent avant lui, et le log pino-http d'une réponse en
-> erreur ne voit pas ce contexte. Correctif attendu : poser le parcours sur la
-> requête depuis un guard global déclaré en premier, et le faire émettre par
-> pino-http (`customProps`). Le SLO de latence n'est pas concerné : les requêtes
-> réussies portent bien leur parcours.
+Le verdict est l'`event.outcome` de la ligne de requête, posé par l'api (cf.
+[conventions](../format/logs/conventions.md#eventoutcome)) : échec pour un 5xx,
+une requête sans réponse et tout 4xx, sauf deux. Le 401 compte en succès : il
+relève de l'authentification, qui a ses propres SLO. Le 403 aussi : une part
+des 403 vient d'apps qui appellent une route fermée à leur profil, un bruit qui
+masquerait les pannes. Il se suit en couche diagnostic, par parcours et par
+`user.structure`.
+
+Une requête refusée avant le routage (JSON malformé, URL inconnue) ne porte pas
+de parcours : elle sort du SLO.
 
 ### SLO « API — latence des parcours critiques »
 
@@ -312,7 +311,7 @@ FROM logs-prod-default
 | EVAL parcours = COALESCE(labels.user_journey, "(aucun)"),
        seuil_ms = CASE(parcours == "authentification", 500, 2500)
 | STATS requetes = COUNT(*),
-        echecs = COUNT(*) WHERE event.action == "request_failed",
+        echecs = COUNT(*) WHERE event.outcome == "failure",
         lentes = COUNT(*) WHERE event.duration / 1000000 >= seuil_ms,
         p99_ms = PERCENTILE(event.duration, 99) / 1000000
   BY parcours
@@ -332,9 +331,9 @@ FROM logs-prod-default
 ```
 
 La ligne `(aucun)` mesure les requêtes api sans parcours : routes non
-décorées, et toutes les réponses en erreur tant que le correctif api n'est pas
-livré. `sous_seuil` doit dépasser 99 % sur chaque parcours avant de créer le
-SLO de latence.
+décorées et requêtes refusées avant le routage. `sous_seuil` doit dépasser
+99 % sur chaque parcours avant de créer le SLO de latence, `disponibilite`
+99,5 % avant de créer le SLO de disponibilité.
 
 ## Ce qu'on ne mesure PAS (couche verdict)
 
@@ -351,6 +350,11 @@ Exclusions explicites, pour tenir la pyramide :
 
 ## Historique
 
+- **2026-11-05** — **SLO disponibilité api défini** sur l'`event.outcome` de la
+  ligne de requête, qui compte le 401 et le 403 en succès. Débloqué par le
+  correctif api : le parcours et l'utilisateur sont lus sur la requête, et les
+  réponses en erreur les portent. Création dans Kibana après mesure de la
+  baseline prod.
 - **2026-10-02** — **SLO latence api et login créés dans Kibana** ; le SLO login
   hors jeune France Travail devient « Login — réussite par mode
   d'authentification », sans `invite` ni `conseildepartemental-conseiller`,

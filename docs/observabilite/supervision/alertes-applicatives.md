@@ -94,8 +94,7 @@ longue et une fenêtre courte : la longue évite de déclencher sur un pic isol�
 la courte fait retomber l'alerte dès que le problème cesse. La règle s'évalue
 instance par instance : un parcours ou un mode d'authentification à la fois.
 
-- **SLO1** — SLO « API — disponibilité des parcours critiques », à ne créer
-  qu'avec le correctif api, cf. [sli-slo](sli-slo.md#slo--api--disponibilité-des-parcours-critiques-) ;
+- **SLO1** — SLO « API — disponibilité des parcours critiques », cf. [sli-slo](sli-slo.md#slo--api--disponibilité-des-parcours-critiques-) ;
 - **SLO2** — SLO « API — latence des parcours critiques » ;
 - **SLO3** — SLO « Login — réussite jeune France Travail » et « Login — réussite par mode d'authentification ».
   Pour « Login — réussite invité » et « Login — réussite conseiller

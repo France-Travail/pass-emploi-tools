@@ -26,11 +26,15 @@ Spécificités api :
   sont des `implements`, pas des `extends Error`).
 - **`labels.user_journey`** : parcours métier de la requête, posé par le
   décorateur `@UserJourney('<parcours>')` (controller par défaut, surchargé par
-  route) et lu par `ContextInterceptor`. Découpe les SLO par parcours (cf.
-  [sli-slo](../../supervision/sli-slo.md#mise-en-œuvre--slo-kibana)). Absent des
-  logs émis avant l'interceptor (les guards : `auth_failed`, 401/403 de
-  `OidcAuthGuard`), de **toutes les réponses en erreur** (`request_completed`
-  en 4xx, `request_failed`), et des jobs worker, qui n'ont pas de requête.
+  route). Découpe les SLO par parcours (cf.
+  [sli-slo](../../supervision/sli-slo.md#mise-en-œuvre--slo-kibana)). Porté par
+  la **seule ligne de requête** (`request_completed`, `request_failed`), refus
+  d'authentification et réponses en erreur compris : `UserJourneyGuard` le pose
+  sur la requête avant `OidcAuthGuard`. La ligne de requête lit aussi `user.*`
+  sur la requête, pour la même raison : le contexte partagé des autres logs
+  manque aux réponses en erreur. Les autres logs d'une requête se corrèlent par
+  `http.request.id`. Absent des requêtes refusées avant le routage (JSON
+  malformé, URL inconnue) et des jobs worker.
 - **`http.route`** (nom OpenTelemetry, absent d'ECS) sur `request_completed` /
   `request_failed` : modèle de route Express (`/v2/jeunes/:idJeune/actions`),
   succès comme erreurs. **Absent = aucune route n'a répondu** (URL inconnue,
