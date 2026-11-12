@@ -218,6 +218,14 @@ qui se périme fait plus de dégâts qu'une doc absente : on la croit.
 6. **Doc fausse, on coupe.** Un passage trouvé faux se supprime ; on ne le
    réécrit que s'il passe les règles 1 à 5.
 
+### IP du client
+
+Derrière le routeur Scalingo, l'IP du client se lit dans le header `X-Real-IP`,
+jamais dans `req.ip` ni dans `X-Forwarded-For`. Le routeur écrase `X-Real-IP`,
+même si le client en envoie un forgé. `req.ip` contient l'IP interne du routeur,
+qui varie d'une requête à l'autre : un rate limit ou un blocage fondé dessus
+mélangerait tous les utilisateurs.
+
 ### Secrets & Variables d'environnement
 
 **Outil : dotvault**
