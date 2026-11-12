@@ -8,21 +8,24 @@
 # service.name est indispensable dans les filtres api : logs-prod-default reçoit
 # aussi les requêtes du web et de connect.
 #
-# SLO « API — disponibilité par parcours » : POST, à créer. Le verdict est
+# SLO « API — disponibilité par parcours ». Le verdict est
 # l'event.outcome de la ligne de requête (401 et 403 en succès, cf.
 # ../../format/logs/conventions.md#eventoutcome).
+# Exception : le 404 d'un GET plan_action ou questionnaire compte en succès.
+# Il signale qu'un jeune n'a pas encore de plan ou de questionnaire, ce qui est
+# un état normal. À retirer quand ces routes répondront 204
+# (pass-emploi-api #538 et #539).
 
-POST kbn:/api/observability/slos
+PUT kbn:/api/observability/slos/57e45f52-6c4c-45a4-8aa0-c5885c35e55f
 {
-  "id": "57e45f52-6c4c-45a4-8aa0-c5885c35e55f",
   "name": "API — disponibilité par parcours",
-  "description": "99,5 % des requêtes de chaque parcours réussies, au sens de l'event.outcome de la ligne de requête : le 401 et le 403 comptent en succès.",
+  "description": "99,5 % des requêtes de chaque parcours réussies, au sens de l'event.outcome de la ligne de requête : le 401 et le 403 comptent en succès, comme le 404 d'un GET plan_action ou questionnaire (jeune sans plan ni questionnaire).",
   "indicator": {
     "type": "sli.kql.custom",
     "params": {
       "index": "logs-prod-default",
       "filter": "service.name: pass-emploi-api and event.action: (request_completed or request_failed) and labels.user_journey: *",
-      "good": "event.outcome: success",
+      "good": "event.outcome: success or (http.response.status_code: 404 and http.request.method: GET and labels.user_journey: (plan_action or questionnaire))",
       "total": "*",
       "timestampField": "@timestamp"
     }
