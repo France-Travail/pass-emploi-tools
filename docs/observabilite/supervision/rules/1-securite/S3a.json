@@ -1,0 +1,86 @@
+{
+  "_id": "763950dd-eb65-426c-ae3a-714c35f1bc83",
+  "_commentaire": [
+    "# S3a — Limite de débit déclenchée, prod (High) : lignes rate_limit_exceeded de l'api ou de connect.",
+    "# Nouvelle règle : la première fois, la créer avec POST sur la même URL, en ajoutant",
+    "# \"rule_type_id\" et \"consumer\" à la racine du corps, au même niveau que \"name\" (pas dans \"params\") :",
+    "#   POST kbn:/api/alerting/rule/763950dd-eb65-426c-ae3a-714c35f1bc83",
+    "#   {",
+    "#     \"rule_type_id\": \".es-query\",",
+    "#     \"consumer\": \"alerts\",",
+    "#     \"name\": \"Pass Emploi - Prod - Limite de débit déclenchée\",",
+    "#     \"tags\": [...], \"artifacts\": {...}, \"schedule\": {...}, \"params\": {...}, \"actions\": [...]",
+    "#   }",
+    "# Ensuite, ce bloc tel quel, en PUT (qui refuse ces deux champs)."
+  ],
+  "_tchap": {
+    "ligne": "`{0}` / `{1}` : {2} lignes, jusqu'à {3} refus dans une fenêtre — depuis {4}"
+  },
+  "_message": {
+    "text": "⚠️ **Limite de débit déclenchée — prod** — des requêtes sont refusées en 429.",
+    "attachments": [
+      {
+        "color": "#f2c744",
+        "text": "",
+        "fields": [
+          {
+            "title": "À vérifier",
+            "value": "1. Qui est limité : Discover sur `event.action: \"rate_limit_exceeded\"`, puis `user.id` ou `client.ip`, et `url.path`\n2. Légitime ou attaque : un pic attendu (ouverture, communication, atelier en Mission Locale), ou une IP ou un compte inconnu\n3. Si c'est légitime, monter le seuil concerné (`RATE_LIMIT_*` de l'app, cf. le `CLAUDE.md` de l'app) ; si c'est une attaque, croiser avec la règle [Scalingo - Prod - Suspicion d'attaque DDoS](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/management/insightsAndAlerting/triggersActions/rule/4b2e9f71-6c3d-4a85-b0e7-9d1f2c3a5e68) et le Discover [[Pass Emploi] Logs de Prod - Trafic du routeur par IP](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/7d3f1c2e-5b8a-4e6f-9c1d-2a4b6e8f0d13)"
+          },
+          {
+            "title": "Discover sessions",
+            "value": "[[Pass Emploi] Logs de Prod - Trafic du routeur par IP](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/7d3f1c2e-5b8a-4e6f-9c1d-2a4b6e8f0d13)"
+          }
+        ]
+      }
+    ]
+  },
+  "name": "Pass Emploi - Prod - Limite de débit déclenchée",
+  "tags": [
+    "high",
+    "prod",
+    "securite",
+    "rate-limit"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nSur l'api ou connect de prod, une limite de débit a refusé des requêtes (429) : au moins une ligne `rate_limit_exceeded` dans les 15 dernières minutes. Une ligne est émise au premier refus d'une fenêtre, puis au 10e, au 100e… (`labels.rate_limit_palier`). Signe d'un abus, d'une attaque, ou d'un seuil trop bas pour un pic légitime. Ne se déclenche que sur une app où la limite est activée.\n\n## À vérifier\n\n1. Qui est limité : Discover sur `event.action: \"rate_limit_exceeded\"`, puis `user.id` ou `client.ip`, et `url.path`\n2. Légitime ou attaque : un pic attendu (ouverture, communication, atelier en Mission Locale), ou une IP ou un compte inconnu\n3. Si c'est légitime, monter le seuil concerné (`RATE_LIMIT_*` de l'app, cf. le `CLAUDE.md` de l'app) ; si c'est une attaque, croiser avec la règle [Scalingo - Prod - Suspicion d'attaque DDoS](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/management/insightsAndAlerting/triggersActions/rule/4b2e9f71-6c3d-4a85-b0e7-9d1f2c3a5e68) et le Discover [[Pass Emploi] Logs de Prod - Trafic du routeur par IP](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/7d3f1c2e-5b8a-4e6f-9c1d-2a4b6e8f0d13)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Trafic du routeur par IP](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/7d3f1c2e-5b8a-4e6f-9c1d-2a4b6e8f0d13)\n\n## Documentation\n\n[Alertes de sécurité](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/supervision/alertes-securite.md)\n"
+    },
+    "dashboards": []
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": "FROM logs-prod-default\n| WHERE event.action == \"rate_limit_exceeded\"\n| STATS lignes = COUNT(*), palier_max = MAX(TO_INTEGER(labels.rate_limit_palier)), depuis = MIN(@timestamp) BY service.name, labels.rate_limit\n| KEEP service.name, labels.rate_limit, lignes, palier_max, depuis"
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 15,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "groupBy": "all"
+  },
+  "actions": [
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-securite",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
