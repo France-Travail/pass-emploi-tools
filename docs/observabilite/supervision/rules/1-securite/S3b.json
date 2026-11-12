@@ -14,7 +14,7 @@
     "# Ensuite, ce bloc tel quel, en PUT (qui refuse ces deux champs)."
   ],
   "_tchap": {
-    "ligne": "`{0}` / `{1}` : {2} lignes, jusqu'à {3} refus dans une fenêtre — depuis {4}"
+    "ligne": "`{0}` / `{1}` : {2} lignes de log, au moins {3} refus dans une fenêtre — depuis {4}"
   },
   "_message": {
     "text": "⚠️ **Limite de débit déclenchée — staging** — des requêtes sont refusées en 429.",

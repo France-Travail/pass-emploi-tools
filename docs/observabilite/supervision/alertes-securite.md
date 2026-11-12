@@ -104,7 +104,14 @@ légitime. La règle ne se déclenche que sur une app où la limite est activée
 Une ligne `rate_limit_exceeded` est émise au premier refus de chaque fenêtre de
 la limite, puis au 10e, au 100e… (`labels.rate_limit_palier`) : une seule ligne
 suffit à déclencher. Un blocage qui dure ne renvoie pas de message à chaque
-exécution : seules les nouvelles alertes sont notifiées.
+exécution : seules les nouvelles alertes sont notifiées. Limite connue : tant
+qu'il reste des refus dans la fenêtre, une autre limite ou une autre app qui se
+déclenche à son tour n'envoie pas de nouveau message ; la règle, dans Kibana,
+montre l'état courant.
+
+Les champs `labels.rate_limit*` sont déclarés d'avance dans le mapping
+([`2-component-templates.console`](../stockage/logs/2-component-templates.console)) :
+sans eux, la requête ES|QL échoue tant qu'aucune limite n'a refusé de requête.
 
 | Paramètre               | Valeur |
 |-------------------------|--------|
@@ -112,7 +119,7 @@ exécution : seules les nouvelles alertes sont notifiées.
 | **Type**                | Elasticsearch query rule (ES\|QL), `groupBy: all` |
 | **Fenêtre / fréquence** | 15 min / 5 min |
 | **Actions**             | Tchap via le Workflow `tchap-monitoring-securite` (S3a) ou `tchap-monitoring-staging` (S3b) |
-| **Message**             | une ligne par app et par limite : nombre de lignes, palier maximal atteint (refus dans une fenêtre), heure du premier refus |
+| **Message**             | une ligne par app et par limite : nombre de lignes de log, palier maximal atteint (au moins 1, 10, 100… refus dans une fenêtre), heure du premier refus |
 
 **À vérifier** :
 1. Qui est limité : Discover sur `event.action: "rate_limit_exceeded"`, puis
@@ -125,4 +132,5 @@ exécution : seules les nouvelles alertes sont notifiées.
 
 **Création** : nouvelles règles, à créer avec `POST` (cf. l'en-tête de leur
 bloc dans [`rules/generated/1-rules-securite.console`](rules/generated/1-rules-securite.console)),
-puis à mettre à jour avec `PUT`.
+après le `PUT …/_mapping` des champs `labels.rate_limit*`, puis à mettre à
+jour avec `PUT`.
