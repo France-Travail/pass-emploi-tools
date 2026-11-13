@@ -109,9 +109,9 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
@@ -134,7 +134,7 @@ jobs:
       group: perf-environnement-dedie
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # Centralise les valeurs par défaut du tir : les steps suivants lisent ces
       # variables d'environnement, jamais le contexte `inputs`. Le `|| 'défaut'`
@@ -484,7 +484,7 @@ jobs:
       # aucun rapport, et ce n'est pas une raison de perdre la console.
       - name: Archiver
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tir-${{ github.run_id }}
           path: |
