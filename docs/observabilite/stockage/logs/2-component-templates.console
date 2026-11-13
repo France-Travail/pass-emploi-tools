@@ -58,12 +58,30 @@ PUT _component_template/pass-emploi-logs@mappings
             "erreurs":          { "type": "long" },
             "tokens_invalides": { "type": "long" }
           } }
+        } },
+        "labels": { "properties": {
+          "rate_limit":        { "type": "keyword", "ignore_above": 1024 },
+          "rate_limit_palier": { "type": "keyword", "ignore_above": 1024 }
         } }
       }
     }
   },
   "_meta": { "description": "Champs ECS custom CEJ, communs app + router", "managed_by": "pass-emploi-tools" },
-  "version": 4
+  "version": 5
+}
+
+# labels.rate_limit et .rate_limit_palier déclarés d'avance : les règles S3a / S3b
+# les lisent en ES|QL, qui refuse une colonne absente du mapping tant qu'aucune
+# limite n'a refusé de requête, ou quand la rétention a supprimé la dernière.
+# Data streams déjà créés : le template ne s'applique qu'au prochain rollover.
+PUT logs-prod-default,logs-staging-default/_mapping
+{
+  "properties": {
+    "labels": { "properties": {
+      "rate_limit":        { "type": "keyword", "ignore_above": 1024 },
+      "rate_limit_palier": { "type": "keyword", "ignore_above": 1024 }
+    } }
+  }
 }
 
 # logs@custom, point d'ancrage global d'Elastic, laissé vide (cf. ci-dessus).

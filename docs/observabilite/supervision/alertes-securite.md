@@ -5,8 +5,8 @@ remontées par Dependabot, que le workflow GitHub Actions
 [`security-alerts.yml`](../../../.github/workflows/security-alerts.yml) envoie
 dans `logs-alertes-github-default`) et sur une **suspicion d'attaque par déni
 de service**, lue dans les alertes de métriques Scalingo (cf.
-[collecte par webhook](../collecte/webhooks/README.md)). Aucune ne dépend des
-logs des apps.
+[collecte par webhook](../collecte/webhooks/README.md)) : aucune des deux ne
+dépend des logs des apps. Seule la **limite de débit déclenchée** (S3) les lit.
 
 ## Récapitulatif
 
@@ -15,6 +15,8 @@ logs des apps.
 | S1 | CVE high/critical ouverte | `logs-alertes-github-default` | `vulnerability.severity` high ou critical | 5 min     | —        | 🚨 Critical |
 | S2a | Suspicion d'attaque DDoS, prod | `logs-alertes-scalingo-prod-default` | alertes `rpm` et `5XX` de la même app à moins de 10 min, non revenues à la normale | 1 min | — | 🚨 Critical |
 | S2b | Suspicion d'attaque DDoS, staging / perf | `logs-alertes-scalingo-staging-default`, `-perf-default` | idem | 1 min | — | 🚨 Critical |
+| S3a | Limite de débit déclenchée, prod | `logs-prod-default` | au moins une ligne `rate_limit_exceeded` en 15 min | 5 min | — | ⚠️ High |
+| S3b | Limite de débit déclenchée, staging | `logs-staging-default` | idem | 5 min | — | ⚠️ High |
 
 **Création** : rejouer [`rules/generated/1-rules-securite.console`](rules/generated/1-rules-securite.console)
 dans Dev Tools, après les sessions Discover de
@@ -92,3 +94,43 @@ bloc dans [`rules/generated/1-rules-securite.console`](rules/generated/1-rules-s
 après la session Discover
 [`discover-session-prod-trafic-routeur-par-ip.ndjson`](discovers/applicatives/discover-session-prod-trafic-routeur-par-ip.ndjson)
 et le Workflow [`tchap-monitoring-securite`](workflows/tchap/generated/tchap-monitoring-securite.console).
+
+## S3a / S3b — Limite de débit déclenchée (High)
+
+**Objectif** : savoir dès qu'une limite de débit de l'api ou de connect refuse
+des requêtes (429), qu'il s'agisse d'un abus ou d'un seuil trop bas pour un pic
+légitime. La règle ne se déclenche que sur une app où la limite est activée.
+
+Une ligne `rate_limit_exceeded` est émise au premier refus de chaque fenêtre de
+la limite, puis au 10e, au 100e… (`labels.rate_limit_palier`) : une seule ligne
+suffit à déclencher. Un blocage qui dure ne renvoie pas de message à chaque
+exécution : seules les nouvelles alertes sont notifiées. Limite connue : tant
+qu'il reste des refus dans la fenêtre, une autre limite ou une autre app qui se
+déclenche à son tour n'envoie pas de nouveau message ; la règle, dans Kibana,
+montre l'état courant.
+
+Les champs `labels.rate_limit*` sont déclarés d'avance dans le mapping
+([`2-component-templates.console`](../stockage/logs/2-component-templates.console)) :
+sans eux, la requête ES|QL échoue tant qu'aucune limite n'a refusé de requête.
+
+| Paramètre               | Valeur |
+|-------------------------|--------|
+| **Rule name**           | `Pass Emploi - Prod - Limite de débit déclenchée` (S3a), `Pass Emploi - Hors-Prod - Limite de débit déclenchée` (S3b) |
+| **Type**                | Elasticsearch query rule (ES\|QL), `groupBy: all` |
+| **Fenêtre / fréquence** | 15 min / 5 min |
+| **Actions**             | Tchap via le Workflow `tchap-monitoring-securite` (S3a) ou `tchap-monitoring-staging` (S3b) |
+| **Message**             | une ligne par app et par limite : nombre de lignes de log, palier maximal atteint (au moins 1, 10, 100… refus dans une fenêtre), heure du premier refus |
+
+**À vérifier** :
+1. Qui est limité : Discover sur `event.action: "rate_limit_exceeded"`, puis
+   `user.id` ou `client.ip`, et `url.path`.
+2. Légitime ou attaque : un pic attendu (ouverture, communication, atelier en
+   Mission Locale), ou une IP ou un compte inconnu.
+3. Si c'est légitime, monter le seuil concerné (`RATE_LIMIT_*` de l'app, cf. le
+   `CLAUDE.md` de l'app) ; si c'est une attaque, croiser avec S2a (S2b hors prod)
+   et le Discover **[Pass Emploi] Logs de Prod - Trafic du routeur par IP**.
+
+**Création** : nouvelles règles, à créer avec `POST` (cf. l'en-tête de leur
+bloc dans [`rules/generated/1-rules-securite.console`](rules/generated/1-rules-securite.console)),
+après le `PUT …/_mapping` des champs `labels.rate_limit*`, puis à mettre à
+jour avec `PUT`.
