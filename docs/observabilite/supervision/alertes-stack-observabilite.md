@@ -899,8 +899,8 @@ l'événement dans le tableau ci-dessus. Tester avec **Run to test** avant **Sav
 [`connecteurs/autoops/M11-tchap.json`](connecteurs/autoops/M11-tchap.json). Le salon est l'un de ceux de
 [`salons.json`](workflows/tchap/salons.json) : pour en changer, modifier `salon` et `url`
 ensemble, le test `tests/test_messages_tchap.py` vérifie qu'ils concordent.
-En-têtes `Content-Type: application/json` et `Authorization: Bearer <jeton du bot Tchap>`
-(le bot des [Workflows Tchap](workflows/tchap/README.md) ; secret : ne pas le versionner).
+Les en-têtes y sont aussi : remplacer `<jeton du bot Tchap>` par le jeton du bot des
+[Workflows Tchap](workflows/tchap/README.md), secret, jamais versionné.
 
 > **Pourquoi `POST` sans `txnId`** : AutoOps n'a ni variable unique par
 > événement ni variable dans l'URL, il ne peut pas produire le `txnId` de
@@ -973,8 +973,8 @@ ajouté à ce filtre.
 [`connecteurs/autoops/M12-tchap.json`](connecteurs/autoops/M12-tchap.json). Le salon est l'un de ceux de
 [`salons.json`](workflows/tchap/salons.json) : pour en changer, modifier `salon` et `url`
 ensemble, le test `tests/test_messages_tchap.py` vérifie qu'ils concordent.
-En-têtes `Content-Type: application/json` et `Authorization: Bearer <jeton du bot Tchap>`
-(le bot des [Workflows Tchap](workflows/tchap/README.md) ; secret : ne pas le versionner).
+Les en-têtes y sont aussi : remplacer `<jeton du bot Tchap>` par le jeton du bot des
+[Workflows Tchap](workflows/tchap/README.md), secret, jamais versionné.
 
 > **Pourquoi `POST` sans `txnId`** : AutoOps n'a ni variable unique par
 > événement ni variable dans l'URL, il ne peut pas produire le `txnId` de

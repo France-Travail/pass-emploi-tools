@@ -73,6 +73,13 @@ class TestConnecteursAutoOps(unittest.TestCase):
                 self.assertTrue(corps.get('body'), 'texte brut absent')
                 self.assertEqual(ecarts_au_pare_feu(corps.get('formatted_body', '')), [])
 
+    def test_les_en_tetes_sont_ceux_de_matrix_sans_le_jeton(self):
+        for c in self.connecteurs:
+            with self.subTest(c['alerte']):
+                self.assertEqual({e['nom']: e['valeur'] for e in c['en_tetes']},
+                                 {'Content-Type': 'application/json', 'Authorization': 'Bearer <jeton du bot Tchap>'},
+                                 'le jeton du bot est un secret : jamais versionné, à saisir dans AutoOps')
+
     def test_aucun_corps_orphelin(self):
         cites = {c['body'] for c in self.connecteurs}
         presents = {os.path.basename(p) for p in glob.glob(os.path.join(AUTOOPS, '*-tchap.json'))}
