@@ -88,7 +88,7 @@ Copier le fichier dans Dev Tools et exécuter les requêtes, dans l'ordre :
 `rules/generated/3-rules-stack-observabilite.console`, puis `rules/generated/1-rules-securite.console`.
 Sur un cluster vide, l'en-tête de chaque fichier indique comment transformer les
 `PUT` en `POST` de création. Les règles sur les événements Scalingo et GitHub
-(A4a, A4b, M6a, M6b, M13, S1) supposent leur collecte en place : cf. sa
+(A4a à A4d, M6a, M6b, M13, S1) supposent leur collecte en place : cf. sa
 [mise en service](../collecte/webhooks/README.md#mise-en-service).
 
 **Après un déploiement par l'API avec une clé API** (script, `curl` avec

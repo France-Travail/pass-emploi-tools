@@ -463,7 +463,7 @@ des notifiers). Une règle par environnement, qui liste chaque événement sur u
 ligne, préfixée de sa gravité (niveaux des anciennes X1 à X3) : en prod, 🚨
 crash, redémarrage ou arrêt, ⚠️ seuil dépassé ; en staging / perf, ⚠️ pour
 les deux ; ℹ️ le reste. Les
-apps applicatives vont aux règles A4a / A4b des
+apps applicatives vont aux règles A4a à A4d des
 [alertes applicatives](alertes-applicatives.md#événements-scalingo--ce-qui-arrive-aux-apps).
 
 Chaque exécution ne compte que les documents arrivés depuis la précédente
@@ -908,7 +908,10 @@ en-têtes `Content-Type: application/json` et
 > cesseraient : garder une notification AutoOps **par email** vers l'équipe en
 > secours.
 
-**Body du webhook Tchap** : `${DESCRIPTION}` est omis, identique à
+**Body du webhook Tchap** : un seul lien HTML `<a>`, celui de l'événement, puis des
+URL brutes que Tchap rend cliquables (le pare-feu devant Tchap rejette un message
+à plusieurs liens, cf.
+[pièges des Workflows Tchap](workflows/tchap/README.md#pièges)). `${DESCRIPTION}` est omis, identique à
 `${MESSAGE}` sur le premier événement réel (le rajouter si un événement montre
 une différence). Dans le HTML, les `<br />` de `${MESSAGE}` s'affichent comme des
 retours à la ligne.
@@ -917,7 +920,7 @@ retours à la ligne.
   "msgtype": "m.text",
   "body": "🚨 AutoOps — ${TITLE} (${SEVERITY}, ${STATUS}) — ${RESOURCE_NAME}\n${MESSAGE}\nNœuds : ${AFFECTED_NODES} · Index : ${AFFECTED_INDICES}\nDébut : ${START_TIME} · Fin : ${END_TIME}\n${EVENT_LINK}",
   "format": "org.matrix.custom.html",
-  "formatted_body": "<p>🚨 <strong>AutoOps — ${TITLE}</strong> (${SEVERITY}, ${STATUS}) — ${RESOURCE_NAME}</p><p>${MESSAGE}</p><p>Nœuds : ${AFFECTED_NODES} · Index : ${AFFECTED_INDICES}<br />Début : <code>${START_TIME}</code> · Fin : <code>${END_TIME}</code></p><p>À vérifier : <a href=\"${EVENT_LINK}\">l'événement dans AutoOps</a></p><p>Runbook : <a href=\"https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-disque-elasticsearch.md\">Disque des nœuds Elasticsearch</a></p>"
+  "formatted_body": "<p>🚨 <strong>AutoOps — ${TITLE}</strong> (${SEVERITY}, ${STATUS}) — ${RESOURCE_NAME}</p><p>${MESSAGE}</p><p>Nœuds : ${AFFECTED_NODES} · Index : ${AFFECTED_INDICES}<br />Début : <code>${START_TIME}</code> · Fin : <code>${END_TIME}</code></p><p>À vérifier : <a href=\"${EVENT_LINK}\">l'événement dans AutoOps</a></p><p>Runbook : Disque des nœuds Elasticsearch - https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-disque-elasticsearch.md</p>"
 }
 ```
 Tester avec **Run to test** : le message doit arriver dans le salon, variables
@@ -985,7 +988,10 @@ en-têtes `Content-Type: application/json` et
 > cesseraient : garder une notification AutoOps **par email** vers l'équipe en
 > secours.
 
-**Body du webhook Tchap** : `${DESCRIPTION}` est omis, identique à
+**Body du webhook Tchap** : un seul lien HTML `<a>`, celui de l'événement, puis des
+URL brutes que Tchap rend cliquables (le pare-feu devant Tchap rejette un message
+à plusieurs liens, cf.
+[pièges des Workflows Tchap](workflows/tchap/README.md#pièges)). `${DESCRIPTION}` est omis, identique à
 `${MESSAGE}` sur le premier événement réel (le rajouter si un événement montre
 une différence). Dans le HTML, les `<br />` de `${MESSAGE}` s'affichent comme des
 retours à la ligne.
@@ -994,7 +1000,7 @@ retours à la ligne.
   "msgtype": "m.text",
   "body": "🚨 AutoOps — ${TITLE} (${SEVERITY}, ${STATUS}) — ${RESOURCE_NAME}\n${MESSAGE}\nNœuds : ${AFFECTED_NODES} · Index : ${AFFECTED_INDICES}\nDébut : ${START_TIME} · Fin : ${END_TIME}\n${EVENT_LINK}",
   "format": "org.matrix.custom.html",
-  "formatted_body": "<p>🚨 <strong>AutoOps — ${TITLE}</strong> (${SEVERITY}, ${STATUS}) — ${RESOURCE_NAME}</p><p>${MESSAGE}</p><p>Nœuds : ${AFFECTED_NODES} · Index : ${AFFECTED_INDICES}<br />Début : <code>${START_TIME}</code> · Fin : <code>${END_TIME}</code></p><p>À vérifier : <a href=\"${EVENT_LINK}\">l'événement dans AutoOps</a>, puis la backpressure Logstash dans le dashboard <a href=\"https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d\">[Pass Emploi] Supervision Stack d'Observabilité</a></p><p>Runbook : <a href=\"https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch\">Backpressure Elasticsearch</a></p>"
+  "formatted_body": "<p>🚨 <strong>AutoOps — ${TITLE}</strong> (${SEVERITY}, ${STATUS}) — ${RESOURCE_NAME}</p><p>${MESSAGE}</p><p>Nœuds : ${AFFECTED_NODES} · Index : ${AFFECTED_INDICES}<br />Début : <code>${START_TIME}</code> · Fin : <code>${END_TIME}</code></p><p>À vérifier : <a href=\"${EVENT_LINK}\">l'événement dans AutoOps</a><br />puis la backpressure Logstash : [Pass Emploi] Supervision Stack d'Observabilité - https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d</p><p>Runbook : Backpressure Elasticsearch - https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch</p>"
 }
 ```
 Tester avec **Run to test** : le message doit arriver dans le salon, variables

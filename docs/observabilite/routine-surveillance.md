@@ -54,6 +54,10 @@ qu'aucune alerte ne signale. Pour enquêter sur un incident :
    les CVE high ou critical (S1), répétées à chaque passage de
    `security-alerts.yml` tant qu'elles restent ouvertes, dans la journée.
 
+Le salon `infra-production` (déploiements, scaling, variables, consoles
+ouvertes : A4c) n'est pas à suivre en continu. Il sert à retrouver une action :
+qui a déployé, scalé ou ouvert une console, et quand.
+
 ## Chaque semaine (15 min)
 
 Sur les **7 derniers jours** :

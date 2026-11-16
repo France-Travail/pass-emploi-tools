@@ -6,14 +6,17 @@
 # et le même corps plus "rule_type_id" et "consumer" (slo.rules.burnRate / slo pour
 # Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
 # ../../objets-kibana.md#slo-et-règles-console.
-# SLO1 à SLO3, .es-query / alerts pour A1 à A7, A4a, A4b, A5a et A5b,
+# SLO1 à SLO3, .es-query / alerts pour A1 à A7, A4a à A4d, A5a et A5b,
 # xpack.uptime.alerts.monitorStatus / uptime pour A8 à A10,
 # xpack.uptime.alerts.tlsCertificate / uptime pour A11).
 #
 # Règles ES|QL (A1, A2, A3, A6, A7) : le Workflow du salon relance leur requête.
 #
-# A4a / A4b : événements Scalingo des apps applicatives, Tchap monitoring-production /
-# monitoring-staging.
+# A4a / A4b : incidents Scalingo des apps applicatives (🚨 / ⚠️), Tchap
+# monitoring-production / monitoring-staging.
+# A4c / A4d : opérations d'infra Scalingo des mêmes apps (ℹ️), Tchap infra-production /
+# infra-staging. Les deux paires se partagent les événements par labels.categorie
+# (not "infra" / "infra") : chacun est relayé par une seule règle.
 # A5a / A5b : jobs en échec, Tchap jobs-production / jobs-staging.
 #
 # Messages Mattermost : une section (« À vérifier », « Dashboards », « Discover
@@ -57,6 +60,10 @@
 @@REGLE A4a@@
 
 @@REGLE A4b@@
+
+@@REGLE A4c@@
+
+@@REGLE A4d@@
 
 @@REGLE A5a@@
 

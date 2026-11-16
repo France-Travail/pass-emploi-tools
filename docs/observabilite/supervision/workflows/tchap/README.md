@@ -12,6 +12,7 @@ flowchart LR
     RMP["SLO1 à SLO3 (SLO), A4a, A8 à A11"]
     RSEC["S1 (CVE), S2a (suspicion d'attaque DDoS)"]
     RMS["A4b, S2b"]
+    RINF["A4c / A4d (opérations d'infra Scalingo)"]
     ROP["Stack prod : Logstash, Redis, Elastic Agent,<br/>ILM, M6a, M13, expiration du compte bot"]
     ROS["Stack hors prod : Logstash, Redis,<br/>Elastic Agent, 6b"]
     RJ["A5a / A5b (jobs en échec)"]
@@ -27,6 +28,8 @@ flowchart LR
     WOS["tchap-o11y-staging"]
     WJP["tchap-jobs-production"]
     WJS["tchap-jobs-staging"]
+    WIP["tchap-infra-production"]
+    WIS["tchap-infra-staging"]
   end
 
   subgraph planifies["Workflows planifiés (générés)"]
@@ -39,6 +42,7 @@ flowchart LR
   ROP --> WOP
   ROS --> WOS
   RJ --> WJP & WJS
+  RINF --> WIP & WIS
   RE -- "action .workflows" --> WMP
 
   ES[("Elasticsearch")]
@@ -46,12 +50,12 @@ flowchart LR
   WR -- "requête ES|QL" --> ES
 
   CLIENT["tchap-client<br/>seul Workflow qui parle à Matrix"]
-  WMP & WSEC & WMS & WOP & WOS & WJP & WJS -- "workflow.execute" --> CLIENT
+  WMP & WSEC & WMS & WOP & WOS & WJP & WJS & WIP & WIS -- "workflow.execute" --> CLIENT
   WR -- "workflow.execute" --> CLIENT
 
   CONN["Connecteur .http « Tchap »<br/>URL + jeton du bot"]
   CLIENT -- "étape http" --> CONN
-  CONN -- "PUT …/send/m.room.message" --> TCHAP(["Tchap : 7 salons"])
+  CONN -- "PUT …/send/m.room.message" --> TCHAP(["Tchap : 9 salons"])
 
   AUTO["AutoOps (alertes M11 et M12)"] -. "Webhook POST direct,<br/>sans passer par Kibana" .-> TCHAP
 
@@ -70,7 +74,7 @@ cluster en panne.
 | [`../../connecteurs/tchap.console`](../../connecteurs/tchap.console) | connecteur `.http` : URL de Tchap et jeton du bot |
 | [`modeles/`](modeles/README.md), [`salons.json`](salons.json), [`rapports-jobs.json`](rapports-jobs.json) | gabarits des Workflows, rangés par Workflow produit (`salon/`, `rapport-jobs/`, `commun/`, cf. [leur README](modeles/README.md)), identifiants des salons, environnements des rapports : à modifier ici, `generer-workflows.py` ne fait que les assembler |
 | [`tchap-client.console`](tchap-client.console) | le seul Workflow qui parle à Matrix |
-| [`generated/tchap-monitoring-production.console`](generated/tchap-monitoring-production.console), [`generated/tchap-monitoring-staging.console`](generated/tchap-monitoring-staging.console), [`generated/tchap-o11y-production.console`](generated/tchap-o11y-production.console), [`generated/tchap-o11y-staging.console`](generated/tchap-o11y-staging.console), [`generated/tchap-jobs-production.console`](generated/tchap-jobs-production.console), [`generated/tchap-jobs-staging.console`](generated/tchap-jobs-staging.console) | un Workflow par salon, **générés** : ne pas les modifier à la main |
+| `generated/tchap-<salon>.console`, un par salon de [`salons.json`](salons.json) | un Workflow par salon, **générés** : ne pas les modifier à la main |
 | [`generated/tchap-jobs-production-rapport.console`](generated/tchap-jobs-production-rapport.console), [`generated/tchap-jobs-staging-rapport.console`](generated/tchap-jobs-staging-rapport.console) | rapport quotidien des jobs de l'api, chaque jour à 9 h 30 (heure de Paris), **générés** |
 | [`generer-workflows.py`](generer-workflows.py) | génère les Workflows de salon depuis les règles de [`../../rules/`](../../rules/), et les rapports depuis la liste des CRON de `pass-emploi-api` (`origin/develop`) : `python3 -I generer-workflows.py` après toute modification d'une règle, d'un salon ou des CRON de l'api |
 | [`../../rules/generated/4-rules-tchap.console`](../../rules/generated/4-rules-tchap.console) | règle « Tchap - Envoi en échec » |
@@ -125,8 +129,8 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
 
 1. **Compte bot** : Tchap n'a pas de compte de service, le bot est un compte
    utilisateur ordinaire, créé à la main dans Tchap web. Email recommandé par
-   Tchap : préfixé par `bot-`, ici une **boîte fonctionnelle lue par l'équipe**
-   (`bot-pass-emploi@francetravail.fr`, par exemple), parce que le compte doit
+   Tchap : préfixé par `bot-`, ici une **boîte lue par l'équipe**
+   (`bot-pass-emploi.00026@francetravail.fr`, nommée « TECH… » dans Outlook, accessible aux membres de l'équipe rattachés à la DGA TECH depuis leur propre boîte), parce que le compte doit
    être **renouvelé chaque année** : 11 mois après l'inscription, Tchap envoie
    un lien de renouvellement à cette adresse ; sans clic, le compte expire
    60 jours plus tard et **toutes** les notifications Tchap s'arrêtent.
@@ -136,16 +140,14 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
 2. **Serveur du bot** : Tchap répartit les comptes sur plusieurs serveurs selon
    le domaine de l'email. Le vérifier avant tout :
    ```bash
-   curl -s "https://matrix.agent.tchap.gouv.fr/_matrix/identity/api/v1/info?medium=email&address=bot-pass-emploi@francetravail.fr"
+   curl -s "https://matrix.agent.tchap.gouv.fr/_matrix/identity/api/v1/info?medium=email&address=bot-pass-emploi.00026@francetravail.fr"
    # {"hs": "agent.tchap.gouv.fr"} → https://matrix.agent.tchap.gouv.fr
    ```
    `francetravail.fr` donne `agent.tchap.gouv.fr`, l'URL utilisée dans cette
    doc. Pour un autre domaine (`beta.gouv.fr` → `agent.dinum.tchap.gouv.fr`),
    remplacer l'URL partout : connecteur, `curl` ci-dessous, connecteurs AutoOps
    des [alertes M11 et M12](../../alertes-stack-observabilite.md#alerte-m11--disque-des-nœuds-elasticsearch-autoops).
-3. **Salons** : `monitoring-production`, `monitoring-staging`, `o11y-production`,
-   `o11y-staging`, `jobs-production` et `jobs-staging`,
-   **privés et non chiffrés**.
+3. **Salons** : ceux de [`salons.json`](salons.json), **privés et non chiffrés**.
    - **Non chiffrés** : le bot ne sait pas chiffrer. Tchap n'impose pas le
      chiffrement d'un salon de bot (confirmé par l'équipe beta.gouv), les messages respectent les
      [CGU](https://tchap.numerique.gouv.fr/cgu) : pas de donnée sensible ni
@@ -165,19 +167,19 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
    sessions. Puis faire rejoindre au bot chaque salon où il a été invité :
    ```bash
    curl -s -X POST https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/login -H 'Content-Type: application/json' \
-     -d '{"type":"m.login.password","identifier":{"type":"m.id.user","user":"bot-pass-emploi-francetravail.fr"},"password":"<mot de passe>","initial_device_display_name":"Kibana alertes"}'
+     -d '{"type":"m.login.password","identifier":{"type":"m.id.user","user":"bot-pass-emploi.00026-francetravail.fr"},"password":"<mot de passe>","initial_device_display_name":"Kibana alertes"}'
    curl -s -X POST "https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/<id du salon encodé>/join" -H "Authorization: Bearer <jeton>"
    ```
    La connexion se fait par l'**identifiant Matrix** du bot, pas par son email
    (`m.id.thirdparty` est refusé : « Unsupported login identifier »). Tchap le dérive de l'email en remplaçant `@` par `-` :
-   `bot-pass-emploi-francetravail.fr` : le vérifier dans Tchap après
+   `bot-pass-emploi.00026-francetravail.fr` : le vérifier dans Tchap après
    l'inscription. La réponse donne le jeton (`access_token`), à ranger dans le
    coffre de l'équipe : il **n'expire pas** (ni `expires_in_ms` ni
    `refresh_token`). Garder aussi `user_id`, à
    reporter dans le document d'expiration (étape 7), et `device_id`, pour
    révoquer la session.
 5. **Kibana**, dans Dev Tools : rejouer [`../../connecteurs/tchap.console`](../../connecteurs/tchap.console) en
-   remplaçant `<jeton-du-bot>`, puis `tchap-client.console`, puis les 7
+   remplaçant `<jeton-du-bot>`, puis `tchap-client.console`, puis les
    `generated/tchap-<salon>.console` et les 2 `generated/tchap-jobs-<env>-rapport.console`
    (ils portent l'ID de leur salon). Chaque fichier met à jour son Workflow par un
    `PUT` ; un Workflow encore absent de Kibana (le `PUT` répond 404) se crée par
@@ -239,7 +241,7 @@ et mettre à jour le jeton du connecteur.
 
    | Tag | Lignes | Règles |
    |---|---|---|
-   | `tchap-lignes` | le champ `message` des documents, une ligne de notification posée par l'ingest pipeline | A4a, A4b, M6a, M6b, S1 |
+   | `tchap-lignes` | le champ `message` des documents, une ligne de notification posée par l'ingest pipeline | A4a à A4d, M6a, M6b, S1 |
    | `jobs` | `❌ <job>` par `labels.job_type`, puis `Erreurs : …` (`error.message`, dédoublonnés : l'appariement job ↔ erreur est perdu dans le document d'alerte) | A5a, A5b |
    | aucun | la raison de l'alerte (`kibana.alert.reason`) | toutes les autres |
 

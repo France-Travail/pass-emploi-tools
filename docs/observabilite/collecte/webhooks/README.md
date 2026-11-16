@@ -11,7 +11,7 @@ et lus par des Kibana Rules rangées par périmètre :
 
 | Données                                                                       | Alertes                                                                                 |
 |-------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
-| Événements Scalingo des apps applicatives                                     | A4a, A4b dans les [alertes applicatives](../../supervision/alertes-applicatives.md)     |
+| Événements Scalingo des apps applicatives                                     | A4a à A4d dans les [alertes applicatives](../../supervision/alertes-applicatives.md)    |
 | Événements Scalingo des apps de la stack (Logstash, Elastic Agent, Heartbeat) | M6a, M6b dans les [alertes de la stack](../../supervision/alertes-stack-observabilite.md) |
 | CVE Dependabot                                                                | S1 dans les [alertes de sécurité](../../supervision/alertes-securite.md)                |
 | Événements rejetés (failure store)                                            | 14 dans les [alertes de la stack](../../supervision/alertes-stack-observabilite.md)     |
@@ -37,7 +37,7 @@ flowchart LR
 
   subgraph regles["Règles Kibana"]
     direction TB
-    R["A4a / A4b, M6a / M6b, S1"]
+    R["A4a à A4d, M6a / M6b, S1"]
     R14["14 (rejets)"]
   end
 
@@ -113,7 +113,7 @@ Tchap listent telle quelle. Le payload brut est gardé sous `scalingo.*` ou
    curl -sS -w '\nHTTP %{http_code}\n' -X POST "https://alertes-scalingo:${MDP}@<endpoint-es>/logs-alertes-scalingo-staging-default/_doc" -H 'Content-Type: application/json' -d '{"id":"test","created_at":"'"$(date -u +%FT%TZ)"'","type":"restart","app_id":"test","app_name":"pass-emploi-api-staging","user":{"username":"test"},"type_data":{"scope":["web"],"reason":"user_restart"}}'
    ```
    La réponse doit contenir `"result":"created"` **sans** `"failure_store":"used"`.
-   Sous 5 min, A4b le notifie. L'endpoint Elasticsearch est indiqué sur la page
+   Sous 5 min, A4b le notifie (un redémarrage est un incident). L'endpoint Elasticsearch est indiqué sur la page
    du déploiement Elastic Cloud (`….es.…`, pas l'adresse de Kibana).
 7. **Notifiers Scalingo** : sur chaque app suivie, **un seul** notifier
    **Webhook** (deux écriraient deux fois les mêmes événements) vers
@@ -132,7 +132,7 @@ Tchap listent telle quelle. Le payload brut est gardé sous `scalingo.*` ou
    [`verifier-parite.py`](../../supervision/pipelines/webhooks/verifier-parite.py).
    Les apps de la stack sont celles que filtrent M6a et M6b (`service.name`) :
    une app de la stack ajoutée ici l'est aussi dans ces deux règles, sinon ses
-   événements partent dans le salon applicatif (A4a, A4b). Non suivies : outils
+   événements partent dans les salons applicatifs (A4a à A4d). Non suivies : outils
    de tir et mocks de perf, apps de perf applicatives, `elastic-agent-perf`,
    `tfstate`, `nginx-rp`, `tchap-webhooks`.
 8. **GitHub Actions** : [`security-alerts.yml`](../../../../.github/workflows/security-alerts.yml)

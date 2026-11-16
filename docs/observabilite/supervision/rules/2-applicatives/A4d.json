@@ -1,0 +1,104 @@
+{
+  "_id": "43e80d0c-dd21-4999-81af-92715cf44053",
+  "_commentaire": [
+    "# A4d — Opérations d'infra Scalingo des apps applicatives, staging / perf (ℹ️, salon infra-staging)"
+  ],
+  "name": "Scalingo - Hors-Prod - Opérations d'infra des apps applicatives",
+  "tags": [
+    "hors-prod",
+    "applicatif",
+    "scalingo",
+    "tchap-lignes",
+    "info"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Dashboards\n\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n"
+    }
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "not service.name : (\"pass-emploi-logstash\" or \"pass-emploi-logstash-process\" or \"pass-emploi-elastic-agent\" or \"pass-emploi-heartbeat\") and labels.categorie : \"infra\"",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "a67a2388-a6a3-42e3-b1c4-15dc61bf5585",
+        "title": "logs-alertes-scalingo-staging-default,logs-alertes-scalingo-perf-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Alertes Scalingo - Hors-Prod",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 10,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 20,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": true,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "group": "query matched",
+      "id": "4cb10f00-22d9-4cf0-bda1-e288c4abb339",
+      "params": {
+        "body": {
+          "text": "**Opérations d'infra Scalingo des apps hors prod** ({{context.value}})",
+          "attachments": [
+            {
+              "color": "#808080",
+              "text": "{{#context.hits}}{{_source.message}}\n{{/context.hits}}",
+              "fields": [
+                {
+                  "title": "Règle",
+                  "value": "`{{rule.name}}`",
+                  "short": true
+                },
+                {
+                  "title": "Dashboards",
+                  "value": "[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "frequency": {
+        "summary": false,
+        "notify_when": "onActiveAlert",
+        "throttle": null
+      }
+    },
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-infra-staging",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}

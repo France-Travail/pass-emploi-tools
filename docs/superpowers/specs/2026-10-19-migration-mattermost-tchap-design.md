@@ -34,7 +34,7 @@
 | D2 | **Les numéros X disparaissent.** Trois familles : applicative (`alertes-applicatives.md`), sécurité (`alertes-securite.md`, nouveau), stack d'observabilité (`alertes-stack-observabilite.md`) | Choix de l'utilisateur ; une famille = un fichier de doc et un fichier de règles |
 | D3 | **Convention `{n}a` = prod, `{n}b` = staging/perf** | Convention déjà en place (3a/3b, 9a/9b…) |
 | D4 | **Une règle Scalingo par périmètre et par environnement**, qui liste tous les événements de ses apps (crash, arrêt, seuil, déploiement, variable…) | Un notifier Mattermost actuel est déjà un flux unique par app ; une règle par type d'événement serait inmaintenable |
-| D5 | **Le pipeline classe chaque événement** : `labels.categorie` (`incident` ou `infra`) et un émoji en tête de `message`, à partir d'**une seule table** | La gravité se lit par ligne dans une règle unique ; sortir l'infra des salons de monitoring plus tard ne touche que des requêtes (§6) |
+| D5 | **Le pipeline classe chaque événement** : `labels.categorie` (`incident` ou `infra`) et un émoji en tête de `message`, à partir d'**une seule table** | La gravité se lit par ligne dans une règle unique ; sortir l'infra des salons de monitoring ne touche que des requêtes (fait : A4c, A4d) |
 | D6 | **Aucune régression** : tout ce que l'équipe reçoit aujourd'hui dans Mattermost arrive dans Tchap | Demande de l'utilisateur |
 | D7 | **Jobs : version dégradée** à partir des logs existants (règle sur les échecs, dashboard des exécutions) ; la parité complète est une suite (§10) | Décision de l'utilisateur : pas de code applicatif dans ce chantier |
 | D8 | **Ordre : réorganisation d'abord**, puis migration vers Tchap | Choix de l'utilisateur |
@@ -157,18 +157,6 @@ et réelles, erreurs, échecs par CRON, job `MONITORER_JOBS`).
 
 Les notifications Mattermost des jobs **restent actives** tant que la version
 dégradée n'est pas validée ; leur retrait du code est une suite (§10).
-
-## 6. Sortir l'infra des salons de monitoring (évolution prévue)
-
-Si l'équipe demande d'isoler les événements `infra` (déploiements…) dans des
-salons `infra-{env}` :
-1. créer les salons Tchap `infra-production` et `infra-staging` ;
-2. copier un Workflow de salon en `tchap-infra-{env}.console` ;
-3. pour A4a, A4b, 6a, 6b (et A5) : ajouter `and labels.categorie : "incident"`
-   à la requête, puis dupliquer la règle avec `labels.categorie : "infra"` vers
-   `tchap-infra-{env}`.
-
-Aucun changement de pipeline ni de données ; réversible.
 
 ## 7. Étapes d'investigation : principes et revue
 
