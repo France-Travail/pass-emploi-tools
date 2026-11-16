@@ -2,41 +2,11 @@
 
 Ce qu'on regarde **sans attendre une alerte**, en best effort : quelques minutes
 par jour, un quart d'heure par semaine. Les alertes arrivent d'elles-mêmes dans
-les canaux de monitoring (cf. [alertes applicatives](supervision/alertes-applicatives.md),
+les salons Tchap de monitoring (cf. [alertes applicatives](supervision/alertes-applicatives.md),
 [de la stack](supervision/alertes-stack-observabilite.md),
 [de sécurité](supervision/alertes-securite.md)) ; cette routine couvre ce
 qu'aucune alerte ne signale. Pour enquêter sur un incident :
 [runbook d'investigation](runbooks/investigation-incident.md).
-
-> **⚠️ Du 1er novembre 2026 à la mise en service du bot Tchap**
->
-> Mattermost s'arrête le 1er novembre, et le compte du bot Tchap attend son
-> adresse e-mail, demandée mais pas encore créée. Entre les deux, **aucune
-> alerte Kibana n'arrive dans une messagerie**. Les règles continuent de tourner
-> et leurs alertes se déclenchent, mais on ne les voit que dans Kibana. Seules
-> les alertes AutoOps (11 et 12, disque et indexation) partent, par e-mail.
->
-> Pendant cette période, on remplace la lecture des canaux par :
->
-> 1. **Les règles en alerte, matin, midi et soir, chaque jour ouvré** :
->    [Kibana → Rules](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/management/insightsAndAlerting/triggersActions/rules),
->    filtre *Last response* = *Active*. Ouvrir une règle pour lire ses alertes
->    et sa raison, puis suivre les étapes « À vérifier » de son Investigation
->    guide, qui reprend le message qu'elle aurait posté.
-> 2. **Les jobs, chaque matin**, à la place du rapport de 9 h 30 : le Discover
->    [[Pass Emploi] Logs de Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c0d38bba-66ef-4b68-8a10-4d786f6a9f4a),
->    onglets « Jobs en échec » et « Exécutions », sur les dernières 24 h.
-> 3. **AutoOps, chaque matin** (alertes M11 et M12, disque et indexation) : la
->    page AutoOps du déploiement dans Elastic Cloud. Ses alertes arrivent par
->    e-mail, une boîte que l'équipe ne surveille pas au fil de la journée.
->
-> Le point 1 de la routine quotidienne ci-dessous, « Tchap - Envoi en échec »,
-> ne s'applique pas encore : rien n'est envoyé.
->
-> **Fin de la période** : à la mise en service du bot (cf.
-> [Workflows Tchap, mise en service](supervision/workflows/tchap/README.md#mise-en-service)),
-> vérifier qu'une alerte de chaque salon arrive dans Tchap, puis retirer cet encadré.
-> Suivi : ticket Notion [Tchap - Accoster les alertes Kibana aux salons Tchap](https://app.notion.com/p/Tchap-Accoster-les-alertes-Kibana-aux-salons-Tchap-quand-l-email-du-bot-sera-cr-4057bd17c27a80c7a451ec7626e495ec?v=3797bd17c27a800aba24000c6809e535).
 
 ## Chaque jour (5 min)
 
