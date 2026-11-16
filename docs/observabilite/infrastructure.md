@@ -67,6 +67,12 @@ graph TB
 Staging et prod partagent **le même cluster ES** ; ils ne diffèrent que par le
 nom des data streams.
 
+Le Redis du rate limiting d'api et de connect (`RATE_LIMIT_REDIS_URL`) est
+hébergé comme addon d'apps qui n'ont rien à voir : l'app Heartbeat en prod,
+`nginx-rp` en staging. On voulait le séparer des Redis applicatifs, mais on n'a
+pas les droits pour créer des apps Scalingo. Supprimer ou recréer ces apps
+coupe le rate limiting.
+
 ## Versions
 
 Versions réelles : `inventaire/inventaire-versions.sh`
