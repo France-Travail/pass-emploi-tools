@@ -1,0 +1,42 @@
+{
+  "connecteurs": [
+    {
+      "alerte": "M11",
+      "nom": "Tchap o11y-production - Monitoring disque et santé Elasticsearch",
+      "filtre": "Disque et santé Elasticsearch",
+      "salon": "o11y-production",
+      "methode": "POST",
+      "url": "https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/%21GcUrxqTFizBjxwmsBO%3Aagent.dinum.tchap.gouv.fr/send/m.room.message",
+      "body": "M11-tchap.json",
+      "en_tetes": [
+        {
+          "nom": "Content-Type",
+          "valeur": "application/json"
+        },
+        {
+          "nom": "Authorization",
+          "valeur": "Bearer <jeton du bot Tchap>"
+        }
+      ]
+    },
+    {
+      "alerte": "M12",
+      "nom": "Tchap o11y-production - Monitoring indexation Elasticsearch",
+      "filtre": "Saturation indexation Elasticsearch",
+      "salon": "o11y-production",
+      "methode": "POST",
+      "url": "https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/%21GcUrxqTFizBjxwmsBO%3Aagent.dinum.tchap.gouv.fr/send/m.room.message",
+      "body": "M12-tchap.json",
+      "en_tetes": [
+        {
+          "nom": "Content-Type",
+          "valeur": "application/json"
+        },
+        {
+          "nom": "Authorization",
+          "valeur": "Bearer <jeton du bot Tchap>"
+        }
+      ]
+    }
+  ]
+}

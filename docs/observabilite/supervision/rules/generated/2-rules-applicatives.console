@@ -15,14 +15,17 @@
 # et le même corps plus "rule_type_id" et "consumer" (slo.rules.burnRate / slo pour
 # Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
 # ../../objets-kibana.md#slo-et-règles-console.
-# SLO1 à SLO3, .es-query / alerts pour A1 à A7, A4a, A4b, A5a et A5b,
+# SLO1 à SLO3, .es-query / alerts pour A1 à A7, A4a à A4d, A5a et A5b,
 # xpack.uptime.alerts.monitorStatus / uptime pour A8 à A10,
 # xpack.uptime.alerts.tlsCertificate / uptime pour A11).
 #
 # Règles ES|QL (A1, A2, A3, A6, A7) : le Workflow du salon relance leur requête.
 #
-# A4a / A4b : événements Scalingo des apps applicatives, Tchap monitoring-production /
-# monitoring-staging.
+# A4a / A4b : incidents Scalingo des apps applicatives (🚨 / ⚠️), Tchap
+# monitoring-production / monitoring-staging.
+# A4c / A4d : opérations d'infra Scalingo des mêmes apps (ℹ️), Tchap infra-production /
+# infra-staging. Les deux paires se partagent les événements par labels.categorie
+# (not "infra" / "infra") : chacun est relayé par une seule règle.
 # A5a / A5b : jobs en échec, Tchap jobs-production / jobs-staging.
 #
 # Messages Mattermost : une section (« À vérifier », « Dashboards », « Discover
@@ -785,10 +788,10 @@ PUT kbn:/api/alerting/rule/ad326ad3-aea7-4ef8-be28-31008c4aebce
   ]
 }
 
-# A4a — Événements Scalingo des apps applicatives, prod (gravité par ligne)
+# A4a — Incidents Scalingo des apps applicatives, prod (gravité par ligne)
 PUT kbn:/api/alerting/rule/1b97f0e0-870f-498d-8dd7-1c2f9aeba665
 {
-  "name": "Scalingo - Prod - Événements des apps applicatives",
+  "name": "Scalingo - Prod - Incidents des apps applicatives",
   "tags": [
     "prod",
     "applicatif",
@@ -797,7 +800,7 @@ PUT kbn:/api/alerting/rule/1b97f0e0-870f-498d-8dd7-1c2f9aeba665
   ],
   "artifacts": {
     "investigation_guide": {
-      "blob": "## Ce que signale l'alerte\n\nUn événement Scalingo sur une app applicative de prod : incident (🚨 crash, redémarrage ou arrêt ; ⚠️ seuil dépassé) ou opération d'infra (ℹ️ déploiement, variable, scaling…).\n\n## À vérifier\n\n1. Le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur\n2. Pour un incident, l'impact sur les utilisateurs : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n3. L'activité de l'app (onglet Activity) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n4. Pour un seuil dépassé (⚠️ Requests per Minute, 5xx Errors, temps de réponse, RAM) : la métrique de l'app et son évolution depuis le déclenchement (onglet Metrics) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps) ; puis, si les logs du routeur arrivent encore (règle [Logstash - Prod - Détection absence ingestion logs router](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/management/insightsAndAlerting/triggersActions/rule/6c2a2a83-9c40-4f40-af8d-911402932417) au repos), d'où vient le trafic : le Discover [[Pass Emploi] Logs de Prod - Trafic du routeur par IP](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/7d3f1c2e-5b8a-4e6f-9c1d-2a4b6e8f0d13)\n\n## Dashboards\n\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Discover sessions\n\n- [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87)\n- [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n- [[Pass Emploi] Logs de Prod - Trafic du routeur par IP](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/7d3f1c2e-5b8a-4e6f-9c1d-2a4b6e8f0d13)\n\n## Documentation\n\n[Collecte des événements externes](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/collecte/webhooks/README.md)\n"
+      "blob": "## Ce que signale l'alerte\n\nUn incident Scalingo sur une app applicative de prod : 🚨 crash, redémarrage ou arrêt ; ⚠️ seuil dépassé. Les opérations d'infra (ℹ️ déploiement, variable, scaling…) vont dans infra-production (A4c).\n\n## À vérifier\n\n1. Le Discover [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87), onglet « Incidents » : l'événement, sa raison et son auteur\n2. Pour un incident, l'impact sur les utilisateurs : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n3. L'activité de l'app (onglet Activity) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n4. Pour un seuil dépassé (⚠️ Requests per Minute, 5xx Errors, temps de réponse, RAM) : la métrique de l'app et son évolution depuis le déclenchement (onglet Metrics) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps) ; puis, si les logs du routeur arrivent encore (règle [Logstash - Prod - Détection absence ingestion logs router](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/management/insightsAndAlerting/triggersActions/rule/6c2a2a83-9c40-4f40-af8d-911402932417) au repos), d'où vient le trafic : le Discover [[Pass Emploi] Logs de Prod - Trafic du routeur par IP](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/7d3f1c2e-5b8a-4e6f-9c1d-2a4b6e8f0d13)\n\n## Dashboards\n\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Discover sessions\n\n- [[Pass Emploi] Alertes externes de Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/bb62451a-d9e9-4141-ab6f-2bda0e384e87)\n- [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n- [[Pass Emploi] Logs de Prod - Trafic du routeur par IP](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/7d3f1c2e-5b8a-4e6f-9c1d-2a4b6e8f0d13)\n\n## Documentation\n\n[Collecte des événements externes](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/collecte/webhooks/README.md)\n"
     },
     "dashboards": [
       {
@@ -811,7 +814,7 @@ PUT kbn:/api/alerting/rule/1b97f0e0-870f-498d-8dd7-1c2f9aeba665
   "params": {
     "searchConfiguration": {
       "query": {
-        "query": "not service.name : (\"pass-emploi-logstash\" or \"pass-emploi-logstash-process\" or \"pass-emploi-elastic-agent\" or \"pass-emploi-heartbeat\")",
+        "query": "not service.name : (\"pass-emploi-logstash\" or \"pass-emploi-logstash-process\" or \"pass-emploi-elastic-agent\" or \"pass-emploi-heartbeat\") and not labels.categorie : \"infra\"",
         "language": "kuery"
       },
       "index": {
@@ -861,10 +864,10 @@ PUT kbn:/api/alerting/rule/1b97f0e0-870f-498d-8dd7-1c2f9aeba665
   ]
 }
 
-# A4b — Événements Scalingo des apps applicatives, staging / perf (gravité par ligne)
+# A4b — Incidents Scalingo des apps applicatives, staging / perf (gravité par ligne)
 PUT kbn:/api/alerting/rule/07c9c5d7-e8fe-4964-ac8d-684b1c4c39b8
 {
-  "name": "Scalingo - Hors-Prod - Événements des apps applicatives",
+  "name": "Scalingo - Hors-Prod - Incidents des apps applicatives",
   "tags": [
     "hors-prod",
     "applicatif",
@@ -873,7 +876,7 @@ PUT kbn:/api/alerting/rule/07c9c5d7-e8fe-4964-ac8d-684b1c4c39b8
   ],
   "artifacts": {
     "investigation_guide": {
-      "blob": "## Ce que signale l'alerte\n\nUn événement Scalingo sur une app applicative de staging ou de perf : incident ou opération d'infra.\n\n## À vérifier\n\n1. Le Discover [[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/33bed466-9d68-4789-a723-aeea34e6cd93), onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur\n2. L'activité de l'app (onglet Activity) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n3. Pour un seuil dépassé (⚠️ Requests per Minute, 5xx Errors, temps de réponse, RAM) : la métrique de l'app et son évolution depuis le déclenchement (onglet Metrics) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Dashboards\n\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Discover sessions\n\n- [[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/33bed466-9d68-4789-a723-aeea34e6cd93)\n\n## Documentation\n\n[Collecte des événements externes](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/collecte/webhooks/README.md)\n"
+      "blob": "## Ce que signale l'alerte\n\nUn incident Scalingo sur une app applicative de staging ou de perf (🚨 / ⚠️). Les opérations d'infra (ℹ️) vont dans infra-staging (A4d).\n\n## À vérifier\n\n1. Le Discover [[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/33bed466-9d68-4789-a723-aeea34e6cd93), onglet « Incidents » : l'événement, sa raison et son auteur\n2. L'activité de l'app (onglet Activity) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n3. Pour un seuil dépassé (⚠️ Requests per Minute, 5xx Errors, temps de réponse, RAM) : la métrique de l'app et son évolution depuis le déclenchement (onglet Metrics) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Dashboards\n\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Discover sessions\n\n- [[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/33bed466-9d68-4789-a723-aeea34e6cd93)\n\n## Documentation\n\n[Collecte des événements externes](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/collecte/webhooks/README.md)\n"
     }
   },
   "schedule": {
@@ -882,7 +885,7 @@ PUT kbn:/api/alerting/rule/07c9c5d7-e8fe-4964-ac8d-684b1c4c39b8
   "params": {
     "searchConfiguration": {
       "query": {
-        "query": "not service.name : (\"pass-emploi-logstash\" or \"pass-emploi-logstash-process\" or \"pass-emploi-elastic-agent\" or \"pass-emploi-heartbeat\")",
+        "query": "not service.name : (\"pass-emploi-logstash\" or \"pass-emploi-logstash-process\" or \"pass-emploi-elastic-agent\" or \"pass-emploi-heartbeat\") and not labels.categorie : \"infra\"",
         "language": "kuery"
       },
       "index": {
@@ -920,6 +923,150 @@ PUT kbn:/api/alerting/rule/07c9c5d7-e8fe-4964-ac8d-684b1c4c39b8
         "subAction": "run",
         "subActionParams": {
           "workflowId": "tchap-monitoring-staging",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# A4c — Opérations d'infra Scalingo des apps applicatives, prod (ℹ️, salon infra-production)
+PUT kbn:/api/alerting/rule/121f4b04-f90d-4423-af1f-ae1344a5f7db
+{
+  "name": "Scalingo - Prod - Opérations d'infra des apps applicatives",
+  "tags": [
+    "prod",
+    "applicatif",
+    "scalingo",
+    "tchap-lignes",
+    "info"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Dashboards\n\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n"
+    }
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "not service.name : (\"pass-emploi-logstash\" or \"pass-emploi-logstash-process\" or \"pass-emploi-elastic-agent\" or \"pass-emploi-heartbeat\") and labels.categorie : \"infra\"",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "d327d85c-91ea-4092-867f-08a940504c96",
+        "title": "logs-alertes-scalingo-prod-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Alertes Scalingo - Prod",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 20,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": true,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-infra-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# A4d — Opérations d'infra Scalingo des apps applicatives, staging / perf (ℹ️, salon infra-staging)
+PUT kbn:/api/alerting/rule/43e80d0c-dd21-4999-81af-92715cf44053
+{
+  "name": "Scalingo - Hors-Prod - Opérations d'infra des apps applicatives",
+  "tags": [
+    "hors-prod",
+    "applicatif",
+    "scalingo",
+    "tchap-lignes",
+    "info"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Dashboards\n\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n"
+    }
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "not service.name : (\"pass-emploi-logstash\" or \"pass-emploi-logstash-process\" or \"pass-emploi-elastic-agent\" or \"pass-emploi-heartbeat\") and labels.categorie : \"infra\"",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "a67a2388-a6a3-42e3-b1c4-15dc61bf5585",
+        "title": "logs-alertes-scalingo-staging-default,logs-alertes-scalingo-perf-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Alertes Scalingo - Hors-Prod",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 10,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 20,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": true,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-infra-staging",
           "summaryMode": true,
           "alertStates": {
             "new": true,

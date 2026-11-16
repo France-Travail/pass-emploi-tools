@@ -197,7 +197,7 @@ PUT _index_template/logs-alertes-github@template-custom
 }
 
 # Création à l'avance des 4 data streams et de leur failure store, à rejouer
-# juste après leurs templates. Les règles A4a, A4b, M6a, M6b, M13, S1 et leurs sessions Discover
+# juste après leurs templates. Les règles A4a à A4d, M6a, M6b, M13, S1 et leurs sessions Discover
 # partagent des data views : tant qu'aucun document n'est arrivé, ces data
 # views ne trouvent aucun champ et les règles tombent en erreur (« Data view …
 # no longer contains a time field »). Le failure store, lu par la règle M13, n'est créé

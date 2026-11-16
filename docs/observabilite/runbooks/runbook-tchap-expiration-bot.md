@@ -27,7 +27,7 @@ d'expiration rangée dans Elasticsearch n'a pas été repoussée.
 
 ## 1. Renouveler le compte
 
-1. Ouvrir la boîte fonctionnelle du bot (`bot-pass-emploi@francetravail.fr`)
+1. Ouvrir la boîte du bot (`bot-pass-emploi.00026@francetravail.fr`, « TECH… » dans Outlook)
    et cliquer le lien de renouvellement de Tchap. Le compte est prolongé de
    13 mois (CGU du 2026-10-14).
 2. Relire la section sur le renouvellement des [CGU Tchap](https://tchap.numerique.gouv.fr/cgu) :

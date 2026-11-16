@@ -10,9 +10,9 @@ métier**, en cinq couches :
   base de données en erreur, le front en erreur ;
 - **disponibilité** (A8 à A11) — les services répondent-ils, leurs
   certificats sont-ils valides ? Règles Uptime sur les moniteurs Heartbeat ;
-- **événements Scalingo** (A4a, A4b) — ce qui arrive aux apps : crash, arrêt,
-  redémarrage, seuil de ressource, mais aussi déploiements et opérations
-  d'infra ;
+- **événements Scalingo** — ce qui arrive aux apps : les incidents (A4a,
+  A4b : crash, arrêt, redémarrage, seuil de ressource) et, à part, les
+  opérations d'infra (A4c, A4d : déploiement, scaling, variable, console…) ;
 - **jobs** (A5a, A5b) — un job de l'api a planté.
 
 Elles s'appuient sur les logs ECS (`event.action` / `event.outcome`, cf.
@@ -23,8 +23,9 @@ chaîne de télémétrie elle-même sont dans
 aveugle (alerte M3 « silence »), ces alertes-ci ne peuvent pas se déclencher.
 
 Toutes notifient le salon Tchap `monitoring-production`, sauf A4b
-(`monitoring-staging`) et A5a / A5b (salons des jobs, `jobs-production` /
-`jobs-staging`), cf. [workflows/tchap](workflows/tchap/README.md).
+(`monitoring-staging`), A4c / A4d (`infra-production` / `infra-staging`) et
+A5a / A5b (salons des jobs, `jobs-production` / `jobs-staging`), cf.
+[workflows/tchap](workflows/tchap/README.md).
 
 ## Récapitulatif
 
@@ -36,8 +37,10 @@ Toutes notifient le salon Tchap `monitoring-production`, sauf A4b
 | A1 | Pic d'échecs partenaire    | `logs-prod-default` | `external_api_call` `failure` > 100 / 5 min par domaine (5xx, 429, 4xx, timeout) | 1 min     | 1h       | ⚠️Warning  |
 | A2 | Erreurs serveur 5xx        | APM `metrics-apm.transaction.1m-*` | requêtes api + connect en 5xx > 50 / 5 min, par template | 1 min     | 1h       | 🚨 Critical |
 | A3 | Pic d'auth refusées        | `logs-prod-default` | `auth_failed` > 3 × même heure sur 7 j, ≥ 20 / 10 min | 5 min     | 1h       | 🚨 Critical |
-| A4a | Événements Scalingo — prod | `logs-alertes-scalingo-prod-default` | tout événement d'une app hors stack d'observabilité | 1 min | — | par ligne : 🚨 / ⚠️ / ℹ️ |
-| A4b | Événements Scalingo — staging, perf | `logs-alertes-scalingo-{staging,perf}-default` | idem A4a, canal staging | 5 min | — | par ligne : ⚠️ / ℹ️ |
+| A4a | Incidents Scalingo — prod | `logs-alertes-scalingo-prod-default` | incident d'une app hors stack d'observabilité (`labels.categorie` autre que `infra`) | 1 min | — | par ligne : 🚨 / ⚠️ |
+| A4b | Incidents Scalingo — staging, perf | `logs-alertes-scalingo-{staging,perf}-default` | idem A4a, salon `monitoring-staging` | 5 min | — | par ligne : ⚠️ |
+| A4c | Opérations d'infra Scalingo — prod | `logs-alertes-scalingo-prod-default` | opération d'infra des mêmes apps (`labels.categorie : "infra"`), salon `infra-production` | 1 min | — | par ligne : ℹ️ |
+| A4d | Opérations d'infra Scalingo — staging, perf | `logs-alertes-scalingo-{staging,perf}-default` | idem A4c, salon `infra-staging` | 5 min | — | par ligne : ℹ️ |
 | A5a | Jobs en échec — prod | `logs-prod-default` | `job_crashed`, `job_handler_not_found` | 1 min | — | ❌ par ligne |
 | A5b | Jobs en échec — staging, perf | `logs-{staging,perf}-default` | idem A5a, canal jobs-staging | 5 min | — | ❌ par ligne |
 | A6 | Erreurs base de données | `logs-prod-default` | `error.type` Sequelize* > 20 / 5 min | 1 min | 1h | 🚨 Critical |
@@ -47,9 +50,9 @@ Toutes notifient le salon Tchap `monitoring-production`, sauf A4b
 | A10 | Authentification injoignable | Uptime `pass-emploi-connect-status` | idem | 1 min | — | 🚨 Critical, ✅ au rétablissement |
 | A11 | Certificat TLS bientôt expiré | Uptime (TLS) | certificat qui expire bientôt | 1 jour | — | ⚠️Warning |
 
-> **Prod uniquement** (sauf A4b) : en staging, ces signaux reflètent les tests
-> en cours, pas une panne. A4b garde le fil d'activité Scalingo de staging et de
-> perf, déjà publié dans le canal staging.
+> **Prod uniquement** (sauf A4b, A4d) : en staging, ces signaux reflètent les
+> tests en cours, pas une panne. A4b et A4d gardent le fil d'activité Scalingo
+> de staging et de perf.
 >
 > **Seuils** : A1, A2, A6 et A7 sont calibrés sur l'historique (le 2026-10-20,
 > requête de calibrage dans chaque section) ; A3 compare à la même heure des
@@ -440,8 +443,9 @@ Des **Elasticsearch query rules (KQL)** sur les événements des notifiers
 Scalingo, collectés dans `logs-alertes-scalingo-<env>-default` (cf.
 [collecte par webhook](../collecte/webhooks/README.md)).
 Elles remplacent le fil d'activité que les notifiers `Mattermost*` publiaient
-directement : **une règle par environnement**, qui liste chaque événement sur
-une ligne, préfixée de sa gravité :
+directement : **deux règles par environnement**, l'une pour les incidents
+(`monitoring-{env}`), l'autre pour les opérations d'infra (`infra-{env}`). Chacune
+liste chaque événement sur une ligne, préfixée de sa gravité :
 
 | Ligne en prod | Ligne en staging / perf | Événements |
 |---|---|---|
@@ -452,6 +456,17 @@ une ligne, préfixée de sa gravité :
 Les niveaux reprennent ceux des anciennes règles X1 à X3. Le titre du message
 ne porte pas de gravité : un même message peut lister des lignes de niveaux
 différents.
+
+Le partage se fait sur `labels.categorie`, posé par le pipeline
+`ingest-alertes-scalingo` : `infra` pour les lignes ℹ️ (A4c, A4d), toute autre
+valeur pour les incidents (A4a, A4b, filtre `not labels.categorie : "infra"`).
+Les deux filtres sont complémentaires : chaque événement passe par une seule
+règle, et une catégorie ajoutée un jour au pipeline resterait dans les salons
+de monitoring. Le retour d'une app sous un seuil est une ligne ℹ️ : il arrive
+dans `infra-{env}`, alors que le dépassement est dans `monitoring-{env}`.
+
+Le salon `infra-production` n'est pas à suivre en continu : il sert à
+retrouver une action (qui a déployé, scalé, ouvert une console).
 
 Exemple : `🚨 pass-emploi-api-prod : app_crashed (oom) sur web, par scalingo-platform`.
 
@@ -469,30 +484,30 @@ throttle.
 **Création** : rejouer [`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console),
 après les sessions Discover de [`discovers/webhooks/`](discovers/webhooks/).
 
-### A4a — Événements Scalingo des apps applicatives, prod
+### A4a — Incidents Scalingo des apps applicatives, prod
 
 | Paramètre               | Valeur |
 |-------------------------|--------|
-| **Rule name**           | `Scalingo - Prod - Événements des apps applicatives` |
+| **Rule name**           | `Scalingo - Prod - Incidents des apps applicatives` |
 | **Type**                | Elasticsearch query rule (KQL), data view `logs-alertes-scalingo-prod-default` |
-| **Requête**             | `not service.name : ("pass-emploi-logstash" or "pass-emploi-logstash-process" or "pass-emploi-elastic-agent" or "pass-emploi-heartbeat")` |
+| **Requête**             | `not service.name : ("pass-emploi-logstash" or "pass-emploi-logstash-process" or "pass-emploi-elastic-agent" or "pass-emploi-heartbeat") and not labels.categorie : "infra"` |
 | **Fenêtre / fréquence** | 5 min / 1 min |
 | **Actions**             | Tchap via le Workflow `tchap-monitoring-production` |
 | **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
 
 **À vérifier** :
 1. Le Discover **[Pass Emploi] Alertes externes de Prod - Événements Scalingo**,
-   onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur.
+   onglet « Incidents » : l'événement, sa raison et son auteur.
 2. Pour un incident, l'impact sur les utilisateurs : le dashboard
    **[Pass Emploi] Diagnostic d'erreurs - Entrée**, puis le Discover
    **[Pass Emploi] Logs de Prod - Erreurs serveur 5xx**.
 3. L'activité de l'app (onglet Activity) dans le **[Scalingo] Dashboard des apps**.
 
-### A4b — Événements Scalingo des apps applicatives, staging / perf
+### A4b — Incidents Scalingo des apps applicatives, staging / perf
 
 | Paramètre               | Valeur |
 |-------------------------|--------|
-| **Rule name**           | `Scalingo - Hors-Prod - Événements des apps applicatives` |
+| **Rule name**           | `Scalingo - Hors-Prod - Incidents des apps applicatives` |
 | **Type**                | Elasticsearch query rule (KQL), data view `logs-alertes-scalingo-staging-default,logs-alertes-scalingo-perf-default` |
 | **Requête**             | celle d'A4a |
 | **Fenêtre / fréquence** | 10 min / 5 min |
@@ -501,7 +516,22 @@ après les sessions Discover de [`discovers/webhooks/`](discovers/webhooks/).
 
 **À vérifier** :
 1. Le Discover **[Pass Emploi] Alertes externes Hors-Prod - Événements Scalingo**,
-   onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur.
+   onglet « Incidents » : l'événement, sa raison et son auteur.
+2. L'activité de l'app (onglet Activity) dans le **[Scalingo] Dashboard des apps**.
+
+### A4c / A4d — Opérations d'infra Scalingo des apps applicatives
+
+| Paramètre               | A4c (prod) | A4d (staging / perf) |
+|-------------------------|------------|----------------------|
+| **Rule name**           | `Scalingo - Prod - Opérations d'infra des apps applicatives` | `Scalingo - Hors-Prod - Opérations d'infra des apps applicatives` |
+| **Type**                | celui d'A4a | celui d'A4b |
+| **Requête**             | celle d'A4a, avec `labels.categorie : "infra"` | idem |
+| **Fenêtre / fréquence** | 5 min / 1 min | 10 min / 5 min |
+| **Actions**             | Tchap via le Workflow `tchap-infra-production` | Tchap via le Workflow `tchap-infra-staging` |
+
+**À vérifier** :
+1. Le Discover des événements Scalingo de l'environnement, onglet « Infra » :
+   l'opération et son auteur.
 2. L'activité de l'app (onglet Activity) dans le **[Scalingo] Dashboard des apps**.
 
 ### Alertes de métriques Scalingo — la surcharge, sans les logs
@@ -510,8 +540,8 @@ Scalingo mesure lui-même la santé des apps : requêtes par minute, erreurs 5xx
 temps de réponse au routeur, mémoire des conteneurs. Ses **alertes de métriques**
 ne passent ni par le log drain ni par Logstash : chacune prévient le notifier
 Elastic de son app, qui écrit directement dans `logs-alertes-scalingo-<env>-default`,
-puis A4a (A4b hors prod) en fait une ligne ⚠️ au dépassement et ℹ️ au retour à
-la normale. Elles restent donc audibles quand la chaîne de logs est tombée,
+puis A4a (A4b hors prod) en fait une ligne ⚠️ au dépassement, et A4c (A4d) une
+ligne ℹ️ au retour à la normale. Elles restent donc audibles quand la chaîne de logs est tombée,
 comme le 23/10/2026. Les alertes `rpm` et `5XX`, celles d'une attaque,
 préviennent aussi l'équipe par e-mail (notifier `Email production - Alertes RPM
 et 5xx` de l'app, adresses de l'équipe dans le notifier) : un second canal,
@@ -552,15 +582,6 @@ scalingo --region osc-secnum-fr1 --app pass-emploi-connect-prod alerts-add \
   --container-type web --metric rpm --limit 3000 --duration-before-trigger 3m \
   --remind-every 30m --notifiers <id Elastic> --notifiers <id e-mail>
 ```
-
-### Sortir l'infra des salons de monitoring
-
-Si l'équipe veut isoler les lignes ℹ️ (déploiements…) dans des salons
-`infra-{env}` : créer les salons Tchap `infra-production` et `infra-staging`,
-copier un Workflow de salon en `tchap-infra-{env}.console`, puis, pour A4a, A4b
-(et M6a, M6b), ajouter `and labels.categorie : "incident"` à la requête et
-dupliquer la règle avec `labels.categorie : "infra"` vers `tchap-infra-{env}`.
-Aucun changement de pipeline ni de données ; réversible.
 
 ## Jobs — un job de l'api a échoué
 
