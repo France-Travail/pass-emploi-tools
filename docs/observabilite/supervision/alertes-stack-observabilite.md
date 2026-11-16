@@ -851,8 +851,10 @@ palier et quoi faire : [runbook disque](../runbooks/runbook-disque-elasticsearch
 > demanderait d'abord de collecter ces métriques : la supervision de la stack
 > (`.monitoring-*`) ne tourne pas.
 >
-> **Configuration hors repo** (console Elastic Cloud → AutoOps → *Notifications
-> settings*), comme l'alerte M6 : à refaire à la main sur un nouveau déploiement.
+> **Saisie à la main** (console Elastic Cloud → AutoOps → *Notifications
+> settings*, sans API), comme l'alerte M6 : à refaire sur un nouveau déploiement.
+> Les connecteurs Tchap (salon, URL, corps) sont versionnés dans
+> [`connecteurs/autoops/`](connecteurs/autoops/connecteurs.json) ; le reste, ci-dessous.
 > Le cluster est unique et porte tous les environnements : connecteurs et filtres
 > ne sont pas nommés par environnement.
 >
@@ -892,12 +894,13 @@ personnalisable, ni lien vers le runbook, à retrouver depuis le titre de
 l'événement dans le tableau ci-dessus. Tester avec **Run to test** avant **Save**.
 
 **Connecteur Tchap** (même filtre que le connecteur Email) : type **Webhook**, nom
-`Tchap o11y-production - Monitoring disque et santé Elasticsearch`, méthode `POST`, URL
-`https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/%21GcUrxqTFizBjxwmsBO%3Aagent.dinum.tchap.gouv.fr/send/m.room.message`
-(ID du salon `o11y-production`, encodé),
-en-têtes `Content-Type: application/json` et
-`Authorization: Bearer <jeton du bot Tchap>` (le bot des
-[Workflows Tchap](workflows/tchap/README.md) ; secret : ne pas le versionner).
+`Tchap o11y-production - Monitoring disque et santé Elasticsearch`. Méthode, salon, URL et corps à coller :
+[`connecteurs/autoops/connecteurs.json`](connecteurs/autoops/connecteurs.json) (alerte M11) et
+[`connecteurs/autoops/M11-tchap.json`](connecteurs/autoops/M11-tchap.json). Le salon est l'un de ceux de
+[`salons.json`](workflows/tchap/salons.json) : pour en changer, modifier `salon` et `url`
+ensemble, le test `tests/test_messages_tchap.py` vérifie qu'ils concordent.
+En-têtes `Content-Type: application/json` et `Authorization: Bearer <jeton du bot Tchap>`
+(le bot des [Workflows Tchap](workflows/tchap/README.md) ; secret : ne pas le versionner).
 
 > **Pourquoi `POST` sans `txnId`** : AutoOps n'a ni variable unique par
 > événement ni variable dans l'URL, il ne peut pas produire le `txnId` de
@@ -914,15 +917,8 @@ URL brutes que Tchap rend cliquables (le pare-feu devant Tchap rejette un messag
 [pièges des Workflows Tchap](workflows/tchap/README.md#pièges)). `${DESCRIPTION}` est omis, identique à
 `${MESSAGE}` sur le premier événement réel (le rajouter si un événement montre
 une différence). Dans le HTML, les `<br />` de `${MESSAGE}` s'affichent comme des
-retours à la ligne.
-```json
-{
-  "msgtype": "m.text",
-  "body": "🚨 AutoOps — ${TITLE} (${SEVERITY}, ${STATUS}) — ${RESOURCE_NAME}\n${MESSAGE}\nNœuds : ${AFFECTED_NODES} · Index : ${AFFECTED_INDICES}\nDébut : ${START_TIME} · Fin : ${END_TIME}\n${EVENT_LINK}",
-  "format": "org.matrix.custom.html",
-  "formatted_body": "<p>🚨 <strong>AutoOps — ${TITLE}</strong> (${SEVERITY}, ${STATUS}) — ${RESOURCE_NAME}</p><p>${MESSAGE}</p><p>Nœuds : ${AFFECTED_NODES} · Index : ${AFFECTED_INDICES}<br />Début : <code>${START_TIME}</code> · Fin : <code>${END_TIME}</code></p><p>À vérifier : <a href=\"${EVENT_LINK}\">l'événement dans AutoOps</a></p><p>Runbook : Disque des nœuds Elasticsearch - https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-disque-elasticsearch.md</p>"
-}
-```
+retours à la ligne. Le test `tests/test_messages_tchap.py` vérifie la règle du pare-feu
+sur ce corps.
 Tester avec **Run to test** : le message doit arriver dans le salon, variables
 non remplies.
 
@@ -937,7 +933,7 @@ Scalingo part en quarantaine (cause racine de l'incident de juillet 2026, cf.
 [runbook Logstash, scénario 1](../runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch)).
 Cette alerte précède l'[alerte M4](#alerte-m4--backpressure-inputs-bloqués-sur-la-queue).
 
-> **Configuration hors repo**, comme l'[alerte M11](#alerte-m11--disque-des-nœuds-elasticsearch-autoops) :
+> **Saisie à la main**, comme l'[alerte M11](#alerte-m11--disque-des-nœuds-elasticsearch-autoops) :
 > console Elastic Cloud → AutoOps → *Notifications settings*. Connecteur et
 > filtre distincts de l'alerte M11, pour que le message pointe vers le bon runbook.
 >
@@ -972,12 +968,13 @@ ajouté à ce filtre.
 > quelle que soit la sévérité (`LOW` ici) : seul le texte la donne.
 
 **Connecteur Tchap** (même filtre que le connecteur Email) : type **Webhook**, nom
-`Tchap o11y-production - Monitoring indexation Elasticsearch`, méthode `POST`, URL
-`https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/%21GcUrxqTFizBjxwmsBO%3Aagent.dinum.tchap.gouv.fr/send/m.room.message`
-(ID du salon `o11y-production`, encodé),
-en-têtes `Content-Type: application/json` et
-`Authorization: Bearer <jeton du bot Tchap>` (le bot des
-[Workflows Tchap](workflows/tchap/README.md) ; secret : ne pas le versionner).
+`Tchap o11y-production - Monitoring indexation Elasticsearch`. Méthode, salon, URL et corps à coller :
+[`connecteurs/autoops/connecteurs.json`](connecteurs/autoops/connecteurs.json) (alerte M12) et
+[`connecteurs/autoops/M12-tchap.json`](connecteurs/autoops/M12-tchap.json). Le salon est l'un de ceux de
+[`salons.json`](workflows/tchap/salons.json) : pour en changer, modifier `salon` et `url`
+ensemble, le test `tests/test_messages_tchap.py` vérifie qu'ils concordent.
+En-têtes `Content-Type: application/json` et `Authorization: Bearer <jeton du bot Tchap>`
+(le bot des [Workflows Tchap](workflows/tchap/README.md) ; secret : ne pas le versionner).
 
 > **Pourquoi `POST` sans `txnId`** : AutoOps n'a ni variable unique par
 > événement ni variable dans l'URL, il ne peut pas produire le `txnId` de
@@ -994,15 +991,8 @@ URL brutes que Tchap rend cliquables (le pare-feu devant Tchap rejette un messag
 [pièges des Workflows Tchap](workflows/tchap/README.md#pièges)). `${DESCRIPTION}` est omis, identique à
 `${MESSAGE}` sur le premier événement réel (le rajouter si un événement montre
 une différence). Dans le HTML, les `<br />` de `${MESSAGE}` s'affichent comme des
-retours à la ligne.
-```json
-{
-  "msgtype": "m.text",
-  "body": "🚨 AutoOps — ${TITLE} (${SEVERITY}, ${STATUS}) — ${RESOURCE_NAME}\n${MESSAGE}\nNœuds : ${AFFECTED_NODES} · Index : ${AFFECTED_INDICES}\nDébut : ${START_TIME} · Fin : ${END_TIME}\n${EVENT_LINK}",
-  "format": "org.matrix.custom.html",
-  "formatted_body": "<p>🚨 <strong>AutoOps — ${TITLE}</strong> (${SEVERITY}, ${STATUS}) — ${RESOURCE_NAME}</p><p>${MESSAGE}</p><p>Nœuds : ${AFFECTED_NODES} · Index : ${AFFECTED_INDICES}<br />Début : <code>${START_TIME}</code> · Fin : <code>${END_TIME}</code></p><p>À vérifier : <a href=\"${EVENT_LINK}\">l'événement dans AutoOps</a><br />puis la backpressure Logstash : [Pass Emploi] Supervision Stack d'Observabilité - https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d</p><p>Runbook : Backpressure Elasticsearch - https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch</p>"
-}
-```
+retours à la ligne. Le test `tests/test_messages_tchap.py` vérifie la règle du pare-feu
+sur ce corps.
 Tester avec **Run to test** : le message doit arriver dans le salon, variables
 non remplies.
 

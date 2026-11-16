@@ -300,7 +300,8 @@ de la règle et raison brute de Kibana).
   rejeté apparaît en échec dans l'exécution de `tchap-client`
   (`ConnectorExecutionError … [403] Forbidden`) et dans la règle « Tchap -
   Envoi en échec ». Ne pas chercher à contourner ce filtre : simplifier le
-  message.
+  message. `../../tests/test_messages_tchap.py` vérifie la règle sur les
+  gabarits des Workflows et sur les corps des connecteurs AutoOps.
 
 - Une règle ES|QL en `groupBy: row` identifie son alerte par les valeurs de sa
   ligne de résultat : si elles changent (un compteur qui bouge), c'est une
