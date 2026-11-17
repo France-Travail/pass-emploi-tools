@@ -1,4 +1,4 @@
-# Workflow du salon Tchap @@SALON@@, généré par generer-workflows.py depuis les
+# Workflow du salon Tchap @@SALON@@, généré par rules/scripts/generer-notifications-tchap.py depuis les
 # règles de ../../../rules/generated/ : ne pas modifier à la main. Spécification : ../README.md.
 #
 # ID du salon : Tchap → paramètres du salon → Avancé. Ce n'est pas un secret :

@@ -24,7 +24,7 @@ Deux sortes de contenus, rangés séparément :
 
 | Répertoire | Contenu | Mode d'emploi |
 |---|---|---|
-| [slo/](slo/) | les SLO (`1-slos.console`) | [objets Kibana](objets-kibana.md#slo-et-règles-console) |
+| [slo/](slo/) | les SLO : `seuils.json` (objectifs et seuils de burn rate, à régler ici), `_modele.console`, `generated/1-slos.console` | [objets Kibana](objets-kibana.md#slo-et-règles-console) |
 | [rules/](rules/) | les règles d'alerte : une règle = un fichier JSON par périmètre, et les fichiers générés à coller dans Dev Tools (`rules/generated/`) | [rules/README.md](rules/README.md) |
 | [workflows/tchap/](workflows/tchap/) | l'envoi des alertes dans Tchap : `tchap-client`, et les Workflows générés par salon (`workflows/tchap/generated/`) | [workflows/tchap/README.md](workflows/tchap/README.md) |
 | [pipelines/webhooks/](pipelines/webhooks/) | les ingest pipelines qui transforment les événements reçus par webhook (Scalingo, Dependabot) en champs ECS, et l'accès de leurs émetteurs | [pipelines/webhooks/README.md](pipelines/webhooks/README.md) |

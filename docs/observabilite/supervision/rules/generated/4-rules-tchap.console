@@ -1,9 +1,9 @@
-# ⚠️ FICHIER GÉNÉRÉ par ../generer-regles.py : NE PAS LE MODIFIER, il serait écrasé.
+# ⚠️ FICHIER GÉNÉRÉ par ../scripts/generer-regles-alerting.py : NE PAS LE MODIFIER, il serait écrasé.
 # À modifier à la place, dans ../4-tchap/ :
 #   - une règle : son fichier <code>.json (le JSON de la règle Kibana) ;
 #   - le texte autour des règles (commentaires, autres requêtes) : _modele.console.
-# Puis : python3 -I ../generer-regles.py
-#        python3 -I ../../workflows/tchap/generer-workflows.py
+# Puis : python3 -I ../scripts/generer-regles-alerting.py
+#        python3 -I ../scripts/generer-notifications-tchap.py
 # La CI de chaque PR vérifie que ce fichier correspond à ses sources.
 # Ce fichier se colle tel quel dans Kibana → Dev Tools. Mode d'emploi : ../README.md.
 #
@@ -19,7 +19,7 @@
 # SANS "rule_type_id" ni "consumer".
 
 # Envois Tchap en échec (tchap-client et Workflows de salon)
-POST kbn:/api/alerting/rule/26888801-090e-41ee-839b-73d2832330a8
+PUT kbn:/api/alerting/rule/26888801-090e-41ee-839b-73d2832330a8
 {
   "name": "Tchap - Envoi en échec",
   "tags": [
@@ -51,7 +51,5 @@ POST kbn:/api/alerting/rule/26888801-090e-41ee-839b-73d2832330a8
     "excludeHitsFromPreviousRun": true,
     "sourceFields": []
   },
-  "actions": [],
-  "rule_type_id": ".es-query",
-  "consumer": "alerts"
+  "actions": []
 }

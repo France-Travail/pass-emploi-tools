@@ -13,27 +13,30 @@
     "#   }",
     "# Ensuite, ce bloc tel quel, en PUT (qui refuse ces deux champs)."
   ],
-  "_tchap": {
-    "ligne": "`{0}` / `{1}` : {2} lignes de log, au moins {3} refus dans une fenêtre — depuis {4}"
-  },
   "_message": {
-    "text": "⚠️ **Limite de débit déclenchée — staging** — des requêtes sont refusées en 429.",
-    "attachments": [
+    "titre": "**Limite de débit déclenchée — staging** — des requêtes sont refusées en 429.",
+    "gravite": "avertissement",
+    "sections": [
       {
-        "color": "#f2c744",
-        "text": "",
-        "fields": [
-          {
-            "title": "À vérifier",
-            "value": "1. Qui est limité : Discover sur `event.action: \"rate_limit_exceeded\"`, puis `user.id` ou `client.ip`, et `url.path`\n2. Légitime ou attaque : un pic attendu (ouverture, communication, atelier en Mission Locale), ou une IP ou un compte inconnu\n3. Si c'est légitime, monter le seuil concerné (`RATE_LIMIT_*` de l'app, cf. le `CLAUDE.md` de l'app) ; si c'est une attaque, croiser avec la règle [Scalingo - Hors-Prod - Suspicion d'attaque DDoS](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/management/insightsAndAlerting/triggersActions/rule/8e5a1d34-2f7b-4c90-a6d8-3b4c5e6f7a81) et le Discover [[Pass Emploi] Logs de Prod - Trafic du routeur par IP](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/7d3f1c2e-5b8a-4e6f-9c1d-2a4b6e8f0d13)"
-          },
-          {
-            "title": "Discover sessions",
-            "value": "[[Pass Emploi] Logs de Prod - Trafic du routeur par IP](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/7d3f1c2e-5b8a-4e6f-9c1d-2a4b6e8f0d13)"
-          }
+        "titre": "À vérifier",
+        "lignes": [
+          "1. Qui est limité : Discover sur `event.action: \"rate_limit_exceeded\"`, puis `user.id` ou `client.ip`, et `url.path`",
+          "2. Légitime ou attaque : un pic attendu (ouverture, communication, atelier en Mission Locale), ou une IP ou un compte inconnu",
+          "3. Si c'est légitime, monter le seuil concerné (`RATE_LIMIT_*` de l'app, cf. le `CLAUDE.md` de l'app) ; si c'est une attaque, croiser avec la règle [Scalingo - Hors-Prod - Suspicion d'attaque DDoS](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/management/insightsAndAlerting/triggersActions/rule/8e5a1d34-2f7b-4c90-a6d8-3b4c5e6f7a81) et le Discover [[Pass Emploi] Logs de Prod - Trafic du routeur par IP](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/7d3f1c2e-5b8a-4e6f-9c1d-2a4b6e8f0d13)"
         ]
       }
-    ]
+    ],
+    "liens": {
+      "Discover sessions": [
+        {
+          "nom": "[Pass Emploi] Logs de Prod - Trafic du routeur par IP",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/7d3f1c2e-5b8a-4e6f-9c1d-2a4b6e8f0d13"
+        }
+      ]
+    },
+    "resultat": {
+      "ligne": "`{0}` / `{1}` : {2} lignes de log, au moins {3} refus dans une fenêtre — depuis {4}"
+    }
   },
   "name": "Pass Emploi - Hors-Prod - Limite de débit déclenchée",
   "tags": [

@@ -3,6 +3,27 @@
   "_commentaire": [
     "# A5b — Jobs en échec, staging / perf (même version dégradée que A5a)"
   ],
+  "_message": {
+    "titre": "**Jobs en échec — hors prod** ({valeur})",
+    "gravite": "information",
+    "sections": [
+      {
+        "titre": "À vérifier",
+        "lignes": [
+          "1. Le Discover [[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740), onglet « Jobs en échec » : le job, son environnement, son erreur et sa stack",
+          "2. L'onglet « Exécutions » de [[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740) : le job échoue-t-il à chaque exécution, ou a-t-il réussi depuis ?"
+        ]
+      }
+    ],
+    "liens": {
+      "Discover sessions": [
+        {
+          "nom": "[Pass Emploi] Logs Hors-Prod - Jobs",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740"
+        }
+      ]
+    }
+  },
   "name": "API - Hors-Prod - Jobs en échec",
   "tags": [
     "hors-prod",
@@ -52,46 +73,6 @@
     "sourceFields": []
   },
   "actions": [
-    {
-      "group": "query matched",
-      "id": "3f71e705-99b5-4b37-ab14-932e28bc29b4",
-      "params": {
-        "body": {
-          "text": "**Jobs en échec — hors prod** ({{context.value}})",
-          "attachments": [
-            {
-              "color": "#808080",
-              "text": "{{#context.hits}}❌ `{{_source.labels.job_type}}` ({{_source.service.environment}}) : {{_source.event.action}} — {{_source.error.message}}\n{{/context.hits}}",
-              "fields": [
-                {
-                  "title": "Règle",
-                  "value": "`{{rule.name}}`",
-                  "short": true
-                },
-                {
-                  "title": "Déclenchée à",
-                  "value": "`{{date}}`",
-                  "short": true
-                },
-                {
-                  "title": "À vérifier",
-                  "value": "1. Le Discover [[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740), onglet « Jobs en échec » : le job, son environnement, son erreur et sa stack\n2. L'onglet « Exécutions » de [[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740) : le job échoue-t-il à chaque exécution, ou a-t-il réussi depuis ?"
-                },
-                {
-                  "title": "Discover sessions",
-                  "value": "[[Pass Emploi] Logs Hors-Prod - Jobs](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/16da36f4-a88e-4c01-b34f-e361a5292740)"
-                }
-              ]
-            }
-          ]
-        }
-      },
-      "frequency": {
-        "summary": false,
-        "notify_when": "onActiveAlert",
-        "throttle": null
-      }
-    },
     {
       "id": "system-connector-.workflows",
       "params": {

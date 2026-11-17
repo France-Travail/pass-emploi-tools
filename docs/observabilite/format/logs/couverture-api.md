@@ -27,7 +27,7 @@ Spécificités api :
 - **`labels.user_journey`** : parcours métier de la requête, posé par le
   décorateur `@UserJourney('<parcours>')` (controller par défaut, surchargé par
   route). Découpe les SLO par parcours (cf.
-  [`slo/1-slos.console`](../../supervision/slo/1-slos.console)). Porté par
+  [`slo/generated/1-slos.console`](../../supervision/slo/generated/1-slos.console)). Porté par
   la **seule ligne de requête** (`request_completed`, `request_failed`), refus
   d'authentification et réponses en erreur compris : `UserJourneyGuard` le pose
   sur la requête avant `OidcAuthGuard`. La ligne de requête lit aussi `user.*`

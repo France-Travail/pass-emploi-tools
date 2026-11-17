@@ -1,6 +1,5 @@
 {
   "_id": "26888801-090e-41ee-839b-73d2832330a8",
-  "_methode": "POST",
   "_commentaire": [
     "# Envois Tchap en échec (tchap-client et Workflows de salon)"
   ],
@@ -34,7 +33,5 @@
     "excludeHitsFromPreviousRun": true,
     "sourceFields": []
   },
-  "actions": [],
-  "rule_type_id": ".es-query",
-  "consumer": "alerts"
+  "actions": []
 }

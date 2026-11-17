@@ -56,7 +56,7 @@ les logs à examiner.
 
 | Fichier | Contenu |
 |---|---|
-| [`slo/1-slos.console`](slo/1-slos.console) | les SLO |
+| [`slo/generated/1-slos.console`](slo/generated/1-slos.console) | les SLO, **générés** depuis `slo/_modele.console` et `slo/seuils.json` (objectifs) |
 | [`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console) | règles SLO1 à SLO3, A1 à A3, A4a, A4b, A5a et A5b, cf. [alertes applicatives](alertes-applicatives.md) |
 | [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console) | règles M1 à M10 et M13, cf. [alertes de la stack](alertes-stack-observabilite.md) |
 | [`rules/generated/1-rules-securite.console`](rules/generated/1-rules-securite.console) | règle S1, cf. [alertes de sécurité](alertes-securite.md) |
@@ -84,7 +84,7 @@ remplace aussi ses réglages d'affichage, sans effet sur les données.
 ### SLO et règles (`.console`)
 
 Copier le fichier dans Dev Tools et exécuter les requêtes, dans l'ordre :
-`slo/1-slos.console`, puis `rules/generated/2-rules-applicatives.console`, puis
+`slo/generated/1-slos.console`, puis `rules/generated/2-rules-applicatives.console`, puis
 `rules/generated/3-rules-stack-observabilite.console`, puis `rules/generated/1-rules-securite.console`.
 Sur un cluster vide, l'en-tête de chaque fichier indique comment transformer les
 `PUT` en `POST` de création. Les règles sur les événements Scalingo et GitHub
@@ -119,8 +119,9 @@ Modifier dans Kibana, puis réexporter par-dessus le fichier versionné :
   `workflows/tchap/generated/` sont **générés** (ils le disent en tête) : ne pas
   les modifier, ils seraient écrasés et le check de la PR échouerait. Modifier
   la source, dans `rules/<n>-<périmètre>/` :
-  - la règle : son fichier `<code>.json` (le JSON de la règle Kibana, son message
-    lisible en objet JSON) ;
+  - la règle : son fichier `<code>.json` (le JSON de la règle Kibana, et son message
+    au format pivot dans `_message`) ;
+  - l'objectif ou un seuil de burn rate d'un SLO : `slo/seuils.json` ;
   - le texte autour des règles (commentaires, autres requêtes) : `_modele.console`,
     où `@@REGLE <code>@@` marque la place de chaque règle ;
   - le tableau de la page `alertes-*.md` correspondante, si le seuil ou le
@@ -128,16 +129,13 @@ Modifier dans Kibana, puis réexporter par-dessus le fichier versionné :
 
   Puis régénérer et commiter le tout :
   ```bash
-  python3 -I rules/generer-regles.py
-  python3 -I workflows/tchap/generer-workflows.py
+  python3 -I rules/scripts/generer-regles-alerting.py
+  python3 -I rules/scripts/generer-notifications-tchap.py
   ```
-  Déployer ensuite le bloc de `rules/generated/` dans Dev Tools (manuellement).
+  Déployer ensuite le bloc de `slo/generated/` ou de `rules/generated/` dans Dev Tools
+  (manuellement).
   Sur chaque PR, le workflow GitHub
   [`elastic-rules-and-workflows-checks.yml`](../../../.github/workflows/elastic-rules-and-workflows-checks.yml)
   échoue si un fichier généré ne correspond plus à ses sources, ou si une règle
-  viole les contrôles des générateurs (message absent ou en JSON invalide,
-  salon inconnu, règle ES|QL hors `@timestamp`).
-  `FEATURE_NOTIFIER_ALERTES_MATTERMOST` suit la convention des features des apps
-  (active seulement à `true`) : à `true`, les règles gardent leurs actions
-  Mattermost ; sans elle, elles n'ont plus que leur action Tchap. Mattermost étant
-  arrêté, le CI la fixe à `false`.
+  viole les contrôles des générateurs (`_message` absent ou invalide, salon
+  inconnu, règle ES|QL hors `@timestamp`).

@@ -1,9 +1,9 @@
-# ⚠️ FICHIER GÉNÉRÉ par ../generer-regles.py : NE PAS LE MODIFIER, il serait écrasé.
+# ⚠️ FICHIER GÉNÉRÉ par ../scripts/generer-regles-alerting.py : NE PAS LE MODIFIER, il serait écrasé.
 # À modifier à la place, dans ../5-tchap-expiration-bot/ :
 #   - une règle : son fichier <code>.json (le JSON de la règle Kibana) ;
 #   - le texte autour des règles (commentaires, autres requêtes) : _modele.console.
-# Puis : python3 -I ../generer-regles.py
-#        python3 -I ../../workflows/tchap/generer-workflows.py
+# Puis : python3 -I ../scripts/generer-regles-alerting.py
+#        python3 -I ../scripts/generer-notifications-tchap.py
 # La CI de chaque PR vérifie que ce fichier correspond à ses sources.
 # Ce fichier se colle tel quel dans Kibana → Dev Tools. Mode d'emploi : ../README.md.
 #
@@ -40,7 +40,7 @@ PUT _ingest/pipeline/tchap-expiration-bot
 PUT tchap-expiration-bot
 {
   "settings": {
-    "number_of_replicas": 0,
+    "number_of_replicas": 1,
     "index.default_pipeline": "tchap-expiration-bot"
   },
   "mappings": {
@@ -69,7 +69,7 @@ PUT tchap-expiration-bot/_doc/bot?refresh=true
 # une date d'expiration future n'y entrerait jamais. Pas
 # d'excludeHitsFromPreviousRun : le rappel est quotidien tant que la date n'est
 # pas mise à jour.
-POST kbn:/api/alerting/rule/bcd45d7d-6fe6-4303-a73e-7cff877dde96
+PUT kbn:/api/alerting/rule/bcd45d7d-6fe6-4303-a73e-7cff877dde96
 {
   "name": "Tchap - Expiration du compte bot",
   "tags": [
@@ -118,7 +118,5 @@ POST kbn:/api/alerting/rule/bcd45d7d-6fe6-4303-a73e-7cff877dde96
         }
       }
     }
-  ],
-  "rule_type_id": ".es-query",
-  "consumer": "alerts"
+  ]
 }

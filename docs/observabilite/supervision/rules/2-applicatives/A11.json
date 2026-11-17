@@ -4,6 +4,33 @@
     "# A11 — Certificat TLS bientôt expiré (Warning), un message par certificat et par jour.",
     "# Règle Uptime existante : type et paramètres inchangés, PUT met à jour son message."
   ],
+  "_message": {
+    "titre": "**Certificat TLS bientôt expiré** — {etat.commonName} : {resume_certificat}",
+    "gravite": "avertissement",
+    "sections": [
+      {
+        "titre": "Détail",
+        "lignes": [
+          "Émetteur : {etat.issuer}"
+        ]
+      },
+      {
+        "titre": "À vérifier",
+        "lignes": [
+          "1. Le domaine et la date d'expiration : le titre du message",
+          "2. Son renouvellement automatique chez l'hébergeur du domaine ; pour une app Scalingo, l'onglet Domains de l'app dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+        ]
+      }
+    ],
+    "liens": {
+      "Dashboards": [
+        {
+          "nom": "[Scalingo] Dashboard des apps",
+          "url": "https://dashboard.scalingo.com/apps"
+        }
+      ]
+    }
+  },
   "name": "TLS - Certificat bientôt expiré",
   "tags": [
     "prod",
@@ -20,50 +47,6 @@
   },
   "params": {},
   "actions": [
-    {
-      "group": "xpack.uptime.alerts.actionGroups.tlsCertificate",
-      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
-      "params": {
-        "body": {
-          "text": "⚠️ **Certificat TLS bientôt expiré** — {{state.commonName}} : {{state.summary}}",
-          "attachments": [
-            {
-              "color": "#f2c744",
-              "text": "",
-              "fields": [
-                {
-                  "title": "Règle",
-                  "value": "`{{rule.name}}`",
-                  "short": true
-                },
-                {
-                  "title": "Déclenchée à",
-                  "value": "`{{date}}`",
-                  "short": true
-                },
-                {
-                  "title": "Détail",
-                  "value": "Émetteur : {{state.issuer}}"
-                },
-                {
-                  "title": "À vérifier",
-                  "value": "1. Le domaine et la date d'expiration : le titre du message\n2. Son renouvellement automatique chez l'hébergeur du domaine ; pour une app Scalingo, l'onglet Domains de l'app dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
-                },
-                {
-                  "title": "Dashboards",
-                  "value": "[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
-                }
-              ]
-            }
-          ]
-        }
-      },
-      "frequency": {
-        "summary": false,
-        "notify_when": "onActiveAlert",
-        "throttle": null
-      }
-    },
     {
       "id": "system-connector-.workflows",
       "params": {

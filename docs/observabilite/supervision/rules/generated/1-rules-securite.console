@@ -1,9 +1,9 @@
-# ⚠️ FICHIER GÉNÉRÉ par ../generer-regles.py : NE PAS LE MODIFIER, il serait écrasé.
+# ⚠️ FICHIER GÉNÉRÉ par ../scripts/generer-regles-alerting.py : NE PAS LE MODIFIER, il serait écrasé.
 # À modifier à la place, dans ../1-securite/ :
 #   - une règle : son fichier <code>.json (le JSON de la règle Kibana) ;
 #   - le texte autour des règles (commentaires, autres requêtes) : _modele.console.
-# Puis : python3 -I ../generer-regles.py
-#        python3 -I ../../workflows/tchap/generer-workflows.py
+# Puis : python3 -I ../scripts/generer-regles-alerting.py
+#        python3 -I ../scripts/generer-notifications-tchap.py
 # La CI de chaque PR vérifie que ce fichier correspond à ses sources.
 # Ce fichier se colle tel quel dans Kibana → Dev Tools. Mode d'emploi : ../README.md.
 #
@@ -16,12 +16,8 @@
 # Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
 # ../../objets-kibana.md#slo-et-règles-console.
 #
-# Messages Mattermost : une section (« À vérifier », « Dashboards », « Discover
-# sessions ») = un champ, un élément par ligne (`\n`). Chaque champ tient sur une
-# seule ligne du fichier : l'éditeur de règle de Kibana lit le body comme du JSON
-# brut, un retour à la ligne dans une chaîne l'empêche de l'afficher. Pour relire
-# les étapes : le fichier <code>.json de la règle, dans ../1-securite/, ou son
-# Investigation guide.
+# Message de chaque règle : la clé « _message » de son fichier <code>.json, dans
+# ../1-securite/, au format pivot (../README.md, « Le message d'une règle »).
 #
 # artifacts : l'Investigation guide et les Related dashboards (onglets de la
 # règle). L'API publique ne les renvoie pas dans ses réponses : les vérifier

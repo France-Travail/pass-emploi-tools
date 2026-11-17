@@ -1,21 +1,22 @@
 """Étape 1 des notifications, commune à tous les canaux : extraire les règles qui notifient et
-leur message au format pivot (clé « _message » de leur fichier JSON, ../../rules/<n>-<périmètre>/),
-et le valider. Spécification : ../../rules/README.md, « Le message d'une règle ».
+leur message au format pivot (clé « _message » de leur fichier JSON, ../../<n>-<périmètre>/),
+et le valider. Spécification : ../../README.md, « Le message d'une règle ».
 Les étapes 2 (transformer) et 3 (charger) sont propres à chaque canal : tchap/.
 """
 import glob, json, os, re
 
-SUPERVISION = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
-REGLES = os.path.join(SUPERVISION, 'rules')
+REGLES = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
+SEUILS = os.path.join(REGLES, '..', 'slo', 'seuils.json')
 WORKFLOWS = 'system-connector-.workflows'
 
 GRAVITES = ('critique', 'avertissement', 'information')
-CLES = {'titre', 'gravite', 'sections', 'liens', 'retablissement', 'resultat'}
+CLES = {'titre', 'gravite', 'fenetres', 'essentiel', 'sections', 'liens', 'liens_dependabot', 'retablissement', 'resultat'}
 CLES_RETABLISSEMENT = {'titre', 'sections', 'liens'}
 VARIABLES = {
     'regle', 'debut', 'valeur', 'raison', 'groupe', 'detail', 'url_slo', 'seuil',
     'burn_rate_long', 'fenetre_longue', 'burn_rate_court', 'fenetre_courte', 'jours_restants',
     'resume_certificat',
+    'objectif',  # objectif d'un SLO, résolu ici depuis ../../../slo/seuils.json : « 99,5 % »
 }
 VARIABLE = re.compile(r'\{([a-z_]+(?:\.[A-Za-z_]+)?)\}')
 
@@ -49,7 +50,20 @@ def erreurs(message):
     e = [f'clé inconnue « {k} »' for k in sorted(set(message) - CLES)]
     if not message.get('titre'):
         e.append('« titre » absent')
-    if message.get('gravite') not in GRAVITES:
+    if 'fenetres' in message:
+        if 'gravite' in message:
+            e.append('« gravite » et « fenetres » : l\'une ou l\'autre (la gravité d\'une règle burn rate dépend de sa fenêtre)')
+        for nom, f in message['fenetres'].items():
+            if not isinstance(f, dict) or f.get('gravite') not in GRAVITES or set(f) - {'gravite', 'essentiel'} or f.get('essentiel') not in (None, True):
+                e.append(f"fenetres « {nom} » : « gravite » parmi {', '.join(GRAVITES)}, et « essentiel » : true facultatif")
+        if any(isinstance(f, dict) and f.get('essentiel') for f in message['fenetres'].values()):
+            ess = message.get('essentiel') or {}
+            secs = {s.get('titre') for s in message.get('sections', [])}
+            e += [f'essentiel : section « {s} » absente du message' for s in ess.get('sections', []) if s not in secs]
+            e += [f'essentiel : liens « {l} » absents du message' for l in ess.get('liens', []) if l not in message.get('liens', {})]
+            if not ess:
+                e.append('« essentiel » : les sections et les liens de la version allégée, attendus par une fenêtre « essentiel »')
+    elif message.get('gravite') not in GRAVITES:
         e.append(f"« gravite » : {message.get('gravite')!r}, attendu l'une de {', '.join(GRAVITES)}")
     blocs = [message]
     if 'retablissement' in message:
@@ -70,6 +84,8 @@ def erreurs(message):
                     e.append(f'liens « {titre} » : chaque lien a un « nom » et une « url », rien d\'autre')
         for texte in textes(bloc):
             e += [f'variable inconnue {{{v}}}' for v in variables(texte) if not est_variable(v)]
+    if message.get('liens_dependabot') not in (None, True):
+        e.append('« liens_dependabot » : true, ou absent')
     resultat = message.get('resultat')
     if resultat is not None and (not isinstance(resultat, dict) or not resultat.get('ligne') or set(resultat) - {'ligne', 'vide'}):
         e.append('« resultat » : « ligne » (et « vide », facultatif) attendus')
@@ -92,13 +108,30 @@ def requetes(texte):
         yield m.group(2).rsplit('/', 1)[1], json.loads(re.sub(r'"""(.*?)"""', lambda x: json.dumps(x.group(1)), brut, flags=re.S))
 
 
+def objectif_en_texte(objectif):
+    """L'objectif d'un SLO en français : 0.995 → « 99,5 % »."""
+    return f'{objectif * 100:g} %'.replace('.', ',')
+
+
+def avec_objectif(valeur, texte):
+    """Le message, {objectif} remplacé par l'objectif du SLO de la règle (texte)."""
+    if isinstance(valeur, dict):
+        return {k: avec_objectif(v, texte) for k, v in valeur.items()}
+    if isinstance(valeur, list):
+        return [avec_objectif(v, texte) for v in valeur]
+    return valeur.replace('{objectif}', texte) if isinstance(valeur, str) else valeur
+
+
 def messages():
-    """{nom de règle : message au format pivot}, lus dans les fichiers JSON des règles."""
+    """{nom de règle : message au format pivot}, lus dans les fichiers JSON des règles ;
+    {objectif} y est remplacé par l'objectif du SLO de la règle (slo/seuils.json)."""
+    seuils = json.load(open(SEUILS))
     m = {}
     for chemin in sorted(glob.glob(os.path.join(REGLES, '*-*', '*.json'))):
         d = json.load(open(chemin))
         if '_message' in d:
-            m[d['name']] = d['_message']
+            code = os.path.basename(chemin)[:-5]
+            m[d['name']] = avec_objectif(d['_message'], objectif_en_texte(seuils[code]['objectif'])) if code in seuils else d['_message']
     return m
 
 
@@ -116,6 +149,8 @@ def extraire():
             if m is None:
                 raise SystemExit(f"« {regle['name']} » notifie sans « _message » dans son fichier JSON de rules/<n>-<périmètre>/")
             ecarts = erreurs(m)
+            if '{objectif}' in json.dumps(m, ensure_ascii=False):
+                ecarts.append('{objectif} dans le message d\'une règle sans SLO (slo/seuils.json)')
             if ecarts:
                 raise SystemExit(f"« {regle['name']} » : _message invalide : " + ' ; '.join(ecarts))
             regles.append((rid, regle, m, w[0]['params']['subActionParams']['workflowId']))

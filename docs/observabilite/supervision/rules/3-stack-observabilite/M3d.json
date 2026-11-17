@@ -3,6 +3,42 @@
   "_commentaire": [
     "# M3d — Absence dans `logs-router-staging-default` / `logs-router-perf-default`"
   ],
+  "_message": {
+    "titre": "**Silence Logstash** — aucun log router dans `logs-router-staging-default` ou `logs-router-perf-default` depuis 5 min. Drain en quarantaine ou Logstash crashé.",
+    "gravite": "avertissement",
+    "sections": [
+      {
+        "titre": "À vérifier",
+        "lignes": [
+          "1. Logstash reçoit-il encore des logs : les débits d'entrée et de sortie dans le dashboard [[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)",
+          "2. Une seule source ou toute l'ingestion : si les logs applicatifs arrivent toujours (pas d'alerte de silence de leur côté), le drain d'une app est en quarantaine ; sinon, Logstash est arrêté ou a redémarré (son activité dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))",
+          "3. L'agent qui remonte les métriques de Logstash fonctionne-t-il : le dashboard [[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824), sinon les débits ci-dessus sont aveugles"
+        ]
+      }
+    ],
+    "liens": {
+      "Dashboards": [
+        {
+          "nom": "[Metrics Logstash] Logstash Overview",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522"
+        },
+        {
+          "nom": "[Scalingo] Dashboard des apps",
+          "url": "https://dashboard.scalingo.com/apps"
+        },
+        {
+          "nom": "[Elastic Agent] Overview",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824"
+        }
+      ],
+      "Runbook": [
+        {
+          "nom": "Runbook scénario",
+          "url": "https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash"
+        }
+      ]
+    }
+  },
   "name": "Logstash - Hors-Prod - Détection absence ingestion logs router",
   "tags": [
     "hors-prod",
@@ -59,49 +95,6 @@
     "sourceFields": []
   },
   "actions": [
-    {
-      "group": "query matched",
-      "id": "c4a313b3-aa42-4e07-8196-c007625ce8af",
-      "params": {
-        "body": {
-          "text": "⚠️ **Silence Logstash** — aucun log router dans `logs-router-staging-default` ou `logs-router-perf-default` depuis 5 min. Drain en quarantaine ou Logstash crashé.",
-          "attachments": [
-            {
-              "color": "#f2c744",
-              "fields": [
-                {
-                  "title": "Règle",
-                  "value": "`{{rule.name}}`",
-                  "short": true
-                },
-                {
-                  "title": "Déclenchée à",
-                  "value": "`{{date}}`",
-                  "short": true
-                },
-                {
-                  "title": "À vérifier",
-                  "value": "1. Logstash reçoit-il encore des logs : les débits d'entrée et de sortie dans le dashboard [[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)\n2. Une seule source ou toute l'ingestion : si les logs applicatifs arrivent toujours (pas d'alerte de silence de leur côté), le drain d'une app est en quarantaine ; sinon, Logstash est arrêté ou a redémarré (son activité dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. L'agent qui remonte les métriques de Logstash fonctionne-t-il : le dashboard [[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824), sinon les débits ci-dessus sont aveugles"
-                },
-                {
-                  "title": "Dashboards",
-                  "value": "[[Metrics Logstash] Logstash Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-79270240-48ee-11ee-8cb5-99927777c522)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Elastic Agent] Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/elastic_agent-a148dc70-6b3c-11ed-98de-67bdecd21824)"
-                },
-                {
-                  "title": "Runbook",
-                  "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash)"
-                }
-              ]
-            }
-          ]
-        }
-      },
-      "frequency": {
-        "summary": false,
-        "notify_when": "onThrottleInterval",
-        "throttle": "6h"
-      }
-    },
     {
       "id": "system-connector-.workflows",
       "params": {

@@ -1,8 +1,8 @@
 """Étape 3 des notifications pour Tchap : charger les messages transformés (étape 2,
 2-transformer.py) dans les Workflows Kibana de chaque salon, generated/tchap-<salon>.console de
-../../../workflows/tchap/, et y écrire les rapports quotidiens des jobs.
+../../../../workflows/tchap/, et y écrire les rapports quotidiens des jobs.
 Les gabarits des Workflows sont dans modeles/, les salons dans salons.json, les rapports des jobs
-dans rapports-jobs.json (../../../workflows/tchap/) : ce script ne fait que les assembler.
+dans rapports-jobs.json (../../../../workflows/tchap/) : ce script ne fait que les assembler.
 Lancé par ../../generer-notifications-tchap.py.
 """
 import json, os, re
@@ -17,7 +17,7 @@ def module(chemin):
 
 
 ICI = os.path.dirname(os.path.abspath(__file__))
-SUPERVISION = os.path.join(ICI, '..', '..', '..')
+SUPERVISION = os.path.join(ICI, '..', '..', '..', '..')
 TCHAP = os.path.join(SUPERVISION, 'workflows', 'tchap')
 SALONS = json.load(open(os.path.join(TCHAP, 'salons.json')))
 extraction = module(os.path.join(ICI, '..', '1-extraire.py'))
@@ -175,15 +175,19 @@ def rapport(r, jobs):
     valeurs = {'@@ENV@@': r['env'], '@@INDEX@@': r['index'], '@@LIBELLE_ENV@@': r['libelle'],
                '@@SESSION_JOBS@@': r['session_discover_jobs'], '@@RAPPORT_HEURE@@': str(RAPPORT_HEURE)}
 
-    def remplir(texte):
+    def remplir(texte, echapper=True):
         for repere, valeur in valeurs.items():
             texte = texte.replace(repere, valeur)
-        return texte.replace('"', '\\"')
+        return texte.replace('"', '\\"') if echapper else texte
 
     jours, statut = colle('rapport-jobs/jour-du-mois-et-de-la-semaine.liquid'), colle('rapport-jobs/statut-d-un-job.liquid')
     html = remplir(colle('rapport-jobs/html.liquid').replace('@@JOUR_DU_MOIS_ET_DE_LA_SEMAINE@@', jours).replace('@@STATUT_D_UN_JOB@@', statut))
     texte = remplir(colle('rapport-jobs/texte.liquid').replace('@@JOUR_DU_MOIS_ET_DE_LA_SEMAINE@@', jours).replace('@@STATUT_D_UN_JOB@@', statut))
-    requete = remplir(modele('rapport-jobs/executions-des-jobs-sur-24h.esql').strip())
+    # Entre guillemets simples dans le YAML, sans échappement : le vérificateur ES|QL de
+    # l'éditeur de Workflows lit la requête brute, un \\" y passe pour une erreur de syntaxe.
+    requete = remplir(modele('rapport-jobs/executions-des-jobs-sur-24h.esql').strip(), echapper=False)
+    if "'" in requete:
+        raise SystemExit("modeles/rapport-jobs/executions-des-jobs-sur-24h.esql : pas d'apostrophe (la requête est entre guillemets simples dans le YAML)")
     t = modele('rapport-jobs/workflow.console')
     for repere, valeur in [('@@JOBS@@', consts), ('@@REQUETE@@', requete), ('@@TEXTE@@', texte), ('@@HTML@@', html),
                            ('@@ID_SALON@@', SALONS[r['salon']]), ('@@SALON@@', r['salon']), ('@@ENV@@', r['env'])]:

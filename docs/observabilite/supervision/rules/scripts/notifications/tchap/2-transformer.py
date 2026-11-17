@@ -21,6 +21,10 @@ ALERTE = 'foreach.item.kibana.alert'
 EGAL = " | replace: '=', '＝'"
 DETAIL_ESQL = ('{% for g in ' + ALERTE + '.grouping %}{% unless g[0] == "labels" %}'
                '{{ g[0] | replace: "_", " " }} : {{ g[1]' + EGAL + 'ECHAP }}SEP{% endunless %}{% endfor %}')
+KIBANA = 'https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com'
+# Lien de la règle, construit depuis son id : event.ruleUrl donne la même URL à l'exécution,
+# mais l'éditeur de Workflows ne la connaît pas et la signale en erreur.
+URL_REGLE = KIBANA + '/app/management/insightsAndAlerting/triggersActions/rule/{{ event.rule.id }}'
 # Variables du format pivot → Liquid, sur le document d'alerte que reçoit le Workflow.
 VARIABLES = {
     'regle': '{{ event.rule.name' + EGAL + 'ECHAP }}',
@@ -28,7 +32,7 @@ VARIABLES = {
     'valeur': '{{ ' + ALERTE + '.evaluation.value }}',
     'raison': '{{ ' + ALERTE + '.reason' + EGAL + 'ECHAP }}',
     'groupe': '{{ ' + ALERTE + '.instance.id' + EGAL + 'ECHAP }}',
-    'url_slo': 'https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/slos/{{ foreach.item.slo.id }}',
+    'url_slo': KIBANA + '/app/slos/{{ foreach.item.slo.id }}',
     'burn_rate_long': "{{ lb | append: '' | replace: '.', ',' }}",
     'fenetre_longue': "{{ ld | replace: 'h', ' h' | replace: 'm', ' min' }}",
     'burn_rate_court': "{{ sb | append: '' | replace: '.', ',' }}",
@@ -36,9 +40,10 @@ VARIABLES = {
     'seuil': '{{ seuil }}',
 }
 BURN_RATE_VARIABLES = {'burn_rate_long', 'fenetre_longue', 'burn_rate_court', 'fenetre_courte', 'seuil', 'jours_restants'}
-# Gravité du pivot → émoji en tête du titre et couleur du titre.
-GRAVITES = {'critique': ('🚨 ', '#d00000'), 'avertissement': ('⚠️ ', '#f2c744'),
-            'information': ('', '#808080'), 'retablissement': ('✅ ', '#2eb886')}
+# Gravité du pivot → émoji en tête du titre et couleur du titre. Couleurs choisies pour
+# Tchap : le jaune et le vert de Slack / Mattermost (#f2c744, #2eb886) y sont trop pâles.
+GRAVITES = {'critique': ('🚨 ', '#d00000'), 'avertissement': ('⚠️ ', '#ffa500'),
+            'information': ('', '#808080'), 'retablissement': ('✅ ', '#36a64f')}
 # Absents du document d'alerte d'un SLO : la raison de Kibana les contient, toujours au
 # format « …: The burn rate for the past 1h is 18.5 and for the past 5m is 21.3 for …
 # Alert when above 14.4 for both windows ».
@@ -167,7 +172,9 @@ def pages_dependabot(en_html):
     if en_html:
         ligne = "{% for u in pages %}{% assign morceaux = u | split: '/' %}{{ morceaux[4] | escape }} - {{ u }}{% unless forloop.last %}<br/>{% endunless %}{% endfor %}"
         return "{% if foreach.item.labels %}" + urls + "{% if pages.size > 0 %}<p><strong>Alertes Dependabot</strong><br/>" + ligne + "</p>{% endif %}{% endif %}"
-    ligne = "{% for u in pages %}{% assign morceaux = u | split: '/' %}\\n{{ morceaux[4] }} - {{ u }}{% endfor %}"
+    # u n'est lu qu'en tête de boucle : après un « \\n » échappé, l'éditeur de Workflows le
+    # croit hors de la boucle et le signale en erreur (il reste juste à l'exécution).
+    ligne = "{% for u in pages %}{% assign page = u %}{% assign morceaux = u | split: '/' %}\\n{{ morceaux[4] }} - {{ page }}{% endfor %}"
     return "{% if foreach.item.labels %}" + urls + "{% if pages.size > 0 %}\\nAlertes Dependabot :" + ligne + "{% endif %}{% endif %}"
 
 
@@ -187,21 +194,27 @@ def en_markdown(liens):
     return '\n'.join(f"[{l['nom']}]({l['url']})" for l in liens)
 
 
-def message(regle, en_html, lignes_esql=None, retabli=False):
+def message(regle, en_html, lignes_esql=None, retabli=False, gravite=None, essentiel=False):
     """Titre en couleur, date, détail, explications ; puis toutes les sections de liens,
-    et la règle en dernier. retabli : le message de rétablissement du pivot."""
+    et la règle en dernier. retabli : le message de rétablissement du pivot. gravite : celle
+    d'une fenêtre de règle burn rate ; essentiel : sa version allégée (« essentiel » du pivot)."""
     m = pivot_de(regle)
     bloc = m['retablissement'] if retabli else m
-    emoji, couleur = GRAVITES['retablissement' if retabli else m['gravite']]
+    if essentiel:
+        garder = m['essentiel']
+        bloc = dict(bloc, sections=[s for s in bloc.get('sections', []) if s['titre'] in garder.get('sections', [])],
+                    liens={n: l for n, l in bloc.get('liens', {}).items() if n in garder.get('liens', [])})
+    emoji, couleur = GRAVITES['retablissement' if retabli else gravite or m['gravite']]
     titre = remplir(markdown(liquide(emoji + bloc['titre'], en_html), en_html), en_html)
     liens = bloc.get('liens', {})
     noms = [n for n in ORDRE_LIENS if n in liens] + [n for n in liens if n not in ORDRE_LIENS]
     libelle, quand = ('Rétablie à', 'end') if retabli else ('Déclenchée à', 'start')
     date = ('<p><strong>' + libelle + '</strong> : {{ ' + ALERTE + '.' + quand + ' }}</p>') if en_html else ('\\n' + libelle + ' : {{ ' + ALERTE + '.' + quand + ' }}')
-    regle_lien = ('<p><strong>Règle</strong><br/>{{ event.rule.name' + EGAL + ' | escape }} - {{ event.ruleUrl }}</p>') if en_html else \
-                 ('\\nRègle :\\n{{ event.rule.name' + EGAL + ' }} - {{ event.ruleUrl }}')
+    regle_lien = ('<p><strong>Règle</strong><br/>{{ event.rule.name' + EGAL + ' | escape }} - ' + URL_REGLE + '</p>') if en_html else \
+                 ('\\nRègle :\\n{{ event.rule.name' + EGAL + ' }} - ' + URL_REGLE)
     milieu = ''.join(section(s['titre'], '\n'.join(s['lignes']), en_html, gras=True) for s in bloc.get('sections', []))
-    fin = ''.join(section(n, en_markdown(liens[n]), en_html) for n in noms) + pages_dependabot(en_html) + regle_lien
+    dependabot = pages_dependabot(en_html) if m.get('liens_dependabot') and not retabli and not essentiel else ''
+    fin = ''.join(section(n, en_markdown(liens[n]), en_html) for n in noms) + dependabot + regle_lien
     cites = {v for texte in pivot.textes(bloc) for v in pivot.variables(texte)}
     prefixe = fenetre(regle) + (BURN_RATE if cites & BURN_RATE_VARIABLES else '')
     if en_html:
@@ -231,9 +244,24 @@ def lignes_resultat(gabarit, en_html, vide=VIDE):
     return '{% for v in steps.requete.output.values %}\\n• ' + markdown(ligne, False) + '{% else %}\\n• ' + vide + '{% endfor %}'
 
 
+def par_fenetre(regle, en_html):
+    """Règle burn rate : un message par fenêtre notifiée (« fenetres » du pivot), choisi par la
+    sévérité de l'alerte ; rien pour une fenêtre absente, ni pour une alerte en cours dont la
+    sévérité n'augmente pas : tchap-client n'envoie pas un message vide."""
+    groupes = {w['id']: w['actionGroup'] for w in regle['params']['windows']}
+    cas = ''.join("{% when '" + groupes[nom] + "' %}" + message(regle, en_html, gravite=f['gravite'], essentiel=f.get('essentiel', False))
+                  for nom, f in pivot_de(regle)['fenetres'].items())
+    nouvelle_ou_aggravee = ('{% capture envoyer %}{% if ' + ALERTE + '.consecutive_matches == 1 %}oui'
+                            '{% elsif ' + ALERTE + '.action_group != ' + ALERTE + '.previous_action_group and ' + ALERTE + '.severity_improving != true %}oui'
+                            '{% endif %}{% endcapture %}')
+    return nouvelle_ou_aggravee + "{% if envoyer == 'oui' %}{% case " + ALERTE + ".action_group %}" + cas + '{% endcase %}{% endif %}'
+
+
 def message_de_la_regle(rid, regle, en_html, esql):
     """Le message d'une règle ; esql : les id des règles ES|QL en groupBy all, dont le Workflow
     relance la requête."""
+    if 'fenetres' in pivot_de(regle):
+        return par_fenetre(regle, en_html)
     if rid not in esql:
         return avec_retablissement(regle, en_html)
     resultat = pivot_de(regle).get('resultat')
@@ -247,7 +275,7 @@ def corps_du_salon(regles, en_html, esql):
     choisi par l'id de la règle, et un message générique pour une règle inconnue."""
     cas = ''.join("{% when '" + rid + "' %}" + message_de_la_regle(rid, r, en_html, esql) for rid, r in regles)
     if en_html:
-        defaut = "<p><strong>{{ event.rule.name" + EGAL + " | escape }}</strong></p><p>{{ " + ALERTE + ".reason" + EGAL + " | escape }}</p><p>{{ event.ruleUrl }}</p>"
+        defaut = "<p><strong>{{ event.rule.name" + EGAL + " | escape }}</strong></p><p>{{ " + ALERTE + ".reason" + EGAL + " | escape }}</p><p>" + URL_REGLE + "</p>"
     else:
-        defaut = "{{ event.rule.name" + EGAL + " }}\\n{{ " + ALERTE + ".reason" + EGAL + " }}\\n{{ event.ruleUrl }}"
+        defaut = "{{ event.rule.name" + EGAL + " }}\\n{{ " + ALERTE + ".reason" + EGAL + " }}\\n" + URL_REGLE
     return '{% case event.rule.id %}' + cas + '{% else %}' + defaut + '{% endcase %}'

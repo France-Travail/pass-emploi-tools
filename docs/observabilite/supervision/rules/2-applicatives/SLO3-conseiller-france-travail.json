@@ -1,9 +1,84 @@
 {
   "_id": "ca02fee2-9d18-46bd-b2b9-dd96d8a6d593",
-  "name": "SLO - Prod - Login — réussite par mode d'authentification",
+  "_message": {
+    "titre": "**SLO menacé — connexion des conseillers France Travail (prod)**",
+    "fenetres": {
+      "alert": {
+        "gravite": "critique"
+      },
+      "high": {
+        "gravite": "avertissement"
+      },
+      "medium": {
+        "gravite": "information",
+        "essentiel": true
+      }
+    },
+    "sections": [
+      {
+        "titre": "Promesse",
+        "lignes": [
+          "{objectif} des connexions des conseillers France Travail aboutissent, hors refus métier, sur 30 jours glissants."
+        ]
+      },
+      {
+        "titre": "Ce qui se passe",
+        "lignes": [
+          "Sur {fenetre_longue}, les connexions en échec consomment la marge d'erreur du mois {burn_rate_long} fois plus vite que prévu ({burn_rate_court} fois sur les {fenetre_courte} les plus récentes). À ce rythme, elle est épuisée en {jours_restants} jours."
+        ]
+      },
+      {
+        "titre": "À vérifier",
+        "lignes": [
+          "1. Quel mode de connexion échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)",
+          "2. Le motif des connexions refusées (fournisseur d'identité, Keycloak) : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)",
+          "3. Si un fournisseur d'identité ou un partenaire est en panne : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
+        ]
+      }
+    ],
+    "liens": {
+      "Dashboards": [
+        {
+          "nom": "[Pass Emploi] SLO de Prod",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14"
+        },
+        {
+          "nom": "[Pass Emploi] Diagnostic d'erreurs - Entrée",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74"
+        }
+      ],
+      "Discover sessions": [
+        {
+          "nom": "[Pass Emploi] Logs de Prod - Erreurs d'authentification",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8"
+        }
+      ],
+      "Marge d'erreur": [
+        {
+          "nom": "Budget d'erreur et historique du SLO",
+          "url": "{url_slo}"
+        }
+      ],
+      "Runbook": [
+        {
+          "nom": "Investiguer un incident applicatif",
+          "url": "https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md"
+        }
+      ]
+    },
+    "essentiel": {
+      "sections": [
+        "Promesse",
+        "Ce qui se passe",
+        "À vérifier"
+      ],
+      "liens": []
+    }
+  },
+  "name": "SLO - Prod - Login — réussite conseiller France Travail",
   "artifacts": {
     "investigation_guide": {
-      "blob": "## Ce que signale l'alerte\n\nSLO menacé — connexion par mode d'authentification (prod) : la marge d'erreur du SLO se consomme trop vite.\n\n**Promesse** : 99 % des connexions aboutissent, pour chaque mode d'authentification, hors refus métier, sur 30 jours glissants.\n\n## À vérifier\n\n1. Quel mode de connexion échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Le motif des connexions refusées (fournisseur d'identité, Keycloak) : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n3. Si un fournisseur d'identité ou un partenaire est en panne : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Dashboards\n\n- [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n\n## Documentation\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n"
+      "blob": "## Ce que signale l'alerte\n\nSLO menacé — connexion des conseillers France Travail (prod) : la marge d'erreur du SLO se consomme trop vite.\n\n**Promesse** : {objectif} des connexions des conseillers France Travail aboutissent, hors refus métier, sur 30 jours glissants.\n\n## À vérifier\n\n1. Quel mode de connexion échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Le motif des connexions refusées (fournisseur d'identité, Keycloak) : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n3. Si un fournisseur d'identité ou un partenaire est en panne : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Dashboards\n\n- [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n\n## Documentation\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n"
     },
     "dashboards": [
       {
@@ -27,8 +102,6 @@
       {
         "id": "alert",
         "actionGroup": "slo.burnRate.alert",
-        "burnRateThreshold": 14.4,
-        "maxBurnRateThreshold": 100.0,
         "longWindow": {
           "value": 1,
           "unit": "h"
@@ -41,8 +114,6 @@
       {
         "id": "high",
         "actionGroup": "slo.burnRate.high",
-        "burnRateThreshold": 6,
-        "maxBurnRateThreshold": 100.0,
         "longWindow": {
           "value": 6,
           "unit": "h"
@@ -55,8 +126,6 @@
       {
         "id": "medium",
         "actionGroup": "slo.burnRate.medium",
-        "burnRateThreshold": 3,
-        "maxBurnRateThreshold": 100.0,
         "longWindow": {
           "value": 24,
           "unit": "h"
@@ -69,8 +138,6 @@
       {
         "id": "low",
         "actionGroup": "slo.burnRate.low",
-        "burnRateThreshold": 1,
-        "maxBurnRateThreshold": 100.0,
         "longWindow": {
           "value": 72,
           "unit": "h"
@@ -84,134 +151,6 @@
   },
   "actions": [
     {
-      "group": "slo.burnRate.alert",
-      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
-      "params": {
-        "body": {
-          "text": "🚨 **SLO menacé — connexion par mode d'authentification (prod)**",
-          "attachments": [
-            {
-              "color": "#d00000",
-              "fields": [
-                {
-                  "title": "Règle",
-                  "value": "`{{rule.name}}`",
-                  "short": true
-                },
-                {
-                  "title": "Déclenchée à",
-                  "value": "`{{date}}`",
-                  "short": true
-                },
-                {
-                  "title": "Promesse",
-                  "value": "99 % des connexions aboutissent, pour chaque mode d'authentification, hors refus métier, sur 30 jours glissants."
-                },
-                {
-                  "title": "Parcours / mode",
-                  "value": "`{{context.sloInstanceId}}`",
-                  "short": true
-                },
-                {
-                  "title": "Ce qui se passe",
-                  "value": "Sur {{context.longWindow.duration}}, les connexions en échec consomment la marge d'erreur du mois {{context.longWindow.burnRate}} fois plus vite que prévu ({{context.shortWindow.burnRate}} fois sur les {{context.shortWindow.duration}} les plus récentes). À ce rythme, elle est épuisée en {{#EvalMath}} round(30 / {{context.longWindow.burnRate}}, 1) {{/EvalMath}} jours."
-                },
-                {
-                  "title": "À vérifier",
-                  "value": "1. Quel mode de connexion échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Le motif des connexions refusées (fournisseur d'identité, Keycloak) : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n3. Si un fournisseur d'identité ou un partenaire est en panne : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
-                },
-                {
-                  "title": "Dashboards",
-                  "value": "[[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
-                },
-                {
-                  "title": "Discover sessions",
-                  "value": "[[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)"
-                },
-                {
-                  "title": "Marge d'erreur",
-                  "value": "[Budget d'erreur et historique du SLO]({{context.viewInAppUrl}})"
-                },
-                {
-                  "title": "Runbook",
-                  "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)"
-                }
-              ]
-            }
-          ]
-        }
-      },
-      "frequency": {
-        "summary": false,
-        "notify_when": "onActionGroupChange",
-        "throttle": null
-      }
-    },
-    {
-      "group": "slo.burnRate.high",
-      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
-      "params": {
-        "body": {
-          "text": "🚨 **SLO menacé — connexion par mode d'authentification (prod)**",
-          "attachments": [
-            {
-              "color": "#d00000",
-              "fields": [
-                {
-                  "title": "Règle",
-                  "value": "`{{rule.name}}`",
-                  "short": true
-                },
-                {
-                  "title": "Déclenchée à",
-                  "value": "`{{date}}`",
-                  "short": true
-                },
-                {
-                  "title": "Promesse",
-                  "value": "99 % des connexions aboutissent, pour chaque mode d'authentification, hors refus métier, sur 30 jours glissants."
-                },
-                {
-                  "title": "Parcours / mode",
-                  "value": "`{{context.sloInstanceId}}`",
-                  "short": true
-                },
-                {
-                  "title": "Ce qui se passe",
-                  "value": "Sur {{context.longWindow.duration}}, les connexions en échec consomment la marge d'erreur du mois {{context.longWindow.burnRate}} fois plus vite que prévu ({{context.shortWindow.burnRate}} fois sur les {{context.shortWindow.duration}} les plus récentes). À ce rythme, elle est épuisée en {{#EvalMath}} round(30 / {{context.longWindow.burnRate}}, 1) {{/EvalMath}} jours."
-                },
-                {
-                  "title": "À vérifier",
-                  "value": "1. Quel mode de connexion échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Le motif des connexions refusées (fournisseur d'identité, Keycloak) : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n3. Si un fournisseur d'identité ou un partenaire est en panne : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
-                },
-                {
-                  "title": "Dashboards",
-                  "value": "[[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)"
-                },
-                {
-                  "title": "Discover sessions",
-                  "value": "[[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)"
-                },
-                {
-                  "title": "Marge d'erreur",
-                  "value": "[Budget d'erreur et historique du SLO]({{context.viewInAppUrl}})"
-                },
-                {
-                  "title": "Runbook",
-                  "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)"
-                }
-              ]
-            }
-          ]
-        }
-      },
-      "frequency": {
-        "summary": false,
-        "notify_when": "onActionGroupChange",
-        "throttle": null
-      }
-    },
-    {
       "id": "system-connector-.workflows",
       "params": {
         "subAction": "run",
@@ -220,7 +159,7 @@
           "summaryMode": true,
           "alertStates": {
             "new": true,
-            "ongoing": false,
+            "ongoing": true,
             "recovered": false
           }
         }

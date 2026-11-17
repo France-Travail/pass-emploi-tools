@@ -3,6 +3,48 @@
   "_commentaire": [
     "# M9b — Mémoire conteneur staging / perf (Warning)"
   ],
+  "_message": {
+    "titre": "**Mémoire conteneur Logstash staging/perf** — un conteneur dépasse 95 % de sa limite Scalingo : OOM-kill imminent.",
+    "gravite": "avertissement",
+    "sections": [
+      {
+        "titre": "Conteneur",
+        "lignes": [
+          "`{groupe}`"
+        ]
+      },
+      {
+        "titre": "À vérifier",
+        "lignes": [
+          "1. La mémoire du conteneur continue-t-elle de monter : le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)",
+          "2. Pourquoi : un backlog Redis à rattraper fait consommer le pipeline `process` (le dashboard [[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)) ; `LS_JAVA_OPTS` doit rester `-Xms256m -Xmx256m` (onglet *Environment* dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))",
+          "3. Si le conteneur a été tué (OOM) : son redémarrage dans l'activité de l'app, puis le silence des logs qui suit"
+        ]
+      }
+    ],
+    "liens": {
+      "Dashboards": [
+        {
+          "nom": "[Pass Emploi] Supervision Stack d'Observabilité",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d"
+        },
+        {
+          "nom": "[Metrics Redis] Keys",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5"
+        },
+        {
+          "nom": "[Scalingo] Dashboard des apps",
+          "url": "https://dashboard.scalingo.com/apps"
+        }
+      ],
+      "Runbook": [
+        {
+          "nom": "Runbook scénario",
+          "url": "https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash"
+        }
+      ]
+    }
+  },
   "name": "Logstash - Hors-Prod - Mémoire conteneur proche de la limite Scalingo",
   "tags": [
     "hors-prod",
@@ -61,54 +103,6 @@
     "termField": "host.name"
   },
   "actions": [
-    {
-      "group": "query matched",
-      "id": "c4a313b3-aa42-4e07-8196-c007625ce8af",
-      "params": {
-        "body": {
-          "text": "⚠️ **Mémoire conteneur Logstash staging/perf** — un conteneur dépasse 95 % de sa limite Scalingo : OOM-kill imminent.",
-          "attachments": [
-            {
-              "color": "#f2c744",
-              "fields": [
-                {
-                  "title": "Règle",
-                  "value": "`{{rule.name}}`",
-                  "short": true
-                },
-                {
-                  "title": "Déclenchée à",
-                  "value": "`{{date}}`",
-                  "short": true
-                },
-                {
-                  "title": "Conteneur",
-                  "value": "`{{context.group}}`",
-                  "short": true
-                },
-                {
-                  "title": "À vérifier",
-                  "value": "1. La mémoire du conteneur continue-t-elle de monter : le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n2. Pourquoi : un backlog Redis à rattraper fait consommer le pipeline `process` (le dashboard [[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)) ; `LS_JAVA_OPTS` doit rester `-Xms256m -Xmx256m` (onglet *Environment* dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. Si le conteneur a été tué (OOM) : son redémarrage dans l'activité de l'app, puis le silence des logs qui suit"
-                },
-                {
-                  "title": "Dashboards",
-                  "value": "[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n[[Metrics Redis] Keys](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/redis-28969190-0511-11e9-9c60-d582a238e2c5)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
-                },
-                {
-                  "title": "Runbook",
-                  "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash)"
-                }
-              ]
-            }
-          ]
-        }
-      },
-      "frequency": {
-        "summary": false,
-        "notify_when": "onThrottleInterval",
-        "throttle": "6h"
-      }
-    },
     {
       "id": "system-connector-.workflows",
       "params": {

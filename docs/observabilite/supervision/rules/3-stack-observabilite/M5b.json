@@ -3,6 +3,48 @@
   "_commentaire": [
     "# M5b — Heap élevé staging / perf (Warning)"
   ],
+  "_message": {
+    "titre": "**Heap JVM Logstash staging/perf** — le heap reste au-dessus de 90 % depuis 15 min : le GC ne libère plus.",
+    "gravite": "avertissement",
+    "sections": [
+      {
+        "titre": "Nœud",
+        "lignes": [
+          "`{groupe}`"
+        ]
+      },
+      {
+        "titre": "À vérifier",
+        "lignes": [
+          "1. Le heap du nœud redescend-il, et le GC suit-il : le dashboard [[Metrics Logstash] Single Node Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9d450b10-4680-11ee-9ddc-919f87fe352d)",
+          "2. La configuration mémoire : `LS_JAVA_OPTS` de l'app doit valoir `-Xms256m -Xmx256m` (onglet *Environment* dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))",
+          "3. L'effet sur l'ingestion (débit, backlog Redis) : le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)"
+        ]
+      }
+    ],
+    "liens": {
+      "Dashboards": [
+        {
+          "nom": "[Metrics Logstash] Single Node Overview",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9d450b10-4680-11ee-9ddc-919f87fe352d"
+        },
+        {
+          "nom": "[Scalingo] Dashboard des apps",
+          "url": "https://dashboard.scalingo.com/apps"
+        },
+        {
+          "nom": "[Pass Emploi] Supervision Stack d'Observabilité",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d"
+        }
+      ],
+      "Runbook": [
+        {
+          "nom": "Runbook scénario",
+          "url": "https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-2--gel-gc-jvm"
+        }
+      ]
+    }
+  },
   "name": "Logstash - Hors-Prod - Détection heap JVM élevé",
   "tags": [
     "hors-prod",
@@ -61,54 +103,6 @@
     "termField": "host.name"
   },
   "actions": [
-    {
-      "group": "query matched",
-      "id": "c4a313b3-aa42-4e07-8196-c007625ce8af",
-      "params": {
-        "body": {
-          "text": "⚠️ **Heap JVM Logstash staging/perf** — le heap reste au-dessus de 90 % depuis 15 min : le GC ne libère plus.",
-          "attachments": [
-            {
-              "color": "#f2c744",
-              "fields": [
-                {
-                  "title": "Règle",
-                  "value": "`{{rule.name}}`",
-                  "short": true
-                },
-                {
-                  "title": "Déclenchée à",
-                  "value": "`{{date}}`",
-                  "short": true
-                },
-                {
-                  "title": "Nœud",
-                  "value": "`{{context.group}}`",
-                  "short": true
-                },
-                {
-                  "title": "À vérifier",
-                  "value": "1. Le heap du nœud redescend-il, et le GC suit-il : le dashboard [[Metrics Logstash] Single Node Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9d450b10-4680-11ee-9ddc-919f87fe352d)\n2. La configuration mémoire : `LS_JAVA_OPTS` de l'app doit valoir `-Xms256m -Xmx256m` (onglet *Environment* dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. L'effet sur l'ingestion (débit, backlog Redis) : le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)"
-                },
-                {
-                  "title": "Dashboards",
-                  "value": "[[Metrics Logstash] Single Node Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9d450b10-4680-11ee-9ddc-919f87fe352d)\n[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n[[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)"
-                },
-                {
-                  "title": "Runbook",
-                  "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-2--gel-gc-jvm)"
-                }
-              ]
-            }
-          ]
-        }
-      },
-      "frequency": {
-        "summary": false,
-        "notify_when": "onThrottleInterval",
-        "throttle": "6h"
-      }
-    },
     {
       "id": "system-connector-.workflows",
       "params": {
