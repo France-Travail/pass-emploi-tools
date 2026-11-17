@@ -1,0 +1,15 @@
+{
+  "nom": "Elasticsearch - Medium",
+  "severite": "Medium",
+  "deploiement": "Pass Emploi",
+  "delai_minutes": 0,
+  "evenements": [
+    "The disk capacity is about to reach low watermark",
+    "The low disk watermark has been exceeded",
+    "The write queue is high"
+  ],
+  "connecteurs": [
+    "Tchap o11y-production - AutoOps Medium",
+    "Email production - Monitoring disque, santé et indexation Elasticsearch"
+  ]
+}

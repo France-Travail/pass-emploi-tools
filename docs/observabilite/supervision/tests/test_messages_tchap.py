@@ -16,6 +16,7 @@ TCHAP = os.path.join(SUPERVISION, 'workflows', 'tchap')
 SALONS = json.load(open(os.path.join(TCHAP, 'salons.json'), encoding='utf-8'))
 URL_ENVOI = 'https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/{}/send/m.room.message'
 COULEUR = re.compile(r'data-mx-color|<font\b|<span\b', re.I)
+SEVERITES_AUTOOPS = ('Critical', 'High', 'Medium', 'Low', 'Info')
 
 
 def ecarts_au_pare_feu(html):
@@ -45,45 +46,87 @@ class TestRegleDuPareFeu(unittest.TestCase):
 
 
 class TestConnecteursAutoOps(unittest.TestCase):
+    """connecteurs/autoops/ : un fichier par objet de la console AutoOps (connectors/, filters/).
+    Un filtre par sévérité, qui ne contient que ses événements ; un Low passager (snapshot) ne
+    doit pas arriver dans Tchap."""
 
     def setUp(self):
-        self.connecteurs = json.load(open(os.path.join(AUTOOPS, 'connecteurs.json'), encoding='utf-8'))['connecteurs']
+        lire = lambda d: {os.path.basename(p)[:-5]: json.load(open(p, encoding='utf-8')) for p in glob.glob(os.path.join(AUTOOPS, d, '*.json'))}
+        self.connecteurs, self.filtres = lire('connectors'), lire('filters')
+        self.par_nom = {c['nom']: c for c in self.connecteurs.values()}
+        self.tchap = {n: c for n, c in self.connecteurs.items() if c['type'] == 'Webhook'}
 
-    def test_chaque_alerte_autoops_a_son_connecteur(self):
-        self.assertEqual(sorted(c['alerte'] for c in self.connecteurs), ['M11', 'M12'])
+    def test_un_filtre_par_severite_autoops(self):
+        for n, f in self.filtres.items():
+            with self.subTest(n):
+                self.assertIn(f['severite'], SEVERITES_AUTOOPS)
+                self.assertEqual(n, f['severite'].lower())
 
-    def test_le_salon_est_un_salon_reference(self):
-        for c in self.connecteurs:
-            with self.subTest(c['alerte']):
-                self.assertIn(c['salon'], SALONS, f"{c['alerte']} : salon absent de workflows/tchap/salons.json")
+    def test_un_filtre_ne_cite_que_des_connecteurs_existants(self):
+        for n, f in self.filtres.items():
+            with self.subTest(n):
+                self.assertLessEqual(set(f['connecteurs']), set(self.par_nom))
+
+    def test_chaque_filtre_a_l_email_et_son_seul_connecteur_tchap(self):
+        for n, f in self.filtres.items():
+            with self.subTest(n):
+                types = sorted(self.par_nom[c]['type'] for c in f['connecteurs'] if c in self.par_nom)
+                self.assertEqual(types, ['Email', 'Webhook'])
+
+    def test_chaque_connecteur_tchap_sert_un_seul_filtre(self):
+        cites = [c for f in self.filtres.values() for c in f['connecteurs'] if self.par_nom.get(c, {}).get('type') == 'Webhook']
+        self.assertEqual(sorted(cites), sorted(c['nom'] for c in self.tchap.values()))
+
+    def test_un_evenement_n_est_que_dans_un_filtre(self):
+        tous = [e for f in self.filtres.values() for e in f['evenements']]
+        self.assertEqual(len(tous), len(set(tous)))
+
+    def test_low_et_info_attendent_avant_d_envoyer(self):
+        """30 min : la file de gestion monte pendant les snapshots d'Elastic Cloud, puis retombe."""
+        for n, f in self.filtres.items():
+            with self.subTest(n):
+                self.assertGreaterEqual(f['delai_minutes'], 30 if f['severite'] in ('Low', 'Info') else 0)
+
+    def test_le_titre_porte_l_emoji_de_sa_severite(self):
+        emojis = {'Critical': '🚨 ', 'High': '⚠️ ', 'Medium': '', 'Low': ''}
+        for f in self.filtres.values():
+            for c in f['connecteurs']:
+                if self.par_nom.get(c, {}).get('type') == 'Webhook':
+                    with self.subTest(c):
+                        self.assertTrue(self.par_nom[c]['corps']['body'].startswith(emojis[f['severite']] + 'AutoOps'))
 
     def test_l_url_poste_dans_le_salon_choisi(self):
-        for c in self.connecteurs:
-            with self.subTest(c['alerte']):
-                attendue = URL_ENVOI.format(quote(SALONS.get(c['salon'], '?'), safe=''))
-                self.assertEqual(c['url'], attendue, f"{c['alerte']} : url et salon ne concordent pas, les modifier ensemble")
+        for n, c in self.tchap.items():
+            with self.subTest(n):
+                self.assertIn(c['salon'], SALONS, 'salon absent de workflows/tchap/salons.json')
+                self.assertEqual(c['url'], URL_ENVOI.format(quote(SALONS.get(c['salon'], '?'), safe='')),
+                                 'url et salon ne concordent pas, les modifier ensemble')
                 self.assertEqual(c['methode'], 'POST', 'AutoOps ne sait pas produire de txnId : POST sans txnId')
 
-    def test_le_corps_est_un_message_matrix_qui_passe_le_pare_feu(self):
-        for c in self.connecteurs:
-            with self.subTest(c['alerte']):
-                corps = json.load(open(os.path.join(AUTOOPS, c['body']), encoding='utf-8'))
-                self.assertEqual(corps.get('msgtype'), 'm.text')
-                self.assertEqual(corps.get('format'), 'org.matrix.custom.html')
-                self.assertTrue(corps.get('body'), 'texte brut absent')
-                self.assertEqual(ecarts_au_pare_feu(corps.get('formatted_body', '')), [])
-
     def test_les_en_tetes_sont_ceux_de_matrix_sans_le_jeton(self):
-        for c in self.connecteurs:
-            with self.subTest(c['alerte']):
+        for n, c in self.tchap.items():
+            with self.subTest(n):
                 self.assertEqual({e['nom']: e['valeur'] for e in c['en_tetes']},
                                  {'Content-Type': 'application/json', 'Authorization': 'Bearer <jeton du bot Tchap>'},
                                  'le jeton du bot est un secret : jamais versionné, à saisir dans AutoOps')
 
-    def test_aucun_corps_orphelin(self):
-        cites = {c['body'] for c in self.connecteurs}
-        presents = {os.path.basename(p) for p in glob.glob(os.path.join(AUTOOPS, '*-tchap.json'))}
-        self.assertEqual(presents, cites)
+    def test_le_corps_est_la_derniere_cle_pour_se_copier_d_un_bloc(self):
+        for n, c in self.tchap.items():
+            with self.subTest(n):
+                self.assertEqual(list(c)[-1], 'corps')
+
+    def test_le_corps_est_un_message_matrix_qui_passe_le_pare_feu(self):
+        for n, c in self.tchap.items():
+            with self.subTest(n):
+                self.assertEqual(c['corps'].get('msgtype'), 'm.text')
+                self.assertEqual(c['corps'].get('format'), 'org.matrix.custom.html')
+                self.assertTrue(c['corps'].get('body'), 'texte brut absent')
+                self.assertEqual(ecarts_au_pare_feu(c['corps'].get('formatted_body', '')), [])
+
+    def test_l_email_ne_versionne_pas_les_adresses(self):
+        for c in self.connecteurs.values():
+            if c['type'] == 'Email':
+                self.assertEqual(c['destinataires'], ["<adresses de l'équipe>"])
 
 
 class TestWorkflowsTchap(unittest.TestCase):

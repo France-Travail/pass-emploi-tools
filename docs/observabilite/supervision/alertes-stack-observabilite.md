@@ -22,7 +22,7 @@ qui reprend les tableaux et bodies de cette page, à rejouer dans Dev Tools.
 > **Contexte** : les scénarios de panne et leurs indicateurs sont documentés dans
 > [`runbooks/runbook-logstash.md`](../runbooks/runbook-logstash.md). Dashboards
 > associés : [routine-surveillance](../routine-surveillance.md). SLO :
-> [`slo/1-slos.console`](slo/1-slos.console).
+> [`slo/generated/1-slos.console`](slo/generated/1-slos.console).
 
 ---
 
@@ -51,8 +51,8 @@ qui reprend les tableaux et bodies de cette page, à rejouer dans Dev Tools.
 | M9a | Mémoire conteneur Logstash — prod             | `logs-scalingo.container_stats-default`         | `Max` `≥ 95 %` / 5 min, par conteneur                    | 1 min      | 6h       | 🚨 Critical |
 | M9b | Mémoire conteneur Logstash — staging/perf     | `logs-scalingo.container_stats-default`         | `Max` `≥ 95 %` / 5 min, par conteneur                    | 5 min      | 6h       | ⚠️Warning  |
 | M10 | ILM en échec ou policy sans suppression       | historique ILM (`ilm-history-7`)                | étape en échec ou policy par défaut / 24 h               | 1 h        | 1 / jour, 9 h 30 | ⚠️Warning  |
-| M11 | Disque des nœuds Elasticsearch                | AutoOps (Elastic Cloud)                         | préavis 75 %, paliers 85 / 90 / 95 %, cluster red       | —          | —        | 🚨 Critical |
-| M12 | Saturation de l'indexation Elasticsearch      | AutoOps (Elastic Cloud)                         | management queue ou index queue haute                    | —          | —        | 🚨 Critical |
+| M11 | Disque des nœuds Elasticsearch                | AutoOps (Elastic Cloud)                         | préavis 75 %, paliers 85 / 90 / 95 %, cluster red       | —          | —        | selon l'événement (cf. [notifications AutoOps](#notifications-autoops-m11-et-m12)) |
+| M12 | Saturation de l'indexation Elasticsearch      | AutoOps (Elastic Cloud)                         | management queue ou write queue haute                    | —          | —        | selon l'événement (cf. [notifications AutoOps](#notifications-autoops-m11-et-m12)) |
 | M13 | Événement externe rejeté                      | les 4 `logs-alertes-*`, sélecteur `::failures`  | tout document / 10 min                                   | 5 min      | —        | ⚠️Warning  |
 
 ---
@@ -853,8 +853,8 @@ palier et quoi faire : [runbook disque](../runbooks/runbook-disque-elasticsearch
 >
 > **Saisie à la main** (console Elastic Cloud → AutoOps → *Notifications
 > settings*, sans API), comme l'alerte M6 : à refaire sur un nouveau déploiement.
-> Les connecteurs Tchap (salon, URL, corps) sont versionnés dans
-> [`connecteurs/autoops/`](connecteurs/autoops/connecteurs.json) ; le reste, ci-dessous.
+> Connecteurs et filtres versionnés dans [`connecteurs/autoops/`](connecteurs/autoops/) ;
+> les réglages des événements, ci-dessous.
 > Le cluster est unique et porte tous les environnements : connecteurs et filtres
 > ne sont pas nommés par environnement.
 >
@@ -862,10 +862,10 @@ palier et quoi faire : [runbook disque](../runbooks/runbook-disque-elasticsearch
 > soumis à des seuils à part. Il ne doit pas déclencher ces événements ; à
 > vérifier au premier événement reçu (champ « Nœuds concernés »).
 
-### M11 — Configuration dans AutoOps (Critical)
+### M11 — Configuration dans AutoOps
 
-**Événements** : filtre `Disque et santé Elasticsearch` de l'onglet *Filter settings* qui envoie ces 5 événements
-du déploiement `Pass Emploi` au connecteur ci-dessous. Un événement garde ses
+**Événements** : ces 5 événements du déploiement `Pass Emploi`, rangés dans les filtres par
+sévérité des [notifications AutoOps](#notifications-autoops-m11-et-m12). Un événement garde ses
 réglages par défaut tant qu'on ne lui crée pas de réglage personnalisé (*custom
 event settings*) : seul le statut red en a un.
 
@@ -886,42 +886,6 @@ version).
 > palier**, pas un seuil absolu : 85 sur l'événement flood stage le déclencherait
 > à 10 %, en permanence.
 
-**Connecteur Email** (onglet *Connector settings*), commun aux alertes M11 et M12 :
-type **Email**, nom `Email production - Monitoring disque, santé et indexation Elasticsearch`,
-destinataires de l'équipe (adresses dans le connecteur, non versionnées),
-notification de clôture cochée. AutoOps rédige lui-même le message : ni corps
-personnalisable, ni lien vers le runbook, à retrouver depuis le titre de
-l'événement dans le tableau ci-dessus. Tester avec **Run to test** avant **Save**.
-
-**Connecteur Tchap** (même filtre que le connecteur Email) : type **Webhook**, nom
-`Tchap o11y-production - Monitoring disque et santé Elasticsearch`. Méthode, salon, URL et corps à coller :
-[`connecteurs/autoops/connecteurs.json`](connecteurs/autoops/connecteurs.json) (alerte M11) et
-[`connecteurs/autoops/M11-tchap.json`](connecteurs/autoops/M11-tchap.json). Le salon est l'un de ceux de
-[`salons.json`](workflows/tchap/salons.json) : pour en changer, modifier `salon` et `url`
-ensemble, le test `tests/test_messages_tchap.py` vérifie qu'ils concordent.
-Les en-têtes y sont aussi : remplacer `<jeton du bot Tchap>` par le jeton du bot des
-[Workflows Tchap](workflows/tchap/README.md), secret, jamais versionné.
-
-> **Pourquoi `POST` sans `txnId`** : AutoOps n'a ni variable unique par
-> événement ni variable dans l'URL, il ne peut pas produire le `txnId` de
-> l'envoi normalisé (`PUT …/{txnId}`). La route `POST` sans `txnId` est
-> ancienne, hors norme Matrix, mais acceptée par Synapse (le serveur de Tchap).
-> Concession : un envoi rejoué après une coupure réseau peut doubler le message.
-> Si une montée de version de Tchap supprimait cette route, les notifications
-> cesseraient : garder une notification AutoOps **par email** vers l'équipe en
-> secours.
-
-**Body du webhook Tchap** : un seul lien HTML `<a>`, celui de l'événement, puis des
-URL brutes que Tchap rend cliquables (le pare-feu devant Tchap rejette un message
-à plusieurs liens, cf.
-[pièges des Workflows Tchap](workflows/tchap/README.md#pièges)). `${DESCRIPTION}` est omis, identique à
-`${MESSAGE}` sur le premier événement réel (le rajouter si un événement montre
-une différence). Dans le HTML, les `<br />` de `${MESSAGE}` s'affichent comme des
-retours à la ligne. Le test `tests/test_messages_tchap.py` vérifie la règle du pare-feu
-sur ce corps.
-Tester avec **Run to test** : le message doit arriver dans le salon, variables
-non remplies.
-
 ---
 
 ## Alerte M12 — Saturation de l'indexation Elasticsearch (AutoOps)
@@ -934,47 +898,60 @@ Scalingo part en quarantaine (cause racine de l'incident de juillet 2026, cf.
 Cette alerte précède l'[alerte M4](#alerte-m4--backpressure-inputs-bloqués-sur-la-queue).
 
 > **Saisie à la main**, comme l'[alerte M11](#alerte-m11--disque-des-nœuds-elasticsearch-autoops) :
-> console Elastic Cloud → AutoOps → *Notifications settings*. Connecteur et
-> filtre distincts de l'alerte M11, pour que le message pointe vers le bon runbook.
+> console Elastic Cloud → AutoOps → *Notifications settings*.
 >
 > **Écartés** : *Slow search detected* (personne d'autre que l'équipe et nos
 > règles n'interroge Elasticsearch, et les recherches sur le frozen sont lentes
 > par nature) et *Long running index task* (déclenché par les fusions et
 > snapshots d'ILM à chaque passage en frozen).
 
-### M12 — Configuration dans AutoOps (Critical)
+### M12 — Configuration dans AutoOps
 
-**Événements** : filtre `Saturation indexation Elasticsearch` de l'onglet
-*Filter settings*, déploiement `Pass Emploi`, vers le connecteur ci-dessous.
+**Événements** : ces 2 événements du déploiement `Pass Emploi`, rangés dans les filtres par
+sévérité des [notifications AutoOps](#notifications-autoops-m11-et-m12).
 
 | Événement AutoOps                 | Réglages (par défaut, sans réglage personnalisé)                                      | Ce qu'il signale                                                   |
 |-----------------------------------|---------------------------------------------------------------------------------------|--------------------------------------------------------------------|
-| The management queue size is high | `High management queue activity threshold` = 5 ; `How many successive samplings…` = 3 | la file des opérations internes (rollovers, fusions, ILM) sature   |
-| The index queue is high           | `Write queue threshold` = 30 ; `How many successive samplings…` = 3                   | la file des écritures d'un nœud n'absorbe plus le flux de Logstash |
+| The management queue is high      | `High management queue activity threshold` = 5 ; `How many successive samplings…` = 3 | la file des opérations internes (rollovers, fusions, ILM) sature   |
+| The write queue is high           | `Write queue threshold` = 30 ; `How many successive samplings…` = 3                   | la file des écritures d'un nœud n'absorbe plus le flux de Logstash |
 
 Les 3 mesures successives au-dessus du seuil ignorent les montées brèves de ces
 files aux pics de logs (:00 et :30). En cas de bruit, augmenter d'abord ce nombre
 de mesures (réglage personnalisé), avant de toucher aux seuils.
 
-**Connecteur Email** : celui de l'[alerte M11](#m11--configuration-dans-autoops-critical),
-ajouté à ce filtre.
+## Notifications AutoOps (M11 et M12)
 
-> **Constaté sur un événement réel** (management queue) :
-> toutes les variables sont remplies. AutoOps envoie un message à l'ouverture
-> (`OPENED`, `${END_TIME}` vaut alors `N/A`) puis un à la clôture
-> (`RESOLVED`). Les heures sont en UTC (`+0000`). `${MESSAGE}` contient des
-> `<br />`, affichés tels quels en texte brut, et il était identique à
-> `${DESCRIPTION}` sur cet événement. L'émoji 🚨 et la couleur sont fixes,
-> quelle que soit la sévérité (`LOW` ici) : seul le texte la donne.
+Saisies à la main dans la console (AutoOps n'a pas d'API), versionnées dans
+[`connecteurs/autoops/`](connecteurs/autoops/), un fichier par objet de la console :
+`connectors/` (*Connector settings*) et `filters/` (*Filter settings*). AutoOps ne sait ni
+filtrer par sévérité, ni varier le message selon elle : un filtre par sévérité, avec les seuls
+événements de cette sévérité (celle qu'affiche AutoOps), et un connecteur Tchap par sévérité.
 
-**Connecteur Tchap** (même filtre que le connecteur Email) : type **Webhook**, nom
-`Tchap o11y-production - Monitoring indexation Elasticsearch`. Méthode, salon, URL et corps à coller :
-[`connecteurs/autoops/connecteurs.json`](connecteurs/autoops/connecteurs.json) (alerte M12) et
-[`connecteurs/autoops/M12-tchap.json`](connecteurs/autoops/M12-tchap.json). Le salon est l'un de ceux de
-[`salons.json`](workflows/tchap/salons.json) : pour en changer, modifier `salon` et `url`
-ensemble, le test `tests/test_messages_tchap.py` vérifie qu'ils concordent.
-Les en-têtes y sont aussi : remplacer `<jeton du bot Tchap>` par le jeton du bot des
-[Workflows Tchap](workflows/tchap/README.md), secret, jamais versionné.
+| Sévérité | Dans Tchap (`o11y-production`) | Message | Délai |
+|---|---|---|---|
+| Critical | 🚨 en rouge | complet, avec le runbook du disque | aucun |
+| High | ⚠️ en orange | complet, avec le runbook du disque | aucun |
+| Medium | en gris | allégé : l'événement et son lien | aucun |
+| Low | en gris | allégé | 30 min |
+
+Le délai d'un filtre retarde ses notifications, e-mail compris, et les supprime si l'événement
+se referme avant : la file de gestion monte pendant les snapshots d'Elastic Cloud (toutes les
+30 min), puis retombe en quelques minutes.
+
+`tests/test_messages_tchap.py` vérifie qu'un événement n'est que dans un filtre, que chaque
+filtre a l'e-mail et son seul connecteur Tchap, le délai de Low, et que chaque corps passe le
+pare-feu devant Tchap.
+
+**Connecteur Email** (`connectors/email.json`), sur tous les filtres : AutoOps rédige lui-même
+le message ; destinataires de l'équipe saisis dans la console, non versionnés. C'est le canal
+de secours, indépendant de Tchap.
+
+**Connecteurs Tchap** (`connectors/tchap-<sévérité>.json`) : type **Webhook** ; méthode, URL et
+en-têtes, puis, en dernière clé, `corps` : l'objet à coller tel quel dans le champ *Body*. Remplacer `<jeton du bot Tchap>` par le jeton du
+bot des [Workflows Tchap](workflows/tchap/README.md), secret, jamais versionné. Le salon est l'un
+de ceux de [`salons.json`](workflows/tchap/salons.json) : pour en changer, modifier `salon` et
+`url` ensemble. Tester avec **Run to test** : le message doit arriver dans le salon, variables
+non remplies.
 
 > **Pourquoi `POST` sans `txnId`** : AutoOps n'a ni variable unique par
 > événement ni variable dans l'URL, il ne peut pas produire le `txnId` de
@@ -982,19 +959,13 @@ Les en-têtes y sont aussi : remplacer `<jeton du bot Tchap>` par le jeton du bo
 > ancienne, hors norme Matrix, mais acceptée par Synapse (le serveur de Tchap).
 > Concession : un envoi rejoué après une coupure réseau peut doubler le message.
 > Si une montée de version de Tchap supprimait cette route, les notifications
-> cesseraient : garder une notification AutoOps **par email** vers l'équipe en
-> secours.
+> cesseraient : l'e-mail reste le secours.
 
-**Body du webhook Tchap** : un seul lien HTML `<a>`, celui de l'événement, puis des
-URL brutes que Tchap rend cliquables (le pare-feu devant Tchap rejette un message
-à plusieurs liens, cf.
-[pièges des Workflows Tchap](workflows/tchap/README.md#pièges)). `${DESCRIPTION}` est omis, identique à
-`${MESSAGE}` sur le premier événement réel (le rajouter si un événement montre
-une différence). Dans le HTML, les `<br />` de `${MESSAGE}` s'affichent comme des
-retours à la ligne. Le test `tests/test_messages_tchap.py` vérifie la règle du pare-feu
-sur ce corps.
-Tester avec **Run to test** : le message doit arriver dans le salon, variables
-non remplies.
+> **Constaté sur un événement réel** (management queue) : toutes les variables sont
+> remplies. AutoOps envoie un message à l'ouverture (`OPENED`, `${END_TIME}` vaut alors
+> `N/A`) puis un à la clôture (`RESOLVED`). Les heures sont en UTC (`+0000`). `${MESSAGE}`
+> contient des `<br />`, affichés comme des retours à la ligne dans le HTML, et il était
+> identique à `${DESCRIPTION}`, que les corps omettent.
 
 ---
 

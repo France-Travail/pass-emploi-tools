@@ -1,0 +1,23 @@
+{
+  "nom": "Tchap o11y-production - AutoOps Critical",
+  "type": "Webhook",
+  "methode": "POST",
+  "salon": "o11y-production",
+  "url": "https://matrix.agent.tchap.gouv.fr/_matrix/client/v3/rooms/%21GcUrxqTFizBjxwmsBO%3Aagent.dinum.tchap.gouv.fr/send/m.room.message",
+  "en_tetes": [
+    {
+      "nom": "Content-Type",
+      "valeur": "application/json"
+    },
+    {
+      "nom": "Authorization",
+      "valeur": "Bearer <jeton du bot Tchap>"
+    }
+  ],
+  "corps": {
+    "msgtype": "m.text",
+    "body": "🚨 AutoOps — ${TITLE} (${SEVERITY}, ${STATUS}) — ${RESOURCE_NAME}\n${MESSAGE}\nNœuds : ${AFFECTED_NODES} · Index : ${AFFECTED_INDICES}\nDébut : ${START_TIME} · Fin : ${END_TIME}\nL'événement dans AutoOps - ${EVENT_LINK}\nRunbook :\nDisque et santé du cluster Elasticsearch - https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-disque-elasticsearch.md",
+    "format": "org.matrix.custom.html",
+    "formatted_body": "<p><font data-mx-color=\"#d00000\" color=\"#d00000\">🚨 <strong>AutoOps — ${TITLE}</strong> (${SEVERITY}, ${STATUS}) — ${RESOURCE_NAME}</font></p><p>${MESSAGE}</p><p>Nœuds : ${AFFECTED_NODES} · Index : ${AFFECTED_INDICES}<br />Début : <code>${START_TIME}</code> · Fin : <code>${END_TIME}</code></p><p><strong>À vérifier</strong><br />L'événement dans AutoOps - ${EVENT_LINK}</p><p><strong>Runbook</strong><br />Disque et santé du cluster Elasticsearch - https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-disque-elasticsearch.md</p>"
+  }
+}
