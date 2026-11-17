@@ -1,5 +1,4 @@
 -- Volumétrie de production — entrées de dimensionnement du harnais de tir.
--- Cf. docs/superpowers/specs/2026-09-01-harnais-tir-perf-design.md (§5.2)
 --
 -- Lecture seule. Ne renvoie que des agrégats : aucune donnée personnelle.
 -- Q6 est gratuite (statistiques du catalogue) : la lancer en premier pour
