@@ -66,7 +66,7 @@ trou**, pas sur une fenêtre saine. C'est la source n°1 de temps perdu.
 | CPU Logstash (Scalingo)                                                           | Dashboard Scalingo                  | Dashboard Scalingo                                  | **0 % sur tous les conteneurs simultanément** |
 
 **Premier signal** : l'[alerte M12](../supervision/alertes-stack-observabilite.md#alerte-m12--saturation-de-lindexation-elasticsearch-autoops)
-(AutoOps), management queue ou index queue haute, arrive avant la backpressure
+(AutoOps), management queue ou write queue haute, arrive avant la backpressure
 de l'alerte M4a.
 
 **Signature caractéristique** : 0 % CPU sur **tous** les conteneurs Logstash en même
@@ -271,9 +271,9 @@ Des `_ignored` indiquent un dépassement de `total_fields.limit` → prévoir un
    ```
    POST logs-prod-default/_rollover
    ```
-4. Les events en DLQ peuvent être **rejoués** : le pipeline `dead_letter_queue`
-   les a déjà indexés dans `logs-logstash-dlq-*` pour investigation. Un rejeu
-   manuel nécessite de corriger le mapping d'abord.
+4. **Rattraper les logs de la DLQ** dans leur data stream, une fois la cause corrigée :
+   [`logs/rattrapage/`](../../../logs/rattrapage/README.md) (simulation, puis rattrapage).
+   Ne jamais vider la DLQ avant : ce sont les logs manquants.
 
 **Si erreurs de traitement (`_mutate_error`, `_jsonparsefailure`)** :
 1. Identifier le log fautif via le champ `message` dans `logs-logstash-errors-*`.

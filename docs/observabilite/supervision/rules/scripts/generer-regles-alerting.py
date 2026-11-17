@@ -1,27 +1,27 @@
 #!/usr/bin/env python3
-"""Génère les fichiers de règles Kibana de generated/, à coller dans Kibana → Dev Tools.
+"""Génère les fichiers de règles Kibana de ../rules/generated/, à coller dans Kibana → Dev Tools.
 
-Sources, dans un répertoire par périmètre (<n>-<périmètre>/) :
-  - <code>.json : une règle, au format de Kibana (son message en objet JSON dans son action
-    Mattermost), plus des clés « _ » retirées à la génération (cf. README.md) ;
+Sources, dans ../rules/, un répertoire par périmètre (<n>-<périmètre>/) :
+  - <code>.json : une règle, au format de Kibana, plus des clés « _ » retirées à la génération
+    (cf. ../rules/README.md), dont « _message », son message au format pivot ;
   - _modele.console : le texte du fichier généré autour des règles, où @@REGLE <code>@@
     marque la place de chaque règle.
 
-Usage : python3 -I generer-regles.py [--verifier]
-  sans option : écrit generated/<n>-rules-<périmètre>.console ;
-  --verifier  : compare generated/ à ses sources, code de sortie 1 au moindre écart (CI).
-Puis : ../workflows/tchap/generer-workflows.py, qui lit les messages des règles ici.
+Usage : python3 -I generer-regles-alerting.py [--verifier]
+  sans option : écrit ../rules/generated/<n>-rules-<périmètre>.console ;
+  --verifier  : compare ../rules/generated/ à ses sources, code de sortie 1 au moindre écart (CI).
+Puis : generer-notifications-tchap.py, qui lit les règles générées et leur message.
 """
-import json, os, re, sys
+import importlib.util, json, os, re, sys
 
-ICI = os.path.dirname(os.path.abspath(__file__))
+SCRIPTS = os.path.dirname(os.path.abspath(__file__))
+_spec = importlib.util.spec_from_file_location('extraire', os.path.join(SCRIPTS, 'notifications', '1-extraire.py'))
+pivot = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(pivot)
+
+ICI = os.path.join(SCRIPTS, '..', 'rules')
 GENERES = os.path.join(ICI, 'generated')
 WORKFLOWS = 'system-connector-.workflows'
-
-# Feature flipping, selon la convention des apps : active seulement si la variable vaut « true ».
-# FEATURE_NOTIFIER_ALERTES_MATTERMOST : les règles générées gardent leurs actions Mattermost.
-# Absente, elles n'ont plus que leur action Tchap (après le décommissionnement de Mattermost).
-FEATURES = {'notifierAlertesMattermost': os.environ.get('FEATURE_NOTIFIER_ALERTES_MATTERMOST') == 'true'}
 
 
 def perimetres():
@@ -49,27 +49,25 @@ def charger():
 REGLES = charger()
 
 
+def verifier_messages():
+    """Une règle qui notifie a un message au format pivot valide."""
+    for code, d in sorted(REGLES.items()):
+        if not any(a['id'] == WORKFLOWS for a in d.get('actions', [])):
+            continue
+        ecarts = pivot.erreurs(d.get('_message'))
+        if ecarts:
+            raise SystemExit(f"{d['_dossier']}/{code}.json : _message invalide : " + ' ; '.join(ecarts))
+
+
 def corps(code):
     """Le corps de la règle tel que Kibana le reçoit : sans les clés « _ »."""
     return {k: v for k, v in REGLES[code].items() if not k.startswith('_')}
 
 
-def actions_envoyees(actions):
-    """Les actions de la règle, sans ses actions Mattermost si la feature est inactive."""
-    if FEATURES['notifierAlertesMattermost']:
-        return actions
-    return [a for a in actions if a['id'] == WORKFLOWS]
-
-
 def bloc(code):
     d = REGLES[code]
     regle = json.loads(json.dumps(corps(code)))
-    regle['actions'] = actions_envoyees(regle.get('actions', []))
     morceaux = {}
-    for i, a in enumerate(regle['actions']):
-        if isinstance(a.get('params', {}).get('body'), (dict, list)):
-            morceaux[f'@@BODY{i}@@'] = json.dumps(a['params']['body'], ensure_ascii=False, indent=2)
-            a['params']['body'] = f'@@BODY{i}@@'
     esql = regle.get('params', {}).get('esqlQuery', {}).get('esql')
     if esql:
         morceaux['@@ESQL@@'] = esql
@@ -81,19 +79,9 @@ def bloc(code):
     return entete + d.get('_methode', 'PUT') + ' kbn:/api/alerting/rule/' + d['_id'] + '\n' + texte + '\n'
 
 
-def messages(code):
-    """Le message de la règle par groupe d'action, et « principal » (celui de sa première action
-    Mattermost, à défaut sa clé _message) : la source que lisent les Workflows Tchap, présente
-    même sans Mattermost."""
-    m = {}
-    for a in REGLES[code].get('actions', []):
-        if a['id'] != WORKFLOWS and isinstance(a.get('params', {}).get('body'), (dict, list)):
-            texte = json.dumps(a['params']['body'], ensure_ascii=False)
-            m.setdefault('principal', texte)
-            m[a.get('group')] = texte
-    if '_message' in REGLES[code]:
-        m.setdefault('principal', json.dumps(REGLES[code]['_message'], ensure_ascii=False))
-    return m
+def message(code):
+    """Le message de la règle au format pivot (sa clé « _message »), ou None si elle n'en a pas."""
+    return REGLES[code].get('_message')
 
 
 def nom_fichier(dossier):
@@ -102,12 +90,12 @@ def nom_fichier(dossier):
 
 
 def entete(dossier):
-    return f"""# ⚠️ FICHIER GÉNÉRÉ par ../generer-regles.py : NE PAS LE MODIFIER, il serait écrasé.
+    return f"""# ⚠️ FICHIER GÉNÉRÉ par ../../scripts/generer-regles-alerting.py : NE PAS LE MODIFIER, il serait écrasé.
 # À modifier à la place, dans ../{dossier}/ :
 #   - une règle : son fichier <code>.json (le JSON de la règle Kibana) ;
 #   - le texte autour des règles (commentaires, autres requêtes) : _modele.console.
-# Puis : python3 -I ../generer-regles.py
-#        python3 -I ../../workflows/tchap/generer-workflows.py
+# Puis : python3 -I ../../scripts/generer-regles-alerting.py
+#        python3 -I ../../scripts/generer-notifications-tchap.py
 # La CI de chaque PR vérifie que ce fichier correspond à ses sources.
 # Ce fichier se colle tel quel dans Kibana → Dev Tools. Mode d'emploi : ../README.md.
 #
@@ -135,8 +123,7 @@ def assembler():
 
 def main(args):
     verifier = '--verifier' in args
-    if not FEATURES['notifierAlertesMattermost']:
-        print('FEATURE_NOTIFIER_ALERTES_MATTERMOST absente ou différente de « true » : règles SANS action Mattermost', file=sys.stderr)
+    verifier_messages()
     fichiers = assembler()
     ecarts = 0
     for nom, contenu in fichiers.items():
@@ -156,7 +143,7 @@ def main(args):
             ecarts += 1
             print(f'generated/{nom} : sans source, à supprimer')
     if verifier:
-        print('identiques' if not ecarts else f'{ecarts} fichier(s) différent(s) : lancer python3 -I generer-regles.py')
+        print('identiques' if not ecarts else f'{ecarts} fichier(s) différent(s) : lancer python3 -I generer-regles-alerting.py')
     sys.exit(1 if ecarts and verifier else 0)
 
 

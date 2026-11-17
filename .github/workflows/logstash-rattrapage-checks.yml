@@ -1,0 +1,26 @@
+# Tests du script de rattrapage des logs de la DLQ (logs/rattrapage/), dont la concordance
+# de son routage avec le bloc output de logs/pipeline-process.conf.
+name: Logstash - Rattrapage de la DLQ
+on:
+  pull_request:
+    paths:
+      - 'logs/rattrapage/**'
+      - 'logs/pipeline-process.conf'
+      - '.github/workflows/logstash-rattrapage-checks.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'logs/rattrapage/**'
+      - 'logs/pipeline-process.conf'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Tests du rattrapage de la DLQ
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - run: python3 -I -m unittest discover -s logs/rattrapage -v
