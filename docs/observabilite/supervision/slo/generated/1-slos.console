@@ -15,8 +15,8 @@
 # aussi les requêtes du web et de connect.
 #
 # SLO « API — disponibilité par parcours ». Le verdict est
-# l'event.outcome de la ligne de requête (401, 403 et 422 du parcours authentification
-# en succès, cf.
+# l'event.outcome de la ligne de requête (401 et 403 de tous les parcours, et 422 du
+# parcours authentification, en succès, cf.
 # ../../format/logs/conventions.md#eventoutcome).
 # Exception : le 404 d'un GET plan_action ou questionnaire compte en succès.
 # Il signale qu'un jeune n'a pas encore de plan ou de questionnaire, ce qui est
@@ -26,7 +26,7 @@
 PUT kbn:/api/observability/slos/57e45f52-6c4c-45a4-8aa0-c5885c35e55f
 {
   "name": "API — disponibilité par parcours",
-  "description": "99,5 % des requêtes de chaque parcours réussies, au sens de l'event.outcome de la ligne de requête : le 401, le 403 et le 422 du parcours authentification comptent en succès, comme le 404 d'un GET plan_action ou questionnaire (jeune sans plan ni questionnaire).",
+  "description": "99,5 % des requêtes de chaque parcours réussies, au sens de l'event.outcome de la ligne de requête : le 401 et le 403 de tous les parcours, et le 422 du parcours authentification, comptent en succès, comme le 404 d'un GET plan_action ou questionnaire (jeune sans plan ni questionnaire).",
   "indicator": {
     "type": "sli.kql.custom",
     "params": {
