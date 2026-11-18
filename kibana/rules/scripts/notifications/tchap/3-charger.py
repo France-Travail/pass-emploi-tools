@@ -94,7 +94,7 @@ def charger(args=()):
     retirer_orphelins()
 
 
-API = os.path.join(SUPERVISION, '..', '..', '..', '..', 'pass-emploi-api')
+API = os.path.join(SUPERVISION, '..', '..', 'pass-emploi-api')
 RAPPORT_HEURE = 9 * 60 + 30
 
 

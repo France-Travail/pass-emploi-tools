@@ -26,6 +26,9 @@ On en crée un seulement si les deux conditions sont réunies :
 Une ligne qu'on ne lira qu'en enquête n'est pas une action : message libre,
 ou `debug`.
 
+La liste des actions d'un repo se lit dans son code, ou dans Kibana par une
+agrégation sur `event.action` : elle ne se recopie pas dans la doc.
+
 ## Les familles de lignes
 
 | Famille | Combien | Porte |
@@ -112,6 +115,11 @@ posé sur la ligne de requête : c'est ce que fait l'utilisateur, pas le nom de
 la route. Le SLO de disponibilité se calcule par parcours : **renommer un
 parcours casse son historique**.
 
+La ligne de requête porte aussi **`http.route`**, le modèle de la route qui a
+répondu. **Absent = aucune route n'a répondu** (URL inconnue, scan) : c'est ce
+qui distingue un robot d'un 404 métier. Le parcours est absent lui aussi quand
+la requête est refusée avant le routage (JSON malformé, URL inconnue).
+
 ## Champs
 
 - Namespaces ECS standards : `event`, `error`, `http`, `url`, `user`,
@@ -124,6 +132,26 @@ parcours casse son historique**.
   Logstash et son mapping (cf. [stockage des logs](infra/stockage/logs/README.md)).
 - `user.*` et `trace.id` sont posés par le mixin du logger, jamais dans le
   payload.
+
+### Le diagnostic d'un appel partenaire en échec
+
+Seulement sur un `external_api_call` en `failure` :
+
+- les en-têtes qui portent la cause, en **feuilles plates** :
+  `http.response.www_authenticate` (la cause d'un 401 OAuth, que le body ne dit
+  pas), `http.response.retry_after`. Jamais sous `http.response.headers` :
+  le template APM le mappe en non-objet, et un objet y est rejeté ;
+- les claims du Bearer envoyé (`jwt.iss`, `jwt.azp`, `jwt.exp`, `jwt.iat`,
+  `jwt.has_preferred_username`) : de quoi diagnostiquer un token expiré ou un
+  mauvais émetteur, sans rien de rejouable.
+
+### Les pièges d'agrégation
+
+- **Lots rejoués** (envoi de communications) : un lot entièrement en erreur est
+  rejoué, donc ses erreurs se somment **uniquement sur les lots en `success`**.
+  Le nombre restant se lit sur la dernière valeur, jamais sur une somme.
+- **Durée d'un job** : sur `job_completed` (`event.duration`), pas sur les
+  lignes métier du job.
 
 ### Les exceptions
 

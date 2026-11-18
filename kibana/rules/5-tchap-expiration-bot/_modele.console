@@ -1,5 +1,5 @@
 # Expiration du compte bot Tchap. Spécification et procédure :
-# ../../../runbooks/runbook-tchap-expiration-bot.md.
+# ../../../docs/observabilite/runbooks/runbook-tchap-expiration-bot.md.
 #
 # Le compte du bot est un compte Tchap ordinaire : il expire s'il n'est pas
 # renouvelé (CGU du 2026-10-14 : lien envoyé par email 11 mois après

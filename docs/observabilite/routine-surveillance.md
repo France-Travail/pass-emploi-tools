@@ -65,5 +65,4 @@ Les logs de prod sont dans deux data streams : `logs-prod-default` (logs
 applicatifs : code et pino-http) et `logs-router-prod-default` (routeur
 Scalingo, `event.action: request_routed`). Pour corréler les deux par
 `http.request.id`, la data view doit couvrir les deux : `logs-*-default-*`.
-Conventions des champs : [standard des logs](logs.md) ;
-propres à l'api : [couverture-api](couverture-api.md).
+Conventions des champs : [standard des logs](logs.md).

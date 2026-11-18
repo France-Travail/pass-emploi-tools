@@ -40,7 +40,6 @@
   [`slo.md`](./observabilite/slo.md) (promesses, burn rate, angles morts),
   [`alertes.md`](./observabilite/alertes.md) (catalogue, critères, gravités),
   [`fonctionnement.md`](./observabilite/fonctionnement.md) (chemin jusqu'à Tchap, salons),
-  [`couverture-api.md`](./observabilite/couverture-api.md) (`event.action` émis par l'api),
   [`routine-surveillance.md`](./observabilite/routine-surveillance.md) (dashboards, reporting),
   [`runbooks/investigation-incident.md`](./observabilite/runbooks/investigation-incident.md) (KQL d'enquête),
   [`kibana/README.md`](../kibana/README.md) (objets Kibana à déployer et leur mode d'emploi).
