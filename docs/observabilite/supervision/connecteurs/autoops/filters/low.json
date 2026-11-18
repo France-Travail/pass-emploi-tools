@@ -1,0 +1,13 @@
+{
+  "nom": "Elasticsearch - Low",
+  "severite": "Low",
+  "deploiement": "Pass Emploi",
+  "delai_minutes": 30,
+  "evenements": [
+    "The management queue is high"
+  ],
+  "connecteurs": [
+    "Tchap o11y-production - AutoOps Low",
+    "Email production - Monitoring disque, santé et indexation Elasticsearch"
+  ]
+}

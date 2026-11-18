@@ -1,6 +1,8 @@
 # Workflow tchap-client : le seul qui parle à Matrix. Appelé par les Workflows
 # de salon (tchap-<salon>). Spécification : README.md.
 #
+# Un message vide n'est pas envoyé : c'est ainsi qu'un Workflow de salon se tait (fenêtre
+# d'un SLO non notifiée, alerte en cours sans aggravation).
 # Le txnId de Matrix doit changer à chaque message : un txnId déjà vu est pris
 # pour une nouvelle tentative et le message n'est pas posté. execution.id est
 # unique par appel.
@@ -35,16 +37,20 @@ inputs:
     required: true
     description: Message en HTML, déjà échappé
 steps:
-  - name: envoyer
-    type: http
-    connector-id: a81b2350-0d23-4358-b984-2c18ceef8601
-    with:
-      method: PUT
-      path: /_matrix/client/v3/rooms/{{ inputs.salon | url_encode }}/send/m.room.message/{{ execution.id }}
-      body:
-        msgtype: m.text
-        body: "{{ inputs.texte }}"
-        format: org.matrix.custom.html
-        formatted_body: "{{ inputs.html }}"
+  - name: si-message
+    type: if
+    condition: "${{ inputs.texte != '' }}"
+    steps:
+      - name: envoyer
+        type: http
+        connector-id: a81b2350-0d23-4358-b984-2c18ceef8601
+        with:
+          method: PUT
+          path: /_matrix/client/v3/rooms/{{ inputs.salon | url_encode }}/send/m.room.message/{{ execution.id }}
+          body:
+            msgtype: m.text
+            body: "{{ inputs.texte }}"
+            format: org.matrix.custom.html
+            formatted_body: "{{ inputs.html }}"
 """
 }

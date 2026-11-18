@@ -31,7 +31,7 @@ PUT _ingest/pipeline/tchap-expiration-bot
 PUT tchap-expiration-bot
 {
   "settings": {
-    "number_of_replicas": 0,
+    "number_of_replicas": 1,
     "index.default_pipeline": "tchap-expiration-bot"
   },
   "mappings": {

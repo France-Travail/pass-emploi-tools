@@ -3,6 +3,18 @@
   "_commentaire": [
     "# A4c — Opérations d'infra Scalingo des apps applicatives, prod (ℹ️, salon infra-production)"
   ],
+  "_message": {
+    "titre": "**Opérations d'infra Scalingo des apps de prod** ({valeur})",
+    "gravite": "information",
+    "liens": {
+      "Dashboards": [
+        {
+          "nom": "[Scalingo] Dashboard des apps",
+          "url": "https://dashboard.scalingo.com/apps"
+        }
+      ]
+    }
+  },
   "name": "Scalingo - Prod - Opérations d'infra des apps applicatives",
   "tags": [
     "prod",
@@ -54,37 +66,6 @@
     "sourceFields": []
   },
   "actions": [
-    {
-      "group": "query matched",
-      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
-      "params": {
-        "body": {
-          "text": "**Opérations d'infra Scalingo des apps de prod** ({{context.value}})",
-          "attachments": [
-            {
-              "color": "#808080",
-              "text": "{{#context.hits}}{{_source.message}}\n{{/context.hits}}",
-              "fields": [
-                {
-                  "title": "Règle",
-                  "value": "`{{rule.name}}`",
-                  "short": true
-                },
-                {
-                  "title": "Dashboards",
-                  "value": "[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
-                }
-              ]
-            }
-          ]
-        }
-      },
-      "frequency": {
-        "summary": false,
-        "notify_when": "onActiveAlert",
-        "throttle": null
-      }
-    },
     {
       "id": "system-connector-.workflows",
       "params": {

@@ -1,7 +1,8 @@
-# Runbook — disque des nœuds Elasticsearch
+# Runbook — disque et santé du cluster Elasticsearch
 
 > **Type** : tutoriel (Diataxis). Quoi faire quand l'[alerte M11](../supervision/alertes-stack-observabilite.md#alerte-m11--disque-des-nœuds-elasticsearch-autoops)
-> (AutoOps) signale un nœud Elasticsearch qui se remplit.
+> (AutoOps) signale un nœud Elasticsearch qui se remplit (étapes 1 à 4), ou un
+> [cluster en statut red](#cluster-en-statut-red).
 >
 > Rétentions et volumétrie attendues : [`stockage/`](../stockage/README.md).
 > Toutes les requêtes se lancent dans Kibana → Dev Tools.
@@ -79,14 +80,26 @@ Puis contrôler que Logstash rattrape son retard : backlog Redis et DLQ, cf.
 
 ## Cluster en statut red
 
-Au moins un shard principal est indisponible : une partie des données n'est plus
+Au moins un shard principal est indisponible depuis 5 min (délai réglé dans AutoOps,
+au-delà d'une maintenance d'Elastic Cloud) : une partie des données n'est plus
 consultable, et l'écriture échoue si c'est un index d'écriture.
 
-```
-GET _cat/shards?v&expand_wildcards=all&h=index,shard,prirep,state,unassigned.reason&s=state
-GET _cluster/allocation/explain
-```
-
-`allocation/explain` donne la raison (disque plein, nœud perdu…). Disque plein :
-étapes 1 à 3. Nœud perdu : vérifier l'état du déploiement dans la console Elastic
-Cloud.
+1. **Mesurer l'impact sur la chaîne de logs.** Si le shard appartient à un index
+   d'écriture (`logs-prod-default`, `logs-router-prod-default`), l'indexation échoue :
+   Logstash passe en backpressure, le drain Scalingo risque la quarantaine, et les logs
+   refusés partent en DLQ ([runbook Logstash](runbook-logstash.md), scénarios 1 et 3).
+2. **Trouver le shard et la raison** :
+   ```
+   GET _cat/shards?v&expand_wildcards=all&h=index,shard,prirep,state,unassigned.reason&s=state
+   GET _cluster/allocation/explain
+   ```
+   - disque plein (allocation refusée, nœud au palier flood stage) : étapes 1 à 4 ;
+   - nœud perdu, ou maintenance qui dure : l'activité du déploiement dans la console
+     Elastic Cloud ;
+   - index frozen ou restauré (`partial-*`, `restored-*`) : exclus de l'alerte par
+     AutoOps, brièvement rouges à leur montage ; sans effet sur l'ingestion.
+3. **Escalader** au support Elastic Cloud si le shard ne se réalloue pas seul et que
+   `allocation/explain` ne donne pas de cause traitable (corruption, échec de récupération).
+4. **Après le retour au vert** : vérifier que les logs de la période sont arrivés, puis
+   rattraper ceux restés en DLQ ([`logs/rattrapage/`](../../../logs/rattrapage/README.md)).
+   Ne pas vider la DLQ : ce sont les logs manquants.

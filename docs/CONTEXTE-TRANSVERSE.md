@@ -218,6 +218,15 @@ qui se périme fait plus de dégâts qu'une doc absente : on la croit.
 6. **Doc fausse, on coupe.** Un passage trouvé faux se supprime ; on ne le
    réécrit que s'il passe les règles 1 à 5.
 
+### Logs de prod : partir de l'alerte
+
+Une anomalie s'analyse à partir de sa notification Tchap : elle porte le
+Discover, le dashboard ou le runbook à ouvrir et ce qu'on y regarde. À défaut,
+la doc d'observabilité (inventaire des objets Kibana, runbooks). Les logs de
+prod ne s'analysent hors de ces chemins que sur demande explicite, et s'en
+tiennent à l'essentiel. Un cas que ni l'alerte ni la doc ne couvre se signale
+comme un manque : de précision dans l'alerte, ou de doc dans pass-emploi-tools.
+
 ### IP du client
 
 Derrière le routeur Scalingo, l'IP du client se lit dans le header `X-Real-IP`,

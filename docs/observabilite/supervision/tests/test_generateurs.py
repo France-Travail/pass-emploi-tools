@@ -1,7 +1,7 @@
 """Tests des générateurs de règles Kibana et de Workflows Tchap.
 
 Lancer depuis la racine du repo : python3 -I -m unittest discover -s docs/observabilite/supervision/tests -v
-Chaque test travaille sur une copie de rules/ et de workflows/tchap/ dans un répertoire
+Chaque test travaille sur une copie de rules/, slo/ et workflows/tchap/ dans un répertoire
 temporaire : il ne modifie jamais le repo. Ni Kibana, ni pass-emploi-api ne sont nécessaires.
 """
 import glob, json, os, shutil, subprocess, sys, tempfile, unittest, warnings
@@ -20,7 +20,7 @@ class CopieDuRepo:
 
     def __enter__(self):
         self.dossier = tempfile.mkdtemp()
-        for chemin in ('rules', os.path.join('workflows', 'tchap')):
+        for chemin in ('rules', 'slo', os.path.join('workflows', 'tchap')):
             shutil.copytree(os.path.join(SUPERVISION, chemin), os.path.join(self.dossier, chemin))
         return self
 
@@ -30,14 +30,11 @@ class CopieDuRepo:
     def chemin(self, *morceaux):
         return os.path.join(self.dossier, *morceaux)
 
-    def generer_regles(self, *options, mattermost=False):
-        env = {k: v for k, v in os.environ.items() if k != 'FEATURE_NOTIFIER_ALERTES_MATTERMOST'}
-        if mattermost:
-            env['FEATURE_NOTIFIER_ALERTES_MATTERMOST'] = 'true'
-        return subprocess.run([sys.executable, '-I', self.chemin('rules', 'generer-regles.py'), *options], capture_output=True, text=True, env=env)
+    def generer_regles(self, *options):
+        return subprocess.run([sys.executable, '-I', self.chemin('rules', 'scripts', 'generer-regles-alerting.py'), *options], capture_output=True, text=True)
 
     def generer_workflows(self):
-        return subprocess.run([sys.executable, '-I', self.chemin('workflows', 'tchap', 'generer-workflows.py'), '--sans-rapports-jobs'], capture_output=True, text=True)
+        return subprocess.run([sys.executable, '-I', self.chemin('rules', 'scripts', 'generer-notifications-tchap.py'), '--sans-rapports-jobs'], capture_output=True, text=True)
 
     def workflow(self, salon):
         return open(self.chemin('workflows', 'tchap', 'generated', f'tchap-{salon}.console')).read()
@@ -47,9 +44,8 @@ class CopieDuRepo:
 
 
 def requetes(texte):
-    sys.path.insert(0, os.path.join(SUPERVISION, 'workflows', 'tchap'))
     import importlib.util
-    spec = importlib.util.spec_from_file_location('gw', os.path.join(SUPERVISION, 'workflows', 'tchap', 'generer-workflows.py'))
+    spec = importlib.util.spec_from_file_location('extraire', os.path.join(SUPERVISION, 'rules', 'scripts', 'notifications', '1-extraire.py'))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return list(module.requetes(texte))
@@ -69,29 +65,57 @@ class TestFichiersGeneresAJour(unittest.TestCase):
                 self.assertEqual(repo.workflow(salon), open(os.path.join(SUPERVISION, 'workflows', 'tchap', 'generated', f'tchap-{salon}.console')).read(), salon)
 
 
-class TestFeatureMattermost(unittest.TestCase):
-    """FEATURE_NOTIFIER_ALERTES_MATTERMOST, active seulement à « true »."""
-
-    def test_sans_la_feature_aucune_action_mattermost(self):
+class TestReglesGenerees(unittest.TestCase):
+    def test_seule_l_action_tchap_est_envoyee(self):
+        """Le message vit dans « _message », au format pivot : aucune action de messagerie dans les règles."""
         with CopieDuRepo() as repo:
-            r = repo.generer_regles(mattermost=False)
+            r = repo.generer_regles()
             self.assertEqual(r.returncode, 0, r.stderr)
             for fichier in glob.glob(repo.chemin('rules', 'generated', '*.console')):
                 for _, corps in requetes(open(fichier).read()):
                     for action in (corps or {}).get('actions', []):
                         self.assertEqual(action['id'], WORKFLOWS, f'{os.path.basename(fichier)} : {corps["name"]}')
 
-    def test_sans_la_feature_les_messages_tchap_ne_changent_pas(self):
-        """Le 1er novembre : les règles régénérées sans Mattermost, les Workflows restent identiques."""
+
+class TestSeuilsDesSlo(unittest.TestCase):
+    """slo/seuils.json : la seule source de l'objectif et des seuils de burn rate d'un SLO."""
+
+    def seuils(self, repo, modifier):
+        chemin = repo.chemin('slo', 'seuils.json')
+        seuils = json.load(open(chemin))
+        modifier(seuils)
+        json.dump(seuils, open(chemin, 'w'), ensure_ascii=False, indent=2)
+
+    def test_un_objectif_change_le_slo_sa_regle_et_son_message(self):
         with CopieDuRepo() as repo:
-            avant = {}
-            self.assertEqual(repo.generer_workflows().returncode, 0)
-            avant = {s: repo.workflow(s) for s in SALONS}
-            self.assertEqual(repo.generer_regles(mattermost=False).returncode, 0)
-            r = repo.generer_workflows()
+            self.seuils(repo, lambda s: s['SLO3-conseiller-france-travail'].update(objectif=0.98))
+            r = repo.generer_regles()
             self.assertEqual(r.returncode, 0, r.stderr)
-            for salon in SALONS:
-                self.assertEqual(repo.workflow(salon), avant[salon], salon)
+            slo = open(repo.chemin('slo', 'generated', '1-slos.console')).read()
+            bloc = slo.split('slos/9afea251-1cf9-423f-a374-ca43c3e751ac')[1].split('\nPUT ')[0]
+            self.assertIn('"objective": { "target": 0.98 }', bloc)
+            regles = open(repo.chemin('rules', 'generated', '2-rules-applicatives.console')).read()
+            self.assertIn('"maxBurnRateThreshold": 50.0', regles)
+            self.assertEqual(repo.generer_workflows().returncode, 0)
+            self.assertIn("98 % des connexions des conseillers France Travail aboutissent", repo.workflow('monitoring-production'))
+
+    def test_un_seuil_de_burn_rate_change_la_regle(self):
+        with CopieDuRepo() as repo:
+            self.seuils(repo, lambda s: s['SLO3-invite']['burn_rate'].update(high=3))
+            self.assertEqual(repo.generer_regles().returncode, 0)
+            regles = open(repo.chemin('rules', 'generated', '2-rules-applicatives.console')).read()
+            self.assertRegex(regles, r'"burnRateThreshold": 3,\s*"maxBurnRateThreshold": 10.0')
+
+    def test_seuils_incomplets(self):
+        for modifier, attendu in ((lambda s: s.pop('SLO2'), 'pas de seuils pour la règle SLO2'),
+                                  (lambda s: s['SLO1']['burn_rate'].pop('low'), 'SLO1 : burn_rate doit donner un seuil'),
+                                  (lambda s: s.update({'SLO9': {'objectif': 0.9, 'burn_rate': {}}}), 'SLO9 ne correspond à aucune règle'),
+                                  (lambda s: s['SLO1'].update(objectif=99.5), 'SLO1 : objectif entre 0 et 1')):
+            with self.subTest(attendu), CopieDuRepo() as repo:
+                self.seuils(repo, modifier)
+                r = repo.generer_regles()
+                self.assertNotEqual(r.returncode, 0)
+                self.assertIn(attendu, r.stderr)
 
 
 class TestControlesDesGenerateurs(unittest.TestCase):
@@ -141,12 +165,34 @@ class TestControlesDesGenerateurs(unittest.TestCase):
         with CopieDuRepo() as repo:
             chemin = repo.regle_json('2-applicatives', 'A6')
             regle = json.load(open(chemin))
-            del regle['_tchap']
+            del regle['_message']['resultat']
             json.dump(regle, open(chemin, 'w'), ensure_ascii=False, indent=2)
             self.assertEqual(repo.generer_regles().returncode, 0)
             r = repo.generer_workflows()
             self.assertNotEqual(r.returncode, 0)
-            self.assertIn('_tchap.ligne', r.stderr)
+            self.assertIn('_message.resultat.ligne', r.stderr)
+
+    def test_fenetres_d_une_regle_burn_rate(self):
+        for modifier, attendu in ((lambda m: m['fenetres'].update(medium={'gravite': 'rouge'}), 'fenetres « medium »'),
+                                  (lambda m: m['fenetres'].update(enorme={'gravite': 'critique'}), "la règle n'a pas cette fenêtre"),
+                                  (lambda m: m['essentiel'].update(sections=['Inconnue']), 'section « Inconnue » absente')):
+            with self.subTest(attendu), CopieDuRepo() as repo:
+                chemin = repo.regle_json('2-applicatives', 'SLO1')
+                regle = json.load(open(chemin))
+                modifier(regle['_message'])
+                json.dump(regle, open(chemin, 'w'), ensure_ascii=False, indent=2)
+                r = repo.generer_regles()
+                self.assertNotEqual(r.returncode, 0)
+                self.assertIn(attendu, r.stderr)
+
+    def test_une_fenetre_absente_n_est_pas_notifiee(self):
+        with CopieDuRepo() as repo:
+            self.assertEqual(repo.generer_regles().returncode, 0)
+            self.assertEqual(repo.generer_workflows().returncode, 0)
+            w = repo.workflow('monitoring-production')
+            self.assertIn("{% when 'slo.burnRate.medium' %}", w)
+            self.assertNotIn("{% when 'slo.burnRate.low' %}", w)
+            self.assertIn('previous_action_group', w)
 
     def test_regle_sans_message(self):
         with CopieDuRepo() as repo:
@@ -154,21 +200,23 @@ class TestControlesDesGenerateurs(unittest.TestCase):
             regle = json.load(open(chemin))
             del regle['_message']
             json.dump(regle, open(chemin, 'w'), ensure_ascii=False, indent=2)
-            self.assertEqual(repo.generer_regles().returncode, 0)
-            r = repo.generer_workflows()
+            r = repo.generer_regles()
             self.assertNotEqual(r.returncode, 0)
-            self.assertIn('Expiration du compte bot', r.stderr)
+            self.assertIn('expiration-bot.json : _message invalide', r.stderr)
 
-
-class TestMessages(unittest.TestCase):
-    def test_messages_des_regles_generees_en_json_valide(self):
-        """L'éditeur de règle de Kibana lit le body comme du JSON brut."""
-        for fichier in glob.glob(os.path.join(SUPERVISION, 'rules', 'generated', '*.console')):
-            for _, corps in requetes(open(fichier).read()):
-                for action in (corps or {}).get('actions', []):
-                    if 'body' in action.get('params', {}):
-                        json.loads(action['params']['body'])
-
+    def test_message_pivot_invalide(self):
+        for modifier, attendu in ((lambda m: m.update(gravite='rouge'), '« gravite »'),
+                                  (lambda m: m.update(titre=m['titre'] + ' {inconnue}'), 'variable inconnue {inconnue}'),
+                                  (lambda m: m['liens'].update(Runbook=[]), 'section vide'),
+                                  (lambda m: m.update(fenetres={'alert': {'gravite': 'critique'}}), '« gravite » et « fenetres »')):
+            with self.subTest(attendu), CopieDuRepo() as repo:
+                chemin = repo.regle_json('2-applicatives', 'A8')
+                regle = json.load(open(chemin))
+                modifier(regle['_message'])
+                json.dump(regle, open(chemin, 'w'), ensure_ascii=False, indent=2)
+                r = repo.generer_regles()
+                self.assertNotEqual(r.returncode, 0)
+                self.assertIn(attendu, r.stderr)
 
 
 class TestRenvoisVersLesBasesDeDonnees(unittest.TestCase):
@@ -179,8 +227,10 @@ class TestRenvoisVersLesBasesDeDonnees(unittest.TestCase):
         return json.load(open(os.path.join(SUPERVISION, 'rules', '2-applicatives', f'{code}.json')))
 
     def champs(self, regle):
-        return {f['title']: f['value'] for a in regle['actions'] if isinstance(a['params'].get('body'), dict)
-                for p in a['params']['body'].get('attachments', []) for f in p.get('fields', [])}
+        m = regle['_message']
+        champs = {s['titre']: '\n'.join(s['lignes']) for s in m.get('sections', [])}
+        champs.update({titre: '\n'.join(l['url'] for l in liens) for titre, liens in m.get('liens', {}).items()})
+        return champs
 
     def etapes(self, guide):
         return guide.split('## À vérifier')[1].split('## ')[0].strip().splitlines()

@@ -3,9 +3,51 @@
   "_commentaire": [
     "# A3 — Pic d'authentifications refusées (Critical)"
   ],
-  "_tchap": {
-    "ligne": "{0} refus en 10 min, contre {2} d'habitude à cette heure",
-    "vide": "Plus de pic de refus à la relecture : il est peut-être en train de se résorber."
+  "_message": {
+    "titre": "**Pic d'authentifications refusées — prod** — plus de 3 × la normale sur 10 min : IDP ou Keycloak probablement en cause.",
+    "gravite": "critique",
+    "sections": [
+      {
+        "titre": "À vérifier",
+        "lignes": [
+          "1. Un robot ou un scan en cause (volume anormal, codes hors 4xx) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Robots / scan](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6)",
+          "2. Si un seul fournisseur d'identité concentre les refus (France Travail Connect, Milo…) : sa disponibilité dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74) ; si tous les modes sont touchés : Keycloak ou pass-emploi-connect, dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)",
+          "3. La liste des refus, par fournisseur d'identité et par motif : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8), onglet *Field statistics*"
+        ]
+      }
+    ],
+    "liens": {
+      "Dashboards": [
+        {
+          "nom": "[Pass Emploi] Diagnostic d'erreurs - Robots / scan",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6"
+        },
+        {
+          "nom": "[Pass Emploi] Diagnostic d'erreurs - Entrée",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74"
+        },
+        {
+          "nom": "[Pass Emploi] Diagnostic d'erreurs - Apps",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74"
+        }
+      ],
+      "Discover sessions": [
+        {
+          "nom": "[Pass Emploi] Logs de Prod - Erreurs d'authentification",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8"
+        }
+      ],
+      "Runbook": [
+        {
+          "nom": "Investiguer un incident applicatif",
+          "url": "https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md"
+        }
+      ]
+    },
+    "resultat": {
+      "ligne": "{0} refus en 10 min, contre {2} d'habitude à cette heure",
+      "vide": "Plus de pic de refus à la relecture : il est peut-être en train de se résorber."
+    }
   },
   "name": "API - Prod - Pic d'auth refusées",
   "tags": [
@@ -47,54 +89,6 @@
     "groupBy": "all"
   },
   "actions": [
-    {
-      "group": "query matched",
-      "id": "12e46700-6e45-11ec-9757-c9700cd1bb4e",
-      "params": {
-        "body": {
-          "text": "🚨 **Pic d'authentifications refusées — prod** — plus de 3 × la normale sur 10 min : IDP ou Keycloak probablement en cause.",
-          "attachments": [
-            {
-              "color": "#d00000",
-              "text": "{{#context.hits}}{{_source.refus}} refus en 10 min, contre {{_source.reference}} d'habitude à cette heure\n{{/context.hits}}",
-              "fields": [
-                {
-                  "title": "Règle",
-                  "value": "`{{rule.name}}`",
-                  "short": true
-                },
-                {
-                  "title": "Déclenchée à",
-                  "value": "`{{date}}`",
-                  "short": true
-                },
-                {
-                  "title": "À vérifier",
-                  "value": "1. Un robot ou un scan en cause (volume anormal, codes hors 4xx) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Robots / scan](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6)\n2. Si un seul fournisseur d'identité concentre les refus (France Travail Connect, Milo…) : sa disponibilité dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74) ; si tous les modes sont touchés : Keycloak ou pass-emploi-connect, dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n3. La liste des refus, par fournisseur d'identité et par motif : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8), onglet *Field statistics*"
-                },
-                {
-                  "title": "Dashboards",
-                  "value": "[[Pass Emploi] Diagnostic d'erreurs - Robots / scan](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6)\n[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n[[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)"
-                },
-                {
-                  "title": "Discover sessions",
-                  "value": "[[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)"
-                },
-                {
-                  "title": "Runbook",
-                  "value": "[Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)"
-                }
-              ]
-            }
-          ]
-        }
-      },
-      "frequency": {
-        "summary": false,
-        "notify_when": "onThrottleInterval",
-        "throttle": "1h"
-      }
-    },
     {
       "id": "system-connector-.workflows",
       "params": {

@@ -1,16 +1,16 @@
-# ⚠️ FICHIER GÉNÉRÉ par ../generer-regles.py : NE PAS LE MODIFIER, il serait écrasé.
+# ⚠️ FICHIER GÉNÉRÉ par ../scripts/generer-regles-alerting.py : NE PAS LE MODIFIER, il serait écrasé.
 # À modifier à la place, dans ../2-applicatives/ :
 #   - une règle : son fichier <code>.json (le JSON de la règle Kibana) ;
 #   - le texte autour des règles (commentaires, autres requêtes) : _modele.console.
-# Puis : python3 -I ../generer-regles.py
-#        python3 -I ../../workflows/tchap/generer-workflows.py
+# Puis : python3 -I ../scripts/generer-regles-alerting.py
+#        python3 -I ../scripts/generer-notifications-tchap.py
 # La CI de chaque PR vérifie que ce fichier correspond à ses sources.
 # Ce fichier se colle tel quel dans Kibana → Dev Tools. Mode d'emploi : ../README.md.
 #
 # Règles Kibana des alertes applicatives, notifiées dans Tchap par les Workflows de
 # salon. Spécification : ../../alertes-applicatives.md.
 #
-# À rejouer dans Dev Tools, après ../../slo/1-slos.console. PUT met à jour une règle
+# À rejouer dans Dev Tools, après ../../slo/generated/1-slos.console. PUT met à jour une règle
 # existante ; sur un cluster vide, la créer avec POST kbn:/api/alerting/rule/<id>
 # et le même corps plus "rule_type_id" et "consumer" (slo.rules.burnRate / slo pour
 # Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
@@ -28,34 +28,26 @@
 # (not "infra" / "infra") : chacun est relayé par une seule règle.
 # A5a / A5b : jobs en échec, Tchap jobs-production / jobs-staging.
 #
-# Messages Mattermost : une section (« À vérifier », « Dashboards », « Discover
-# sessions ») = un champ, un élément par ligne (`\n`). Chaque champ tient sur une
-# seule ligne du fichier : l'éditeur de règle de Kibana lit le body comme du JSON
-# brut, un retour à la ligne dans une chaîne l'empêche de l'afficher. Pour relire
-# les étapes : le fichier <code>.json de la règle, dans ../2-applicatives/, ou son
-# Investigation guide.
+# Message de chaque règle : la clé « _message » de son fichier <code>.json, dans
+# ../2-applicatives/, au format pivot (../README.md, « Le message d'une règle »).
 #
 # artifacts : l'Investigation guide et les Related dashboards (onglets de la
 # règle). L'API publique ne les renvoie pas dans ses réponses : les vérifier
 # dans l'interface.
 #
-# SLO1 à SLO3 — SLO burn rate. Seuls Critical (slo.burnRate.alert) et High notifient.
-#
-# maxBurnRateThreshold = 1 / (1 - objectif) : burn rate à 100 % d'échecs.
+# SLO1 à SLO3 — SLO burn rate. Objectif et seuils : ../../slo/seuils.json (cf. ../../slo/README.md).
 #
 # Invité et conseiller départemental : quelques tentatives par jour, un seul échec
 # sur 1 h vaut 100 % d'échecs. Une seule fenêtre, longue, qui exige plusieurs
 # échecs : invité ≥ 20 % d'échecs sur 72 h (~18 tentatives), conseiller
 # départemental ≥ 20 % sur 168 h (~10 tentatives).
 
-POST kbn:/api/alerting/rule/ae2694af-e78e-497c-88cf-4cd43e4b01f8
+PUT kbn:/api/alerting/rule/ae2694af-e78e-497c-88cf-4cd43e4b01f8
 {
-  "rule_type_id": "slo.rules.burnRate",
-  "consumer": "slo",
   "name": "SLO - Prod - API — disponibilité par parcours",
   "artifacts": {
     "investigation_guide": {
-      "blob": "## Ce que signale l'alerte\n\nSLO menacé — disponibilité par parcours (prod) : la marge d'erreur du SLO se consomme trop vite.\n\n**Promesse** : 99,5 % des requêtes de chaque parcours réussissent, sur 30 jours glissants. Les 401 et 403 comptent comme des succès.\n\n## À vérifier\n\n1. Quel parcours échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Si un partenaire échoue (France Travail, Milo…) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n3. Si l'api répond en erreur serveur : le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n\n## Dashboards\n\n- [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n- [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n\n## Documentation\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n"
+      "blob": "## Ce que signale l'alerte\n\nSLO menacé — disponibilité par parcours (prod) : la marge d'erreur du SLO se consomme trop vite.\n\n**Promesse** : 99,5 % des requêtes de chaque parcours réussissent, sur 30 jours glissants. Les 401 et les 403 de tous les parcours, et les 422 du parcours authentification (refus de connexion métier), comptent comme des succès.\n\n## À vérifier\n\n1. Quel parcours échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Si un partenaire échoue (France Travail, Milo…) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n3. Si l'api répond en erreur serveur : le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n\n## Dashboards\n\n- [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n- [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n\n## Documentation\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n"
     },
     "dashboards": [
       {
@@ -144,7 +136,7 @@ POST kbn:/api/alerting/rule/ae2694af-e78e-497c-88cf-4cd43e4b01f8
           "summaryMode": true,
           "alertStates": {
             "new": true,
-            "ongoing": false,
+            "ongoing": true,
             "recovered": false
           }
         }
@@ -247,7 +239,7 @@ PUT kbn:/api/alerting/rule/e41ef1d8-efd8-449b-b2a5-6fff758c8939
           "summaryMode": true,
           "alertStates": {
             "new": true,
-            "ongoing": false,
+            "ongoing": true,
             "recovered": false
           }
         }
@@ -350,7 +342,213 @@ PUT kbn:/api/alerting/rule/72914c41-01ed-4ce7-ae68-a1b5eb445773
           "summaryMode": true,
           "alertStates": {
             "new": true,
-            "ongoing": false,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+PUT kbn:/api/alerting/rule/2b97fa70-0c0c-4192-95d6-3c1168063976
+{
+  "name": "SLO - Prod - Login — réussite conseiller Milo",
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nSLO menacé — connexion des conseillers Milo (prod) : la marge d'erreur du SLO se consomme trop vite.\n\n**Promesse** : 98 % des connexions des conseillers Milo aboutissent, hors refus métier, sur 30 jours glissants.\n\n## À vérifier\n\n1. Quel mode de connexion échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Le motif des connexions refusées (fournisseur d'identité, Keycloak) : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n3. Si un fournisseur d'identité ou un partenaire est en panne : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Dashboards\n\n- [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n\n## Documentation\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14"
+      },
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "tags": [
+    "prod",
+    "slo"
+  ],
+  "params": {
+    "sloId": "eab098cb-e596-4870-a1a6-7455ec89cf50",
+    "windows": [
+      {
+        "id": "alert",
+        "actionGroup": "slo.burnRate.alert",
+        "burnRateThreshold": 14.4,
+        "maxBurnRateThreshold": 50.0,
+        "longWindow": {
+          "value": 1,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 5,
+          "unit": "m"
+        }
+      },
+      {
+        "id": "high",
+        "actionGroup": "slo.burnRate.high",
+        "burnRateThreshold": 6,
+        "maxBurnRateThreshold": 50.0,
+        "longWindow": {
+          "value": 6,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 30,
+          "unit": "m"
+        }
+      },
+      {
+        "id": "medium",
+        "actionGroup": "slo.burnRate.medium",
+        "burnRateThreshold": 3,
+        "maxBurnRateThreshold": 50.0,
+        "longWindow": {
+          "value": 24,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 2,
+          "unit": "h"
+        }
+      },
+      {
+        "id": "low",
+        "actionGroup": "slo.burnRate.low",
+        "burnRateThreshold": 1,
+        "maxBurnRateThreshold": 50.0,
+        "longWindow": {
+          "value": 72,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 6,
+          "unit": "h"
+        }
+      }
+    ]
+  },
+  "actions": [
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+PUT kbn:/api/alerting/rule/7a614dbc-e1cd-4bfe-b0a5-e42c9e53b4b4
+{
+  "name": "SLO - Prod - Login — réussite jeune Milo",
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nSLO menacé — connexion des jeunes Milo (prod) : la marge d'erreur du SLO se consomme trop vite.\n\n**Promesse** : 98 % des connexions des jeunes Milo aboutissent, hors refus métier, sur 30 jours glissants.\n\n## À vérifier\n\n1. Quel mode de connexion échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Le motif des connexions refusées (fournisseur d'identité, Keycloak) : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n3. Si un fournisseur d'identité ou un partenaire est en panne : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Dashboards\n\n- [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n\n## Documentation\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14"
+      },
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "tags": [
+    "prod",
+    "slo"
+  ],
+  "params": {
+    "sloId": "43943a19-4410-4001-a86e-3f414f13e18d",
+    "windows": [
+      {
+        "id": "alert",
+        "actionGroup": "slo.burnRate.alert",
+        "burnRateThreshold": 14.4,
+        "maxBurnRateThreshold": 50.0,
+        "longWindow": {
+          "value": 1,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 5,
+          "unit": "m"
+        }
+      },
+      {
+        "id": "high",
+        "actionGroup": "slo.burnRate.high",
+        "burnRateThreshold": 6,
+        "maxBurnRateThreshold": 50.0,
+        "longWindow": {
+          "value": 6,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 30,
+          "unit": "m"
+        }
+      },
+      {
+        "id": "medium",
+        "actionGroup": "slo.burnRate.medium",
+        "burnRateThreshold": 3,
+        "maxBurnRateThreshold": 50.0,
+        "longWindow": {
+          "value": 24,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 2,
+          "unit": "h"
+        }
+      },
+      {
+        "id": "low",
+        "actionGroup": "slo.burnRate.low",
+        "burnRateThreshold": 1,
+        "maxBurnRateThreshold": 50.0,
+        "longWindow": {
+          "value": 72,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 6,
+          "unit": "h"
+        }
+      }
+    ]
+  },
+  "actions": [
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
             "recovered": false
           }
         }
@@ -361,10 +559,10 @@ PUT kbn:/api/alerting/rule/72914c41-01ed-4ce7-ae68-a1b5eb445773
 
 PUT kbn:/api/alerting/rule/ca02fee2-9d18-46bd-b2b9-dd96d8a6d593
 {
-  "name": "SLO - Prod - Login — réussite par mode d'authentification",
+  "name": "SLO - Prod - Login — réussite conseiller France Travail",
   "artifacts": {
     "investigation_guide": {
-      "blob": "## Ce que signale l'alerte\n\nSLO menacé — connexion par mode d'authentification (prod) : la marge d'erreur du SLO se consomme trop vite.\n\n**Promesse** : 99 % des connexions aboutissent, pour chaque mode d'authentification, hors refus métier, sur 30 jours glissants.\n\n## À vérifier\n\n1. Quel mode de connexion échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Le motif des connexions refusées (fournisseur d'identité, Keycloak) : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n3. Si un fournisseur d'identité ou un partenaire est en panne : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Dashboards\n\n- [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n\n## Documentation\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n"
+      "blob": "## Ce que signale l'alerte\n\nSLO menacé — connexion des conseillers France Travail (prod) : la marge d'erreur du SLO se consomme trop vite.\n\n**Promesse** : 99 % des connexions des conseillers France Travail aboutissent, hors refus métier, sur 30 jours glissants.\n\n## À vérifier\n\n1. Quel mode de connexion échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Le motif des connexions refusées (fournisseur d'identité, Keycloak) : le Discover [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n3. Si un fournisseur d'identité ou un partenaire est en panne : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Dashboards\n\n- [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8)\n\n## Documentation\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n"
     },
     "dashboards": [
       {
@@ -453,7 +651,7 @@ PUT kbn:/api/alerting/rule/ca02fee2-9d18-46bd-b2b9-dd96d8a6d593
           "summaryMode": true,
           "alertStates": {
             "new": true,
-            "ongoing": false,
+            "ongoing": true,
             "recovered": false
           }
         }
@@ -514,7 +712,7 @@ PUT kbn:/api/alerting/rule/8c760b1b-5859-410e-9a0d-829fb0499412
           "summaryMode": true,
           "alertStates": {
             "new": true,
-            "ongoing": false,
+            "ongoing": true,
             "recovered": false
           }
         }
@@ -575,7 +773,7 @@ PUT kbn:/api/alerting/rule/00f15660-40ba-4fb1-a59d-6345ce07c360
           "summaryMode": true,
           "alertStates": {
             "new": true,
-            "ongoing": false,
+            "ongoing": true,
             "recovered": false
           }
         }

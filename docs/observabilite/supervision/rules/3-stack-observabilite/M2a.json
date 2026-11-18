@@ -3,6 +3,34 @@
   "_commentaire": [
     "# M2a — Erreurs prod (Warning, bilan quotidien)"
   ],
+  "_message": {
+    "titre": "**Logs de prod non indexés : erreur de transformation Logstash — bilan des 24 h** — {valeur} logs de prod ne sont pas consultables dans Kibana.",
+    "gravite": "avertissement",
+    "sections": [
+      {
+        "titre": "À vérifier",
+        "lignes": [
+          "1. Quels logs n'ont pas pu être transformés : le Discover [[Pass Emploi] Logs de Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17) — `tags` donne l'étape en échec, `message` le log d'origine",
+          "2. Quelle app les émet, et depuis quand : la répartition par `service.name` (onglet *Field statistics*) du même Discover",
+          "3. Corriger le filtre Logstash concerné (`logs/` de pass-emploi-tools), puis vérifier que les erreurs cessent dans le même Discover"
+        ]
+      }
+    ],
+    "liens": {
+      "Discover sessions": [
+        {
+          "nom": "[Pass Emploi] Logs de Prod - Erreurs de traitement Logstash Process",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17"
+        }
+      ],
+      "Runbook": [
+        {
+          "nom": "Runbook scénario",
+          "url": "https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue"
+        }
+      ]
+    }
+  },
   "name": "Logstash - Prod - Détection erreurs pipeline process",
   "tags": [
     "prod",
@@ -51,67 +79,6 @@
     "sourceFields": []
   },
   "actions": [
-    {
-      "group": "query matched",
-      "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
-      "params": {
-        "body": {
-          "text": "⚠️ **Logs de prod non indexés : erreur de transformation Logstash — bilan des 24 h** — {{context.value}} logs de prod ne sont pas consultables dans Kibana.",
-          "attachments": [
-            {
-              "color": "#f2c744",
-              "fields": [
-                {
-                  "title": "Règle",
-                  "value": "`{{rule.name}}`",
-                  "short": true
-                },
-                {
-                  "title": "Déclenchée à",
-                  "value": "`{{date}}`",
-                  "short": true
-                },
-                {
-                  "title": "À vérifier",
-                  "value": "1. Quels logs n'ont pas pu être transformés : le Discover [[Pass Emploi] Logs de Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17) — `tags` donne l'étape en échec, `message` le log d'origine\n2. Quelle app les émet, et depuis quand : la répartition par `service.name` (onglet *Field statistics*) du même Discover\n3. Corriger le filtre Logstash concerné (`logs/` de pass-emploi-tools), puis vérifier que les erreurs cessent dans le même Discover"
-                },
-                {
-                  "title": "Discover sessions",
-                  "value": "[[Pass Emploi] Logs de Prod - Erreurs de traitement Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/f10de9e3-0fdd-4761-9d44-bacc96504e17)"
-                },
-                {
-                  "title": "Runbook",
-                  "value": "[Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)"
-                }
-              ]
-            }
-          ]
-        }
-      },
-      "frequency": {
-        "summary": false,
-        "notify_when": "onActiveAlert",
-        "throttle": null
-      },
-      "alerts_filter": {
-        "timeframe": {
-          "days": [
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7
-          ],
-          "timezone": "Europe/Paris",
-          "hours": {
-            "start": "09:30",
-            "end": "10:30"
-          }
-        }
-      }
-    },
     {
       "id": "system-connector-.workflows",
       "params": {

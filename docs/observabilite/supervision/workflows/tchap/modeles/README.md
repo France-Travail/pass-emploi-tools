@@ -1,8 +1,8 @@
 # Modèles des Workflows Tchap
 
-Les gabarits que `../generer-workflows.py` assemble pour produire les Workflows de
+Les gabarits que l'étape de chargement Tchap ([`../../../rules/scripts/notifications/tchap/3-charger.py`](../../../rules/scripts/notifications/tchap/3-charger.py)) assemble pour produire les Workflows de
 `../generated/`. Les modifier ici, jamais dans `../generated/`, puis lancer
-`python3 -I ../generer-workflows.py` (cf. [README Tchap](../README.md)).
+`python3 -I ../../../rules/scripts/generer-notifications-tchap.py` (cf. [README Tchap](../README.md)).
 
 Les repères `@@NOM@@` sont remplacés à la génération. Le Liquid (`{{ … }}`,
 `{% … %}`) est laissé tel quel : c'est Kibana qui l'exécute quand le Workflow tourne.

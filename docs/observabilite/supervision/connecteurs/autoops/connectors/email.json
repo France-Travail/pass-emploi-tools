@@ -1,0 +1,8 @@
+{
+  "nom": "Email production - Monitoring disque, santé et indexation Elasticsearch",
+  "type": "Email",
+  "destinataires": [
+    "<adresses de l'équipe>"
+  ],
+  "notification_de_cloture": true
+}

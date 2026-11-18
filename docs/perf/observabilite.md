@@ -2,7 +2,7 @@
 
 > **Reference.** Sous-chantier du [chantier perf](./README.md). Les SLO sont
 > définis dans
-> [`observabilite/supervision/slo/1-slos.console`](../observabilite/supervision/slo/1-slos.console) ;
+> [`observabilite/supervision/slo/generated/1-slos.console`](../observabilite/supervision/slo/generated/1-slos.console) ;
 > ce fichier-ci pose **ce que l'app jeune doit émettre** pour qu'on puisse les
 > mesurer.
 
@@ -45,7 +45,7 @@ mobile), propagé sur tous les événements du funnel.
 
 ## Mise en œuvre
 
-- SLO : [`supervision/slo/1-slos.console`](../observabilite/supervision/slo/1-slos.console) ; causes d'échec du login : [runbook d'investigation](../observabilite/runbooks/investigation-incident.md#limite--les-flux-non-authentifiés) ;
+- SLO : [`supervision/slo/generated/1-slos.console`](../observabilite/supervision/slo/generated/1-slos.console) ; causes d'échec du login : [runbook d'investigation](../observabilite/runbooks/investigation-incident.md#limite--les-flux-non-authentifiés) ;
   alertes : [applicatives](../observabilite/supervision/alertes-applicatives.md) et
   [stack d'observabilité](../observabilite/supervision/alertes-stack-observabilite.md) ;
   définitions de rétention versionnées sous [`stockage/`](../observabilite/stockage/README.md).

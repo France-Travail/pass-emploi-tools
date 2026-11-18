@@ -1,6 +1,0 @@
-{
-  "msgtype": "m.text",
-  "body": "🚨 AutoOps — ${TITLE} (${SEVERITY}, ${STATUS}) — ${RESOURCE_NAME}\n${MESSAGE}\nNœuds : ${AFFECTED_NODES} · Index : ${AFFECTED_INDICES}\nDébut : ${START_TIME} · Fin : ${END_TIME}\n${EVENT_LINK}",
-  "format": "org.matrix.custom.html",
-  "formatted_body": "<p>🚨 <strong>AutoOps — ${TITLE}</strong> (${SEVERITY}, ${STATUS}) — ${RESOURCE_NAME}</p><p>${MESSAGE}</p><p>Nœuds : ${AFFECTED_NODES} · Index : ${AFFECTED_INDICES}<br />Début : <code>${START_TIME}</code> · Fin : <code>${END_TIME}</code></p><p>À vérifier : <a href=\"${EVENT_LINK}\">l'événement dans AutoOps</a></p><p>Runbook : Disque des nœuds Elasticsearch - https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-disque-elasticsearch.md</p>"
-}

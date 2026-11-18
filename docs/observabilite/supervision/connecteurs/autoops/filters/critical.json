@@ -1,0 +1,14 @@
+{
+  "nom": "Elasticsearch - Critical",
+  "severite": "Critical",
+  "deploiement": "Pass Emploi",
+  "delai_minutes": 0,
+  "evenements": [
+    "The flood stage disk watermark has been exceeded",
+    "The cluster status is red"
+  ],
+  "connecteurs": [
+    "Tchap o11y-production - AutoOps Critical",
+    "Email production - Monitoring disque, santé et indexation Elasticsearch"
+  ]
+}

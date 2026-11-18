@@ -75,7 +75,7 @@ Executions*.
 2. Mettre le nouveau jeton partout où l'ancien était :
    - le connecteur Tchap de Kibana : `PUT` de
      [`connecteurs/tchap.console`](../supervision/connecteurs/tchap.console) ;
-   - les connecteurs Tchap d'AutoOps des [alertes M11 et M12](../supervision/alertes-stack-observabilite.md#alerte-m11--disque-des-nœuds-elasticsearch-autoops)
+   - les connecteurs Tchap d'AutoOps des [alertes M11 et M12](../supervision/alertes-stack-observabilite.md#notifications-autoops-m11-et-m12)
      (en-tête `Authorization`).
 3. Ranger la date d'expiration du nouveau compte (inscription + 11 mois +
    60 jours), et son identifiant s'il a changé, comme à l'étape 1.

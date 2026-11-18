@@ -76,17 +76,20 @@ cluster en panne.
 | [`tchap-client.console`](tchap-client.console) | le seul Workflow qui parle à Matrix |
 | `generated/tchap-<salon>.console`, un par salon de [`salons.json`](salons.json) | un Workflow par salon, **générés** : ne pas les modifier à la main |
 | [`generated/tchap-jobs-production-rapport.console`](generated/tchap-jobs-production-rapport.console), [`generated/tchap-jobs-staging-rapport.console`](generated/tchap-jobs-staging-rapport.console) | rapport quotidien des jobs de l'api, chaque jour à 9 h 30 (heure de Paris), **générés** |
-| [`generer-workflows.py`](generer-workflows.py) | génère les Workflows de salon depuis les règles de [`../../rules/`](../../rules/), et les rapports depuis la liste des CRON de `pass-emploi-api` (`origin/develop`) : `python3 -I generer-workflows.py` après toute modification d'une règle, d'un salon ou des CRON de l'api |
+| [`../../rules/scripts/generer-notifications-tchap.py`](../../rules/scripts/generer-notifications-tchap.py) | génère les Workflows de salon depuis les règles de [`../../rules/`](../../rules/), et les rapports depuis la liste des CRON de `pass-emploi-api` (`origin/develop`), en 3 étapes ([`../../rules/scripts/notifications/`](../../rules/scripts/notifications/) : extraire, transformer, charger) : `python3 -I rules/scripts/generer-notifications-tchap.py`, depuis `supervision/`, après toute modification d'une règle, d'un salon ou des CRON de l'api |
 | [`../../rules/generated/4-rules-tchap.console`](../../rules/generated/4-rules-tchap.console) | règle « Tchap - Envoi en échec » |
 | [`../../rules/generated/5-rules-tchap-expiration-bot.console`](../../rules/generated/5-rules-tchap-expiration-bot.console) | règle « Tchap - Expiration du compte bot », date d'expiration rangée dans Elasticsearch |
 
 ## Le message
 
-Le message Tchap d'une règle reprend son **message Mattermost** (titre, couleur,
-champs), que `generer-workflows.py` traduit de Mustache en Liquid pour chaque
-règle de chaque salon. Ordre :
+Le message Tchap d'une règle est le rendu de son message au
+[format pivot](../../rules/README.md#le-message-dune-règle) (clé `_message` de son fichier JSON) :
+`../../rules/scripts/notifications/tchap/2-transformer.py` en traduit les variables en Liquid, pour chaque règle de
+chaque salon. Ordre :
 
-1. le titre, en couleur (celle du message Mattermost), puis « Déclenchée à » ;
+1. le titre, précédé de l'émoji de sa gravité et dans sa couleur (🚨 critique,
+   ⚠️ avertissement, aucun émoji et gris pour une information, ✅ rétablissement),
+   puis « Déclenchée à » ;
 2. les lignes de détail, selon les tags de la règle (cf. [brancher une règle](#brancher-une-règle)) ;
    pour une règle ES|QL, une ligne par résultat de sa requête, que le Workflow de
    salon relance (cf. [brancher une règle](#brancher-une-règle)) ;
@@ -146,7 +149,7 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
    `francetravail.fr` donne `agent.tchap.gouv.fr`, l'URL utilisée dans cette
    doc. Pour un autre domaine (`beta.gouv.fr` → `agent.dinum.tchap.gouv.fr`),
    remplacer l'URL partout : connecteur, `curl` ci-dessous, connecteurs AutoOps
-   des [alertes M11 et M12](../../alertes-stack-observabilite.md#alerte-m11--disque-des-nœuds-elasticsearch-autoops).
+   des [alertes M11 et M12](../../alertes-stack-observabilite.md#notifications-autoops-m11-et-m12).
 3. **Salons** : ceux de [`salons.json`](salons.json), **privés et non chiffrés**.
    - **Non chiffrés** : le bot ne sait pas chiffrer. Tchap n'impose pas le
      chiffrement d'un salon de bot (confirmé par l'équipe beta.gouv), les messages respectent les
@@ -212,11 +215,10 @@ et mettre à jour le jeton du connecteur.
 
 ## Brancher une règle
 
-1. Ajouter à la règle le tag `critical` ou `warning` si son titre doit porter
-   une gravité (🚨 / ⚠️). Les règles dont chaque ligne porte sa gravité
-   (événements Scalingo) n'en ont pas.
-2. Ajouter l'action `.workflows` vers le Workflow du salon, celui qui
-   correspond au canal Mattermost de la règle :
+1. Écrire son message dans `_message`, au [format pivot](../../rules/README.md#le-message-dune-règle),
+   avec sa gravité (`gravite`). Les règles dont chaque ligne porte sa gravité
+   (événements Scalingo) sont en `information`.
+2. Ajouter l'action `.workflows` vers le Workflow du salon de la règle :
    ```json
    { "id": "system-connector-.workflows",
      "params": { "subAction": "run", "subActionParams": {
@@ -250,8 +252,7 @@ et mettre à jour le jeton du connecteur.
    ligne de notification (illisible, peut-être personnelle, et au-delà de
    65 Ko l'envoi échoue).
 4. **Règle ES|QL** (A1, A2, A3, A6, A7) : `groupBy: all`, une seule alerte
-   tant que la requête renvoie des lignes, donc un message à l'apparition (et un
-   rappel par heure côté Mattermost). Son action `.workflows` vise le Workflow
+   tant que la requête renvoie des lignes, donc un message à l'apparition. Son action `.workflows` vise le Workflow
    de son salon, comme les autres règles, mais le document d'alerte ne contient
    pas les lignes du résultat. Il contient en revanche les paramètres de la
    règle : l'étape `si-esql` du Workflow de salon relance la requête de la
@@ -259,23 +260,21 @@ et mettre à jour le jeton du connecteur.
    règle qui précède le début de l'alerte (paramètre `filter` de l'étape, sur
    `@timestamp` : pas sur `NOW()`, quelques secondes plus tard un incident juste
    au-dessus du seuil repasserait dessous). Le message écrit une ligne par
-   résultat avec le gabarit `tchap` de la règle (`../../rules/generer-regles.py`) ;
+   résultat avec le gabarit `_message.resultat.ligne` de la règle ;
    sans ligne, il le dit (« Sous le seuil à la relecture… »). Le générateur
    refuse une règle ES|QL dont le champ de temps n'est pas `@timestamp` : Kibana
    ne remplace pas une variable dans un nom de champ. Une règle ES|QL en
    `groupBy: row` reçoit, elle, ses colonnes dans `kibana.alert.grouping`.
-5. **Règle Uptime** (A8 à A10) : `recovered: true`, et un second message
-   Mattermost dans le groupe `recovered` ; le Workflow de salon envoie celui-ci
-   pour une alerte rétablie (« ✅ … de nouveau joignable », « Rétablie à »). Les
-   variables `{{state.X}}` deviennent `kibana.alert.state.X`. A11 (TLS, une
+5. **Règle Uptime** (A8 à A10) : `recovered: true`, et un message de
+   rétablissement (`_message.retablissement`) ; le Workflow de salon envoie
+   celui-ci pour une alerte rétablie (« ✅ … de nouveau joignable », « Rétablie
+   à »). Les variables `{etat.X}` deviennent `kibana.alert.state.X`. A11 (TLS, une
    exécution par jour) n'a pas de rétablissement mais garde `ongoing: true` :
-   un rappel par jour et par certificat, comme dans Mattermost.
+   un rappel par jour et par certificat.
 
-**D'où vient le message Tchap** : du fichier JSON de la règle
-(`../../rules/<n>-<périmètre>/<code>.json`) : le message de son action Mattermost,
-lu dans ce fichier, ou sa clé `_message` pour une règle sans action Mattermost
-(« Tchap - Expiration du compte bot »). Jamais de la règle générée : retirer les
-actions Mattermost ne change pas les messages Tchap (cf. [règles](../../rules/README.md)).
+**D'où vient le message Tchap** : de la clé `_message` du fichier JSON de la
+règle (`../../rules/<n>-<périmètre>/<code>.json`), jamais de la règle générée,
+qui ne porte que l'action `.workflows` (cf. [règles](../../rules/README.md)).
 
 Une règle branchée sur Tchap sans fichier JSON **fait échouer la
 génération**, en la nommant : elle n'aurait reçu qu'un message générique (nom
@@ -285,9 +284,9 @@ de la règle et raison brute de Kibana).
 
 1. Créer le salon dans Tchap, y inviter le bot, le faire rejoindre (`curl …/join`
    de la mise en service).
-2. Copier un `tchap-<salon>.console` en remplaçant le nom du salon partout,
-   et son ID (Tchap → paramètres du salon → Avancé) dans `consts.salon`, puis
-   l'importer.
+2. Ajouter le salon et son ID (Tchap → paramètres du salon → Avancé) à
+   [`salons.json`](salons.json), lancer `rules/scripts/generer-notifications-tchap.py`, puis importer le
+   `generated/tchap-<salon>.console` produit.
 
 ## Pièges
 
@@ -309,8 +308,7 @@ de la règle et raison brute de Kibana).
   `groupBy: all` et la relance de la requête par le Workflow de salon.
 - Un incident qui oscille autour du seuil d'une règle ES|QL donne un message à
   chaque retour au-dessus, tant que Kibana ne l'a pas vu bagoter (4 changements
-  d'état) : 1 ou 2 messages de plus en début d'incident, dans Mattermost comme
-  dans Tchap.
+  d'état) : 1 ou 2 messages de plus en début d'incident, dans Tchap.
 - La boucle sur les alertes est une **étape** `type: foreach` ; une propriété
   `foreach:` posée sur `workflow.execute` est ignorée sans erreur.
 - Les Workflows exigent la licence **Enterprise**.

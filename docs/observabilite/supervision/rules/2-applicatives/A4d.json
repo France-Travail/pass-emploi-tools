@@ -3,6 +3,18 @@
   "_commentaire": [
     "# A4d — Opérations d'infra Scalingo des apps applicatives, staging / perf (ℹ️, salon infra-staging)"
   ],
+  "_message": {
+    "titre": "**Opérations d'infra Scalingo des apps hors prod** ({valeur})",
+    "gravite": "information",
+    "liens": {
+      "Dashboards": [
+        {
+          "nom": "[Scalingo] Dashboard des apps",
+          "url": "https://dashboard.scalingo.com/apps"
+        }
+      ]
+    }
+  },
   "name": "Scalingo - Hors-Prod - Opérations d'infra des apps applicatives",
   "tags": [
     "hors-prod",
@@ -54,37 +66,6 @@
     "sourceFields": []
   },
   "actions": [
-    {
-      "group": "query matched",
-      "id": "4cb10f00-22d9-4cf0-bda1-e288c4abb339",
-      "params": {
-        "body": {
-          "text": "**Opérations d'infra Scalingo des apps hors prod** ({{context.value}})",
-          "attachments": [
-            {
-              "color": "#808080",
-              "text": "{{#context.hits}}{{_source.message}}\n{{/context.hits}}",
-              "fields": [
-                {
-                  "title": "Règle",
-                  "value": "`{{rule.name}}`",
-                  "short": true
-                },
-                {
-                  "title": "Dashboards",
-                  "value": "[[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
-                }
-              ]
-            }
-          ]
-        }
-      },
-      "frequency": {
-        "summary": false,
-        "notify_when": "onActiveAlert",
-        "throttle": null
-      }
-    },
     {
       "id": "system-connector-.workflows",
       "params": {

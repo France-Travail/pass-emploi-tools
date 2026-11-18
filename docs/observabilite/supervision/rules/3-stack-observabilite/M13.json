@@ -4,6 +4,27 @@
     "# M13 — Événement externe rejeté par son pipeline ou par Elasticsearch (Warning). L'émetteur",
     "# reçoit 201 même quand le document part au failure store."
   ],
+  "_message": {
+    "titre": "**Événements externes rejetés — des notifications Scalingo ou GitHub ne sont pas arrivées dans Kibana : leur émetteur a pourtant reçu un succès** ({valeur})",
+    "gravite": "avertissement",
+    "sections": [
+      {
+        "titre": "À vérifier",
+        "lignes": [
+          "1. Le Discover [[Pass Emploi] Alertes externes - Rejets (failure store)](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/861dbdf4-5086-498b-aff6-4d9d68ceb1f4) : `error.type` et `error.message` donnent le motif du rejet",
+          "2. Le payload d'origine (`document.source`) : adapter le pipeline, puis le rejouer en `_simulate`"
+        ]
+      }
+    ],
+    "liens": {
+      "Discover sessions": [
+        {
+          "nom": "[Pass Emploi] Alertes externes - Rejets (failure store)",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/861dbdf4-5086-498b-aff6-4d9d68ceb1f4"
+        }
+      ]
+    }
+  },
   "name": "Événements externes - Payload rejeté (failure store)",
   "tags": [
     "warning",
@@ -53,46 +74,6 @@
     "sourceFields": []
   },
   "actions": [
-    {
-      "group": "query matched",
-      "id": "d2812573-52bf-4b48-9e54-a79a8b5b227d",
-      "params": {
-        "body": {
-          "text": "⚠️ **Événements externes rejetés — des notifications Scalingo ou GitHub ne sont pas arrivées dans Kibana : leur émetteur a pourtant reçu un succès** ({{context.value}})",
-          "attachments": [
-            {
-              "color": "#ffa500",
-              "text": "{{#context.hits}}• `{{_source.error.type}}` : {{_source.error.message}}\n{{/context.hits}}",
-              "fields": [
-                {
-                  "title": "Règle",
-                  "value": "`{{rule.name}}`",
-                  "short": true
-                },
-                {
-                  "title": "Déclenchée à",
-                  "value": "`{{date}}`",
-                  "short": true
-                },
-                {
-                  "title": "À vérifier",
-                  "value": "1. Le Discover [[Pass Emploi] Alertes externes - Rejets (failure store)](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/861dbdf4-5086-498b-aff6-4d9d68ceb1f4) : `error.type` et `error.message` donnent le motif du rejet\n2. Le payload d'origine (`document.source`) : adapter le pipeline, puis le rejouer en `_simulate`"
-                },
-                {
-                  "title": "Discover sessions",
-                  "value": "[[Pass Emploi] Alertes externes - Rejets (failure store)](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/861dbdf4-5086-498b-aff6-4d9d68ceb1f4)"
-                }
-              ]
-            }
-          ]
-        }
-      },
-      "frequency": {
-        "summary": false,
-        "notify_when": "onActiveAlert",
-        "throttle": null
-      }
-    },
     {
       "id": "system-connector-.workflows",
       "params": {

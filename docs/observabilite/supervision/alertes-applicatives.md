@@ -4,7 +4,7 @@ Les alertes sur des pannes **visibles des utilisateurs et impactantes pour le
 métier**, en cinq couches :
 
 - **alertes SLO** (SLO1 à SLO3) — une promesse de service est-elle menacée ?
-  Déduites des SLO Kibana ([`slo/1-slos.console`](slo/1-slos.console)) ;
+  Déduites des SLO Kibana ([`slo/generated/1-slos.console`](slo/generated/1-slos.console)) ;
 - **alertes de diagnostic** (A1 à A3, A6, A7) — pourquoi : un partenaire qui
   tombe, des 5xx qui s'accumulent, une vague de refus d'authentification, la
   base de données en erreur, le front en erreur ;
@@ -33,7 +33,7 @@ A5a / A5b (salons des jobs, `jobs-production` / `jobs-staging`), cf.
 |----|----------------------------|---------------------|-------------------------------------------------------|-----------|----------|-------------|
 | SLO1 | SLO disponibilité api      | SLO Kibana          | burn rate ≥ 6 par parcours critique                   | 1 min     | —        | 🚨 Critical |
 | SLO2 | SLO latence api            | SLO Kibana          | burn rate ≥ 6 par parcours critique                   | 1 min     | —        | 🚨 Critical |
-| SLO3 | SLO réussite login         | SLO Kibana          | burn rate ≥ 6 par mode d'authentification             | 1 min     | —        | 🚨 Critical |
+| SLO3 | SLO réussite login         | SLO Kibana          | burn rate ≥ 6, un SLO par mode d'authentification   | 1 min     | —        | 🚨 Critical |
 | A1 | Pic d'échecs partenaire    | `logs-prod-default` | `external_api_call` `failure` > 100 / 5 min par domaine (5xx, 429, 4xx, timeout) | 1 min     | 1h       | ⚠️Warning  |
 | A2 | Erreurs serveur 5xx        | APM `metrics-apm.transaction.1m-*` | requêtes api + connect en 5xx > 50 / 5 min, par template | 1 min     | 1h       | 🚨 Critical |
 | A3 | Pic d'auth refusées        | `logs-prod-default` | `auth_failed` > 3 × même heure sur 7 j, ≥ 20 / 10 min | 5 min     | 1h       | 🚨 Critical |
@@ -91,26 +91,28 @@ d'alerte, y compris celles de la [stack](alertes-stack-observabilite.md) et de
 ## Alertes SLO — la promesse est menacée
 
 Une règle **SLO burn rate** par SLO de
-[`slo/1-slos.console`](slo/1-slos.console). Elle mesure la
+[`slo/generated/1-slos.console`](slo/generated/1-slos.console). Elle mesure la
 vitesse à laquelle le budget d'erreur des 30 jours se consomme, sur une fenêtre
 longue et une fenêtre courte : la longue évite de déclencher sur un pic isolé,
 la courte fait retomber l'alerte dès que le problème cesse. La règle s'évalue
 instance par instance : un parcours ou un mode d'authentification à la fois.
 
-- **SLO1** — SLO « API — disponibilité par parcours » : tous les parcours, le 401 et le 403 comptent en succès ;
+- **SLO1** — SLO « API — disponibilité par parcours » : tous les parcours ; le 401 et le 403 de tous les parcours, et le 422 du parcours authentification (refus de connexion métier), comptent en succès ;
 - **SLO2** — SLO « API — latence des parcours critiques » ;
-- **SLO3** — SLO « Login — réussite jeune France Travail » et « Login — réussite par mode d'authentification ».
+- **SLO3** — un SLO par mode d'authentification : « Login — réussite jeune France Travail », « conseiller France Travail », « jeune Milo », « conseiller Milo ».
   Pour « Login — réussite invité » et « Login — réussite conseiller
   départemental », une seule fenêtre longue, notifiée en High : quelques
   tentatives par jour, un échec isolé sur 1 h vaudrait 100 % d'échecs.
 
-| SLO                        | Fenêtre longue / courte | Burn rate | Sens                                   |
-|----------------------------|-------------------------|-----------|----------------------------------------|
-| Invité (objectif 90 %)     | 72 h / 6 h              | 2         | ≥ 20 % d'échecs sur ~18 tentatives     |
-| Conseiller départemental (objectif 95 %) | 168 h / 12 h | 4      | ≥ 20 % d'échecs sur ~10 tentatives     |
+**Objectif et seuils de burn rate de chaque SLO** : [`slo/seuils.json`](slo/seuils.json),
+à la clé du code de sa règle (`SLO1`, `SLO3-invite`…), la seule source à modifier
+pour les régler. `rules/scripts/generer-regles-alerting.py` en déduit la cible
+du SLO, les seuils de sa règle (dont le seuil maximal, 1 / (1 − objectif)), et
+la « Promesse » de son message (`{objectif}`, cf.
+[le message d'une règle](rules/README.md#le-message-dune-règle)).
 
 **Création** : rejouer [`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console)
-dans Dev Tools, après [`slo/1-slos.console`](slo/1-slos.console).
+dans Dev Tools, après [`slo/generated/1-slos.console`](slo/generated/1-slos.console).
 
 | Paramètre               | Valeur                                                                                               |
 |-------------------------|------------------------------------------------------------------------------------------------------|
@@ -422,8 +424,7 @@ exécution » à « au changement d'état ».
 Tchap reçoit les mêmes messages par le Workflow `tchap-monitoring-production`
 (alertes nouvelles et rétablies ; pour A11, aussi les alertes en cours, une
 fois par jour). Kibana donne l'échéance d'un certificat en anglais
-(`state.summary`) : le Workflow la traduit, le message Mattermost la garde
-telle quelle.
+(`state.summary`) : le Workflow la traduit.
 
 **Message et étapes « À vérifier »** : dans les blocs des règles de [`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console), qui font foi. Mise à jour : `PUT`, comme les autres règles.
 
@@ -610,7 +611,7 @@ Ce n'est pas une règle : une action Tchap ne sait pas viser une heure fixe,
 c'est un Workflow planifié
 ([`tchap-jobs-production-rapport.console`](workflows/tchap/generated/tchap-jobs-production-rapport.console)).
 Les exécutions attendues viennent des expressions cron de pass-emploi-api,
-lues par [`generer-workflows.py`](workflows/tchap/generer-workflows.py) : à
+lues par [`generer-notifications-tchap.py`](rules/scripts/generer-notifications-tchap.py) : à
 relancer quand les CRON changent. Les jobs hors CRON qui ont tourné y figurent
 aussi, sans exécutions attendues. Seul manque `nbErreurs`, absent des logs.
 

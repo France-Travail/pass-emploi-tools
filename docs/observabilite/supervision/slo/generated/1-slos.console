@@ -1,0 +1,192 @@
+# ⚠️ FICHIER GÉNÉRÉ par ../../rules/scripts/generer-regles-alerting.py : NE PAS LE MODIFIER, il serait écrasé.
+# À modifier à la place : l'objectif d'un SLO dans ../seuils.json, le reste dans ../_modele.console.
+# La CI de chaque PR vérifie que ce fichier correspond à ses sources.
+#
+# SLO Kibana — prod. Alertes burn rate : ../alertes-applicatives.md.
+#
+# L'objectif de chaque SLO (sa cible, et son pourcentage dans une description) vient de
+# seuils.json, à la clé du code de sa règle burn rate (rules/2-applicatives/SLO*.json).
+# À rejouer dans Dev Tools. PUT met à jour un SLO existant ; sur un cluster vide,
+# le créer avec POST kbn:/api/observability/slos et le même corps plus son "id".
+# Modifier un indicateur relance le calcul des 30 jours.
+#
+#
+# service.name est indispensable dans les filtres api : logs-prod-default reçoit
+# aussi les requêtes du web et de connect.
+#
+# SLO « API — disponibilité par parcours ». Le verdict est
+# l'event.outcome de la ligne de requête (401 et 403 de tous les parcours, et 422 du
+# parcours authentification, en succès, cf.
+# ../../format/logs/conventions.md#eventoutcome).
+# Exception : le 404 d'un GET plan_action ou questionnaire compte en succès.
+# Il signale qu'un jeune n'a pas encore de plan ou de questionnaire, ce qui est
+# un état normal. À retirer quand ces routes répondront 204
+# (pass-emploi-api #538 et #539).
+
+PUT kbn:/api/observability/slos/57e45f52-6c4c-45a4-8aa0-c5885c35e55f
+{
+  "name": "API — disponibilité par parcours",
+  "description": "99,5 % des requêtes de chaque parcours réussies, au sens de l'event.outcome de la ligne de requête : le 401 et le 403 de tous les parcours, et le 422 du parcours authentification, comptent en succès, comme le 404 d'un GET plan_action ou questionnaire (jeune sans plan ni questionnaire).",
+  "indicator": {
+    "type": "sli.kql.custom",
+    "params": {
+      "index": "logs-prod-default",
+      "filter": "service.name: pass-emploi-api and event.action: (request_completed or request_failed) and labels.user_journey: *",
+      "good": "event.outcome: success or (http.response.status_code: 404 and http.request.method: GET and labels.user_journey: (plan_action or questionnaire))",
+      "total": "*",
+      "timestampField": "@timestamp"
+    }
+  },
+  "timeWindow": { "duration": "30d", "type": "rolling" },
+  "budgetingMethod": "occurrences",
+  "objective": { "target": 0.995 },
+  "groupBy": "labels.user_journey",
+  "tags": ["prod", "api", "disponibilite"]
+}
+
+PUT kbn:/api/observability/slos/6c55ac3b-8b07-400c-89f8-0e46865166b2
+{
+  "name": "API — latence des parcours critiques",
+  "description": "99 % des requêtes sous 500 ms (authentification) ou 2,5 s (parcours avec partenaire).",
+  "indicator": {
+    "type": "sli.kql.custom",
+    "params": {
+      "index": "logs-prod-default",
+      "filter": "service.name: pass-emploi-api and event.action: (request_completed or request_failed) and labels.user_journey: (authentification or accueil_jeune_milo or accueil_jeune_france_travail or recherche_offres or messagerie or mon_suivi_milo or mon_suivi_france_travail)",
+      "good": "(labels.user_journey: authentification and event.duration < 500000000) or (not labels.user_journey: authentification and event.duration < 2500000000)",
+      "total": "*",
+      "timestampField": "@timestamp"
+    }
+  },
+  "timeWindow": { "duration": "30d", "type": "rolling" },
+  "budgetingMethod": "occurrences",
+  "objective": { "target": 0.99 },
+  "groupBy": "labels.user_journey",
+  "tags": ["prod", "api", "latence"]
+}
+
+PUT kbn:/api/observability/slos/ec53b7e4-604e-4e33-a4df-ace9e4aea01b
+{
+  "name": "Login — réussite jeune France Travail",
+  "description": "Login de bout en bout (pass-emploi-connect), hors refus métier. Objectif à relever à mesure que les OPError et SessionNotFound se résorbent.",
+  "indicator": {
+    "type": "sli.kql.custom",
+    "params": {
+      "index": "logs-prod-default",
+      "filter": "event.action: (login_completed or login_failed) and not error.type: UTILISATEUR_NON_TRAITABLE and labels.idp: francetravail-jeune",
+      "good": "event.action: login_completed",
+      "total": "*",
+      "timestampField": "@timestamp"
+    }
+  },
+  "timeWindow": { "duration": "30d", "type": "rolling" },
+  "budgetingMethod": "occurrences",
+  "objective": { "target": 0.85 },
+  "groupBy": "*",
+  "tags": ["prod", "connect", "login"]
+}
+
+PUT kbn:/api/observability/slos/eab098cb-e596-4870-a1a6-7455ec89cf50
+{
+  "name": "Login — réussite conseiller Milo",
+  "description": "Login de bout en bout (pass-emploi-connect), mode milo-conseiller, hors refus métier.",
+  "indicator": {
+    "type": "sli.kql.custom",
+    "params": {
+      "index": "logs-prod-default",
+      "filter": "event.action: (login_completed or login_failed) and not error.type: UTILISATEUR_NON_TRAITABLE and labels.idp: milo-conseiller",
+      "good": "event.action: login_completed",
+      "total": "*",
+      "timestampField": "@timestamp"
+    }
+  },
+  "timeWindow": { "duration": "30d", "type": "rolling" },
+  "budgetingMethod": "occurrences",
+  "objective": { "target": 0.98 },
+  "groupBy": "*",
+  "tags": ["prod", "connect", "login"]
+}
+
+PUT kbn:/api/observability/slos/43943a19-4410-4001-a86e-3f414f13e18d
+{
+  "name": "Login — réussite jeune Milo",
+  "description": "Login de bout en bout (pass-emploi-connect), mode milo-jeune, hors refus métier.",
+  "indicator": {
+    "type": "sli.kql.custom",
+    "params": {
+      "index": "logs-prod-default",
+      "filter": "event.action: (login_completed or login_failed) and not error.type: UTILISATEUR_NON_TRAITABLE and labels.idp: milo-jeune",
+      "good": "event.action: login_completed",
+      "total": "*",
+      "timestampField": "@timestamp"
+    }
+  },
+  "timeWindow": { "duration": "30d", "type": "rolling" },
+  "budgetingMethod": "occurrences",
+  "objective": { "target": 0.98 },
+  "groupBy": "*",
+  "tags": ["prod", "connect", "login"]
+}
+
+PUT kbn:/api/observability/slos/9afea251-1cf9-423f-a374-ca43c3e751ac
+{
+  "name": "Login — réussite conseiller France Travail",
+  "description": "Login de bout en bout (pass-emploi-connect), mode francetravail-conseiller, hors refus métier.",
+  "indicator": {
+    "type": "sli.kql.custom",
+    "params": {
+      "index": "logs-prod-default",
+      "filter": "event.action: (login_completed or login_failed) and not error.type: UTILISATEUR_NON_TRAITABLE and labels.idp: francetravail-conseiller",
+      "good": "event.action: login_completed",
+      "total": "*",
+      "timestampField": "@timestamp"
+    }
+  },
+  "timeWindow": { "duration": "30d", "type": "rolling" },
+  "budgetingMethod": "occurrences",
+  "objective": { "target": 0.99 },
+  "groupBy": "*",
+  "tags": ["prod", "connect", "login"]
+}
+
+PUT kbn:/api/observability/slos/3d00217c-87b8-45f5-882c-3338bb60750c
+{
+  "name": "Login — réussite invité",
+  "description": "Login de bout en bout (pass-emploi-connect), mode invité, hors refus métier. Faible trafic : alerte burn rate sur fenêtre longue.",
+  "indicator": {
+    "type": "sli.kql.custom",
+    "params": {
+      "index": "logs-prod-default",
+      "filter": "event.action: (login_completed or login_failed) and not error.type: UTILISATEUR_NON_TRAITABLE and labels.idp: invite",
+      "good": "event.action: login_completed",
+      "total": "*",
+      "timestampField": "@timestamp"
+    }
+  },
+  "timeWindow": { "duration": "30d", "type": "rolling" },
+  "budgetingMethod": "occurrences",
+  "objective": { "target": 0.9 },
+  "groupBy": "*",
+  "tags": ["prod", "connect", "login"]
+}
+
+PUT kbn:/api/observability/slos/61f38008-cb75-41de-aadc-0a65d2cb7a0d
+{
+  "name": "Login — réussite conseiller départemental",
+  "description": "Login de bout en bout (pass-emploi-connect), mode conseildepartemental-conseiller, hors refus métier. Faible trafic : alerte burn rate sur fenêtre longue.",
+  "indicator": {
+    "type": "sli.kql.custom",
+    "params": {
+      "index": "logs-prod-default",
+      "filter": "event.action: (login_completed or login_failed) and not error.type: UTILISATEUR_NON_TRAITABLE and labels.idp: conseildepartemental-conseiller",
+      "good": "event.action: login_completed",
+      "total": "*",
+      "timestampField": "@timestamp"
+    }
+  },
+  "timeWindow": { "duration": "30d", "type": "rolling" },
+  "budgetingMethod": "occurrences",
+  "objective": { "target": 0.95 },
+  "groupBy": "*",
+  "tags": ["prod", "connect", "login"]
+}

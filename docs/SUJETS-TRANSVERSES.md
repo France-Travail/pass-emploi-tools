@@ -63,6 +63,7 @@
   [`supervision/alertes-stack-observabilite.md`](./observabilite/supervision/alertes-stack-observabilite.md).
   Procédures pas-à-pas de diagnostic : [`pass-emploi-tools/docs/observabilite/runbooks/runbook-logstash.md`](./observabilite/runbooks/runbook-logstash.md)
   (5 scénarios de panne : backpressure ES, gel GC, DLQ, crash conteneur, backlog Redis).
+  Rattrapage des logs restés en DLQ (jamais la vider avant) : [`pass-emploi-tools/logs/rattrapage/README.md`](../logs/rattrapage/README.md).
   Post-mortems associés dans `../post-mortems/` :
   `postmortem-2026-06-logstash-5xx.md` (fonctionnement JVM/Netty/GC, correctif XL),
   `postmortem-2026-07-blackout-logs.md` (les 2 modes de panne observés),

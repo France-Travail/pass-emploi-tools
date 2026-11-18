@@ -1,0 +1,13 @@
+{
+  "nom": "Elasticsearch - High",
+  "severite": "High",
+  "deploiement": "Pass Emploi",
+  "delai_minutes": 0,
+  "evenements": [
+    "The high disk watermark has been exceeded"
+  ],
+  "connecteurs": [
+    "Tchap o11y-production - AutoOps High",
+    "Email production - Monitoring disque, santé et indexation Elasticsearch"
+  ]
+}

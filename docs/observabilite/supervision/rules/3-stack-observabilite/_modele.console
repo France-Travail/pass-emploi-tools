@@ -12,12 +12,8 @@
 # embarquées dans la règle (searchConfiguration.index) : leur id ne renvoie à
 # aucune data view enregistrée.
 #
-# Messages Mattermost : une section (« À vérifier », « Dashboards », « Discover
-# sessions ») = un champ, un élément par ligne (`\n`). Chaque champ tient sur une
-# seule ligne du fichier : l'éditeur de règle de Kibana lit le body comme du JSON
-# brut, un retour à la ligne dans une chaîne l'empêche de l'afficher. Pour relire
-# les étapes : le fichier <code>.json de la règle, dans ../3-stack-observabilite/, ou son
-# Investigation guide.
+# Message de chaque règle : la clé « _message » de son fichier <code>.json, dans
+# ../3-stack-observabilite/, au format pivot (../README.md, « Le message d'une règle »).
 #
 # artifacts : l'Investigation guide et les Related dashboards (onglets de la
 # règle). L'API publique ne les renvoie pas dans ses réponses : les vérifier
