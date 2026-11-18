@@ -77,6 +77,8 @@
     }
   },
   "name": "Redis - Prod - Backlog logstash:ingest anormal",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "prod",
     "o11y"

@@ -38,6 +38,8 @@
     }
   },
   "name": "Elasticsearch - ILM en échec ou policy sans suppression",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "elasticsearch",
     "o11y"

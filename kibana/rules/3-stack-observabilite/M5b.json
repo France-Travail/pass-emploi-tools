@@ -46,6 +46,8 @@
     }
   },
   "name": "Logstash - Hors-Prod - Détection heap JVM élevé",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "hors-prod",
     "o11y"

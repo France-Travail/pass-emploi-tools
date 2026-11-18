@@ -1,15 +1,15 @@
 # Règles Kibana de la stack d'observabilité, notifiées dans Tchap o11y-production et
 # o11y-staging par les Workflows de salon.
-# Spécification et calibrage : ../../alertes-stack-observabilite.md.
+# Spécification et calibrage : ../../../docs/observabilite/infra/alertes-stack-observabilite.md.
 #
-# À rejouer dans Dev Tools. PUT met à jour une règle existante ; sur un cluster
-# vide, la créer avec POST kbn:/api/alerting/rule/<id> et le même corps plus
-# "rule_type_id": ".es-query" et "consumer": "alerts".
+# À rejouer dans Dev Tools.
+# Idempotent : chaque règle est supprimée puis recréée avec le même id (DELETE
+# puis POST) ; rejouer tout le fichier, qu'elle existe déjà ou non. Une règle
+# recréée perd son historique d'alertes.
 # Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
 # ../../objets-kibana.md#slo-et-règles-console.
 #
-# PUT ne change pas l'état activé / désactivé d'une règle. Les data views sont
-# embarquées dans la règle (searchConfiguration.index) : leur id ne renvoie à
+# Les data views sont embarquées dans la règle (searchConfiguration.index) : leur id ne renvoie à
 # aucune data view enregistrée.
 #
 # Message de chaque règle : la clé « _message » de son fichier <code>.json, dans

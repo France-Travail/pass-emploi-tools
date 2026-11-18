@@ -52,7 +52,7 @@ accompagnent une alerte de promesse, ou révèlent un bug que le SLO ne voit pas
 | Alerte | Critère | Gravité |
 |---|---|---|
 | Partenaire en panne | part des appels partenaires en `error`, par domaine, au-dessus d'un volume minimum | ⚠️ |
-| Erreurs de l'api | lignes `error`, par famille (base de données, exceptions) | ⚠️ |
+| Erreurs applicatives | lignes `error` hors appels partenaires, par service et par famille (base de données, sinon l'`event.action`) | ⚠️ |
 | Erreurs du front | erreurs JavaScript du web conseiller (RUM) | ⚠️ |
 
 ## Anomalies

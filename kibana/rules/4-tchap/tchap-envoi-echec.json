@@ -4,6 +4,8 @@
     "# Envois Tchap en échec (tchap-client et Workflows de salon)"
   ],
   "name": "Tchap - Envoi en échec",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "warning",
     "prod",

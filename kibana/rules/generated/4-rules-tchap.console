@@ -15,13 +15,17 @@
 # cette règle, l'alerte serait perdue sans trace. Pas d'action : Tchap ne peut
 # pas signaler sa propre panne, et Mattermost est décommissionné le
 # 1er novembre 2026. Elle est consultée par la routine de surveillance.
-# Création : POST ci-dessous. Mise à jour : PUT sur la même URL, même corps
-# SANS "rule_type_id" ni "consumer".
+# Idempotent : chaque règle est supprimée puis recréée avec le même id (DELETE
+# puis POST) ; rejouer tout le fichier, qu'elle existe déjà ou non. Une règle
+# recréée perd son historique d'alertes.
 
 # Envois Tchap en échec (tchap-client et Workflows de salon)
-PUT kbn:/api/alerting/rule/26888801-090e-41ee-839b-73d2832330a8
+DELETE kbn:/api/alerting/rule/26888801-090e-41ee-839b-73d2832330a8
+POST kbn:/api/alerting/rule/26888801-090e-41ee-839b-73d2832330a8
 {
   "name": "Tchap - Envoi en échec",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "warning",
     "prod",

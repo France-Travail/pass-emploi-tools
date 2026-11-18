@@ -1,9 +1,10 @@
-# Règles Kibana des alertes de sécurité. Spécification : ../../alertes-securite.md.
+# Règles Kibana des alertes de sécurité. Spécification : ../../../docs/observabilite/alertes-securite.md.
 #
 # À rejouer dans Dev Tools, après les sessions Discover de
-# ../../discovers/webhooks/. PUT met à jour une règle existante ; sur un
-# cluster vide, la créer avec POST kbn:/api/alerting/rule/<id> et le même corps
-# plus "rule_type_id": ".es-query" et "consumer": "alerts".
+# ../../discovers/webhooks/.
+# Idempotent : chaque règle est supprimée puis recréée avec le même id (DELETE
+# puis POST) ; rejouer tout le fichier, qu'elle existe déjà ou non. Une règle
+# recréée perd son historique d'alertes.
 # Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
 # ../../objets-kibana.md#slo-et-règles-console.
 #

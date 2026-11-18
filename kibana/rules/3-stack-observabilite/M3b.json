@@ -69,6 +69,8 @@
     }
   },
   "name": "Logstash - Prod - Détection absence ingestion logs router",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "prod",
     "o11y"

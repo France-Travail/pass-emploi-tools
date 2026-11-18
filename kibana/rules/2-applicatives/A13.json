@@ -1,0 +1,109 @@
+{
+  "_id": "3bc475a7-47d5-4320-b5b4-507727329571",
+  "_commentaire": [
+    "# A13 — Refus partenaire anormaux (Warning) : taux d'échecs par partenaire et par code de la dernière heure, contre la même heure des 7 jours précédents."
+  ],
+  "_message": {
+    "titre": "**Refus partenaire anormaux — prod** — le taux d'un code d'échec d'un partenaire a au moins doublé par rapport à la même heure des 7 derniers jours.",
+    "gravite": "avertissement",
+    "sections": [
+      {
+        "titre": "À vérifier",
+        "lignes": [
+          "1. Quel partenaire et quel code : les lignes ci-dessus ; un 401 ou un 403 met en cause nos identifiants, un 429 notre quota, un 404 un changement chez le partenaire",
+          "2. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)",
+          "3. Le détail des appels : le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293), onglet du partenaire ; si le changement vient de lui, le prévenir (contacts ci-dessous)"
+        ]
+      }
+    ],
+    "liens": {
+      "Dashboards": [
+        {
+          "nom": "[Pass Emploi] Diagnostic d'erreurs - Entrée",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74"
+        },
+        {
+          "nom": "[Pass Emploi] Diagnostic d'erreurs - Apps",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74"
+        }
+      ],
+      "Discover sessions": [
+        {
+          "nom": "[Pass Emploi] Logs de Prod - Échecs partenaires",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293"
+        }
+      ],
+      "Contacts partenaires": [
+        {
+          "nom": "Partenariats (Notion), qui prévenir chez le partenaire en panne",
+          "url": "https://app.notion.com/p/Partenariats-2077bd17c27a812a8700e489fe8ca506"
+        }
+      ],
+      "Runbook": [
+        {
+          "nom": "Investiguer un incident applicatif",
+          "url": "https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md"
+        }
+      ]
+    },
+    "resultat": {
+      "ligne": "`{0}` en {1} : {2} % des appels sur 1 h, contre {3} % d'habitude ({4} échecs)",
+      "vide": "Plus de refus anormaux à la relecture : ils sont peut-être en train de se résorber."
+    }
+  },
+  "name": "API - Prod - Refus partenaire anormaux",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
+  "tags": [
+    "prod",
+    "applicatif"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nSur la dernière heure, la part des appels vers un partenaire qui échouent avec un même code a au moins doublé, et gagné au moins 10 points, par rapport à la même heure des 7 jours précédents (au moins 20 échecs sur l'heure). Grouper par code isole un signal noyé dans le taux global : un 401 ou un 403 (nos identifiants), un 429 (notre quota), un 404 (un changement d'API chez le partenaire).\n\n## À vérifier\n\n1. Quel partenaire et quel code : les lignes ci-dessus ; un 401 ou un 403 met en cause nos identifiants, un 429 notre quota, un 404 un changement chez le partenaire\n2. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n3. Le détail des appels : le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293), onglet du partenaire ; si le changement vient de lui, le prévenir (contacts ci-dessous)\n\n## Dashboards\n\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n- [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n\n## Contacts partenaires\n\n- [Partenariats (Notion), qui prévenir chez le partenaire en panne](https://app.notion.com/p/Partenariats-2077bd17c27a812a8700e489fe8ca506)\n\n## Runbook\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/alertes.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      },
+      {
+        "id": "014dae91-507a-44de-b782-72e5eddbab74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": "FROM logs-prod-default\n| WHERE event.action == \"external_api_call\" AND url.domain IS NOT NULL\n| WHERE NOT url.domain LIKE \"*pass-emploi.beta.gouv.fr\" AND url.domain != \"stats.beta.gouv.fr\"\n| WHERE @timestamp >= NOW() - 1 hour\n     OR (@timestamp >= NOW() - 25 hours AND @timestamp < NOW() - 24 hours)\n     OR (@timestamp >= NOW() - 49 hours AND @timestamp < NOW() - 48 hours)\n     OR (@timestamp >= NOW() - 73 hours AND @timestamp < NOW() - 72 hours)\n     OR (@timestamp >= NOW() - 97 hours AND @timestamp < NOW() - 96 hours)\n     OR (@timestamp >= NOW() - 121 hours AND @timestamp < NOW() - 120 hours)\n     OR (@timestamp >= NOW() - 145 hours AND @timestamp < NOW() - 144 hours)\n     OR (@timestamp >= NOW() - 169 hours AND @timestamp < NOW() - 168 hours)\n| EVAL recent = @timestamp >= NOW() - 1 hour,\n       statut = CASE(event.outcome == \"failure\", COALESCE(TO_STRING(http.response.status_code), \"sans réponse\"), \"succès\")\n| STATS n_1h = COUNT(*) WHERE recent, n_7j = COUNT(*) WHERE NOT recent BY partenaire = url.domain, statut\n| INLINE STATS appels_1h = SUM(n_1h), appels_7j = SUM(n_7j) BY partenaire\n| WHERE statut != \"succès\" AND n_1h >= 20 AND appels_7j >= 350\n| EVAL taux = 100.0 * n_1h / appels_1h, habituel = 100.0 * n_7j / appels_7j\n| WHERE taux >= 2 * habituel AND taux - habituel >= 10\n| EVAL taux = TO_INTEGER(ROUND(taux)), habituel = TO_INTEGER(ROUND(habituel))\n| SORT taux DESC\n| KEEP partenaire, statut, taux, habituel, n_1h"
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 8,
+    "timeWindowUnit": "d",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "groupBy": "all"
+  },
+  "actions": [
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}

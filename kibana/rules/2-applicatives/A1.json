@@ -1,18 +1,18 @@
 {
   "_id": "1b751543-4233-4857-8fe6-8141a7c2d040",
   "_commentaire": [
-    "# A1 — Pic d'échecs partenaire (Warning). Remplace aussi les 3 règles « 🔌 Partenaires » (5xx, timeouts, 429)."
+    "# A1 — Partenaire en panne (Warning) : part des appels en log.level error (5xx, timeout, réseau) par domaine."
   ],
   "_message": {
-    "titre": "**Pic d'échecs partenaire — prod** — plus de 100 appels en échec vers un partenaire en 5 min.",
+    "titre": "**Partenaire en panne — prod** — au moins 20 % des appels vers un partenaire en panne (5xx, timeout, réseau) sur 10 min.",
     "gravite": "avertissement",
     "sections": [
       {
         "titre": "À vérifier",
         "lignes": [
-          "1. Quel partenaire, et quelles erreurs : les lignes ci-dessus (domaine, nombre et types d'échecs), puis les échecs par app dans le temps dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)",
+          "1. Quel partenaire, et depuis quand : les lignes ci-dessus, puis les échecs par app dans le temps dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)",
           "2. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)",
-          "3. Le détail des appels en échec : le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293), onglet du partenaire ; si la panne vient du partenaire, le prévenir (contacts ci-dessous)"
+          "3. Le détail des appels en panne : le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293), onglet du partenaire ; si la panne vient de lui, le prévenir (contacts ci-dessous)"
         ]
       }
     ],
@@ -47,17 +47,20 @@
       ]
     },
     "resultat": {
-      "ligne": "`{1}` : {0} échecs ({2})"
+      "ligne": "`{0}` : {1} appels en panne sur {2} ({3} %)",
+      "vide": "Plus de panne à la relecture : elle est peut-être en train de se résorber."
     }
   },
-  "name": "API - Prod - Pic d'échecs partenaire",
+  "name": "API - Prod - Partenaire en panne",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "prod",
     "applicatif"
   ],
   "artifacts": {
     "investigation_guide": {
-      "blob": "## Ce que signale l'alerte\n\nPlus de 100 appels de l'api vers un même partenaire ont échoué en 5 min (5xx, 429, 4xx ou timeout / réseau), d'après les logs `external_api_call`. Nos propres services et les statistiques ne sont pas comptés.\n\n## À vérifier\n\n1. Quel partenaire, et quelles erreurs : les lignes ci-dessus (domaine, nombre et types d'échecs), puis les échecs par app dans le temps dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n2. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n3. Le détail des appels en échec : le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293), onglet du partenaire ; si la panne vient du partenaire, le prévenir (contacts ci-dessous)\n\n## Dashboards\n\n- [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n\n## Contacts partenaires\n\n- [Partenariats (Notion), qui prévenir chez le partenaire en panne](https://app.notion.com/p/Partenariats-2077bd17c27a812a8700e489fe8ca506)\n\n## Runbook\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/alertes.md)\n"
+      "blob": "## Ce que signale l'alerte\n\nAu moins 20 appels de l'api vers un même partenaire, et au moins 20 % de ses appels, sont en panne sur 10 min : `external_api_call` en `log.level: error` (5xx, timeout, panne réseau). Les refus métier (4xx) n'en font pas partie. Nos propres services et les statistiques ne sont pas comptés.\n\n## À vérifier\n\n1. Quel partenaire, et depuis quand : les lignes ci-dessus, puis les échecs par app dans le temps dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n2. L'impact pour les utilisateurs : les erreurs par parcours au même moment dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n3. Le détail des appels en panne : le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293), onglet du partenaire ; si la panne vient de lui, le prévenir (contacts ci-dessous)\n\n## Dashboards\n\n- [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n\n## Contacts partenaires\n\n- [Partenariats (Notion), qui prévenir chez le partenaire en panne](https://app.notion.com/p/Partenariats-2077bd17c27a812a8700e489fe8ca506)\n\n## Runbook\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/alertes.md)\n"
     },
     "dashboards": [
       {
@@ -74,10 +77,10 @@
   "params": {
     "searchType": "esqlQuery",
     "esqlQuery": {
-      "esql": "FROM logs-prod-default\n| WHERE event.action == \"external_api_call\" AND event.outcome == \"failure\" AND url.domain IS NOT NULL\n| WHERE NOT url.domain LIKE \"*pass-emploi.beta.gouv.fr\" AND url.domain != \"stats.beta.gouv.fr\"\n| EVAL type = CASE(http.response.status_code == 429, \"429\", http.response.status_code >= 500, \"5xx\", http.response.status_code >= 400, \"4xx\", \"timeout / réseau\")\n| STATS echecs = COUNT(*), types = VALUES(type) BY partenaire = url.domain\n| WHERE echecs > 100\n| EVAL types = MV_CONCAT(types, \", \")\n| SORT echecs DESC"
+      "esql": "FROM logs-prod-default\n| WHERE event.action == \"external_api_call\" AND url.domain IS NOT NULL\n| WHERE NOT url.domain LIKE \"*pass-emploi.beta.gouv.fr\" AND url.domain != \"stats.beta.gouv.fr\"\n| STATS appels = COUNT(*), pannes = COUNT(*) WHERE log.level == \"error\" BY partenaire = url.domain\n| WHERE pannes >= 20 AND pannes * 5 >= appels\n| EVAL part = TO_INTEGER(ROUND(100.0 * pannes / appels))\n| SORT pannes DESC\n| KEEP partenaire, pannes, appels, part"
     },
     "timeField": "@timestamp",
-    "timeWindowSize": 5,
+    "timeWindowSize": 10,
     "timeWindowUnit": "m",
     "threshold": [
       0

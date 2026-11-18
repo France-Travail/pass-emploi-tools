@@ -2,7 +2,7 @@
   "_id": "45585b60-6e45-11ec-9757-c9700cd1bb4e",
   "_commentaire": [
     "# A9 — Application web conseiller injoignable — prod (pass-emploi-web) (Critical) : moniteur Heartbeat `pa-web-prod-status` (https://web.pass-emploi.beta.gouv.fr/api/health).",
-    "# Règle Uptime existante : type et paramètres inchangés, PUT met à jour son message."
+    "# Règle Uptime (Heartbeat), recréée par POST avec les paramètres de la règle d'origine."
   ],
   "_message": {
     "titre": "**Application web conseiller injoignable — prod (pass-emploi-web)**",
@@ -62,6 +62,8 @@
     }
   },
   "name": "Web - Prod - Disponibilité",
+  "rule_type_id": "xpack.uptime.alerts.monitorStatus",
+  "consumer": "uptime",
   "tags": [
     "prod",
     "applicatif",

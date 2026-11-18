@@ -69,9 +69,12 @@ PUT tchap-expiration-bot/_doc/bot?refresh=true
 # une date d'expiration future n'y entrerait jamais. Pas
 # d'excludeHitsFromPreviousRun : le rappel est quotidien tant que la date n'est
 # pas mise à jour.
-PUT kbn:/api/alerting/rule/bcd45d7d-6fe6-4303-a73e-7cff877dde96
+DELETE kbn:/api/alerting/rule/bcd45d7d-6fe6-4303-a73e-7cff877dde96
+POST kbn:/api/alerting/rule/bcd45d7d-6fe6-4303-a73e-7cff877dde96
 {
   "name": "Tchap - Expiration du compte bot",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "critical",
     "prod",

@@ -16,6 +16,8 @@
     }
   },
   "name": "Scalingo - Hors-Prod - Opérations d'infra des apps applicatives",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "hors-prod",
     "applicatif",

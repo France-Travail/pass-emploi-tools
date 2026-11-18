@@ -45,6 +45,8 @@
     }
   },
   "name": "Web - Prod - Erreurs du front",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "prod",
     "applicatif"

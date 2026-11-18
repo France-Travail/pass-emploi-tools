@@ -45,8 +45,8 @@ qu'une fenêtre longue (`high`), parce qu'un échec isolé sur 1 h y vaudrait 10
 
 Les fenêtres notifiées dans Tchap, et leur gravité, sont dans le message de la règle
 (`_message.fenetres`, cf. [le message d'une règle](../rules/README.md#le-message-dune-règle)) :
-`alert` en 🚨 critique, `high` en ⚠️ avertissement, `medium` en message allégé gris ; `low`
-reste dans Kibana (dashboard « SLO de Prod »). Une alerte est notifiée quand elle apparaît
+`alert` en 🚨 critique, `high` en ⚠️ avertissement ; `medium` et `low` restent dans
+Kibana (dashboard « SLO de Prod »). Une alerte est notifiée quand elle apparaît
 et chaque fois qu'elle passe à une fenêtre plus grave.
 
 `seuils.json` doit donner un seuil pour **chaque** fenêtre de la règle, ni plus ni moins ;

@@ -2,7 +2,7 @@
   "_id": "44d7b9b0-6e45-11ec-9757-c9700cd1bb4e",
   "_commentaire": [
     "# A8 — API injoignable — prod (pass-emploi-api) (Critical) : moniteur Heartbeat `pa-back-prod-status` (https://api.pass-emploi.beta.gouv.fr/health).",
-    "# Règle Uptime existante : type et paramètres inchangés, PUT met à jour son message."
+    "# Règle Uptime (Heartbeat), recréée par POST avec les paramètres de la règle d'origine."
   ],
   "_message": {
     "titre": "**API injoignable — prod (pass-emploi-api)**",
@@ -62,6 +62,8 @@
     }
   },
   "name": "API - Prod - Disponibilité",
+  "rule_type_id": "xpack.uptime.alerts.monitorStatus",
+  "consumer": "uptime",
   "tags": [
     "prod",
     "applicatif",

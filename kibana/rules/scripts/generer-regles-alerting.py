@@ -93,8 +93,10 @@ def slo_genere():
         if code is None:
             raise SystemExit(f'slo/_modele.console : le SLO {m.group(1)} n\'a pas de règle burn rate (SLO*.json), donc pas d\'objectif')
         objectif = SEUILS[code]['objectif']
-        return m.group(0).replace('@@OBJECTIF@@', json.dumps(objectif)).replace('@@OBJECTIF_TEXTE@@', pivot.objectif_en_texte(objectif))
-    texte = re.sub(r'^(?:PUT|POST) kbn:/api/observability/slos/(\S+)\n\{.*?\n\}', objectif, modele, flags=re.M | re.S)
+        corps = m.group(2).replace('@@OBJECTIF@@', json.dumps(objectif)).replace('@@OBJECTIF_TEXTE@@', pivot.objectif_en_texte(objectif))
+        return (f'DELETE kbn:/api/observability/slos/{m.group(1)}\nPOST kbn:/api/observability/slos\n'
+                + '{\n  "id": "' + m.group(1) + '",' + corps[1:])
+    texte = re.sub(r'^@@SLO (\S+)@@\n(\{.*?\n\})', objectif, modele, flags=re.M | re.S)
     if '@@OBJECTIF' in texte:
         raise SystemExit('slo/_modele.console : repère @@OBJECTIF@@ hors du corps d\'un SLO')
     return ("# ⚠️ FICHIER GÉNÉRÉ par ../../rules/scripts/generer-regles-alerting.py : NE PAS LE MODIFIER, il serait écrasé.\n"
@@ -131,8 +133,12 @@ def bloc(code):
     texte = json.dumps(regle, ensure_ascii=False, indent=2)
     for repere, contenu in morceaux.items():
         texte = texte.replace(f'"{repere}"', '"""' + contenu + '"""')
+    manquants = [k for k in ('rule_type_id', 'consumer') if k not in regle]
+    if manquants:
+        raise SystemExit(f"{d['_dossier']}/{code}.json : {' et '.join(manquants)} attendus (la règle est recréée par POST)")
     entete = ''.join(l + '\n' for l in d.get('_commentaire', []))
-    return entete + d.get('_methode', 'PUT') + ' kbn:/api/alerting/rule/' + d['_id'] + '\n' + texte + '\n'
+    url = 'kbn:/api/alerting/rule/' + d['_id']
+    return entete + 'DELETE ' + url + '\nPOST ' + url + '\n' + texte + '\n'
 
 
 def message(code):
@@ -194,7 +200,7 @@ def main(args):
             continue
         os.makedirs(os.path.dirname(chemin), exist_ok=True)
         open(chemin, 'w').write(contenu)
-        print(f'{nom} : {len(re.findall(r"^(?:PUT|POST) kbn:/api/(?:alerting/rule|observability/slos)/", contenu, flags=re.M))} objet(s)')
+        print(f'{nom} : {len(re.findall(r"^POST kbn:/api/(?:alerting/rule/|observability/slos$)", contenu, flags=re.M))} objet(s)')
     attendus = set(fichiers)
     for nom in sorted(os.listdir(GENERES)) if os.path.isdir(GENERES) else []:
         if nom.endswith('.console') and nom not in attendus:

@@ -3,10 +3,6 @@
     "objectif": 0.995,
     "burn_rate": { "alert": 14.4, "high": 6, "medium": 3, "low": 1 }
   },
-  "SLO2": {
-    "objectif": 0.99,
-    "burn_rate": { "alert": 14.4, "high": 6, "medium": 3, "low": 1 }
-  },
   "SLO3-conseiller-france-travail": {
     "objectif": 0.99,
     "burn_rate": { "alert": 14.4, "high": 6, "medium": 3, "low": 1 }

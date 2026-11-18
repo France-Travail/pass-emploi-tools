@@ -15,7 +15,7 @@ rules/
 ├── 1-securite/                 ← un répertoire par périmètre
 │   ├── _modele.console         ←   le texte du fichier généré autour des règles
 │   └── S1.json                 ←   une règle = un fichier JSON
-├── 2-applicatives/             ←   SLO2, SLO3…, A1 à A11…
+├── 2-applicatives/             ←   SLO1, SLO3…, A1 à A13…
 ├── 3-stack-observabilite/      ←   M1a à M10, M6a, M6b, M13
 ├── 4-tchap/                    ←   Tchap - Envoi en échec
 ├── 5-tchap-expiration-bot/     ←   expiration du compte bot (et son pipeline, son index)
@@ -35,13 +35,14 @@ génération, et le check de la PR échoue s'ils ne correspondent plus à leurs 
 
 ## Le fichier JSON d'une règle
 
-C'est le JSON de la règle tel que Kibana le reçoit, plus des clés qui commencent
-par `_`, qui ne lui sont pas envoyées :
+C'est le JSON de la règle tel que Kibana le reçoit à sa création, `rule_type_id` et
+`consumer` compris, plus des clés qui commencent par `_`, qui ne lui sont pas envoyées.
+Le fichier généré supprime puis recrée chaque règle (`DELETE` puis `POST` sur
+`kbn:/api/alerting/rule/<_id>`) : il se rejoue tel quel, que la règle existe ou non.
 
 | Clé | Rôle |
 |---|---|
-| `_id` | identifiant de la règle dans Kibana (`PUT kbn:/api/alerting/rule/<_id>`) |
-| `_methode` | `POST` pour une règle à créer (avec `rule_type_id` et `consumer`) ; `PUT` par défaut |
+| `_id` | identifiant de la règle dans Kibana, stable d'un déploiement à l'autre |
 | `_commentaire` | lignes de commentaire écrites au-dessus de la règle dans le fichier généré |
 | `_message` | le message de la règle au format pivot, indépendant du canal (cf. [ci-dessous](#le-message-dune-règle)) |
 
@@ -145,8 +146,9 @@ d'un gabarit.
 
 Manuel, jamais par le CI :
 
-1. Dans Kibana → Dev Tools, coller le bloc de la règle depuis `generated/`
-   (`PUT` pour une règle existante, `POST` pour une règle à créer).
+1. Dans Kibana → Dev Tools, coller le fichier entier depuis `generated/` et
+   exécuter toutes ses requêtes (`DELETE` puis `POST` de chaque règle), dans
+   l'ordre de [objets Kibana](../objets-kibana.md#slo-et-règles-console).
 2. Si le déploiement passe par l'API avec une clé API (script, `curl`) plutôt
    que par Dev Tools : faire ensuite **« Update API keys »** sur les règles, sinon
    elles tournent avec cette clé et tombent en panne à son expiration (cf.
@@ -156,7 +158,7 @@ Manuel, jamais par le CI :
 ## Ajouter une règle
 
 1. Copier le JSON d'une règle du même type (KQL, ES|QL, Uptime, SLO) dans le
-   répertoire du périmètre, sous le nom `<code>.json`, et l'adapter. Pour une règle
-   à créer : `_methode: "POST"`, avec `rule_type_id` et `consumer`.
+   répertoire du périmètre, sous le nom `<code>.json`, et l'adapter : nouvel `_id`
+   (un UUID), `rule_type_id` et `consumer` du type de la règle.
 2. Placer le repère `@@REGLE <code>@@` dans le `_modele.console` du périmètre.
 3. Générer, commiter, déployer.

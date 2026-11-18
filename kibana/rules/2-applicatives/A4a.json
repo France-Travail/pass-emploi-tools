@@ -45,6 +45,8 @@
     }
   },
   "name": "Scalingo - Prod - Incidents des apps applicatives",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "prod",
     "applicatif",

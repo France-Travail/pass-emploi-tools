@@ -9,14 +9,14 @@ comme elle choisissait un connecteur Mattermost par canal. Décision :
 flowchart LR
   subgraph regles["Règles Kibana"]
     direction TB
-    RMP["SLO1 à SLO3 (SLO), A4a, A8 à A11"]
+    RMP["SLO1, SLO3 (SLO), A4a, A8 à A11"]
     RSEC["S1 (CVE), S2a (suspicion d'attaque DDoS)"]
     RMS["A4b, S2b"]
     RINF["A4c / A4d (opérations d'infra Scalingo)"]
     ROP["Stack prod : Logstash, Redis, Elastic Agent,<br/>ILM, M6a, M13, expiration du compte bot"]
     ROS["Stack hors prod : Logstash, Redis,<br/>Elastic Agent, 6b"]
     RJ["A5a / A5b (jobs en échec)"]
-    RE["A1, A2, A3, A6, A7 (règles ES|QL)"]
+    RE["A1, A6, A7, A12, A13 (règles ES|QL)"]
   end
 
   subgraph salons["Workflows de salon (générés)"]
@@ -251,7 +251,7 @@ et mettre à jour le jeton du connecteur.
    (`logs-<env>-default`) : leur `message` est la ligne de log brute, pas une
    ligne de notification (illisible, peut-être personnelle, et au-delà de
    65 Ko l'envoi échoue).
-4. **Règle ES|QL** (A1, A2, A3, A6, A7) : `groupBy: all`, une seule alerte
+4. **Règle ES|QL** (A1, A6, A7, A12, A13) : `groupBy: all`, une seule alerte
    tant que la requête renvoie des lignes, donc un message à l'apparition. Son action `.workflows` vise le Workflow
    de son salon, comme les autres règles, mais le document d'alerte ne contient
    pas les lignes du résultat. Il contient en revanche les paramètres de la

@@ -1,0 +1,97 @@
+{
+  "_id": "ca62d522-859b-4f3c-8601-5b4bbce2060e",
+  "_commentaire": [
+    "# A12 — Refus anormaux d'un parcours (Warning) : taux de 4xx de la dernière heure, contre la même heure des 7 jours précédents."
+  ],
+  "_message": {
+    "titre": "**Refus anormaux d'un parcours — prod** — le taux de 4xx d'un parcours a au moins doublé par rapport à la même heure des 7 derniers jours.",
+    "gravite": "avertissement",
+    "sections": [
+      {
+        "titre": "À vérifier",
+        "lignes": [
+          "1. Quels codes et quelles routes : les erreurs du parcours dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)",
+          "2. Si un robot ou un scan en cause (volume anormal, routes inconnues) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Robots / scan](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6)",
+          "3. Si un déploiement de l'api ou du front a eu lieu juste avant : une régression, à confirmer avec l'équipe"
+        ]
+      }
+    ],
+    "liens": {
+      "Dashboards": [
+        {
+          "nom": "[Pass Emploi] Diagnostic d'erreurs - Entrée",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74"
+        },
+        {
+          "nom": "[Pass Emploi] Diagnostic d'erreurs - Robots / scan",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6"
+        }
+      ],
+      "Runbook": [
+        {
+          "nom": "Investiguer un incident applicatif",
+          "url": "https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md"
+        }
+      ]
+    },
+    "resultat": {
+      "ligne": "`{0}` : {1} % de refus sur 1 h, contre {2} % d'habitude ({3} refus)",
+      "vide": "Plus de refus anormaux à la relecture : ils sont peut-être en train de se résorber."
+    }
+  },
+  "name": "API - Prod - Refus anormaux d'un parcours",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
+  "tags": [
+    "prod",
+    "applicatif"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nSur la dernière heure, le taux de réponses 4xx d'un parcours de l'api a au moins doublé, et gagné au moins 10 points, par rapport à la même heure des 7 jours précédents (au moins 50 requêtes et 20 refus sur l'heure). Un parcours qui refuse beaucoup par nature ne la déclenche pas : seul un changement la déclenche.\n\n## À vérifier\n\n1. Quels codes et quelles routes : les erreurs du parcours dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n2. Si un robot ou un scan en cause (volume anormal, routes inconnues) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Robots / scan](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6)\n3. Si un déploiement de l'api ou du front a eu lieu juste avant : une régression, à confirmer avec l'équipe\n\n## Dashboards\n\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n- [[Pass Emploi] Diagnostic d'erreurs - Robots / scan](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6)\n\n## Runbook\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/alertes.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      },
+      {
+        "id": "2fb2f360-3d6f-4efc-84b0-1d6c8788e8e6"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": "FROM logs-prod-default\n| WHERE service.name == \"pass-emploi-api\" AND event.action IN (\"request_completed\", \"request_failed\") AND labels.user_journey IS NOT NULL\n| WHERE @timestamp >= NOW() - 1 hour\n     OR (@timestamp >= NOW() - 25 hours AND @timestamp < NOW() - 24 hours)\n     OR (@timestamp >= NOW() - 49 hours AND @timestamp < NOW() - 48 hours)\n     OR (@timestamp >= NOW() - 73 hours AND @timestamp < NOW() - 72 hours)\n     OR (@timestamp >= NOW() - 97 hours AND @timestamp < NOW() - 96 hours)\n     OR (@timestamp >= NOW() - 121 hours AND @timestamp < NOW() - 120 hours)\n     OR (@timestamp >= NOW() - 145 hours AND @timestamp < NOW() - 144 hours)\n     OR (@timestamp >= NOW() - 169 hours AND @timestamp < NOW() - 168 hours)\n| EVAL recent = @timestamp >= NOW() - 1 hour, refus = http.response.status_code >= 400 AND http.response.status_code < 500\n| STATS requetes = COUNT(*) WHERE recent, refus_1h = COUNT(*) WHERE recent AND refus,\n        requetes_7j = COUNT(*) WHERE NOT recent, refus_7j = COUNT(*) WHERE NOT recent AND refus\n  BY parcours = labels.user_journey\n| WHERE requetes >= 50 AND refus_1h >= 20 AND requetes_7j >= 350\n| EVAL taux = 100.0 * refus_1h / requetes, habituel = 100.0 * refus_7j / requetes_7j\n| WHERE taux >= 2 * habituel AND taux - habituel >= 10\n| EVAL taux = TO_INTEGER(ROUND(taux)), habituel = TO_INTEGER(ROUND(habituel))\n| SORT taux DESC\n| KEEP parcours, taux, habituel, refus_1h"
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 8,
+    "timeWindowUnit": "d",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "groupBy": "all"
+  },
+  "actions": [
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}

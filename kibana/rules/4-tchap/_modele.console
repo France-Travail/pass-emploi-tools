@@ -6,7 +6,8 @@
 # cette règle, l'alerte serait perdue sans trace. Pas d'action : Tchap ne peut
 # pas signaler sa propre panne, et Mattermost est décommissionné le
 # 1er novembre 2026. Elle est consultée par la routine de surveillance.
-# Création : POST ci-dessous. Mise à jour : PUT sur la même URL, même corps
-# SANS "rule_type_id" ni "consumer".
+# Idempotent : chaque règle est supprimée puis recréée avec le même id (DELETE
+# puis POST) ; rejouer tout le fichier, qu'elle existe déjà ou non. Une règle
+# recréée perd son historique d'alertes.
 
 @@REGLE tchap-envoi-echec@@

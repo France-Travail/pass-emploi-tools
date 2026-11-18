@@ -37,8 +37,8 @@ les logs à examiner.
 | Session | Fichier | Alerte | Contenu |
 |---|---|---|---|
 | [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293) | [`discovers/applicatives/discover-session-prod-erreurs-partenaires.ndjson`](discovers/applicatives/discover-session-prod-erreurs-partenaires.ndjson) | A1 | `external_api_call` en échec, un onglet par famille de clients : Milo, France Travail, `*ApiClient`, OIDC |
-| [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73) | [`discovers/applicatives/discover-session-prod-erreurs-5xx.ndjson`](discovers/applicatives/discover-session-prod-erreurs-5xx.ndjson) | A2 | `request_failed` de l'api, motif et `trace.id` |
-| [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8) | [`discovers/applicatives/discover-session-prod-erreurs-authentification.ndjson`](discovers/applicatives/discover-session-prod-erreurs-authentification.ndjson) | A3 | `auth_failed` ; répartition par IDP dans l'onglet *Field statistics* |
+| [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73) | [`discovers/applicatives/discover-session-prod-erreurs-5xx.ndjson`](discovers/applicatives/discover-session-prod-erreurs-5xx.ndjson) | A6 | `request_failed` de l'api, motif et `trace.id` |
+| [[Pass Emploi] Logs de Prod - Erreurs d'authentification](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/1c0dfc0f-0534-4031-81c6-cee0d1c55de8) | [`discovers/applicatives/discover-session-prod-erreurs-authentification.ndjson`](discovers/applicatives/discover-session-prod-erreurs-authentification.ndjson) | SLO3 | `auth_failed` ; répartition par IDP dans l'onglet *Field statistics* |
 | [[Pass Emploi] Logs de Prod - Erreurs base de données](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c4dfc122-1edc-42b2-973d-98ac7b127211) | [`discovers/applicatives/discover-session-prod-erreurs-base-de-donnees.ndjson`](discovers/applicatives/discover-session-prod-erreurs-base-de-donnees.ndjson) | A6 | erreurs Sequelize de tous les logs de prod, réparties par `error.type` |
 | [[Pass Emploi] Logs de Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/97e2d85f-7bd2-49df-86b3-2ffc290bbe69) | [`discovers/stack-observabilite/discover-session-prod-logstash-process-rejet-dlq.ndjson`](discovers/stack-observabilite/discover-session-prod-logstash-process-rejet-dlq.ndjson) | M1a | logs non indexés pour une cause non détectée par Logstash (DLQ), prod |
 | [[Pass Emploi] Logs Hors-Prod - DLQ Logstash Process](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/e5bec6b4-0ae3-47b1-8bb5-2e9bf77493a4) | [`discovers/stack-observabilite/discover-session-hors-prod-logstash-process-rejet-dlq.ndjson`](discovers/stack-observabilite/discover-session-hors-prod-logstash-process-rejet-dlq.ndjson) | M1b | idem, staging et perf |
@@ -57,7 +57,7 @@ les logs à examiner.
 | Fichier | Contenu |
 |---|---|
 | [`slo/generated/1-slos.console`](slo/generated/1-slos.console) | les SLO, **générés** depuis `slo/_modele.console` et `slo/seuils.json` (objectifs) |
-| [`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console) | règles SLO1 à SLO3, A1 à A3, A4a, A4b, A5a et A5b, cf. [alertes applicatives](../docs/observabilite/alertes.md) |
+| [`rules/generated/2-rules-applicatives.console`](rules/generated/2-rules-applicatives.console) | règles SLO1, SLO3, A1, A4a à A13, cf. [alertes applicatives](../docs/observabilite/alertes.md) |
 | [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console) | règles M1 à M10 et M13, cf. [alertes de la stack](../docs/observabilite/infra/alertes-stack-observabilite.md) |
 | [`rules/generated/1-rules-securite.console`](rules/generated/1-rules-securite.console) | règle S1, cf. [alertes de sécurité](../docs/observabilite/alertes-securite.md) |
 | [`rules/generated/4-rules-tchap.console`](rules/generated/4-rules-tchap.console) | règle « Tchap - Envoi en échec », sans action |
@@ -83,13 +83,30 @@ remplace aussi ses réglages d'affichage, sans effet sur les données.
 
 ### SLO et règles (`.console`)
 
-Copier le fichier dans Dev Tools et exécuter les requêtes, dans l'ordre :
-`slo/generated/1-slos.console`, puis `rules/generated/2-rules-applicatives.console`, puis
-`rules/generated/3-rules-stack-observabilite.console`, puis `rules/generated/1-rules-securite.console`.
-Sur un cluster vide, l'en-tête de chaque fichier indique comment transformer les
-`PUT` en `POST` de création. Les règles sur les événements Scalingo et GitHub
-(A4a à A4d, M6a, M6b, M13, S1) supposent leur collecte en place : cf. sa
+Copier le fichier entier dans Dev Tools et exécuter toutes ses requêtes, dans l'ordre :
+`slo/generated/1-slos.console`, puis `rules/generated/2-rules-applicatives.console`,
+`3-rules-stack-observabilite.console`, `1-rules-securite.console`, `4-rules-tchap.console`
+et `5-rules-tchap-expiration-bot.console`.
+
+**Idempotent** : chaque SLO et chaque règle est supprimé puis recréé avec le même
+id (`DELETE` puis `POST`). On rejoue le fichier entier, que l'objet existe déjà ou
+non : le `DELETE` d'un objet absent répond 404, sans effet sur la suite. Un objet
+recréé perd son historique (alertes d'une règle, calcul des 30 jours d'un SLO, que
+Kibana refait : les règles burn rate peuvent sonner à tort pendant ce calcul). Une
+règle désactivée dans l'interface est réactivée.
+
+Les règles sur les événements Scalingo et GitHub (A4a à A4d, M6a, M6b, M13, S1)
+supposent leur collecte en place : cf. sa
 [mise en service](../docs/observabilite/infra/collecte/webhooks/README.md#mise-en-service).
+
+**Repartir d'un Kibana propre** : les fichiers ne suppriment que les objets
+qu'ils décrivent. Une règle ou un SLO créé à la main, ou retiré des sources,
+reste en place tant qu'on ne le supprime pas. Pour aligner Kibana sur les sources :
+
+1. *Stack Management* → *Rules* : sélectionner toutes les règles, **Delete**.
+2. *Observability* → *SLOs* : supprimer chaque SLO. Pour les lister :
+   `GET kbn:/api/observability/slos?perPage=100`.
+3. Rejouer les fichiers dans l'ordre ci-dessus.
 
 **Après un déploiement par l'API avec une clé API** (script, `curl` avec
 `Authorization: ApiKey …`, plutôt que Dev Tools avec sa session) : chaque règle

@@ -26,6 +26,8 @@
     "liens_dependabot": true
   },
   "name": "GitHub - CVE high ou critical ouverte",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "critical",
     "prod",

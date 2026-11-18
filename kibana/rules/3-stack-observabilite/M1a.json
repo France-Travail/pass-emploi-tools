@@ -38,6 +38,8 @@
     }
   },
   "name": "Logstash - Prod - Détection présence event dans DLQ",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "prod",
     "o11y"

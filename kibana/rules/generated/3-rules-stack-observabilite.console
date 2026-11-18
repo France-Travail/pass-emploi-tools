@@ -9,16 +9,16 @@
 #
 # Règles Kibana de la stack d'observabilité, notifiées dans Tchap o11y-production et
 # o11y-staging par les Workflows de salon.
-# Spécification et calibrage : ../../alertes-stack-observabilite.md.
+# Spécification et calibrage : ../../../docs/observabilite/infra/alertes-stack-observabilite.md.
 #
-# À rejouer dans Dev Tools. PUT met à jour une règle existante ; sur un cluster
-# vide, la créer avec POST kbn:/api/alerting/rule/<id> et le même corps plus
-# "rule_type_id": ".es-query" et "consumer": "alerts".
+# À rejouer dans Dev Tools.
+# Idempotent : chaque règle est supprimée puis recréée avec le même id (DELETE
+# puis POST) ; rejouer tout le fichier, qu'elle existe déjà ou non. Une règle
+# recréée perd son historique d'alertes.
 # Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
 # ../../objets-kibana.md#slo-et-règles-console.
 #
-# PUT ne change pas l'état activé / désactivé d'une règle. Les data views sont
-# embarquées dans la règle (searchConfiguration.index) : leur id ne renvoie à
+# Les data views sont embarquées dans la règle (searchConfiguration.index) : leur id ne renvoie à
 # aucune data view enregistrée.
 #
 # Message de chaque règle : la clé « _message » de son fichier <code>.json, dans
@@ -29,9 +29,12 @@
 # dans l'interface.
 
 # M1a — DLQ prod (Critical)
-PUT kbn:/api/alerting/rule/fe53ada2-2c8b-42eb-930c-bae4286b7893
+DELETE kbn:/api/alerting/rule/fe53ada2-2c8b-42eb-930c-bae4286b7893
+POST kbn:/api/alerting/rule/fe53ada2-2c8b-42eb-930c-bae4286b7893
 {
   "name": "Logstash - Prod - Détection présence event dans DLQ",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "prod",
     "o11y"
@@ -103,9 +106,12 @@ PUT kbn:/api/alerting/rule/fe53ada2-2c8b-42eb-930c-bae4286b7893
 }
 
 # M1b — DLQ staging / perf (Warning)
-PUT kbn:/api/alerting/rule/b100ff40-7409-4859-ac44-755ad2401f03
+DELETE kbn:/api/alerting/rule/b100ff40-7409-4859-ac44-755ad2401f03
+POST kbn:/api/alerting/rule/b100ff40-7409-4859-ac44-755ad2401f03
 {
   "name": "Logstash - Hors-Prod - Détection présence event dans DLQ",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "hors-prod",
     "o11y"
@@ -177,9 +183,12 @@ PUT kbn:/api/alerting/rule/b100ff40-7409-4859-ac44-755ad2401f03
 }
 
 # M2a — Erreurs prod (Warning, bilan quotidien)
-PUT kbn:/api/alerting/rule/dd107070-c841-4580-9923-db2ef37c795d
+DELETE kbn:/api/alerting/rule/dd107070-c841-4580-9923-db2ef37c795d
+POST kbn:/api/alerting/rule/dd107070-c841-4580-9923-db2ef37c795d
 {
   "name": "Logstash - Prod - Détection erreurs pipeline process",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "prod",
     "o11y"
@@ -246,9 +255,12 @@ PUT kbn:/api/alerting/rule/dd107070-c841-4580-9923-db2ef37c795d
 }
 
 # M2b — Erreurs staging / perf (Warning)
-PUT kbn:/api/alerting/rule/ede49ade-b4ee-4cbb-9dd2-28078e189f7b
+DELETE kbn:/api/alerting/rule/ede49ade-b4ee-4cbb-9dd2-28078e189f7b
+POST kbn:/api/alerting/rule/ede49ade-b4ee-4cbb-9dd2-28078e189f7b
 {
   "name": "Logstash - Hors-Prod - Détection erreurs pipeline process",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "hors-prod",
     "o11y"
@@ -315,9 +327,12 @@ PUT kbn:/api/alerting/rule/ede49ade-b4ee-4cbb-9dd2-28078e189f7b
 }
 
 # M3a — Absence dans `logs-prod-default`
-PUT kbn:/api/alerting/rule/139c93c3-b744-4bd7-8274-bb88f77305c7
+DELETE kbn:/api/alerting/rule/139c93c3-b744-4bd7-8274-bb88f77305c7
+POST kbn:/api/alerting/rule/139c93c3-b744-4bd7-8274-bb88f77305c7
 {
   "name": "Logstash - Prod - Détection absence ingestion logs applicatifs",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "prod",
     "o11y"
@@ -392,9 +407,12 @@ PUT kbn:/api/alerting/rule/139c93c3-b744-4bd7-8274-bb88f77305c7
 }
 
 # M3b — Absence dans `logs-router-prod-default`
-PUT kbn:/api/alerting/rule/6c2a2a83-9c40-4f40-af8d-911402932417
+DELETE kbn:/api/alerting/rule/6c2a2a83-9c40-4f40-af8d-911402932417
+POST kbn:/api/alerting/rule/6c2a2a83-9c40-4f40-af8d-911402932417
 {
   "name": "Logstash - Prod - Détection absence ingestion logs router",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "prod",
     "o11y"
@@ -469,9 +487,12 @@ PUT kbn:/api/alerting/rule/6c2a2a83-9c40-4f40-af8d-911402932417
 }
 
 # M3c — Absence dans `logs-staging-default` / `logs-perf-default`
-PUT kbn:/api/alerting/rule/32b686a2-659f-4b57-b583-e6aedaeea5f5
+DELETE kbn:/api/alerting/rule/32b686a2-659f-4b57-b583-e6aedaeea5f5
+POST kbn:/api/alerting/rule/32b686a2-659f-4b57-b583-e6aedaeea5f5
 {
   "name": "Logstash - Hors-Prod - Détection absence ingestion logs applicatifs",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "hors-prod",
     "o11y"
@@ -546,9 +567,12 @@ PUT kbn:/api/alerting/rule/32b686a2-659f-4b57-b583-e6aedaeea5f5
 }
 
 # M3d — Absence dans `logs-router-staging-default` / `logs-router-perf-default`
-PUT kbn:/api/alerting/rule/f181937f-c75f-4232-bfa4-221997d1cfe1
+DELETE kbn:/api/alerting/rule/f181937f-c75f-4232-bfa4-221997d1cfe1
+POST kbn:/api/alerting/rule/f181937f-c75f-4232-bfa4-221997d1cfe1
 {
   "name": "Logstash - Hors-Prod - Détection absence ingestion logs router",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "hors-prod",
     "o11y"
@@ -623,9 +647,12 @@ PUT kbn:/api/alerting/rule/f181937f-c75f-4232-bfa4-221997d1cfe1
 }
 
 # M4a — Backpressure prod (Critical)
-PUT kbn:/api/alerting/rule/204d560c-b6a6-4b5c-b4af-8d1fa6ce345c
+DELETE kbn:/api/alerting/rule/204d560c-b6a6-4b5c-b4af-8d1fa6ce345c
+POST kbn:/api/alerting/rule/204d560c-b6a6-4b5c-b4af-8d1fa6ce345c
 {
   "name": "Logstash - Prod - Détection backpressure ingest (inputs bloqués)",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "prod",
     "o11y"
@@ -708,9 +735,12 @@ PUT kbn:/api/alerting/rule/204d560c-b6a6-4b5c-b4af-8d1fa6ce345c
 }
 
 # M4b — Backpressure staging / perf (Warning)
-PUT kbn:/api/alerting/rule/da91356c-39dc-4033-bc47-83421974a049
+DELETE kbn:/api/alerting/rule/da91356c-39dc-4033-bc47-83421974a049
+POST kbn:/api/alerting/rule/da91356c-39dc-4033-bc47-83421974a049
 {
   "name": "Logstash - Hors-Prod - Détection backpressure ingest (inputs bloqués)",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "hors-prod",
     "o11y"
@@ -793,9 +823,12 @@ PUT kbn:/api/alerting/rule/da91356c-39dc-4033-bc47-83421974a049
 }
 
 # M5a — Heap élevé prod (Critical)
-PUT kbn:/api/alerting/rule/f8ff266d-84dc-4673-b95c-c3d32bf2ff04
+DELETE kbn:/api/alerting/rule/f8ff266d-84dc-4673-b95c-c3d32bf2ff04
+POST kbn:/api/alerting/rule/f8ff266d-84dc-4673-b95c-c3d32bf2ff04
 {
   "name": "Logstash - Prod - Détection heap JVM élevé",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "prod",
     "o11y"
@@ -872,9 +905,12 @@ PUT kbn:/api/alerting/rule/f8ff266d-84dc-4673-b95c-c3d32bf2ff04
 }
 
 # M5b — Heap élevé staging / perf (Warning)
-PUT kbn:/api/alerting/rule/9f9c07f9-07a9-40a3-a882-4a701e81b83c
+DELETE kbn:/api/alerting/rule/9f9c07f9-07a9-40a3-a882-4a701e81b83c
+POST kbn:/api/alerting/rule/9f9c07f9-07a9-40a3-a882-4a701e81b83c
 {
   "name": "Logstash - Hors-Prod - Détection heap JVM élevé",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "hors-prod",
     "o11y"
@@ -951,9 +987,12 @@ PUT kbn:/api/alerting/rule/9f9c07f9-07a9-40a3-a882-4a701e81b83c
 }
 
 # M6a — Événements Scalingo des apps de la stack, prod (gravité par ligne)
-PUT kbn:/api/alerting/rule/c16f2ab5-6103-4f69-bdc3-b4a10a38deb0
+DELETE kbn:/api/alerting/rule/c16f2ab5-6103-4f69-bdc3-b4a10a38deb0
+POST kbn:/api/alerting/rule/c16f2ab5-6103-4f69-bdc3-b4a10a38deb0
 {
   "name": "Scalingo - Prod - Événements des apps de la stack",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "prod",
     "o11y",
@@ -1029,9 +1068,12 @@ PUT kbn:/api/alerting/rule/c16f2ab5-6103-4f69-bdc3-b4a10a38deb0
 # M6b — Événements Scalingo des apps de la stack, staging / perf (gravité par ligne)
 # Nouvelle règle : absente de la prod avant le 2026-10-19, la créer avec POST
 # (même corps plus "rule_type_id": ".es-query" et "consumer": "alerts").
-PUT kbn:/api/alerting/rule/5d1f7c2a-9b3e-4f6a-8c1d-2e7b4a9f0c63
+DELETE kbn:/api/alerting/rule/5d1f7c2a-9b3e-4f6a-8c1d-2e7b4a9f0c63
+POST kbn:/api/alerting/rule/5d1f7c2a-9b3e-4f6a-8c1d-2e7b4a9f0c63
 {
   "name": "Scalingo - Hors-Prod - Événements des apps de la stack",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "hors-prod",
     "o11y",
@@ -1105,9 +1147,12 @@ PUT kbn:/api/alerting/rule/5d1f7c2a-9b3e-4f6a-8c1d-2e7b4a9f0c63
 }
 
 # M7a — Backlog Redis prod (Critical)
-PUT kbn:/api/alerting/rule/07a8ee68-4994-4d70-b9a5-3d47f08297a5
+DELETE kbn:/api/alerting/rule/07a8ee68-4994-4d70-b9a5-3d47f08297a5
+POST kbn:/api/alerting/rule/07a8ee68-4994-4d70-b9a5-3d47f08297a5
 {
   "name": "Redis - Prod - Backlog logstash:ingest anormal",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "prod",
     "o11y"
@@ -1186,9 +1231,12 @@ PUT kbn:/api/alerting/rule/07a8ee68-4994-4d70-b9a5-3d47f08297a5
 }
 
 # M7b — Backlog Redis staging / perf (Warning)
-PUT kbn:/api/alerting/rule/720d949a-f73f-43e5-bc46-ff22c7b96cfb
+DELETE kbn:/api/alerting/rule/720d949a-f73f-43e5-bc46-ff22c7b96cfb
+POST kbn:/api/alerting/rule/720d949a-f73f-43e5-bc46-ff22c7b96cfb
 {
   "name": "Redis - Hors-Prod - Backlog logstash:ingest anormal",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "hors-prod",
     "o11y"
@@ -1267,9 +1315,12 @@ PUT kbn:/api/alerting/rule/720d949a-f73f-43e5-bc46-ff22c7b96cfb
 }
 
 # M8a — Elastic Agent en défaut prod (Critical)
-PUT kbn:/api/alerting/rule/bbb9d642-f012-4747-8154-49162245a364
+DELETE kbn:/api/alerting/rule/bbb9d642-f012-4747-8154-49162245a364
+POST kbn:/api/alerting/rule/bbb9d642-f012-4747-8154-49162245a364
 {
   "name": "Elastic Agent - Prod - Agent en défaut",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "prod",
     "o11y"
@@ -1339,9 +1390,12 @@ PUT kbn:/api/alerting/rule/bbb9d642-f012-4747-8154-49162245a364
 }
 
 # M8b — Elastic Agent en défaut staging (Warning)
-PUT kbn:/api/alerting/rule/8d593176-8752-4369-a37f-6b42fa3890b2
+DELETE kbn:/api/alerting/rule/8d593176-8752-4369-a37f-6b42fa3890b2
+POST kbn:/api/alerting/rule/8d593176-8752-4369-a37f-6b42fa3890b2
 {
   "name": "Elastic Agent - Staging - Agent en défaut",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "hors-prod",
     "o11y"
@@ -1411,9 +1465,12 @@ PUT kbn:/api/alerting/rule/8d593176-8752-4369-a37f-6b42fa3890b2
 }
 
 # M9a — Mémoire conteneur prod (Critical)
-PUT kbn:/api/alerting/rule/3c65ffd4-165f-4d0b-b820-24be398f19fd
+DELETE kbn:/api/alerting/rule/3c65ffd4-165f-4d0b-b820-24be398f19fd
+POST kbn:/api/alerting/rule/3c65ffd4-165f-4d0b-b820-24be398f19fd
 {
   "name": "Logstash - Prod - Mémoire conteneur proche de la limite Scalingo",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "prod",
     "o11y"
@@ -1490,9 +1547,12 @@ PUT kbn:/api/alerting/rule/3c65ffd4-165f-4d0b-b820-24be398f19fd
 }
 
 # M9b — Mémoire conteneur staging / perf (Warning)
-PUT kbn:/api/alerting/rule/895bd492-e02f-4f18-b8e0-f453742c885f
+DELETE kbn:/api/alerting/rule/895bd492-e02f-4f18-b8e0-f453742c885f
+POST kbn:/api/alerting/rule/895bd492-e02f-4f18-b8e0-f453742c885f
 {
   "name": "Logstash - Hors-Prod - Mémoire conteneur proche de la limite Scalingo",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "hors-prod",
     "o11y"
@@ -1569,9 +1629,12 @@ PUT kbn:/api/alerting/rule/895bd492-e02f-4f18-b8e0-f453742c885f
 }
 
 # M10 — ILM en échec ou policy sans suppression (Warning, bilan quotidien)
-PUT kbn:/api/alerting/rule/fb66693b-f17a-4cd0-baf5-113e7e153604
+DELETE kbn:/api/alerting/rule/fb66693b-f17a-4cd0-baf5-113e7e153604
+POST kbn:/api/alerting/rule/fb66693b-f17a-4cd0-baf5-113e7e153604
 {
   "name": "Elasticsearch - ILM en échec ou policy sans suppression",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "elasticsearch",
     "o11y"
@@ -1634,9 +1697,12 @@ PUT kbn:/api/alerting/rule/fb66693b-f17a-4cd0-baf5-113e7e153604
 
 # M13 — Événement externe rejeté par son pipeline ou par Elasticsearch (Warning). L'émetteur
 # reçoit 201 même quand le document part au failure store.
-PUT kbn:/api/alerting/rule/ae398f47-0ed9-427e-a090-cf774acc7d16
+DELETE kbn:/api/alerting/rule/ae398f47-0ed9-427e-a090-cf774acc7d16
+POST kbn:/api/alerting/rule/ae398f47-0ed9-427e-a090-cf774acc7d16
 {
   "name": "Événements externes - Payload rejeté (failure store)",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "warning",
     "prod",

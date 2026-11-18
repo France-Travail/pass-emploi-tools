@@ -32,6 +32,8 @@
     }
   },
   "name": "Logstash - Prod - Détection erreurs pipeline process",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "prod",
     "o11y"

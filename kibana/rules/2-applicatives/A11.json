@@ -2,7 +2,7 @@
   "_id": "6dd99b60-9886-11ec-9757-c9700cd1bb4e",
   "_commentaire": [
     "# A11 — Certificat TLS bientôt expiré (Warning), un message par certificat et par jour.",
-    "# Règle Uptime existante : type et paramètres inchangés, PUT met à jour son message."
+    "# Règle Uptime (Heartbeat), recréée par POST avec les paramètres de la règle d'origine."
   ],
   "_message": {
     "titre": "**Certificat TLS bientôt expiré** — {etat.commonName} : {resume_certificat}",
@@ -32,6 +32,8 @@
     }
   },
   "name": "TLS - Certificat bientôt expiré",
+  "rule_type_id": "xpack.uptime.alerts.tlsCertificate",
+  "consumer": "uptime",
   "tags": [
     "prod",
     "applicatif",

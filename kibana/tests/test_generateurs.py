@@ -4,7 +4,7 @@ Lancer depuis la racine du repo : python3 -I -m unittest discover -s kibana/test
 Chaque test travaille sur une copie de rules/, slo/ et workflows/tchap/ dans un répertoire
 temporaire : il ne modifie jamais le repo. Ni Kibana, ni pass-emploi-api ne sont nécessaires.
 """
-import glob, json, os, shutil, subprocess, sys, tempfile, unittest, warnings
+import glob, json, os, re, shutil, subprocess, sys, tempfile, unittest, warnings
 
 SUPERVISION = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WORKFLOWS = 'system-connector-.workflows'
@@ -92,7 +92,7 @@ class TestSeuilsDesSlo(unittest.TestCase):
             r = repo.generer_regles()
             self.assertEqual(r.returncode, 0, r.stderr)
             slo = open(repo.chemin('slo', 'generated', '1-slos.console')).read()
-            bloc = slo.split('slos/9afea251-1cf9-423f-a374-ca43c3e751ac')[1].split('\nPUT ')[0]
+            bloc = slo.split('slos/9afea251-1cf9-423f-a374-ca43c3e751ac')[1].split('\nDELETE ')[0]
             self.assertIn('"objective": { "target": 0.98 }', bloc)
             regles = open(repo.chemin('rules', 'generated', '2-rules-applicatives.console')).read()
             self.assertIn('"maxBurnRateThreshold": 50.0', regles)
@@ -107,7 +107,7 @@ class TestSeuilsDesSlo(unittest.TestCase):
             self.assertRegex(regles, r'"burnRateThreshold": 3,\s*"maxBurnRateThreshold": 10.0')
 
     def test_seuils_incomplets(self):
-        for modifier, attendu in ((lambda s: s.pop('SLO2'), 'pas de seuils pour la règle SLO2'),
+        for modifier, attendu in ((lambda s: s.pop('SLO3-invite'), 'pas de seuils pour la règle SLO3-invite'),
                                   (lambda s: s['SLO1']['burn_rate'].pop('low'), 'SLO1 : burn_rate doit donner un seuil'),
                                   (lambda s: s.update({'SLO9': {'objectif': 0.9, 'burn_rate': {}}}), 'SLO9 ne correspond à aucune règle'),
                                   (lambda s: s['SLO1'].update(objectif=99.5), 'SLO1 : objectif entre 0 et 1')):
@@ -175,7 +175,7 @@ class TestControlesDesGenerateurs(unittest.TestCase):
     def test_fenetres_d_une_regle_burn_rate(self):
         for modifier, attendu in ((lambda m: m['fenetres'].update(medium={'gravite': 'rouge'}), 'fenetres « medium »'),
                                   (lambda m: m['fenetres'].update(enorme={'gravite': 'critique'}), "la règle n'a pas cette fenêtre"),
-                                  (lambda m: m['essentiel'].update(sections=['Inconnue']), 'section « Inconnue » absente')):
+                                  (lambda m: (m['fenetres'].update(medium={'gravite': 'information', 'essentiel': True}), m.update(essentiel={'sections': ['Inconnue'], 'liens': []})), 'section « Inconnue » absente')):
             with self.subTest(attendu), CopieDuRepo() as repo:
                 chemin = repo.regle_json('2-applicatives', 'SLO1')
                 regle = json.load(open(chemin))
@@ -190,7 +190,8 @@ class TestControlesDesGenerateurs(unittest.TestCase):
             self.assertEqual(repo.generer_regles().returncode, 0)
             self.assertEqual(repo.generer_workflows().returncode, 0)
             w = repo.workflow('monitoring-production')
-            self.assertIn("{% when 'slo.burnRate.medium' %}", w)
+            self.assertIn("{% when 'slo.burnRate.high' %}", w)
+            self.assertNotIn("{% when 'slo.burnRate.medium' %}", w)
             self.assertNotIn("{% when 'slo.burnRate.low' %}", w)
             self.assertIn('previous_action_group', w)
 
@@ -221,7 +222,6 @@ class TestControlesDesGenerateurs(unittest.TestCase):
 
 class TestRenvoisVersLesBasesDeDonnees(unittest.TestCase):
     PG = '66b0c0ac-d034-489b-ab0a-7b07539074ff'
-    REDIS = '86b702ee-b9c7-4344-91ef-a10a50405ed5'
 
     def regle(self, code):
         return json.load(open(os.path.join(SUPERVISION, 'rules', '2-applicatives', f'{code}.json')))
@@ -235,24 +235,32 @@ class TestRenvoisVersLesBasesDeDonnees(unittest.TestCase):
     def etapes(self, guide):
         return guide.split('## À vérifier')[1].split('## ')[0].strip().splitlines()
 
-    def test_a6_part_du_dashboard_postgresql(self):
+    def test_a6_cite_le_dashboard_postgresql_sans_depasser_trois_etapes(self):
         regle = self.regle('A6')
         guide = regle['artifacts']['investigation_guide']['blob']
-        self.assertIn(self.PG, self.etapes(guide)[0])
-        self.assertIn(self.PG, self.champs(regle)['À vérifier'].splitlines()[0])
+        etapes = self.etapes(guide)
+        self.assertLessEqual(len(etapes), 3)
+        self.assertIn(self.PG, etapes[1])
+        self.assertIn(self.PG, self.champs(regle)['À vérifier'].splitlines()[1])
         self.assertIn(self.PG, self.champs(regle)['Dashboards'])
         self.assertIn({'id': self.PG}, regle['artifacts']['dashboards'])
         self.assertNotIn('dashboard.scalingo.com', guide)
 
-    def test_a2_cite_les_bases_sans_depasser_trois_etapes(self):
-        regle = self.regle('A2')
-        guide = regle['artifacts']['investigation_guide']['blob']
-        etapes = self.etapes(guide)
-        self.assertLessEqual(len(etapes), 3)
-        for id_ in (self.PG, self.REDIS):
-            self.assertIn(id_, etapes[1])
-            self.assertIn(id_, self.champs(regle)['Dashboards'])
-            self.assertIn({'id': id_}, regle['artifacts']['dashboards'])
+    def test_une_regle_sans_type_est_refusee(self):
+        with CopieDuRepo() as repo:
+            chemin = repo.regle_json('2-applicatives', 'A7')
+            regle = json.load(open(chemin))
+            del regle['rule_type_id']
+            json.dump(regle, open(chemin, 'w'), ensure_ascii=False, indent=2)
+            r = repo.generer_regles()
+            self.assertNotEqual(r.returncode, 0)
+            self.assertIn('A7.json : rule_type_id attendus', r.stderr)
+
+    def test_chaque_regle_est_supprimee_puis_recreee(self):
+        regles = open(os.path.join(SUPERVISION, 'rules', 'generated', '2-rules-applicatives.console')).read()
+        for id_ in re.findall(r'^POST kbn:/api/alerting/rule/(\S+)$', regles, flags=re.M):
+            self.assertIn(f'DELETE kbn:/api/alerting/rule/{id_}\nPOST kbn:/api/alerting/rule/{id_}\n', regles)
+        self.assertNotRegex(regles, r'^PUT kbn:/api/alerting/rule/')
 
 
 if __name__ == '__main__':

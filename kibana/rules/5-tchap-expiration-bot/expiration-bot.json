@@ -29,6 +29,8 @@
     }
   },
   "name": "Tchap - Expiration du compte bot",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
   "tags": [
     "critical",
     "prod",
