@@ -97,7 +97,7 @@ longue et une fenêtre courte : la longue évite de déclencher sur un pic isol�
 la courte fait retomber l'alerte dès que le problème cesse. La règle s'évalue
 instance par instance : un parcours ou un mode d'authentification à la fois.
 
-- **SLO1** — SLO « API — disponibilité par parcours » : tous les parcours, le 401 et le 403 comptent en succès ;
+- **SLO1** — SLO « API — disponibilité par parcours » : tous les parcours ; le 401, le 403 et le 422 du parcours authentification (refus de connexion métier) comptent en succès ;
 - **SLO2** — SLO « API — latence des parcours critiques » ;
 - **SLO3** — un SLO par mode d'authentification : « Login — réussite jeune France Travail », « conseiller France Travail », « jeune Milo », « conseiller Milo ».
   Pour « Login — réussite invité » et « Login — réussite conseiller
