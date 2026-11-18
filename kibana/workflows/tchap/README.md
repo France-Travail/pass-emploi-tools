@@ -195,8 +195,9 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
 7. **Règles** : brancher les règles (ci-dessous), puis rejouer
    [`4-rules-tchap.console`](../../rules/generated/4-rules-tchap.console) et
    [`5-rules-tchap-expiration-bot.console`](../../rules/generated/5-rules-tchap-expiration-bot.console),
-   en remplaçant `<identifiant-du-bot>` par le `user_id` de l'étape 4 et
-   `<date-expiration>` par la date d'inscription du bot + 11 mois + 60 jours.
+   puis ranger la date d'expiration du compte avec la requête du
+   [runbook](../../../docs/observabilite/runbooks/runbook-tchap-expiration-bot.md),
+   avec le `user_id` de l'étape 4 et la date d'inscription du bot + 11 mois + 60 jours.
 
 8. **AutoOps** : les alertes M11 et M12 postent par `POST …/send/m.room.message`
    sans `txnId`. Le vérifier avec le compte du bot, dans un salon de test :

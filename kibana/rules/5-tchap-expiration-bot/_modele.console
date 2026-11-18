@@ -8,7 +8,9 @@
 # cette date au titulaire du compte, et un bot expiré ne peut plus notifier :
 # on range la date dans Elasticsearch et on alerte dans les 60 jours qui
 # précèdent, tant que le bot fonctionne encore.
-# À rejouer dans l'ordre : pipeline, index, date du compte, règle.
+# À rejouer dans l'ordre : pipeline, modèle d'index, règle. Idempotent. La date du
+# compte ne s'écrit pas ici, pour qu'un rejeu ne l'écrase pas : cf. runbook, à la
+# création du bot puis à chaque renouvellement. Sans elle, la règle n'a rien à lire.
 
 PUT _ingest/pipeline/tchap-expiration-bot
 {
@@ -28,31 +30,27 @@ PUT _ingest/pipeline/tchap-expiration-bot
   ]
 }
 
-PUT tchap-expiration-bot
+# Modèle de l'index : idempotent, il s'applique quand l'index est créé, à la
+# première écriture de la date du compte.
+PUT _index_template/tchap-expiration-bot
 {
-  "settings": {
-    "number_of_replicas": 1,
-    "index.default_pipeline": "tchap-expiration-bot"
-  },
-  "mappings": {
-    "dynamic": "strict",
-    "properties": {
-      "compte": { "type": "keyword" },
-      "expire_le": { "type": "date" },
-      "renouveler_a_partir_du": { "type": "date" },
-      "message": { "type": "text" }
+  "index_patterns": ["tchap-expiration-bot"],
+  "priority": 500,
+  "template": {
+    "settings": {
+      "number_of_replicas": 1,
+      "index.default_pipeline": "tchap-expiration-bot"
+    },
+    "mappings": {
+      "dynamic": "strict",
+      "properties": {
+        "compte": { "type": "keyword" },
+        "expire_le": { "type": "date" },
+        "renouveler_a_partir_du": { "type": "date" },
+        "message": { "type": "text" }
+      }
     }
   }
-}
-
-# Date d'expiration du compte : à la création, date d'inscription + 11 mois +
-# 60 jours ; après chaque renouvellement, date du renouvellement + 13 mois
-# (cf. runbook). <identifiant-du-bot> : le user_id renvoyé par le login du bot.
-# Un seul document, toujours l'id « bot ».
-PUT tchap-expiration-bot/_doc/bot?refresh=true
-{
-  "compte": "<identifiant-du-bot>",
-  "expire_le": "<date-expiration>"
 }
 
 @@REGLE expiration-bot@@
