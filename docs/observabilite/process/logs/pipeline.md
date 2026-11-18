@@ -37,7 +37,9 @@ trop grand) : `dead_letter_queue.max_bytes: 256mb`, `storage_policy: drop_older`
 pipeline `dead_letter_queue` y ajoute la cause Logstash et le payload d'origine
 avant indexation. Tout event en DLQ ou en index d'erreurs = alertes M1 et M2
 ([supervision/alertes](../../supervision/alertes-stack-observabilite.md)), procédure au
-[runbook scénario 3](../../runbooks/runbook-logstash.md).
+[runbook scénario 3](../../runbooks/runbook-logstash.md). Un event en DLQ est un log
+manquant : il se rattrape dans son data stream ([`logs/rattrapage/`](../../../../logs/rattrapage/README.md)),
+la DLQ ne se vide jamais avant.
 
 ## Paramètres clés
 

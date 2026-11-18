@@ -58,6 +58,11 @@ graph LR
     ea_process -->|métriques Logstash| es
 ```
 
+### Logs restés en DLQ
+
+Un log refusé par Elasticsearch est rangé dans `logs-logstash-dlq-<env>-default` : il se
+rattrape dans son data stream avec [`rattrapage/`](rattrapage/README.md), jamais en vidant la DLQ.
+
 ## Déploiement
 
 L'app Scalingo est linkée au repo `pass-emploi-tools`. Ce repo étant un
