@@ -1,0 +1,281 @@
+# Component templates — logs (applicatif, router, DLQ/erreurs Logstash, erreurs APM).
+# A importer apres 1-ilm-policies.console.
+
+# Nos champs ECS custom, composés par nos seuls templates (3-index-templates.console).
+# Ils ne sont pas dans logs@custom : ce point d'ancrage est composé par TOUS les
+# templates logs-* d'Elastic, dont logs-otel@template, qui déclare error.stack_trace
+# en alias. Elasticsearch refuse alors notre error.stack_trace concret (07/10/2026).
+PUT _component_template/pass-emploi-logs@mappings
+{
+  "template": {
+    "mappings": {
+      "properties": {
+        "log":   { "properties": { "logger": { "type": "keyword", "ignore_above": 1024 } } },
+        "event": { "properties": {
+          "action":  { "type": "keyword", "ignore_above": 1024 },
+          "outcome": { "type": "keyword", "ignore_above": 1024 }
+        } },
+        "error": { "properties": {
+          "type":        { "type": "keyword", "ignore_above": 1024 },
+          "code":        { "type": "keyword", "ignore_above": 1024 },
+          "message":     { "type": "match_only_text" },
+          "stack_trace": { "type": "wildcard", "fields": { "text": { "type": "match_only_text" } } }
+        } },
+        "milo": { "properties": {
+          "error_response": { "properties": {
+            "code":    { "type": "keyword", "ignore_above": 1024 },
+            "message": { "type": "match_only_text" }
+          } }
+        } },
+        "http": { "properties": {
+          "route": { "type": "keyword", "ignore_above": 1024 },
+          "response": { "properties": {
+            "www_authenticate": { "type": "keyword", "ignore_above": 1024 },
+            "retry_after":      { "type": "keyword", "ignore_above": 1024 }
+          } }
+        } },
+        "login": { "properties": {
+          "step": { "type": "keyword", "ignore_above": 1024 }
+        } },
+        "jwt": { "properties": {
+          "iss": { "type": "keyword", "ignore_above": 1024 },
+          "azp": { "type": "keyword", "ignore_above": 1024 },
+          "exp": { "type": "date" },
+          "iat": { "type": "date" },
+          "has_preferred_username": { "type": "boolean" }
+        } },
+        "communication": { "dynamic": false, "properties": {
+          "destinataires":    { "type": "long" },
+          "restantes":        { "type": "long" },
+          "a_envoyer":        { "type": "long" },
+          "en_cours":         { "type": "long" },
+          "envoyees":         { "type": "long" },
+          "erreurs":          { "type": "long" },
+          "tokens_invalides": { "type": "long" },
+          "envois_liberes":   { "type": "long" },
+          "lot": { "dynamic": false, "properties": {
+            "envoyees":         { "type": "long" },
+            "erreurs":          { "type": "long" },
+            "tokens_invalides": { "type": "long" }
+          } }
+        } },
+        "labels": { "properties": {
+          "rate_limit":        { "type": "keyword", "ignore_above": 1024 },
+          "rate_limit_palier": { "type": "keyword", "ignore_above": 1024 }
+        } }
+      }
+    }
+  },
+  "_meta": { "description": "Champs ECS custom CEJ, communs app + router", "managed_by": "pass-emploi-tools" },
+  "version": 5
+}
+
+# labels.rate_limit et .rate_limit_palier déclarés d'avance : les règles S3a / S3b
+# les lisent en ES|QL, qui refuse une colonne absente du mapping tant qu'aucune
+# limite n'a refusé de requête, ou quand la rétention a supprimé la dernière.
+# Data streams déjà créés : le template ne s'applique qu'au prochain rollover.
+PUT logs-prod-default,logs-staging-default/_mapping
+{
+  "properties": {
+    "labels": { "properties": {
+      "rate_limit":        { "type": "keyword", "ignore_above": 1024 },
+      "rate_limit_palier": { "type": "keyword", "ignore_above": 1024 }
+    } }
+  }
+}
+
+# logs@custom, point d'ancrage global d'Elastic, laissé vide (cf. ci-dessus).
+# À rejouer APRÈS 3-index-templates.console, une fois nos templates rebranchés sur
+# pass-emploi-logs@mappings.
+PUT _component_template/logs@custom
+{
+  "template": {},
+  "_meta": { "description": "Laissé vide : nos champs sont dans pass-emploi-logs@mappings", "managed_by": "pass-emploi-tools" },
+  "version": 7
+}
+
+PUT _component_template/logs-router@mappings
+{
+  "template": {
+    "mappings": {
+      "dynamic": false,
+      "properties": {
+        "@timestamp": { "type": "date" },
+        "service": { "properties": {
+          "name": { "type": "keyword" },
+          "node": { "properties": { "name": { "type": "keyword" } } },
+          "environment": { "type": "keyword" }
+        } },
+        "client": { "properties": { "ip": { "type": "ip" } } },
+        "http": { "properties": {
+          "request":  { "properties": {
+            "id": { "type": "keyword" }, "method": { "type": "keyword" }, "referrer": { "type": "keyword" }
+          } },
+          "response": { "properties": {
+            "status_code": { "type": "short" },
+            "body": { "properties": { "bytes": { "type": "long" } } }
+          } }
+        } },
+        "url": { "properties": {
+          "path": { "type": "wildcard" }, "scheme": { "type": "keyword" }, "domain": { "type": "keyword" }
+        } },
+        "event": { "properties": { "duration": { "type": "long" } } },
+        "user_agent": { "properties": {
+          "original": { "type": "keyword", "fields": { "text": { "type": "text" } } }
+        } },
+        "message": { "type": "text" }
+      }
+    }
+  },
+  "_meta": { "description": "Champs propres aux logs router Scalingo. dynamic:false ; event.action/outcome viennent de pass-emploi-logs@mappings", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+PUT _component_template/logs-router@settings
+{
+  "template": {
+    "settings": { "index": {
+      "number_of_shards": "1",
+      "number_of_replicas": "1"
+    } }
+  },
+  "_meta": { "description": "Settings index des data streams router (shards/replicas ; rétention portée par logs-router-retention-custom)", "managed_by": "pass-emploi-tools" },
+  "version": 2
+}
+
+# apm-retention-custom : brique PARTAGÉE avec ../traces/. Composée en dernier par
+# logs-apm.error@template-custom (ce dossier) ET par traces-apm@template-custom,
+# traces-apm.rum@template-custom (../traces/). Elle est VIDÉE (no-op) : chaque flux
+# porte sa propre rétention via sa brique <flux>@custom dédiée. Définie UNE SEULE
+# FOIS dans ../traces/2-component-templates.console — référencée seulement ici.
+
+# Briques de rétention (une par flux, lifecycle uniquement) — pattern homogène.
+PUT _component_template/logs-logstash-errors-retention-custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "logs-logstash-errors-retention" } } } },
+  "_meta": { "description": "Retention logs d'erreurs de traitement Logstash", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+PUT _component_template/logs-logstash-dlq-retention-custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "logs-logstash-dlq-retention" } } } },
+  "_meta": { "description": "Retention events Dead Letter Queue Logstash", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+PUT _component_template/logs-prod-retention-custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "logs-prod-retention" } } } },
+  "_meta": { "description": "Retention logs applicatifs prod", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+PUT _component_template/logs-router-retention-custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "logs-router-retention" } } } },
+  "_meta": { "description": "Retention logs router (découplée de logs-prod)", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+PUT _component_template/logs-staging-retention-custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "logs-staging-retention" } } } },
+  "_meta": { "description": "Retention logs applicatifs staging", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+PUT _component_template/logs-perf-retention-custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "logs-perf-retention" } } } },
+  "_meta": { "description": "Retention logs de test de perf (courte ; filet du workflow logstash-perf)", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+# Erreurs APM → logs-apm.error-retention (90 j). Classé "logs" au sens ECS
+# (événement discret) malgré son origine APM — cf. 1-ilm-policies.console.
+PUT _component_template/logs-apm.error@custom
+{
+  "template": { "settings": { "index": { "lifecycle": { "name": "logs-apm.error-retention" } } } },
+  "_meta": { "managed_by": "pass-emploi-tools" }
+}
+
+# Alertes émises hors Elastic, une famille de data streams par source :
+# logs-alertes-scalingo-<env>-default (notifiers Scalingo) et
+# logs-alertes-github-default (CVE Dependabot). Rétention : les briques
+# logs-<env>-retention-custom ci-dessus, comme les logs applicatifs du même env.
+# Champs posés par les ingest pipelines de ../../../../../kibana/pipelines/webhooks/.
+PUT _component_template/logs-alertes@mappings
+{
+  "template": {
+    "mappings": {
+      "properties": {
+        "event": { "properties": {
+          "id":       { "type": "keyword", "ignore_above": 1024 },
+          "kind":     { "type": "keyword", "ignore_above": 1024 },
+          "provider": { "type": "keyword", "ignore_above": 1024 },
+          "reason":   { "type": "keyword", "ignore_above": 1024 }
+        } }
+      }
+    }
+  },
+  "_meta": { "description": "Champs ECS communs aux alertes externes, toutes sources", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}
+
+# Le payload brut est gardé sous scalingo.* en dynamic:false : lisible dans le
+# _source pour enquêter, sans indexer les ~40 formes de type_data.
+# labels.metric, .value_text, .limit_text (alertes de métriques) déclarés d'avance :
+# les règles S2a / S2b les lisent en ES|QL, qui refuse une colonne absente du
+# mapping tant qu'aucune alerte n'est arrivée dans le data stream.
+PUT _component_template/logs-alertes-scalingo@mappings
+{
+  "template": {
+    "mappings": {
+      "properties": {
+        "scalingo": { "type": "object", "dynamic": false },
+        "labels": { "properties": {
+          "metric":     { "type": "keyword", "ignore_above": 1024 },
+          "value_text": { "type": "keyword", "ignore_above": 1024 },
+          "limit_text": { "type": "keyword", "ignore_above": 1024 }
+        } }
+      }
+    }
+  },
+  "_meta": { "description": "Notifiers Scalingo ; payload brut sous scalingo.* non indexé", "managed_by": "pass-emploi-tools" },
+  "version": 2
+}
+
+# Data streams déjà créés : le template ne s'applique qu'au prochain rollover.
+PUT logs-alertes-scalingo-prod-default,logs-alertes-scalingo-staging-default,logs-alertes-scalingo-perf-default/_mapping
+{
+  "properties": {
+    "labels": { "properties": {
+      "metric":     { "type": "keyword", "ignore_above": 1024 },
+      "value_text": { "type": "keyword", "ignore_above": 1024 },
+      "limit_text": { "type": "keyword", "ignore_above": 1024 }
+    } }
+  }
+}
+
+PUT _component_template/logs-alertes-github@mappings
+{
+  "template": {
+    "mappings": {
+      "properties": {
+        "vulnerability": { "properties": {
+          "id":          { "type": "keyword", "ignore_above": 1024 },
+          "severity":    { "type": "keyword", "ignore_above": 1024 },
+          "reference":   { "type": "keyword", "ignore_above": 1024 },
+          "description": { "type": "match_only_text" },
+          "score":       { "properties": { "base": { "type": "float" } } },
+          "scanner":     { "properties": { "vendor": { "type": "keyword", "ignore_above": 1024 } } }
+        } },
+        "package": { "properties": { "name": { "type": "keyword", "ignore_above": 1024 } } },
+        "github":  { "type": "object", "dynamic": false }
+      }
+    }
+  },
+  "_meta": { "description": "CVE Dependabot ; alerte brute sous github.* non indexée", "managed_by": "pass-emploi-tools" },
+  "version": 1
+}

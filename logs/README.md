@@ -25,7 +25,7 @@ Par défaut (aucune variable définie), les deux pipelines tournent dans le mêm
 >
 > **Rétention des métriques Logstash dans Elasticsearch** (`metrics-logstash.*` —
 > node, pipeline, plugins, health report, collectées par l'Elastic Agent
-> co-localisé) : [`stockage/metriques/README.md`](../docs/observabilite/stockage/metriques/README.md).
+> co-localisé) : [`stockage/metriques/README.md`](../docs/observabilite/infra/stockage/metriques/README.md).
 
 ```mermaid
 graph LR

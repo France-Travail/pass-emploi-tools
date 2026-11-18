@@ -1,10 +1,10 @@
 # Runbook — disque et santé du cluster Elasticsearch
 
-> **Type** : tutoriel (Diataxis). Quoi faire quand l'[alerte M11](../supervision/alertes-stack-observabilite.md#alerte-m11--disque-des-nœuds-elasticsearch-autoops)
+> **Type** : tutoriel (Diataxis). Quoi faire quand l'[alerte M11](../infra/alertes-stack-observabilite.md#alerte-m11--disque-des-nœuds-elasticsearch-autoops)
 > (AutoOps) signale un nœud Elasticsearch qui se remplit (étapes 1 à 4), ou un
 > [cluster en statut red](#cluster-en-statut-red).
 >
-> Rétentions et volumétrie attendues : [`stockage/`](../stockage/README.md).
+> Rétentions et volumétrie attendues : [`stockage/`](../infra/stockage/README.md).
 > Toutes les requêtes se lancent dans Kibana → Dev Tools.
 
 Elasticsearch réagit au remplissage d'un nœud en trois paliers (*watermarks*).
@@ -40,7 +40,7 @@ GET _cat/shards?v&expand_wildcards=all&s=store:desc&h=index,shard,prirep,store,n
 GET _cat/indices/.ds-*?v&expand_wildcards=all&s=store.size:desc&h=index,store.size,docs.count&size=20
 ```
 
-Comparer au volume attendu du [plan de rétention](../stockage/logs/README.md)
+Comparer au volume attendu du [plan de rétention](../infra/stockage/logs/README.md)
 (`logs-prod` ~31 Go/j, traces APM et router ~55 Go/j). Un flux nettement
 au-dessus signale une hausse de volume côté application (logs de debug restés
 actifs, boucle d'erreurs) : la traiter à la source.

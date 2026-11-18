@@ -4,8 +4,8 @@
 > **« Tchap - Expiration du compte bot »** (🚨, salon `o11y-production`) signale
 > que le compte du bot arrive à expiration.
 >
-> Configuration : [`rules/generated/5-rules-tchap-expiration-bot.console`](../supervision/rules/generated/5-rules-tchap-expiration-bot.console).
-> Notifications Tchap : [Workflows Tchap](../supervision/workflows/tchap/README.md).
+> Configuration : [`rules/generated/5-rules-tchap-expiration-bot.console`](../../../kibana/rules/generated/5-rules-tchap-expiration-bot.console).
+> Notifications Tchap : [Workflows Tchap](../../../kibana/workflows/tchap/README.md).
 > Toutes les requêtes se lancent dans Kibana → Dev Tools.
 
 Le bot qui poste toutes nos alertes dans Tchap est un compte Tchap ordinaire :
@@ -13,7 +13,7 @@ Tchap n'a pas de compte de service. Comme tout compte, il doit être renouvelé
 selon les [CGU Tchap](https://tchap.numerique.gouv.fr/cgu). Durées relevées dans
 les CGU le **2026-10-14** : les CGU peuvent changer, les relire à chaque
 renouvellement (§ 1, étape 2) et corriger ce tableau, la règle et le pipeline de
-[`5-rules-tchap-expiration-bot.console`](../supervision/rules/generated/5-rules-tchap-expiration-bot.console)
+[`5-rules-tchap-expiration-bot.console`](../../../kibana/rules/generated/5-rules-tchap-expiration-bot.console)
 si elles ont bougé.
 
 | Moment | Ce qui se passe |
@@ -70,14 +70,14 @@ Executions*.
 
 ## 4. Le compte a été supprimé : recréer le bot
 
-1. Recréer le compte comme à la [mise en service](../supervision/workflows/tchap/README.md#mise-en-service)
+1. Recréer le compte comme à la [mise en service](../../../kibana/workflows/tchap/README.md#mise-en-service)
    (compte, jeton), l'inviter dans les 4 salons et l'y faire rejoindre.
 2. Mettre le nouveau jeton partout où l'ancien était :
    - le connecteur Tchap de Kibana : `PUT` de
-     [`connecteurs/tchap.console`](../supervision/connecteurs/tchap.console) ;
-   - les connecteurs Tchap d'AutoOps des [alertes M11 et M12](../supervision/alertes-stack-observabilite.md#notifications-autoops-m11-et-m12)
+     [`connecteurs/tchap.console`](../../../kibana/connecteurs/tchap.console) ;
+   - les connecteurs Tchap d'AutoOps des [alertes M11 et M12](../infra/alertes-stack-observabilite.md#notifications-autoops-m11-et-m12)
      (en-tête `Authorization`).
 3. Ranger la date d'expiration du nouveau compte (inscription + 11 mois +
    60 jours), et son identifiant s'il a changé, comme à l'étape 1.
 4. Tester : `POST kbn:/api/workflows/workflow/tchap-client/run` vers chaque
-   salon (cf. [mise en service](../supervision/workflows/tchap/README.md#mise-en-service)).
+   salon (cf. [mise en service](../../../kibana/workflows/tchap/README.md#mise-en-service)).

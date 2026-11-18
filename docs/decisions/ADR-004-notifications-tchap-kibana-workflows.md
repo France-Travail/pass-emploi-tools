@@ -42,7 +42,7 @@ nous sommes en licence Elastic Cloud Enterprise**, que les Workflows exigent.
 Le connecteur `.http` des Workflows accepte des variables dans son chemin :
 `txnId = {{ execution.id }}`, conforme à la norme Matrix. La règle déclenche le
 Workflow de son salon ; un Workflow commun, `tchap-client`, est le seul à
-appeler Tchap. Détail : [`supervision/workflows/tchap/`](../observabilite/supervision/workflows/tchap/README.md).
+appeler Tchap. Détail : [`kibana/workflows/tchap/`](../../kibana/workflows/tchap/README.md).
 
 ### Impacts Positifs
 
@@ -83,7 +83,7 @@ unique par événement, ni variable dans l'URL, ni moyen d'appeler un Workflow.
   quelle : elle devient les Kibana Rules 6a / 6b, sur les événements Scalingo
   collectés dans Elasticsearch, qui notifient Tchap par les Workflows.
 
-Configuration : [alertes de la stack, alertes 11 et 12](../observabilite/supervision/alertes-stack-observabilite.md#alerte-11--disque-des-nœuds-elasticsearch-autoops).
+Configuration : [alertes de la stack, alertes 11 et 12](../observabilite/infra/alertes-stack-observabilite.md#alerte-11--disque-des-nœuds-elasticsearch-autoops).
 
 ## Avantages et Inconvénients des Solutions
 
@@ -149,6 +149,6 @@ puis invite le bot `tchap-bot@beta.gouv.fr` dans le salon.
 
 ## Liens
 
-* [Collecte par webhook](../observabilite/collecte/webhooks/README.md)
+* [Collecte par webhook](../observabilite/infra/collecte/webhooks/README.md)
 * [slack2tchap](https://github.com/betagouv/slack2tchap)
 * [Configuration n8n des webhooks Tchap de beta.gouv](https://github.com/betagouv/n8n-configs/blob/main/tchap-webhooks.yaml) (dépôt non public)

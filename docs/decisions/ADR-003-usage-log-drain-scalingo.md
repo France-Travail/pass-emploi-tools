@@ -27,7 +27,7 @@ requête/min pendant exactement ~5 minutes (17:37→17:41) pendant que web/conne
 continuaient.
 
 L'architecture 2 pipelines (`ingest`/`process`, cf.
-[collecte/logs](../observabilite/collecte/logs/README.md)) et la migration
+[collecte/logs](../observabilite/infra/collecte/logs/README.md)) et la migration
 PQ→Redis ([ADR-002](./ADR-002-buffer-redis-logstash.md)) ont déjà réduit la
 **fréquence** de déclenchement, en découplant l'ACK HTTP des filtres lourds. Elles ne
 l'**éliminent** pas : la quarantaine est une propriété du **drain** (couche plateforme
@@ -84,7 +84,7 @@ rester sur le drain HTTPS actuel et composer avec le risque résiduel ?
   déjà supprimé la cause structurelle principale (filtres lourds sur le chemin d'ACK) et
   réduit la fréquence des hoquets qui déclenchent la quarantaine.
 * **Détection déjà en place** — les alertes Kibana 3a/3b (silence logs applicatifs/
-  router, fenêtre 2 min, cf. [`supervision/alertes-stack-observabilite.md`](../observabilite/supervision/alertes-stack-observabilite.md))
+  router, fenêtre 2 min, cf. [`infra/alertes-stack-observabilite.md`](../observabilite/infra/alertes-stack-observabilite.md))
   donnent une détection rapide d'un Mode B résiduel, indépendamment de toute nouvelle
   architecture.
 
@@ -172,7 +172,7 @@ journalisation.
   l'écriture `stdout` elle-même. Le socle légal continue de fonctionner **même pendant
   une quarantaine du drain** : les deux mécanismes sont indépendants. Rien à
   construire : c'est déjà la situation actuelle, simplement non documentée dans nos
-  docs internes (depuis documenté dans [`stockage/logs`](../observabilite/stockage/logs/README.md#archivage-hors-es--logs-archives-scalingo)).
+  docs internes (depuis documenté dans [`stockage/logs`](../observabilite/infra/stockage/logs/README.md#archivage-hors-es--logs-archives-scalingo)).
 * **2 — Shipper direct / 3 — Broker direct** : décision de design à figer
   explicitement. Si le code applicatif continue d'écrire sur `stdout` **en plus** du
   nouveau canal (double-écrit), le socle légal survit gratuitement. S'il est
@@ -182,12 +182,12 @@ journalisation.
   sans garde-fou technique qui alerte dessus**. Complexité : figer et documenter ce
   choix ; assumer un double coût d'écriture si on le préserve.
 * **4 — Compensation APM** : rétentions APM (traces 30j, errors 90j —
-  [`stockage/traces`](../observabilite/stockage/traces/README.md)) sans rapport avec ce socle — n'en tient pas lieu.
+  [`stockage/traces`](../observabilite/infra/stockage/traces/README.md)) sans rapport avec ce socle — n'en tient pas lieu.
 
 ### Socle 2 — Elasticsearch ILM (indexé, cherchable, 180 jours prod)
 
-Source : [`stockage/logs/1-ilm-policies.console`](../observabilite/stockage/logs/1-ilm-policies.console)
-et [`stockage/logs/README.md`](../observabilite/stockage/logs/README.md). La policy
+Source : [`stockage/logs/1-ilm-policies.console`](../observabilite/infra/stockage/logs/1-ilm-policies.console)
+et [`stockage/logs/README.md`](../observabilite/infra/stockage/logs/README.md). La policy
 `logs-prod-retention` a bien `delete.min_age: 180d` configuré, mais **sans phase
 cold/frozen** : *« la phase cold/frozen de l'archive 30→180 j reste à ajouter quand le
 tier froid existera (devis) [...] l'appliquer fait croître le flux vers ~1,8 To sur
@@ -225,7 +225,7 @@ plusieurs mois »*.
 * Zéro nouvelle infrastructure à opérer — cohérent avec le dimensionnement actuel de
   l'équipe.
 * Filet légal Logs Archives (1 an) déjà actif sans configuration — documenté dans
-  [`stockage/logs`](../observabilite/stockage/logs/README.md#archivage-hors-es--logs-archives-scalingo).
+  [`stockage/logs`](../observabilite/infra/stockage/logs/README.md#archivage-hors-es--logs-archives-scalingo).
 * Permet de concentrer l'effort sur les leviers déjà identifiés et non réalisés :
   mesurer le plafond d'une instance Logstash (req/min avant 429/499), scaler ES,
   déporter du parsing vers les ingest pipelines ES (cf.
@@ -339,13 +339,13 @@ plusieurs mois »*.
       l'annonce, ce qui a probablement contribué à l'incident du 14/09/2026 dont la
       cause racine du crash de `logstash-process` est restée indéterminée.
       Collecte préparée le 2026-10-02 (`logs-scalingo.container_stats-*`, API
-      Scalingo `/stats`, cf. [`supervision/agents/README.md`](../observabilite/supervision/agents/README.md#mémoire-des-conteneurs-scalingo-intégration-custom-api)) ;
+      Scalingo `/stats`, cf. [`kibana/agents/README.md`](../../kibana/agents/README.md#mémoire-des-conteneurs-scalingo-intégration-custom-api)) ;
       reste l'alerte, à calibrer sur une semaine de données.
 * [ ] Vérifier le plafond d'ingestion Scalingo (**16 384 lignes/min** et **64 MiB/min**
       par conteneur) face au débit réel mesuré de `pass-emploi-api` — risque de perte
       silencieuse (`overflow` puis drop) distinct de la quarantaine, non chiffré à date.
 * [x] Documenter le socle **Logs Archives** (1 an, lié à `stdout`) — fait dans
-      [`stockage/logs`](../observabilite/stockage/logs/README.md#archivage-hors-es--logs-archives-scalingo).
+      [`stockage/logs`](../observabilite/infra/stockage/logs/README.md#archivage-hors-es--logs-archives-scalingo).
 * [ ] Mesurer le **plafond d'une instance Logstash** (req/min avant 429/499) — next step
       déjà identifié dans le
       [post-mortem 2026-07, §7](../observabilite/post-mortems/postmortem-2026-07-blackout-logs.md#7-next-steps--tenir-à-x10),
@@ -354,10 +354,10 @@ plusieurs mois »*.
 ## Liens
 
 * [postmortem-2026-07-blackout-logs.md](../observabilite/post-mortems/postmortem-2026-07-blackout-logs.md) — description du Mode B (quarantaine drain), preuve empirique, voir aussi son [§7 — Next steps, tenir à x10](../observabilite/post-mortems/postmortem-2026-07-blackout-logs.md#7-next-steps--tenir-à-x10)
-* [drain-scalingo.md](../observabilite/collecte/logs/drain-scalingo.md) — invariant quarantaine ; [infrastructure.md](../observabilite/infrastructure.md) — garde-fous JVM/Scalingo
+* [drain-scalingo.md](../observabilite/infra/collecte/logs/drain-scalingo.md) — invariant quarantaine ; [infrastructure.md](../observabilite/infra/infrastructure.md) — garde-fous JVM/Scalingo
 * [runbook-logstash.md](../observabilite/runbooks/runbook-logstash.md) — signature de la backpressure ES (scénario 1)
 * [ADR-002-buffer-redis-logstash.md](./ADR-002-buffer-redis-logstash.md) — risque de saturation mémoire Redis déjà documenté
-* [stockage/logs/README.md](../observabilite/stockage/logs/README.md) — rétention ES 180j, gap cold/frozen
+* [stockage/logs/README.md](../observabilite/infra/stockage/logs/README.md) — rétention ES 180j, gap cold/frozen
 * [logs/pipeline-ingest.conf](../../logs/pipeline-ingest.conf) — pipeline d'ingestion actuel (input HTTP uniquement)
 * [perf/.../LogstashIngestSimulation.scala](../../perf/src/gatling/scala/passemploi/test/LogstashIngestSimulation.scala) — simulation de charge du drain HTTP actuel
 * [Doc Scalingo — Log Drains](https://doc.scalingo.com/platform/app/log-drain)
