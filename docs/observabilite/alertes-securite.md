@@ -29,8 +29,7 @@ dans Dev Tools, après les sessions Discover de
 `security-alerts.yml` renvoie **à chaque passage** toutes les CVE encore
 ouvertes : S1 les notifie donc à chaque passage, une ligne par CVE (repo, CVE,
 paquet, sévérité, résumé, lien vers l'alerte Dependabot ; le nom du repo mène à
-la page de ses alertes, `labels.dependabot_url` posé par le pipeline), comme le faisait
-l'envoi direct vers Mattermost. Chaque exécution ne compte que les documents
+la page de ses alertes, `labels.dependabot_url` posé par le pipeline). Chaque exécution ne compte que les documents
 arrivés depuis la précédente (`excludeHitsFromPreviousRun`) : un passage = une
 notification.
 

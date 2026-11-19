@@ -37,9 +37,9 @@ jobs:
 ### 2. security-alerts.yml
 
 **Fonctionnalités :**
-- Surveillance toutes les 3h des CVEs high/critical ouvertes
-- Alerte Mattermost avec détails (max 10 CVEs affichées)
-- Mention @here pour notifier l'équipe
+- Toutes les 3h, envoie les CVE high/critical ouvertes (scope runtime, avis non retirés)
+  vers Elasticsearch ; la règle Kibana S1 les notifie dans Tchap
+  ([alertes-securite.md](../docs/observabilite/alertes-securite.md))
 
 **Usage dans un repo :**
 ```yaml
@@ -54,15 +54,18 @@ jobs:
   security-alerts:
     uses: France-Travail/pass-emploi-tools/.github/workflows/security-alerts.yml@{ref}
     with:
-      repo-name: 'pass-emploi-api'  # Nom affiché dans le message Mattermost
+      repo-name: 'pass-emploi-api'
+      elastic-url: ${{ vars.ELASTIC_URL }}
+      envoi-elasticsearch: ${{ vars.CVE_ENVOI_ELASTICSEARCH != 'false' }}
     secrets:
       DEPENDABOT_ALERTS_READER: ${{ secrets.DEPENDABOT_ALERTS_READER }}
-      MATTERMOST_WEBHOOK_URL: ${{ secrets.MATTERMOST_WEBHOOK_URL }}
+      ELASTIC_ALERTES_GITHUB_API_KEY: ${{ secrets.ELASTIC_ALERTES_GITHUB_API_KEY }}
 ```
 
 **Secrets requis :**
 - `DEPENDABOT_ALERTS_READER` : Token GitHub avec scope `security-events:read`
-- `MATTERMOST_WEBHOOK_URL` : URL du webhook Mattermost
+- `ELASTIC_ALERTES_GITHUB_API_KEY` et la variable `ELASTIC_URL` : voir
+  [collecte/webhooks](../docs/observabilite/infra/collecte/webhooks/README.md), étape GitHub Actions
 
 ---
 
@@ -217,15 +220,6 @@ Settings → Branches → Branch protection rules → develop
 
 **Important :** Sans ces checks configurés, Dependabot pourra activer l'auto-merge mais les PRs ne seront jamais mergées automatiquement (elles attendront indéfiniment que les checks passent).
 
-### Configuration Mattermost
-
-Pour recevoir les alertes de sécurité, configurer le webhook Mattermost dans les secrets du repo :
-```
-Settings → Secrets and variables → Actions → New repository secret
-Name: MATTERMOST_WEBHOOK_URL
-Value: https://mattermost.example.com/hooks/...
-```
-
 ---
 
 ## Maintenance
@@ -246,7 +240,7 @@ Value: https://mattermost.example.com/hooks/...
 **Dans chaque repo appelant (web, api, connect) :**
 - `SONAR_TOKEN` : Token SonarCloud
 - `DEPENDABOT_ALERTS_READER` : Token GitHub avec scope `security-events:read`
-- `MATTERMOST_WEBHOOK_URL` : URL du webhook Mattermost
+- `ELASTIC_ALERTES_GITHUB_API_KEY` : clé API d'écriture des CVE dans Elasticsearch
 
 **Secrets automatiques (fournis par GitHub) :**
 - `GITHUB_TOKEN` : Token fourni automatiquement par GitHub Actions
