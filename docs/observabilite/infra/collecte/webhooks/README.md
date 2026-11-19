@@ -144,9 +144,13 @@ Tchap listent telle quelle. Le payload brut est gardé sous `scalingo.*` ou
    `pass-emploi-api`, `pass-emploi-web`, `pass-emploi-connect` ; dans chacun,
    créer la variable et le secret puis, dans son `security-alerts.yml`,
    épingler le nouveau commit et les transmettre. Un rejet par Elasticsearch
-   fait échouer l'étape. Ne partent que les CVE high/critical de scope
-   `runtime` dont l'avis n'est pas retiré (`withdrawn_at` vide) : un avis
-   retiré garde son alerte ouverte jusqu'à ce que GitHub la ferme.
+   fait échouer l'étape. Ne partent que les CVE high/critical dont l'avis
+   n'est pas retiré (`withdrawn_at` vide : un avis retiré garde son alerte
+   ouverte jusqu'à ce que GitHub la ferme) et qui touchent une dépendance de
+   production selon `yarn npm audit --environment production`. Le scope de
+   GitHub ne suffit pas : il classe `runtime` toute dépendance transitive lue
+   dans un `yarn.lock`, dev comprise. Si l'audit Yarn échoue, le workflow
+   retombe sur ce scope GitHub, avec un warning dans son journal.
 
    **L'envoi se coupe sans PR** : variable `CVE_ENVOI_ELASTICSEARCH` du repo
    appelant à `false` (*Settings* → *Secrets and variables* → *Actions* →

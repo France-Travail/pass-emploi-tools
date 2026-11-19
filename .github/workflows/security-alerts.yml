@@ -34,19 +34,66 @@ jobs:
       ELASTIC_ACTIF: ${{ inputs.envoi-elasticsearch && secrets.ELASTIC_ALERTES_GITHUB_API_KEY != '' && inputs.elastic-url != '' }}
 
     steps:
+      - name: Checkout du lockfile
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          sparse-checkout: .yarn
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version-file: .nvmrc
+
+      # GitHub classe « runtime » toute dépendance lue dans un yarn.lock, dev comprise :
+      # seul Yarn sait si un paquet est atteint depuis les dependencies de production.
+      - name: Audit Yarn des dépendances de production
+        id: audit-prod
+        run: |
+          set +e
+          yarn npm audit --recursive --environment production --json > /tmp/audit.ndjson 2> /tmp/audit.err
+          code=$?
+          set -e
+
+          # Code non nul dès qu'il y a une vulnérabilité : seule l'absence de toute ligne JSON signe un échec.
+          if [ "$code" -ne 0 ] && ! grep -q '^[[:space:]]*{' /tmp/audit.ndjson; then
+            echo "::warning::yarn npm audit en échec (code $code), filtre sur le scope GitHub seul"
+            cat /tmp/audit.err /tmp/audit.ndjson | tail -n 5 | cut -c1-500
+            echo "disponible=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          { grep '^[[:space:]]*{' /tmp/audit.ndjson || true; } \
+            | jq -s '[.[].children.URL // empty | split("/") | last | ascii_downcase] | unique' > /tmp/ghsa-prod.json
+          echo "🔍 $(jq length /tmp/ghsa-prod.json) avis sur les dépendances de production selon Yarn"
+          echo "disponible=true" >> $GITHUB_OUTPUT
+
       - name: Fetch Dependabot alerts (high/critical)
         id: fetch-alerts
         run: |
           echo "🔍 Recherche des CVEs high/critical ouvertes..."
 
-          # Récupérer les alertes high/critical ouvertes via l'API Dependabot
-          alerts=$(gh api \
+          gh api --paginate \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
-            "/repos/${{ github.repository }}/dependabot/alerts?state=open" \
-            --jq '[.[] | select((.security_advisory.severity == "high" or .security_advisory.severity == "critical") and .dependency.scope == "runtime" and .security_advisory.withdrawn_at == null)]')
+            "/repos/${{ github.repository }}/dependabot/alerts?state=open&per_page=100" \
+            --jq '[.[] | select((.security_advisory.severity == "high" or .security_advisory.severity == "critical") and .security_advisory.withdrawn_at == null)]' \
+            | jq -s 'add // []' > /tmp/alerts-github.json
 
-          alert_count=$(echo "$alerts" | jq 'length')
+          if [ "${{ steps.audit-prod.outputs.disponible }}" = "true" ]; then
+            jq --slurpfile prod /tmp/ghsa-prod.json \
+              '[.[] | select((.security_advisory.ghsa_id | ascii_downcase) as $id | any($prod[0][]; . == $id))]' \
+              /tmp/alerts-github.json > /tmp/alerts.json
+          else
+            jq '[.[] | select(.dependency.scope == "runtime")]' /tmp/alerts-github.json > /tmp/alerts.json
+          fi
+
+          jq -r --slurpfile gardees /tmp/alerts.json \
+            '.[] | select(.number as $n | all($gardees[0][]; .number != $n))
+              | "⏭️  Ignorée, hors production : \(.dependency.package.name) \(.security_advisory.ghsa_id) (#\(.number))"' \
+            /tmp/alerts-github.json
+
+          alert_count=$(jq 'length' /tmp/alerts.json)
 
           if [ "$alert_count" -eq 0 ]; then
             echo "✅ Aucune CVE high/critical ouverte"
@@ -57,9 +104,6 @@ jobs:
           echo "⚠️  $alert_count CVE(s) high/critical trouvée(s)"
           echo "has_alerts=true" >> $GITHUB_OUTPUT
           echo "alert_count=$alert_count" >> $GITHUB_OUTPUT
-
-          # Sauvegarder les alertes
-          echo "$alerts" > /tmp/alerts.json
         env:
           GH_TOKEN: ${{ secrets.DEPENDABOT_ALERTS_READER }}
 
