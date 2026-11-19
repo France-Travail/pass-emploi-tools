@@ -37,8 +37,9 @@ jobs:
 ### 2. security-alerts.yml
 
 **Fonctionnalités :**
-- Toutes les 3h, envoie les CVE high/critical ouvertes (scope runtime, avis non retirés)
-  vers Elasticsearch ; la règle Kibana S1 les notifie dans Tchap
+- Toutes les 3h, envoie les CVE high/critical ouvertes (dépendances de production selon
+  `yarn npm audit`, avis non retirés) vers Elasticsearch ; la règle Kibana S1 les notifie dans Tchap
+- Prérequis du repo appelant : Yarn Berry (`yarnPath` committé) et `.nvmrc`
   ([alertes-securite.md](../docs/observabilite/alertes-securite.md))
 
 **Usage dans un repo :**
