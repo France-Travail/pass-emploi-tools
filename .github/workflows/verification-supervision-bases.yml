@@ -28,7 +28,7 @@ jobs:
       KIBANA_URL: ${{ vars.KIBANA_URL }}
       ES_API_KEY: ${{ secrets.ELASTICSEARCH_API_KEY_RESTRICTED_READ_ONLY }}
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # La clé de la CI ne lit pas le texte des logs de l'agent (field_security) : la requête des erreurs de l'agent est ignorée.
       - name: Requêtes des dashboards valides sur les données de prod
