@@ -144,21 +144,15 @@ Tchap listent telle quelle. Le payload brut est gardé sous `scalingo.*` ou
    `pass-emploi-api`, `pass-emploi-web`, `pass-emploi-connect` ; dans chacun,
    créer la variable et le secret puis, dans son `security-alerts.yml`,
    épingler le nouveau commit et les transmettre. Un rejet par Elasticsearch
-   fait échouer l'étape, après l'envoi Mattermost.
+   fait échouer l'étape. Ne partent que les CVE high/critical de scope
+   `runtime` dont l'avis n'est pas retiré (`withdrawn_at` vide) : un avis
+   retiré garde son alerte ouverte jusqu'à ce que GitHub la ferme.
 
-   **Chaque canal se coupe sans PR**, par une variable du repo appelant
-   (*Settings* → *Secrets and variables* → *Actions* → *Variables*), transmise
-   en entrée `envoi-mattermost` / `envoi-elasticsearch` :
-
-   | Variable du repo          | Absente (défaut)                                                            | `false`                   |
-   |---------------------------|-----------------------------------------------------------------------------|---------------------------|
-   | `CVE_ENVOI_MATTERMOST`    | message Mattermost, si le secret `MATTERMOST_WEBHOOK_URL` existe            | pas de message Mattermost |
-   | `CVE_ENVOI_ELASTICSEARCH` | CVE envoyées, si `ELASTIC_URL` et `ELASTIC_ALERTES_GITHUB_API_KEY` existent | pas d'envoi               |
-
-   Mattermost étant arrêté, `CVE_ENVOI_MATTERMOST` vaut `false` dans les 3
-   repos : un webhook Mattermost injoignable ferait échouer l'étape, et sauter
-   l'envoi vers Elasticsearch qui la suit. Avec les deux à `false`, le workflow
-   ne fait que lister les CVE dans son journal.
+   **L'envoi se coupe sans PR** : variable `CVE_ENVOI_ELASTICSEARCH` du repo
+   appelant à `false` (*Settings* → *Secrets and variables* → *Actions* →
+   *Variables*), transmise en entrée `envoi-elasticsearch`. Absente, les CVE
+   partent si `ELASTIC_URL` et `ELASTIC_ALERTES_GITHUB_API_KEY` existent ; à
+   `false`, le workflow ne fait que lister les CVE dans son journal.
 
 Contrôle de complétude :
 [`verifier-parite.py`](../../../../../kibana/pipelines/webhooks/verifier-parite.py) compare, app par app, l'historique
