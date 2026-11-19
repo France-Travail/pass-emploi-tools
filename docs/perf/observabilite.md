@@ -2,7 +2,7 @@
 
 > **Reference.** Sous-chantier du [chantier perf](./README.md). Les SLO sont
 > définis dans
-> [`observabilite/supervision/slo/generated/1-slos.console`](../observabilite/supervision/slo/generated/1-slos.console) ;
+> [`kibana/slo/generated/1-slos.console`](../../kibana/slo/generated/1-slos.console) ;
 > ce fichier-ci pose **ce que l'app jeune doit émettre** pour qu'on puisse les
 > mesurer.
 
@@ -45,9 +45,9 @@ mobile), propagé sur tous les événements du funnel.
 
 ## Mise en œuvre
 
-- SLO : [`supervision/slo/generated/1-slos.console`](../observabilite/supervision/slo/generated/1-slos.console) ; causes d'échec du login : [runbook d'investigation](../observabilite/runbooks/investigation-incident.md#limite--les-flux-non-authentifiés) ;
-  alertes : [applicatives](../observabilite/supervision/alertes-applicatives.md) et
-  [stack d'observabilité](../observabilite/supervision/alertes-stack-observabilite.md) ;
-  définitions de rétention versionnées sous [`stockage/`](../observabilite/stockage/README.md).
+- SLO : [`kibana/slo/generated/1-slos.console`](../../kibana/slo/generated/1-slos.console) ; causes d'échec du login : [runbook d'investigation](../observabilite/runbooks/investigation-incident.md#limite--les-flux-non-authentifiés) ;
+  alertes : [applicatives](../observabilite/alertes.md) et
+  [stack d'observabilité](../observabilite/infra/alertes-stack-observabilite.md) ;
+  définitions de rétention versionnées sous [`stockage/`](../observabilite/infra/stockage/README.md).
 - Le dashboard de tir de perf (phase 2 du chantier) et le dashboard de pilotage
   jour J dérivent des mêmes SLI — mêmes requêtes, fenêtres différentes.

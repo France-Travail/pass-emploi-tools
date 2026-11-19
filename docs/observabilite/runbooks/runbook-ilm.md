@@ -1,9 +1,9 @@
 # Runbook — rétention ILM
 
-> **Type** : tutoriel (Diataxis). Quoi faire quand l'[alerte M10](../supervision/alertes-stack-observabilite.md#alerte-m10--ilm-en-échec-ou-policy-sans-suppression)
+> **Type** : tutoriel (Diataxis). Quoi faire quand l'[alerte M10](../infra/alertes-stack-observabilite.md#alerte-m10--ilm-en-échec-ou-policy-sans-suppression)
 > sonne : un index n'applique pas la rétention prévue.
 >
-> Rétentions attendues et scripts : [`stockage/`](../stockage/README.md).
+> Rétentions attendues et scripts : [`stockage/`](../infra/stockage/README.md).
 > Toutes les requêtes se lancent dans Kibana → Dev Tools.
 
 Un index qui n'applique pas sa rétention ne casse rien tout de suite : il grossit

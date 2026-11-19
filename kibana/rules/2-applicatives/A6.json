@@ -1,0 +1,114 @@
+{
+  "_id": "c9164880-1829-4847-acb1-5a70433ecbb8",
+  "_commentaire": [
+    "# A6 — Erreurs applicatives (Warning) : lignes en log.level error hors appels partenaires, par service et par famille."
+  ],
+  "_message": {
+    "titre": "**Erreurs applicatives — prod** — au moins 50 lignes en erreur en 5 min, hors appels partenaires.",
+    "gravite": "avertissement",
+    "sections": [
+      {
+        "titre": "À vérifier",
+        "lignes": [
+          "1. Quel service et quelle famille : les lignes ci-dessus, puis les erreurs par app dans le temps dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)",
+          "2. Si la base de données est en cause : son état (mémoire, connexions, requêtes lentes) dans le dashboard [[Pass Emploi] Bases de données - PostgreSQL](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/66b0c0ac-d034-489b-ab0a-7b07539074ff) ; l'impact pour les utilisateurs dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)",
+          "3. Le motif d'une erreur et son `trace.id` : le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73), ou [[Pass Emploi] Logs de Prod - Erreurs base de données](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c4dfc122-1edc-42b2-973d-98ac7b127211) pour la base de données"
+        ]
+      }
+    ],
+    "liens": {
+      "Dashboards": [
+        {
+          "nom": "[Pass Emploi] Diagnostic d'erreurs - Apps",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74"
+        },
+        {
+          "nom": "[Pass Emploi] Bases de données - PostgreSQL",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/66b0c0ac-d034-489b-ab0a-7b07539074ff"
+        },
+        {
+          "nom": "[Pass Emploi] Diagnostic d'erreurs - Entrée",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74"
+        }
+      ],
+      "Discover sessions": [
+        {
+          "nom": "[Pass Emploi] Logs de Prod - Erreurs serveur 5xx",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73"
+        },
+        {
+          "nom": "[Pass Emploi] Logs de Prod - Erreurs base de données",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c4dfc122-1edc-42b2-973d-98ac7b127211"
+        }
+      ],
+      "Runbook": [
+        {
+          "nom": "Investiguer un incident applicatif",
+          "url": "https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md"
+        }
+      ]
+    },
+    "resultat": {
+      "ligne": "`{0}` {1} : {2} erreurs — {3}",
+      "vide": "Plus d'erreurs à la relecture : elles sont peut-être en train de se résorber."
+    }
+  },
+  "name": "API - Prod - Erreurs applicatives",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
+  "tags": [
+    "prod",
+    "applicatif"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nAu moins 50 lignes en `log.level: error` en 5 min dans les logs de prod, hors appels partenaires (couverts par l'alerte partenaire en panne). Famille : la base de données (`error.type` Sequelize*), sinon l'`event.action` de la ligne (requête, handler, job…).\n\n## À vérifier\n\n1. Quel service et quelle famille : les lignes ci-dessus, puis les erreurs par app dans le temps dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n2. Si la base de données est en cause : son état (mémoire, connexions, requêtes lentes) dans le dashboard [[Pass Emploi] Bases de données - PostgreSQL](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/66b0c0ac-d034-489b-ab0a-7b07539074ff) ; l'impact pour les utilisateurs dans le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n3. Le motif d'une erreur et son `trace.id` : le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73), ou [[Pass Emploi] Logs de Prod - Erreurs base de données](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c4dfc122-1edc-42b2-973d-98ac7b127211) pour la base de données\n\n## Dashboards\n\n- [[Pass Emploi] Diagnostic d'erreurs - Apps](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/014dae91-507a-44de-b782-72e5eddbab74)\n- [[Pass Emploi] Bases de données - PostgreSQL](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/66b0c0ac-d034-489b-ab0a-7b07539074ff)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n- [[Pass Emploi] Logs de Prod - Erreurs base de données](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/c4dfc122-1edc-42b2-973d-98ac7b127211)\n\n## Runbook\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/alertes.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "014dae91-507a-44de-b782-72e5eddbab74"
+      },
+      {
+        "id": "66b0c0ac-d034-489b-ab0a-7b07539074ff"
+      },
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": "FROM logs-prod-default\n| WHERE log.level == \"error\" AND (event.action IS NULL OR event.action != \"external_api_call\")\n| EVAL famille = CASE(error.type LIKE \"Sequelize*\", \"base de données\", event.action IS NULL, \"sans event.action\", event.action),\n       message = SUBSTRING(error.message, 1, 120)\n| STATS erreurs = COUNT(*), exemples = VALUES(message) BY service = service.name, famille\n| INLINE STATS total = SUM(erreurs)\n| WHERE total >= 50\n| EVAL exemple = MV_FIRST(exemples)\n| SORT erreurs DESC\n| LIMIT 5\n| KEEP service, famille, erreurs, exemple"
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 5,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "groupBy": "all"
+  },
+  "actions": [
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}

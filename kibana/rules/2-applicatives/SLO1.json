@@ -1,0 +1,169 @@
+{
+  "_id": "ae2694af-e78e-497c-88cf-4cd43e4b01f8",
+  "_message": {
+    "titre": "**SLO menacé — disponibilité par parcours (prod)**",
+    "fenetres": {
+      "alert": {
+        "gravite": "critique"
+      },
+      "high": {
+        "gravite": "avertissement"
+      }
+    },
+    "sections": [
+      {
+        "titre": "Promesse",
+        "lignes": [
+          "{objectif} des requêtes de chaque parcours réussissent, sur 30 jours glissants. Une requête réussit si elle est servie sans erreur serveur (status < 500) : un 4xx est une réponse juste du service."
+        ]
+      },
+      {
+        "titre": "Parcours / mode",
+        "lignes": [
+          "`{groupe}`"
+        ]
+      },
+      {
+        "titre": "Ce qui se passe",
+        "lignes": [
+          "Sur {fenetre_longue}, les requêtes en échec consomment la marge d'erreur du mois {burn_rate_long} fois plus vite que prévu ({burn_rate_court} fois sur les {fenetre_courte} les plus récentes). À ce rythme, elle est épuisée en {jours_restants} jours."
+        ]
+      },
+      {
+        "titre": "À vérifier",
+        "lignes": [
+          "1. Quel parcours échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)",
+          "2. Si un partenaire échoue (France Travail, Milo…) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)",
+          "3. Si l'api répond en erreur serveur : le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)"
+        ]
+      }
+    ],
+    "liens": {
+      "Dashboards": [
+        {
+          "nom": "[Pass Emploi] SLO de Prod",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14"
+        },
+        {
+          "nom": "[Pass Emploi] Diagnostic d'erreurs - Entrée",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74"
+        }
+      ],
+      "Discover sessions": [
+        {
+          "nom": "[Pass Emploi] Logs de Prod - Échecs partenaires",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293"
+        },
+        {
+          "nom": "[Pass Emploi] Logs de Prod - Erreurs serveur 5xx",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73"
+        }
+      ],
+      "Marge d'erreur": [
+        {
+          "nom": "Budget d'erreur et historique du SLO",
+          "url": "{url_slo}"
+        }
+      ],
+      "Runbook": [
+        {
+          "nom": "Investiguer un incident applicatif",
+          "url": "https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md"
+        }
+      ]
+    }
+  },
+  "name": "SLO - Prod - API — disponibilité par parcours",
+  "rule_type_id": "slo.rules.burnRate",
+  "consumer": "slo",
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nSLO menacé — disponibilité par parcours (prod) : la marge d'erreur du SLO se consomme trop vite.\n\n**Promesse** : {objectif} des requêtes de chaque parcours réussissent, sur 30 jours glissants. Une requête réussit si elle est servie sans erreur serveur (status < 500) : un 4xx est une réponse juste du service.\n\n## À vérifier\n\n1. Quel parcours échoue, et depuis quand : le dashboard [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n2. Si un partenaire échoue (France Travail, Milo…) : le dashboard [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74), puis le Discover [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n3. Si l'api répond en erreur serveur : le Discover [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n\n## Dashboards\n\n- [[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)\n- [[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Échecs partenaires](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/a28897ac-ecb1-4b4f-b413-0340c7241293)\n- [[Pass Emploi] Logs de Prod - Erreurs serveur 5xx](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/d076df50-1625-443b-978c-1aa9a1288e73)\n\n## Documentation\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md)\n"
+    },
+    "dashboards": [
+      {
+        "id": "b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14"
+      },
+      {
+        "id": "eb348ed9-3bc2-4204-a5c2-c31465731c74"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "tags": [
+    "prod",
+    "slo"
+  ],
+  "params": {
+    "sloId": "57e45f52-6c4c-45a4-8aa0-c5885c35e55f",
+    "windows": [
+      {
+        "id": "alert",
+        "actionGroup": "slo.burnRate.alert",
+        "longWindow": {
+          "value": 1,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 5,
+          "unit": "m"
+        }
+      },
+      {
+        "id": "high",
+        "actionGroup": "slo.burnRate.high",
+        "longWindow": {
+          "value": 6,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 30,
+          "unit": "m"
+        }
+      },
+      {
+        "id": "medium",
+        "actionGroup": "slo.burnRate.medium",
+        "longWindow": {
+          "value": 24,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 2,
+          "unit": "h"
+        }
+      },
+      {
+        "id": "low",
+        "actionGroup": "slo.burnRate.low",
+        "longWindow": {
+          "value": 72,
+          "unit": "h"
+        },
+        "shortWindow": {
+          "value": 6,
+          "unit": "h"
+        }
+      }
+    ]
+  },
+  "actions": [
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}

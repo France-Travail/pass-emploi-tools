@@ -1,0 +1,180 @@
+# ⚠️ FICHIER GÉNÉRÉ par ../../rules/scripts/generer-regles-alerting.py : NE PAS LE MODIFIER, il serait écrasé.
+# À modifier à la place : l'objectif d'un SLO dans ../seuils.json, le reste dans ../_modele.console.
+# La CI de chaque PR vérifie que ce fichier correspond à ses sources.
+#
+# SLO Kibana — prod. Ce qu'ils promettent : ../../docs/observabilite/slo.md.
+#
+# L'objectif de chaque SLO (sa cible, et son pourcentage dans une description) vient de
+# seuils.json, à la clé du code de sa règle burn rate (rules/2-applicatives/SLO*.json).
+# Idempotent : chaque SLO est supprimé puis recréé avec le même id (DELETE puis POST) ;
+# rejouer tout le fichier dans Dev Tools, qu'il existe déjà ou non. Recréer un SLO
+# relance le calcul de ses 30 jours : ses règles burn rate peuvent sonner à tort
+# pendant ce calcul.
+#
+# service.name est indispensable dans les filtres api : logs-prod-default reçoit
+# aussi les requêtes du web et de connect.
+#
+# SLO « API — disponibilité par parcours » : une requête est bonne si son status
+# est < 500. Un 4xx est une réponse juste du service ; il reste visible dans
+# l'alerte des refus anormaux d'un parcours.
+
+DELETE kbn:/api/observability/slos/57e45f52-6c4c-45a4-8aa0-c5885c35e55f
+POST kbn:/api/observability/slos
+{
+  "id": "57e45f52-6c4c-45a4-8aa0-c5885c35e55f",
+  "name": "API — disponibilité par parcours",
+  "description": "99,5 % des requêtes de chaque parcours servies sans erreur serveur (status < 500). Un 4xx est une réponse juste du service.",
+  "indicator": {
+    "type": "sli.kql.custom",
+    "params": {
+      "index": "logs-prod-default",
+      "filter": "service.name: pass-emploi-api and event.action: (request_completed or request_failed) and labels.user_journey: *",
+      "good": "http.response.status_code < 500",
+      "total": "*",
+      "timestampField": "@timestamp"
+    }
+  },
+  "timeWindow": { "duration": "30d", "type": "rolling" },
+  "budgetingMethod": "occurrences",
+  "objective": { "target": 0.995 },
+  "groupBy": "labels.user_journey",
+  "tags": ["prod", "api", "disponibilite"]
+}
+
+DELETE kbn:/api/observability/slos/ec53b7e4-604e-4e33-a4df-ace9e4aea01b
+POST kbn:/api/observability/slos
+{
+  "id": "ec53b7e4-604e-4e33-a4df-ace9e4aea01b",
+  "name": "Login — réussite jeune France Travail",
+  "description": "Login de bout en bout (pass-emploi-connect), hors refus métier. Objectif à relever à mesure que les OPError et SessionNotFound se résorbent.",
+  "indicator": {
+    "type": "sli.kql.custom",
+    "params": {
+      "index": "logs-prod-default",
+      "filter": "event.action: (login_completed or login_failed) and not error.type: UTILISATEUR_NON_TRAITABLE and labels.idp: francetravail-jeune",
+      "good": "event.action: login_completed",
+      "total": "*",
+      "timestampField": "@timestamp"
+    }
+  },
+  "timeWindow": { "duration": "30d", "type": "rolling" },
+  "budgetingMethod": "occurrences",
+  "objective": { "target": 0.85 },
+  "groupBy": "*",
+  "tags": ["prod", "connect", "login"]
+}
+
+DELETE kbn:/api/observability/slos/eab098cb-e596-4870-a1a6-7455ec89cf50
+POST kbn:/api/observability/slos
+{
+  "id": "eab098cb-e596-4870-a1a6-7455ec89cf50",
+  "name": "Login — réussite conseiller Milo",
+  "description": "Login de bout en bout (pass-emploi-connect), mode milo-conseiller, hors refus métier.",
+  "indicator": {
+    "type": "sli.kql.custom",
+    "params": {
+      "index": "logs-prod-default",
+      "filter": "event.action: (login_completed or login_failed) and not error.type: UTILISATEUR_NON_TRAITABLE and labels.idp: milo-conseiller",
+      "good": "event.action: login_completed",
+      "total": "*",
+      "timestampField": "@timestamp"
+    }
+  },
+  "timeWindow": { "duration": "30d", "type": "rolling" },
+  "budgetingMethod": "occurrences",
+  "objective": { "target": 0.98 },
+  "groupBy": "*",
+  "tags": ["prod", "connect", "login"]
+}
+
+DELETE kbn:/api/observability/slos/43943a19-4410-4001-a86e-3f414f13e18d
+POST kbn:/api/observability/slos
+{
+  "id": "43943a19-4410-4001-a86e-3f414f13e18d",
+  "name": "Login — réussite jeune Milo",
+  "description": "Login de bout en bout (pass-emploi-connect), mode milo-jeune, hors refus métier.",
+  "indicator": {
+    "type": "sli.kql.custom",
+    "params": {
+      "index": "logs-prod-default",
+      "filter": "event.action: (login_completed or login_failed) and not error.type: UTILISATEUR_NON_TRAITABLE and labels.idp: milo-jeune",
+      "good": "event.action: login_completed",
+      "total": "*",
+      "timestampField": "@timestamp"
+    }
+  },
+  "timeWindow": { "duration": "30d", "type": "rolling" },
+  "budgetingMethod": "occurrences",
+  "objective": { "target": 0.98 },
+  "groupBy": "*",
+  "tags": ["prod", "connect", "login"]
+}
+
+DELETE kbn:/api/observability/slos/9afea251-1cf9-423f-a374-ca43c3e751ac
+POST kbn:/api/observability/slos
+{
+  "id": "9afea251-1cf9-423f-a374-ca43c3e751ac",
+  "name": "Login — réussite conseiller France Travail",
+  "description": "Login de bout en bout (pass-emploi-connect), mode francetravail-conseiller, hors refus métier.",
+  "indicator": {
+    "type": "sli.kql.custom",
+    "params": {
+      "index": "logs-prod-default",
+      "filter": "event.action: (login_completed or login_failed) and not error.type: UTILISATEUR_NON_TRAITABLE and labels.idp: francetravail-conseiller",
+      "good": "event.action: login_completed",
+      "total": "*",
+      "timestampField": "@timestamp"
+    }
+  },
+  "timeWindow": { "duration": "30d", "type": "rolling" },
+  "budgetingMethod": "occurrences",
+  "objective": { "target": 0.99 },
+  "groupBy": "*",
+  "tags": ["prod", "connect", "login"]
+}
+
+DELETE kbn:/api/observability/slos/3d00217c-87b8-45f5-882c-3338bb60750c
+POST kbn:/api/observability/slos
+{
+  "id": "3d00217c-87b8-45f5-882c-3338bb60750c",
+  "name": "Login — réussite invité",
+  "description": "Login de bout en bout (pass-emploi-connect), mode invité, hors refus métier. Faible trafic : alerte burn rate sur fenêtre longue.",
+  "indicator": {
+    "type": "sli.kql.custom",
+    "params": {
+      "index": "logs-prod-default",
+      "filter": "event.action: (login_completed or login_failed) and not error.type: UTILISATEUR_NON_TRAITABLE and labels.idp: invite",
+      "good": "event.action: login_completed",
+      "total": "*",
+      "timestampField": "@timestamp"
+    }
+  },
+  "timeWindow": { "duration": "30d", "type": "rolling" },
+  "budgetingMethod": "occurrences",
+  "objective": { "target": 0.9 },
+  "groupBy": "*",
+  "tags": ["prod", "connect", "login"]
+}
+
+DELETE kbn:/api/observability/slos/61f38008-cb75-41de-aadc-0a65d2cb7a0d
+POST kbn:/api/observability/slos
+{
+  "id": "61f38008-cb75-41de-aadc-0a65d2cb7a0d",
+  "name": "Login — réussite conseiller départemental",
+  "description": "Login de bout en bout (pass-emploi-connect), mode conseildepartemental-conseiller, hors refus métier. Faible trafic : alerte burn rate sur fenêtre longue.",
+  "indicator": {
+    "type": "sli.kql.custom",
+    "params": {
+      "index": "logs-prod-default",
+      "filter": "event.action: (login_completed or login_failed) and not error.type: UTILISATEUR_NON_TRAITABLE and labels.idp: conseildepartemental-conseiller",
+      "good": "event.action: login_completed",
+      "total": "*",
+      "timestampField": "@timestamp"
+    }
+  },
+  "timeWindow": { "duration": "30d", "type": "rolling" },
+  "budgetingMethod": "occurrences",
+  "objective": { "target": 0.95 },
+  "groupBy": "*",
+  "tags": ["prod", "connect", "login"]
+}

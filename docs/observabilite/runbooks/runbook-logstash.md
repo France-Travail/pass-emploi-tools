@@ -3,17 +3,17 @@
 > **Type** : tutoriel (Diataxis). Procédures pas-à-pas pour diagnostiquer et
 > résoudre les 5 scénarios de panne de la chaîne d'ingestion Logstash.
 >
-> Contexte et invariants durables : [collecte/logs](../collecte/logs/README.md),
-> [process/logs](../process/logs/README.md), [infrastructure.md](../infrastructure.md).
-> Définitions des alertes de la stack d'observabilité : [`supervision/alertes-stack-observabilite.md`](../supervision/alertes-stack-observabilite.md).
-> Rétention par télémétrie (logs/traces/métriques) : [`stockage/`](../stockage/README.md).
+> Contexte et invariants durables : [collecte/logs](../infra/collecte/logs/README.md),
+> [process/logs](../infra/process/logs/README.md), [infrastructure.md](../infra/infrastructure.md).
+> Définitions des alertes de la stack d'observabilité : [`infra/alertes-stack-observabilite.md`](../infra/alertes-stack-observabilite.md).
+> Rétention par télémétrie (logs/traces/métriques) : [`stockage/`](../infra/stockage/README.md).
 > Dashboards Fleet Logstash :
 > https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/integrations/detail/logstash-2.11.3/assets
 
 ## Playbook de diagnostic de l'ingestion
 
 Méthode générale, avant de choisir un scénario ci-dessous. Signatures des modes
-de panne A/B : [collecte/logs](../collecte/logs/README.md#les-2-modes-de-panne--signatures).
+de panne A/B : [collecte/logs](../infra/collecte/logs/README.md#les-2-modes-de-panne--signatures).
 
 1. **Travailler sur la donnée du MOMENT T du trou**, pas une fenêtre saine (source
    n°1 de temps perdu lors de l'incident de juillet 2026).
@@ -25,7 +25,7 @@ de panne A/B : [collecte/logs](../collecte/logs/README.md#les-2-modes-de-panne--
    - trous de secondes sans requête → durée réelle du blackout.
 3. **GC vs ES** (pics de response time) : activer le log GC
    (`-Xlog:gc,safepoint:stderr:utctime,level,tags` dans les options JVM, cf.
-   [infrastructure § garde-fous](../infrastructure.md#garde-fous-jvm--scalingo)),
+   [infrastructure § garde-fous](../infra/infrastructure.md#garde-fous-jvm--scalingo)),
    lire les logs **de l'app logstash** : pic **avec** `Pause … ms` = GC ; pic
    **sans** = ES (corréler au monitoring Elastic Cloud). **Retirer après** (verbeux).
 4. **Codes** : **429** = input plein (backpressure) ; **499** = le drain a coupé
@@ -65,7 +65,7 @@ trou**, pas sur une fenêtre saine. C'est la source n°1 de temps perdu.
 | `logstash.node.stats.events.out`                                                  | `metrics-logstash.node-default`     | [Metrics Logstash] Logstash Overview                | Chute ou plateau à 0                          |
 | CPU Logstash (Scalingo)                                                           | Dashboard Scalingo                  | Dashboard Scalingo                                  | **0 % sur tous les conteneurs simultanément** |
 
-**Premier signal** : l'[alerte M12](../supervision/alertes-stack-observabilite.md#alerte-m12--saturation-de-lindexation-elasticsearch-autoops)
+**Premier signal** : l'[alerte M12](../infra/alertes-stack-observabilite.md#alerte-m12--saturation-de-lindexation-elasticsearch-autoops)
 (AutoOps), management queue ou write queue haute, arrive avant la backpressure
 de l'alerte M4a.
 
@@ -155,7 +155,7 @@ HTTP ralentit → les drains reçoivent des 429 → quarantaine.
 
 ### Références
 
-- [collecte/logs — Mode A](../collecte/logs/README.md#les-2-modes-de-panne--signatures)
+- [collecte/logs — Mode A](../infra/collecte/logs/README.md#les-2-modes-de-panne--signatures)
 - [postmortem-2026-07-blackout-logs.md — §2](../post-mortems/postmortem-2026-07-blackout-logs.md)
 
 ---
@@ -207,7 +207,7 @@ dans les logs Scalingo de l'app `pass-emploi-logstash-prod`, chercher les lignes
 
 ### Références
 
-- [infrastructure.md — Garde-fous JVM](../infrastructure.md#garde-fous-jvm--scalingo)
+- [infrastructure.md — Garde-fous JVM](../infra/infrastructure.md#garde-fous-jvm--scalingo)
 - [postmortem-2026-06-logstash-5xx.md](../post-mortems/postmortem-2026-06-logstash-5xx.md)
 
 ---
@@ -265,7 +265,7 @@ Des `_ignored` indiquent un dépassement de `total_fields.limit` → prévoir un
 
 **Si DLQ non vide (conflit de mapping)** :
 1. Identifier le champ fautif via `logstash.dlq.reason` dans `logs-logstash-dlq-*`.
-2. Corriger le mapping dans `docs/observabilite/stockage/logs/2-component-templates.console`
+2. Corriger le mapping dans `docs/observabilite/infra/stockage/logs/2-component-templates.console`
    (ajouter le champ dans `pass-emploi-logs@mappings` ou le template concerné).
 3. Appliquer via Kibana Dev Tools et faire un rollover :
    ```
@@ -281,14 +281,13 @@ Des `_ignored` indiquent un dépassement de `total_fields.limit` → prévoir un
    terminant en plein milieu d'une valeur** → ligne applicative tronquée par le
    drain Scalingo, pas un bug de pipeline. Rien à corriger côté Logstash : la
    ligne source dépasse 16 Ko et doit être réduite côté app (cf.
-   [format/logs/conventions](../format/logs/conventions.md) § « Ne jamais logger une exception
-   brute »). Le `context` en tête du `message` tronqué désigne le handler fautif.
+   [standard des logs, les exceptions](../logs.md#les-exceptions)). Le `context` en tête du `message` tronqué désigne le handler fautif.
 3. Sinon, reproduire localement avec le pipeline `process` pour identifier le
    filtre défaillant, corriger `logs/pipeline-process.conf` et déployer.
 
 ### Références
 
-- [stockage/logs — Pièges connus](../stockage/logs/README.md#pièges-connus)
+- [stockage/logs — Pièges connus](../infra/stockage/logs/README.md#pièges-connus)
 - [`logs/pipeline-dlq-logstash.conf`](../../../logs/pipeline-dlq-logstash.conf)
 - [`logs/pipeline-process.conf`](../../../logs/pipeline-process.conf)
 
@@ -363,9 +362,9 @@ http.response.status_code: (429 OR 499) AND service.environment: "prod"
 
 ### Références
 
-- [drain-scalingo.md — Quarantaine](../collecte/logs/drain-scalingo.md)
+- [drain-scalingo.md — Quarantaine](../infra/collecte/logs/drain-scalingo.md)
 - [postmortem-2026-07-blackout-logs.md — §3 Mode B](../post-mortems/postmortem-2026-07-blackout-logs.md)
-- [supervision/alertes-stack-observabilite.md — Alerte M6 (événements Scalingo de la stack)](../supervision/alertes-stack-observabilite.md#alerte-m6--événements-scalingo-des-apps-de-la-stack)
+- [alertes de la stack — Alerte M6 (événements Scalingo de la stack)](../infra/alertes-stack-observabilite.md#alerte-m6--événements-scalingo-des-apps-de-la-stack)
 
 ---
 
@@ -443,7 +442,7 @@ Un backlog signale que le pipeline `process` ne consomme plus Redis. Causes poss
 
 ### Références
 
-- [supervision/alertes-stack-observabilite.md — Alerte M7](../supervision/alertes-stack-observabilite.md#alerte-m7--backlog-redis-logstashingest-pipeline-process-découplé)
+- [alertes de la stack — Alerte M7](../infra/alertes-stack-observabilite.md#alerte-m7--backlog-redis-logstashingest-pipeline-process-découplé)
 
 ---
 

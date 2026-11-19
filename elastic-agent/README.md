@@ -11,13 +11,13 @@ Un seul agent dédié évite les doublons de métriques qui surviendraient si ch
 instance Logstash monitorait la même ressource.
 
 > **Rétention des métriques dans Elasticsearch** (`metrics-redis.*`,
-> `metrics-postgresql.*`, `metrics-sql.postgresql_*`, `logs-scalingo.*`) : [`stockage/metriques/README.md`](../docs/observabilite/stockage/metriques/README.md), section
+> `metrics-postgresql.*`, `metrics-sql.postgresql_*`, `logs-scalingo.*`) : [`stockage/metriques/README.md`](../docs/observabilite/infra/stockage/metriques/README.md), section
 > `metriques/`. Ce README-ci documente **quoi** superviser (Fleet, intégrations) ;
 > l'autre documente **combien de temps** la donnée est gardée (policies ILM).
 
 Ce README documente l'app Scalingo (déploiement, variables, démarrage). La
 configuration Fleet (intégrations, requêtes, programmes CEL) est dans
-[`docs/observabilite/supervision/agents/`](../docs/observabilite/supervision/agents/README.md).
+[`kibana/agents/`](../kibana/agents/README.md).
 
 ## Déploiement Scalingo
 
@@ -70,4 +70,4 @@ Test du démarrage : `bash elastic-agent/tests/test_start.sh` (Docker).
 
 ## Mémoire des conteneurs Scalingo (intégration Custom API)
 
-Les intégrations Fleet de l'agent (Redis, PostgreSQL, SQL Input, Custom API), leurs requêtes et programmes : [`docs/observabilite/supervision/agents/`](../docs/observabilite/supervision/agents/README.md#mémoire-des-conteneurs-scalingo-intégration-custom-api).
+Les intégrations Fleet de l'agent (Redis, PostgreSQL, SQL Input, Custom API), leurs requêtes et programmes : [`kibana/agents/`](../kibana/agents/README.md#mémoire-des-conteneurs-scalingo-intégration-custom-api).

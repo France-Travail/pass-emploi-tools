@@ -1,0 +1,68 @@
+{
+  "_id": "6dd99b60-9886-11ec-9757-c9700cd1bb4e",
+  "_commentaire": [
+    "# A11 — Certificat TLS bientôt expiré (Warning), un message par certificat et par jour.",
+    "# Règle Uptime (Heartbeat), recréée par POST avec les paramètres de la règle d'origine."
+  ],
+  "_message": {
+    "titre": "**Certificat TLS bientôt expiré** — {etat.commonName} : {resume_certificat}",
+    "gravite": "avertissement",
+    "sections": [
+      {
+        "titre": "Détail",
+        "lignes": [
+          "Émetteur : {etat.issuer}"
+        ]
+      },
+      {
+        "titre": "À vérifier",
+        "lignes": [
+          "1. Le domaine et la date d'expiration : le titre du message",
+          "2. Son renouvellement automatique chez l'hébergeur du domaine ; pour une app Scalingo, l'onglet Domains de l'app dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)"
+        ]
+      }
+    ],
+    "liens": {
+      "Dashboards": [
+        {
+          "nom": "[Scalingo] Dashboard des apps",
+          "url": "https://dashboard.scalingo.com/apps"
+        }
+      ]
+    }
+  },
+  "name": "TLS - Certificat bientôt expiré",
+  "rule_type_id": "xpack.uptime.alerts.tlsCertificate",
+  "consumer": "uptime",
+  "tags": [
+    "prod",
+    "applicatif",
+    "uptime"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nUn certificat TLS d'un domaine surveillé par Heartbeat expire bientôt : sans renouvellement, les navigateurs et les apps refuseront la connexion.\n\n## À vérifier\n\n1. Le domaine et la date d'expiration : le titre du message\n2. Son renouvellement automatique chez l'hébergeur du domaine ; pour une app Scalingo, l'onglet Domains de l'app dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Dashboards\n\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Documentation\n\n[Alertes applicatives](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/alertes.md)\n"
+    }
+  },
+  "schedule": {
+    "interval": "1d"
+  },
+  "params": {},
+  "actions": [
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-production",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}

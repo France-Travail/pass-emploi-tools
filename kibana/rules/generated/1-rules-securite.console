@@ -1,0 +1,385 @@
+# ⚠️ FICHIER GÉNÉRÉ par ../scripts/generer-regles-alerting.py : NE PAS LE MODIFIER, il serait écrasé.
+# À modifier à la place, dans ../1-securite/ :
+#   - une règle : son fichier <code>.json (le JSON de la règle Kibana) ;
+#   - le texte autour des règles (commentaires, autres requêtes) : _modele.console.
+# Puis : python3 -I ../scripts/generer-regles-alerting.py
+#        python3 -I ../scripts/generer-notifications-tchap.py
+# La CI de chaque PR vérifie que ce fichier correspond à ses sources.
+# Ce fichier se colle tel quel dans Kibana → Dev Tools. Mode d'emploi : ../README.md.
+#
+# Règles Kibana des alertes de sécurité. Spécification : ../../../docs/observabilite/alertes-securite.md.
+#
+# À rejouer dans Dev Tools, après les sessions Discover de
+# ../../discovers/webhooks/.
+# Idempotent : chaque règle est supprimée puis recréée avec le même id (DELETE
+# puis POST) ; rejouer tout le fichier, qu'elle existe déjà ou non. Une règle
+# recréée perd son historique d'alertes.
+# Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
+# ../../objets-kibana.md#slo-et-règles-console.
+#
+# Message de chaque règle : la clé « _message » de son fichier <code>.json, dans
+# ../1-securite/, au format pivot (../README.md, « Le message d'une règle »).
+#
+# artifacts : l'Investigation guide et les Related dashboards (onglets de la
+# règle). L'API publique ne les renvoie pas dans ses réponses : les vérifier
+# dans l'interface.
+
+# S1 — CVE high/critical encore ouvertes, à chaque passage de security-alerts.yml (Critical)
+DELETE kbn:/api/alerting/rule/67846c2c-45d1-45be-89f5-ce9a340240a0
+POST kbn:/api/alerting/rule/67846c2c-45d1-45be-89f5-ce9a340240a0
+{
+  "name": "GitHub - CVE high ou critical ouverte",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
+  "tags": [
+    "critical",
+    "prod",
+    "securite",
+    "tchap-lignes"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nUne CVE high ou critical est encore ouverte sur un repo (alertes Dependabot envoyées par `security-alerts.yml`).\n\n## À vérifier\n\n1. Le Discover [[Pass Emploi] Alertes externes - CVE Dependabot](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/ece3e409-0679-4bcb-a675-ae7dfb092c19), liste les CVE ouvertes par repo avec leur score\n2. Les alertes Dependabot du repo concerné, à traiter selon leur sévérité : [[GitHub] Alertes Dependabot - pass-emploi-api](https://github.com/France-Travail/pass-emploi-api/security/dependabot), [[GitHub] Alertes Dependabot - pass-emploi-web](https://github.com/France-Travail/pass-emploi-web/security/dependabot), [[GitHub] Alertes Dependabot - pass-emploi-connect](https://github.com/France-Travail/pass-emploi-connect/security/dependabot)\n\n## Dashboards\n\n- [[GitHub] Alertes Dependabot - pass-emploi-api](https://github.com/France-Travail/pass-emploi-api/security/dependabot)\n- [[GitHub] Alertes Dependabot - pass-emploi-web](https://github.com/France-Travail/pass-emploi-web/security/dependabot)\n- [[GitHub] Alertes Dependabot - pass-emploi-connect](https://github.com/France-Travail/pass-emploi-connect/security/dependabot)\n\n## Discover sessions\n\n- [[Pass Emploi] Alertes externes - CVE Dependabot](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/ece3e409-0679-4bcb-a675-ae7dfb092c19)\n\n## Documentation\n\n[Alertes de sécurité](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/alertes-securite.md)\n"
+    }
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "vulnerability.severity : (\"high\" or \"critical\")",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "8a589b67-53bc-407d-9d76-c68b41271bbe",
+        "title": "logs-alertes-github-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "Alertes GitHub - CVE",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 10,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 20,
+    "aggType": "count",
+    "groupBy": "all",
+    "termSize": 5,
+    "excludeHitsFromPreviousRun": true,
+    "sourceFields": []
+  },
+  "actions": [
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-securite",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": true,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# S2a — Suspicion d'attaque DDoS, de prod (Critical) : alertes de métriques Scalingo RPM et 5xx
+# de la même app, à moins de 10 min d'intervalle, pas encore revenues à la normale.
+# Nouvelle règle : la première fois, la créer avec POST sur la même URL, en ajoutant
+# "rule_type_id" et "consumer" à la racine du corps, au même niveau que "name" (pas dans "params") :
+#   POST kbn:/api/alerting/rule/4b2e9f71-6c3d-4a85-b0e7-9d1f2c3a5e68
+#   {
+#     "rule_type_id": ".es-query",
+#     "consumer": "alerts",
+#     "name": "Scalingo - Prod - Suspicion d'attaque DDoS",
+#     "tags": [...], "artifacts": {...}, "schedule": {...}, "params": {...}, "actions": [...]
+#   }
+# Ensuite, ce bloc tel quel, en PUT (qui refuse ces deux champs).
+DELETE kbn:/api/alerting/rule/4b2e9f71-6c3d-4a85-b0e7-9d1f2c3a5e68
+POST kbn:/api/alerting/rule/4b2e9f71-6c3d-4a85-b0e7-9d1f2c3a5e68
+{
+  "name": "Scalingo - Prod - Suspicion d'attaque DDoS",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
+  "tags": [
+    "critical",
+    "prod",
+    "securite",
+    "scalingo"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nSur une app applicative de prod, les alertes de métriques Scalingo des requêtes par minute (RPM) et des erreurs 5xx sont déclenchées à moins de 10 min d'intervalle, et aucune n'est revenue à la normale : le trafic dépasse ce que l'app absorbe et elle commence à refuser des requêtes. Signe d'une attaque par déni de service, d'un compte qui envoie des requêtes en masse, ou d'un pic légitime. Ne dépend pas des logs : les alertes arrivent de Scalingo par webhook.\n\n## À vérifier\n\n1. Quelle app, depuis quand, et le trafic continue-t-il de monter : ses métriques (onglet Metrics) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n2. Un événement légitime l'explique-t-il : mise en service, notification de masse, campagne de communication\n3. D'où vient le trafic : si les logs du routeur arrivent encore (règle [Logstash - Prod - Détection absence ingestion logs router](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/management/insightsAndAlerting/triggersActions/rule/6c2a2a83-9c40-4f40-af8d-911402932417) au repos), le Discover [[Pass Emploi] Logs de Prod - Trafic du routeur par IP](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/7d3f1c2e-5b8a-4e6f-9c1d-2a4b6e8f0d13) sur la période ; sinon, les logs du routeur lus directement chez Scalingo, sans drain ni Logstash : `scalingo --region osc-secnum-fr1 --app <app> logs --lines 5000`, IP dans `from=`, puis le support Scalingo\n\n## Dashboards\n\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Trafic du routeur par IP](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/7d3f1c2e-5b8a-4e6f-9c1d-2a4b6e8f0d13)\n\n## Runbook\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md#suspicion-de-ddos-ou-surcharge-de-linfra)\n\n## Documentation\n\n[Alertes de sécurité](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/alertes-securite.md)\n"
+    },
+    "dashboards": []
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": """FROM logs-alertes-scalingo-prod-default
+| WHERE event.kind == "alert" AND labels.metric IN ("Requests per Minute", "5xx Errors")
+| INLINE STATS dernier_evenement = MAX(@timestamp) BY service.name, service.environment, labels.metric
+| WHERE @timestamp == dernier_evenement AND event.action == "resource_threshold_exceeded"
+| STATS metriques = COUNT_DISTINCT(labels.metric), depuis = MIN(@timestamp), jusqu_a = MAX(@timestamp), rpm = MAX(CASE(labels.metric == "Requests per Minute", labels.value_text, null)), erreurs_5xx = MAX(CASE(labels.metric == "5xx Errors", labels.value_text, null)) BY service.name, service.environment
+| WHERE metriques == 2 AND DATE_DIFF("minute", depuis, jusqu_a) <= 10
+| EVAL app = CONCAT(service.name, "-", service.environment)
+| KEEP app, rpm, erreurs_5xx, depuis"""
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 45,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "groupBy": "all"
+  },
+  "actions": [
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-securite",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# S2b — Suspicion d'attaque DDoS, de staging ou de perf (Critical) : alertes de métriques Scalingo RPM et 5xx
+# de la même app, à moins de 10 min d'intervalle, pas encore revenues à la normale.
+# Nouvelle règle : la première fois, la créer avec POST sur la même URL, en ajoutant
+# "rule_type_id" et "consumer" à la racine du corps, au même niveau que "name" (pas dans "params") :
+#   POST kbn:/api/alerting/rule/8e5a1d34-2f7b-4c90-a6d8-3b4c5e6f7a81
+#   {
+#     "rule_type_id": ".es-query",
+#     "consumer": "alerts",
+#     "name": "Scalingo - Hors-Prod - Suspicion d'attaque DDoS",
+#     "tags": [...], "artifacts": {...}, "schedule": {...}, "params": {...}, "actions": [...]
+#   }
+# Ensuite, ce bloc tel quel, en PUT (qui refuse ces deux champs).
+DELETE kbn:/api/alerting/rule/8e5a1d34-2f7b-4c90-a6d8-3b4c5e6f7a81
+POST kbn:/api/alerting/rule/8e5a1d34-2f7b-4c90-a6d8-3b4c5e6f7a81
+{
+  "name": "Scalingo - Hors-Prod - Suspicion d'attaque DDoS",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
+  "tags": [
+    "critical",
+    "hors-prod",
+    "securite",
+    "scalingo"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nSur une app applicative de staging ou de perf, les alertes de métriques Scalingo des requêtes par minute (RPM) et des erreurs 5xx sont déclenchées à moins de 10 min d'intervalle, et aucune n'est revenue à la normale : le trafic dépasse ce que l'app absorbe et elle commence à refuser des requêtes. Signe d'une attaque par déni de service, d'un compte qui envoie des requêtes en masse, ou d'un pic légitime. Ne dépend pas des logs : les alertes arrivent de Scalingo par webhook.\n\n## À vérifier\n\n1. Quelle app, depuis quand, et le trafic continue-t-il de monter : ses métriques (onglet Metrics) dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n2. Un événement légitime l'explique-t-il : mise en service, notification de masse, campagne de communication\n3. D'où vient le trafic : si les logs du routeur arrivent encore (règle [Logstash - Prod - Détection absence ingestion logs router](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/management/insightsAndAlerting/triggersActions/rule/6c2a2a83-9c40-4f40-af8d-911402932417) au repos), le Discover [[Pass Emploi] Logs de Prod - Trafic du routeur par IP](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/7d3f1c2e-5b8a-4e6f-9c1d-2a4b6e8f0d13) sur la période ; sinon, les logs du routeur lus directement chez Scalingo, sans drain ni Logstash : `scalingo --region osc-secnum-fr1 --app <app> logs --lines 5000`, IP dans `from=`, puis le support Scalingo\n\n## Dashboards\n\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Trafic du routeur par IP](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/7d3f1c2e-5b8a-4e6f-9c1d-2a4b6e8f0d13)\n\n## Runbook\n\n- [Investiguer un incident applicatif](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/investigation-incident.md#suspicion-de-ddos-ou-surcharge-de-linfra)\n\n## Documentation\n\n[Alertes de sécurité](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/alertes-securite.md)\n"
+    },
+    "dashboards": []
+  },
+  "schedule": {
+    "interval": "1m"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": """FROM logs-alertes-scalingo-staging-default,logs-alertes-scalingo-perf-default
+| WHERE event.kind == "alert" AND labels.metric IN ("Requests per Minute", "5xx Errors")
+| INLINE STATS dernier_evenement = MAX(@timestamp) BY service.name, service.environment, labels.metric
+| WHERE @timestamp == dernier_evenement AND event.action == "resource_threshold_exceeded"
+| STATS metriques = COUNT_DISTINCT(labels.metric), depuis = MIN(@timestamp), jusqu_a = MAX(@timestamp), rpm = MAX(CASE(labels.metric == "Requests per Minute", labels.value_text, null)), erreurs_5xx = MAX(CASE(labels.metric == "5xx Errors", labels.value_text, null)) BY service.name, service.environment
+| WHERE metriques == 2 AND DATE_DIFF("minute", depuis, jusqu_a) <= 10
+| EVAL app = CONCAT(service.name, "-", service.environment)
+| KEEP app, rpm, erreurs_5xx, depuis"""
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 45,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "groupBy": "all"
+  },
+  "actions": [
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-staging",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# S3a — Limite de débit déclenchée, prod (High) : lignes rate_limit_exceeded de l'api ou de connect.
+# Nouvelle règle : la première fois, la créer avec POST sur la même URL, en ajoutant
+# "rule_type_id" et "consumer" à la racine du corps, au même niveau que "name" (pas dans "params") :
+#   POST kbn:/api/alerting/rule/763950dd-eb65-426c-ae3a-714c35f1bc83
+#   {
+#     "rule_type_id": ".es-query",
+#     "consumer": "alerts",
+#     "name": "Pass Emploi - Prod - Limite de débit déclenchée",
+#     "tags": [...], "artifacts": {...}, "schedule": {...}, "params": {...}, "actions": [...]
+#   }
+# Ensuite, ce bloc tel quel, en PUT (qui refuse ces deux champs).
+DELETE kbn:/api/alerting/rule/763950dd-eb65-426c-ae3a-714c35f1bc83
+POST kbn:/api/alerting/rule/763950dd-eb65-426c-ae3a-714c35f1bc83
+{
+  "name": "Pass Emploi - Prod - Limite de débit déclenchée",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
+  "tags": [
+    "high",
+    "prod",
+    "securite",
+    "rate-limit"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nSur l'api ou connect de prod, une limite de débit a refusé des requêtes (429) : au moins une ligne `rate_limit_exceeded` dans les 15 dernières minutes. Une ligne est émise au premier refus d'une fenêtre, puis au 10e, au 100e… (`labels.rate_limit_palier`). Signe d'un abus, d'une attaque, ou d'un seuil trop bas pour un pic légitime. Ne se déclenche que sur une app où la limite est activée.\n\n## À vérifier\n\n1. Qui est limité : Discover sur `event.action: \"rate_limit_exceeded\"`, puis `user.id` ou `client.ip`, et `url.path`\n2. Légitime ou attaque : un pic attendu (ouverture, communication, atelier en Mission Locale), ou une IP ou un compte inconnu\n3. Si c'est légitime, monter le seuil concerné (`RATE_LIMIT_*` de l'app, cf. le `CLAUDE.md` de l'app) ; si c'est une attaque, croiser avec la règle [Scalingo - Prod - Suspicion d'attaque DDoS](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/management/insightsAndAlerting/triggersActions/rule/4b2e9f71-6c3d-4a85-b0e7-9d1f2c3a5e68) et le Discover [[Pass Emploi] Logs de Prod - Trafic du routeur par IP](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/7d3f1c2e-5b8a-4e6f-9c1d-2a4b6e8f0d13)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Trafic du routeur par IP](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/7d3f1c2e-5b8a-4e6f-9c1d-2a4b6e8f0d13)\n\n## Documentation\n\n[Alertes de sécurité](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/alertes-securite.md)\n"
+    },
+    "dashboards": []
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": """FROM logs-prod-default
+| WHERE event.action == "rate_limit_exceeded"
+| STATS lignes = COUNT(*), palier_max = MAX(TO_INTEGER(labels.rate_limit_palier)), depuis = MIN(@timestamp) BY service.name, labels.rate_limit
+| KEEP service.name, labels.rate_limit, lignes, palier_max, depuis"""
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 15,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "groupBy": "all"
+  },
+  "actions": [
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-securite",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}
+
+# S3b — Limite de débit déclenchée, staging (High) : lignes rate_limit_exceeded de l'api ou de connect.
+# Nouvelle règle : la première fois, la créer avec POST sur la même URL, en ajoutant
+# "rule_type_id" et "consumer" à la racine du corps, au même niveau que "name" (pas dans "params") :
+#   POST kbn:/api/alerting/rule/ca1bf3e3-1959-4d98-8b2f-23fdf6d5f455
+#   {
+#     "rule_type_id": ".es-query",
+#     "consumer": "alerts",
+#     "name": "Pass Emploi - Hors-Prod - Limite de débit déclenchée",
+#     "tags": [...], "artifacts": {...}, "schedule": {...}, "params": {...}, "actions": [...]
+#   }
+# Ensuite, ce bloc tel quel, en PUT (qui refuse ces deux champs).
+DELETE kbn:/api/alerting/rule/ca1bf3e3-1959-4d98-8b2f-23fdf6d5f455
+POST kbn:/api/alerting/rule/ca1bf3e3-1959-4d98-8b2f-23fdf6d5f455
+{
+  "name": "Pass Emploi - Hors-Prod - Limite de débit déclenchée",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
+  "tags": [
+    "high",
+    "hors-prod",
+    "securite",
+    "rate-limit"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nSur l'api ou connect de staging, une limite de débit a refusé des requêtes (429) : au moins une ligne `rate_limit_exceeded` dans les 15 dernières minutes. Une ligne est émise au premier refus d'une fenêtre, puis au 10e, au 100e… (`labels.rate_limit_palier`). Signe d'un abus, d'une attaque, ou d'un seuil trop bas pour un pic légitime. Ne se déclenche que sur une app où la limite est activée.\n\n## À vérifier\n\n1. Qui est limité : Discover sur `event.action: \"rate_limit_exceeded\"`, puis `user.id` ou `client.ip`, et `url.path`\n2. Légitime ou attaque : un pic attendu (ouverture, communication, atelier en Mission Locale), ou une IP ou un compte inconnu\n3. Si c'est légitime, monter le seuil concerné (`RATE_LIMIT_*` de l'app, cf. le `CLAUDE.md` de l'app) ; si c'est une attaque, croiser avec la règle [Scalingo - Hors-Prod - Suspicion d'attaque DDoS](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/management/insightsAndAlerting/triggersActions/rule/8e5a1d34-2f7b-4c90-a6d8-3b4c5e6f7a81) et le Discover [[Pass Emploi] Logs de Prod - Trafic du routeur par IP](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/7d3f1c2e-5b8a-4e6f-9c1d-2a4b6e8f0d13)\n\n## Discover sessions\n\n- [[Pass Emploi] Logs de Prod - Trafic du routeur par IP](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/7d3f1c2e-5b8a-4e6f-9c1d-2a4b6e8f0d13)\n\n## Documentation\n\n[Alertes de sécurité](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/alertes-securite.md)\n"
+    },
+    "dashboards": []
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchType": "esqlQuery",
+    "esqlQuery": {
+      "esql": """FROM logs-staging-default
+| WHERE event.action == "rate_limit_exceeded"
+| STATS lignes = COUNT(*), palier_max = MAX(TO_INTEGER(labels.rate_limit_palier)), depuis = MIN(@timestamp) BY service.name, labels.rate_limit
+| KEEP service.name, labels.rate_limit, lignes, palier_max, depuis"""
+    },
+    "timeField": "@timestamp",
+    "timeWindowSize": 15,
+    "timeWindowUnit": "m",
+    "threshold": [
+      0
+    ],
+    "thresholdComparator": ">",
+    "size": 100,
+    "groupBy": "all"
+  },
+  "actions": [
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-monitoring-staging",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}

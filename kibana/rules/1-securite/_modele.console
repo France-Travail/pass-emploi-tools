@@ -1,0 +1,26 @@
+# Règles Kibana des alertes de sécurité. Spécification : ../../../docs/observabilite/alertes-securite.md.
+#
+# À rejouer dans Dev Tools, après les sessions Discover de
+# ../../discovers/webhooks/.
+# Idempotent : chaque règle est supprimée puis recréée avec le même id (DELETE
+# puis POST) ; rejouer tout le fichier, qu'elle existe déjà ou non. Une règle
+# recréée perd son historique d'alertes.
+# Déployé par l'API avec une clé API : « Update API keys » ensuite, cf.
+# ../../objets-kibana.md#slo-et-règles-console.
+#
+# Message de chaque règle : la clé « _message » de son fichier <code>.json, dans
+# ../1-securite/, au format pivot (../README.md, « Le message d'une règle »).
+#
+# artifacts : l'Investigation guide et les Related dashboards (onglets de la
+# règle). L'API publique ne les renvoie pas dans ses réponses : les vérifier
+# dans l'interface.
+
+@@REGLE S1@@
+
+@@REGLE S2a@@
+
+@@REGLE S2b@@
+
+@@REGLE S3a@@
+
+@@REGLE S3b@@

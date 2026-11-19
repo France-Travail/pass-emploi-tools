@@ -24,25 +24,25 @@
 3. **Sujet absent de cet index = pas de doc d'équipe.** Le dire explicitement
    plutôt que de supposer qu'elle existe ailleurs.
 
-## Logs ECS
+## Logs, SLO et alertes applicatives
 
-- **Ouvrir quand** : on parle de logs, de champs ECS, d'un dashboard Kibana, ou
+- **Ouvrir quand** : on parle de logs, de champs ECS, d'`outcome` ou de `level`,
+  du code HTTP renvoyé par l'api, d'un SLO, d'une alerte ou d'un salon Tchap, ou
   qu'on cherche à savoir si un événement est déjà tracé.
-- **Invariant** : tout log passe par le `rootLogger` au format ECS (`event.action`
-  au passé + `event.outcome`). Logs opérationnels en `level` info|error (pas de
-  `warn`) ; `debug` en plus, en opt-in. Jamais de `console.log`.
-  **Jamais d'exception brute passée à un logger** : `toEcsError(e)` d'abord
-  (sinon `err.config`/`err.response` axios → fuite d'identifiants + ligne > 16 Ko
-  tronquée par le drain → log perdu). Charger le détail **avant** d'ajouter ou
-  modifier un log.
-- **Référence stable** : [`pass-emploi-tools/docs/observabilite/`](./observabilite/README.md)
-  (index par étape × télémétrie) — [`format/logs/conventions.md`](./observabilite/format/logs/conventions.md)
-  (format, nommage, redaction, « ne jamais logger une exception brute »),
-  [`format/logs/couverture-api.md`](./observabilite/format/logs/couverture-api.md) (ce qui est tracé côté api),
-  [`format/webhooks/conventions.md`](observabilite/format/webhooks/conventions.md) (champs ECS des événements reçus par webhook : Scalingo, Dependabot),
-  [`stockage/logs/README.md`](./observabilite/stockage/logs/README.md) (data streams, templates, ILM),
+- **Invariant** : tout log passe par le `rootLogger` au format ECS, une exception
+  par `toEcsError` (sinon fuite d'identifiants, ligne perdue). `outcome` = le fait
+  de la ligne ; `level: error` = une ligne par incident, celle de la cause. Le code
+  HTTP décrit l'appelant et nous : un échec partenaire dû à notre appel sort en
+  5xx. Un SLO se lit sur le status de la requête, jamais sur le level. Charger le
+  détail **avant** de toucher un log, une règle ou un SLO.
+- **Référence stable** : [`observabilite/README.md`](./observabilite/README.md) (index) —
+  [`logs.md`](./observabilite/logs.md) (familles de lignes, `outcome`, `level`, codes HTTP, champs, redaction),
+  [`slo.md`](./observabilite/slo.md) (promesses, burn rate, angles morts),
+  [`alertes.md`](./observabilite/alertes.md) (catalogue, critères, gravités),
+  [`fonctionnement.md`](./observabilite/fonctionnement.md) (chemin jusqu'à Tchap, salons),
   [`routine-surveillance.md`](./observabilite/routine-surveillance.md) (dashboards, reporting),
-  [`runbooks/investigation-incident.md`](./observabilite/runbooks/investigation-incident.md) (KQL d'enquête).
+  [`runbooks/investigation-incident.md`](./observabilite/runbooks/investigation-incident.md) (KQL d'enquête),
+  [`kibana/README.md`](../kibana/README.md) (objets Kibana à déployer et leur mode d'emploi).
 
 ## Ingestion des logs · résilience & scaling (blackouts, drain)
 
@@ -54,17 +54,19 @@
   `-Xmx256m` (mémoire totale ~1,7 Go, ne pas monter), piloté via `LS_JAVA_OPTS`
   (`JAVA_OPTS` est ignoré par Logstash).
   Charger la référence **avant** de scaler ou retoucher la chaîne d'ingestion.
-- **Référence stable** : [`collecte/logs/`](./observabilite/collecte/logs/README.md)
+- **Référence stable** : [`infra/collecte/logs/`](./observabilite/infra/collecte/logs/README.md)
   — `drain-scalingo.md` (quarantaine, troncature, décision ADR-003), `pipeline.md` (ingest) ;
-  [`process/logs/`](./observabilite/process/logs/README.md) — `pipeline.md` (process, routage, DLQ),
+  [`infra/process/logs/`](./observabilite/infra/process/logs/README.md) — `pipeline.md` (process, routage, DLQ),
   `performances.md` (tirs, trajectoire x10) ;
-  [`infrastructure.md`](./observabilite/infrastructure.md) (inventaire, garde-fous JVM/Scalingo, dimensionnement) ;
-  [`pilotage.md`](./observabilite/pilotage.md) (Fleet, agents) ;
-  [`supervision/alertes-stack-observabilite.md`](./observabilite/supervision/alertes-stack-observabilite.md).
+  [`infra/infrastructure.md`](./observabilite/infra/infrastructure.md) (inventaire, garde-fous JVM/Scalingo, dimensionnement) ;
+  [`infra/pilotage.md`](./observabilite/infra/pilotage.md) (Fleet, agents) ;
+  [`infra/stockage/logs/README.md`](./observabilite/infra/stockage/logs/README.md) (data streams, templates, ILM) ;
+  [`infra/format/webhooks/conventions.md`](./observabilite/infra/format/webhooks/conventions.md) (champs ECS des événements reçus par webhook) ;
+  [`infra/alertes-stack-observabilite.md`](./observabilite/infra/alertes-stack-observabilite.md).
   Procédures pas-à-pas de diagnostic : [`pass-emploi-tools/docs/observabilite/runbooks/runbook-logstash.md`](./observabilite/runbooks/runbook-logstash.md)
   (5 scénarios de panne : backpressure ES, gel GC, DLQ, crash conteneur, backlog Redis).
   Rattrapage des logs restés en DLQ (jamais la vider avant) : [`pass-emploi-tools/logs/rattrapage/README.md`](../logs/rattrapage/README.md).
-  Post-mortems associés dans `../post-mortems/` :
+  Post-mortems associés dans `observabilite/post-mortems/` :
   `postmortem-2026-06-logstash-5xx.md` (fonctionnement JVM/Netty/GC, correctif XL),
   `postmortem-2026-07-blackout-logs.md` (les 2 modes de panne observés),
   `postmortem-2026-09-unenrolled-elastic-agent.md` (Elastic Agent bloqué UNENROLLED

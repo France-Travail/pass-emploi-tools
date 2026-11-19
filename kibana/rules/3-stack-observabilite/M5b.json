@@ -1,0 +1,124 @@
+{
+  "_id": "9f9c07f9-07a9-40a3-a882-4a701e81b83c",
+  "_commentaire": [
+    "# M5b — Heap élevé staging / perf (Warning)"
+  ],
+  "_message": {
+    "titre": "**Heap JVM Logstash staging/perf** — le heap reste au-dessus de 90 % depuis 15 min : le GC ne libère plus.",
+    "gravite": "avertissement",
+    "sections": [
+      {
+        "titre": "Nœud",
+        "lignes": [
+          "`{groupe}`"
+        ]
+      },
+      {
+        "titre": "À vérifier",
+        "lignes": [
+          "1. Le heap du nœud redescend-il, et le GC suit-il : le dashboard [[Metrics Logstash] Single Node Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9d450b10-4680-11ee-9ddc-919f87fe352d)",
+          "2. La configuration mémoire : `LS_JAVA_OPTS` de l'app doit valoir `-Xms256m -Xmx256m` (onglet *Environment* dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))",
+          "3. L'effet sur l'ingestion (débit, backlog Redis) : le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)"
+        ]
+      }
+    ],
+    "liens": {
+      "Dashboards": [
+        {
+          "nom": "[Metrics Logstash] Single Node Overview",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9d450b10-4680-11ee-9ddc-919f87fe352d"
+        },
+        {
+          "nom": "[Scalingo] Dashboard des apps",
+          "url": "https://dashboard.scalingo.com/apps"
+        },
+        {
+          "nom": "[Pass Emploi] Supervision Stack d'Observabilité",
+          "url": "https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d"
+        }
+      ],
+      "Runbook": [
+        {
+          "nom": "Runbook scénario",
+          "url": "https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-2--gel-gc-jvm"
+        }
+      ]
+    }
+  },
+  "name": "Logstash - Hors-Prod - Détection heap JVM élevé",
+  "rule_type_id": ".es-query",
+  "consumer": "alerts",
+  "tags": [
+    "hors-prod",
+    "o11y"
+  ],
+  "artifacts": {
+    "investigation_guide": {
+      "blob": "## Ce que signale l'alerte\n\nHeap JVM Logstash staging/perf — le heap reste au-dessus de 90 % depuis 15 min : le GC ne libère plus.\n\n## À vérifier\n\n1. Le heap du nœud redescend-il, et le GC suit-il : le dashboard [[Metrics Logstash] Single Node Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9d450b10-4680-11ee-9ddc-919f87fe352d)\n2. La configuration mémoire : `LS_JAVA_OPTS` de l'app doit valoir `-Xms256m -Xmx256m` (onglet *Environment* dans le dashboard [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps))\n3. L'effet sur l'ingestion (débit, backlog Redis) : le dashboard [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n\n## Dashboards\n\n- [[Metrics Logstash] Single Node Overview](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/logstash-9d450b10-4680-11ee-9ddc-919f87fe352d)\n- [[Scalingo] Dashboard des apps](https://dashboard.scalingo.com/apps)\n- [[Pass Emploi] Supervision Stack d'Observabilité](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/fd40a516-c323-4e5e-91e5-1328b8b1a78d)\n\n## Documentation\n\n- [Runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-2--gel-gc-jvm)\n"
+    },
+    "dashboards": [
+      {
+        "id": "logstash-9d450b10-4680-11ee-9ddc-919f87fe352d"
+      },
+      {
+        "id": "fd40a516-c323-4e5e-91e5-1328b8b1a78d"
+      }
+    ]
+  },
+  "schedule": {
+    "interval": "5m"
+  },
+  "params": {
+    "searchConfiguration": {
+      "query": {
+        "query": "host.name: (pass-emploi-logstash-staging-* OR pass-emploi-logstash-process-staging-* OR pass-emploi-logstash-perf-* OR pass-emploi-logstash-process-perf-*)",
+        "language": "kuery"
+      },
+      "index": {
+        "id": "c48fcb9d-2448-42b5-8430-4e55e64b2750",
+        "title": "metrics-logstash.node-default",
+        "timeFieldName": "@timestamp",
+        "sourceFilters": [],
+        "fieldFormats": {},
+        "runtimeFieldMap": {},
+        "allowNoIndex": false,
+        "name": "metrics-logstash.node-default",
+        "allowHidden": false,
+        "managed": false
+      }
+    },
+    "timeField": "@timestamp",
+    "searchType": "searchSource",
+    "timeWindowSize": 15,
+    "timeWindowUnit": "m",
+    "threshold": [
+      90
+    ],
+    "thresholdComparator": ">=",
+    "size": 100,
+    "aggType": "min",
+    "groupBy": "top",
+    "termSize": 10,
+    "excludeHitsFromPreviousRun": false,
+    "sourceFields": [],
+    "aggField": "logstash.node.stats.jvm.mem.heap_used_percent",
+    "termField": "host.name"
+  },
+  "actions": [
+    {
+      "id": "system-connector-.workflows",
+      "params": {
+        "subAction": "run",
+        "subActionParams": {
+          "workflowId": "tchap-o11y-staging",
+          "summaryMode": true,
+          "alertStates": {
+            "new": true,
+            "ongoing": false,
+            "recovered": false
+          }
+        }
+      }
+    }
+  ]
+}

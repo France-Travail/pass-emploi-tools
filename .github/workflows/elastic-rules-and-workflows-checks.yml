@@ -1,10 +1,10 @@
 # Vérifie les règles d'alerte Kibana, les Workflows Kibana qui envoient ces alertes dans
 # Tchap, les intégrations Fleet de l'agent dédié et les dashboards des bases
-# (docs/observabilite/supervision/rules/, workflows/tchap/, agents/, dashboards/) : leurs
+# (kibana/rules/, workflows/tchap/, agents/, dashboards/) : leurs
 # fichiers générés doivent correspondre à leurs sources, et passer les contrôles et les
 # tests des générateurs.
 #
-# Les générateurs se lancent à la main (cf. docs/observabilite/supervision/workflows/tchap/README.md) :
+# Les générateurs se lancent à la main (cf. kibana/workflows/tchap/README.md) :
 # ce workflow échoue si l'un d'eux a été oublié, ou si une règle viole une de leurs
 # règles (message absent ou en JSON invalide, salon inconnu, règle ES|QL hors @timestamp).
 #
@@ -19,12 +19,12 @@ name: Supervision - Règles d'alerte Kibana et Workflows Tchap à jour avec leur
 on:
   pull_request:
     paths:
-      - 'docs/observabilite/supervision/**'
+      - 'kibana/**'
       - '.github/workflows/elastic-rules-and-workflows-checks.yml'
   push:
     branches: [master]
     paths:
-      - 'docs/observabilite/supervision/**'
+      - 'kibana/**'
       - '.github/workflows/elastic-rules-and-workflows-checks.yml'
   workflow_dispatch:
 
@@ -53,26 +53,26 @@ jobs:
 
       - name: Tests des générateurs
         working-directory: pass-emploi-tools
-        run: python3 -I -m unittest discover -s docs/observabilite/supervision/tests -v
+        run: python3 -I -m unittest discover -s kibana/tests -v
 
       - name: Règles générées à jour (rules/generated/)
-        working-directory: pass-emploi-tools/docs/observabilite/supervision
+        working-directory: pass-emploi-tools/kibana
         run: |
           if ! python3 -I rules/scripts/generer-regles-alerting.py --verifier; then
-            echo "::error::Les fichiers de docs/observabilite/supervision/rules/generated/ ne correspondent plus à leurs sources. Ils sont générés : ne pas les modifier directement. Modifier la règle (rules/<n>-<périmètre>/<code>.json) ou le texte autour (rules/<n>-<périmètre>/_modele.console), puis lancer python3 -I docs/observabilite/supervision/rules/scripts/generer-regles-alerting.py et commiter le résultat."
+            echo "::error::Les fichiers de kibana/rules/generated/ ne correspondent plus à leurs sources. Ils sont générés : ne pas les modifier directement. Modifier la règle (rules/<n>-<périmètre>/<code>.json) ou le texte autour (rules/<n>-<périmètre>/_modele.console), puis lancer python3 -I kibana/rules/scripts/generer-regles-alerting.py et commiter le résultat."
             exit 1
           fi
 
       - name: Workflows Tchap et rapports des jobs à jour (workflows/tchap/generated/)
         working-directory: pass-emploi-tools
         run: |
-          python3 -I docs/observabilite/supervision/rules/scripts/generer-notifications-tchap.py
-          if ! git diff --exit-code --stat -- docs/observabilite/supervision/workflows/tchap/generated/; then
-            echo "::error::Les fichiers de docs/observabilite/supervision/workflows/tchap/generated/ ne correspondent plus à leurs sources. Ils sont générés : ne pas les modifier directement. Lancer python3 -I docs/observabilite/supervision/rules/scripts/generer-notifications-tchap.py et commiter le résultat."
+          python3 -I kibana/rules/scripts/generer-notifications-tchap.py
+          if ! git diff --exit-code --stat -- kibana/workflows/tchap/generated/; then
+            echo "::error::Les fichiers de kibana/workflows/tchap/generated/ ne correspondent plus à leurs sources. Ils sont générés : ne pas les modifier directement. Lancer python3 -I kibana/rules/scripts/generer-notifications-tchap.py et commiter le résultat."
             exit 1
           fi
-          if [ -n "$(git status --porcelain --untracked-files=all -- docs/observabilite/supervision/workflows/tchap/generated/)" ]; then
-            git status --short -- docs/observabilite/supervision/workflows/tchap/generated/
+          if [ -n "$(git status --porcelain --untracked-files=all -- kibana/workflows/tchap/generated/)" ]; then
+            git status --short -- kibana/workflows/tchap/generated/
             echo "::error::Fichiers générés non commités : les ajouter à la PR"
             exit 1
           fi
@@ -80,9 +80,9 @@ jobs:
       - name: Intégrations Fleet et dashboards des bases à jour (agents/generated/, dashboards/)
         working-directory: pass-emploi-tools
         run: |
-          python3 -I docs/observabilite/supervision/agents/generer-integrations.py
-          python3 -I docs/observabilite/supervision/dashboards/generer-dashboards-bases.py
-          generes="docs/observabilite/supervision/agents/generated/ docs/observabilite/supervision/dashboards/dashboard-bases-de-donnees.ndjson"
+          python3 -I kibana/agents/generer-integrations.py
+          python3 -I kibana/dashboards/generer-dashboards-bases.py
+          generes="kibana/agents/generated/ kibana/dashboards/dashboard-bases-de-donnees.ndjson"
           if ! git diff --exit-code --stat -- $generes; then
             echo "::error::Les intégrations Fleet ou les dashboards des bases ne correspondent plus à leurs sources. Ils sont générés : ne pas les modifier directement. Lancer generer-integrations.py et generer-dashboards-bases.py (python3 -I) et commiter le résultat."
             exit 1

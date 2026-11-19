@@ -2,9 +2,9 @@
 
 Ce qu'on regarde **sans attendre une alerte**, en best effort : quelques minutes
 par jour, un quart d'heure par semaine. Les alertes arrivent d'elles-mêmes dans
-les salons Tchap de monitoring (cf. [alertes applicatives](supervision/alertes-applicatives.md),
-[de la stack](supervision/alertes-stack-observabilite.md),
-[de sécurité](supervision/alertes-securite.md)) ; cette routine couvre ce
+les salons Tchap de monitoring (cf. [alertes applicatives](alertes.md),
+[de la stack](infra/alertes-stack-observabilite.md),
+[de sécurité](alertes-securite.md)) ; cette routine couvre ce
 qu'aucune alerte ne signale. Pour enquêter sur un incident :
 [runbook d'investigation](runbooks/investigation-incident.md).
 
@@ -13,7 +13,7 @@ qu'aucune alerte ne signale. Pour enquêter sur un incident :
 1. **Kibana → Alerts** : les alertes en cours. Surtout **« Tchap - Envoi en
    échec »** : elle n'envoie aucune notification (Tchap ne peut pas signaler sa
    propre panne), on ne la voit qu'ici. Une alerte = des messages Tchap perdus ;
-   l'erreur est dans *Workflows → Executions* (cf. [Workflows Tchap](supervision/workflows/tchap/README.md#pièges)).
+   l'erreur est dans *Workflows → Executions* (cf. [Workflows Tchap](../../kibana/workflows/tchap/README.md#pièges)).
 2. **[[Pass Emploi] SLO de Prod](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/b7c1e0d2-5f43-4a8e-9c61-2d8f3a9e7b14)** :
    le budget d'erreur restant de chaque promesse (cf. [ci-dessous](#promesses-utilisateurs-slo)).
 3. **Le rapport des jobs de 9 h 30**, dans le canal `jobs-production` : un job
@@ -36,7 +36,7 @@ Sur les **7 derniers jours** :
    la tendance de la mémoire des conteneurs, du heap, du backlog Redis et des
    logs non indexés. Une courbe qui monte lentement n'atteint aucun seuil
    d'alerte avant le jour où elle les dépasse tous. Signification des
-   métriques : [collecte/metriques/stack-observabilite](collecte/metriques/stack-observabilite.md).
+   métriques : [collecte/metriques/stack-observabilite](infra/collecte/metriques/stack-observabilite.md).
 2. **[[Pass Emploi] Diagnostic d'erreurs - Entrée](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/eb348ed9-3bc2-4204-a5c2-c31465731c74)** :
    les erreurs qui augmentent sans franchir de seuil (un parcours, une app, un
    partenaire).
@@ -45,9 +45,9 @@ Sur les **7 derniers jours** :
 
 | Dashboard | Ce qu'on y lit |
 |---|---|
-| **[Pass Emploi] SLO de Prod**, versionné dans [`supervision/dashboards/dashboard-slo.ndjson`](supervision/dashboards/dashboard-slo.ndjson) | statut et budget restant de chaque SLO, par parcours api et par mode de login ; alertes burn rate en cours ; budget et burn rate du login jeune France Travail |
+| **[Pass Emploi] SLO de Prod**, versionné dans [`kibana/dashboards/dashboard-slo.ndjson`](../../kibana/dashboards/dashboard-slo.ndjson) | statut et budget restant de chaque SLO, par parcours api et par mode de login ; alertes burn rate en cours ; budget et burn rate du login jeune France Travail |
 
-Leurs définitions : [`supervision/slo/generated/1-slos.console`](supervision/slo/generated/1-slos.console).
+Leurs définitions : [`kibana/slo/generated/1-slos.console`](../../kibana/slo/generated/1-slos.console).
 
 ## Reporting métier
 
@@ -65,5 +65,4 @@ Les logs de prod sont dans deux data streams : `logs-prod-default` (logs
 applicatifs : code et pino-http) et `logs-router-prod-default` (routeur
 Scalingo, `event.action: request_routed`). Pour corréler les deux par
 `http.request.id`, la data view doit couvrir les deux : `logs-*-default-*`.
-Conventions des champs : [format/logs/conventions](format/logs/conventions.md) ;
-propres à l'api : [format/logs/couverture-api](format/logs/couverture-api.md).
+Conventions des champs : [standard des logs](logs.md).

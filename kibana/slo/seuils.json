@@ -1,0 +1,30 @@
+{
+  "SLO1": {
+    "objectif": 0.995,
+    "burn_rate": { "alert": 14.4, "high": 6, "medium": 3, "low": 1 }
+  },
+  "SLO3-conseiller-france-travail": {
+    "objectif": 0.99,
+    "burn_rate": { "alert": 14.4, "high": 6, "medium": 3, "low": 1 }
+  },
+  "SLO3-jeune-france-travail": {
+    "objectif": 0.85,
+    "burn_rate": { "alert": 3, "high": 2, "medium": 1.5, "low": 1 }
+  },
+  "SLO3-invite": {
+    "objectif": 0.9,
+    "burn_rate": { "high": 2 }
+  },
+  "SLO3-conseiller-departemental": {
+    "objectif": 0.95,
+    "burn_rate": { "high": 4 }
+  },
+  "SLO3-milo-conseiller": {
+    "objectif": 0.98,
+    "burn_rate": { "alert": 14.4, "high": 6, "medium": 3, "low": 1 }
+  },
+  "SLO3-milo-jeune": {
+    "objectif": 0.98,
+    "burn_rate": { "alert": 14.4, "high": 6, "medium": 3, "low": 1 }
+  }
+}

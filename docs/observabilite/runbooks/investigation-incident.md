@@ -15,7 +15,7 @@ Champs pivots : `user.id`, `trace.id`, `http.request.id`, `log.level: error`.
 | Tous ses logs récents         | `user.id: "<id>"`                                                                                  |
 | Uniquement les erreurs        | `user.id: "<id>" AND log.level: error`                                                             |
 | Une requête HTTP (edge + app) | `http.request.id: "<id>"`                                                                          |
-| Bout en bout d'une session    | `trace.id: "<id>"` (même pivot dans l'APM, cf. [collecte/traces](../collecte/traces/README.md))    |
+| Bout en bout d'une session    | `trace.id: "<id>"` (même pivot dans l'APM, cf. [collecte/traces](../infra/collecte/traces/README.md))    |
 | Échecs handler                | `event.action: handler_executed AND event.outcome: failure`                                        |
 | Latence réseau vs code        | comparer `event.duration` de `request_routed` vs `request_completed` sur le même `http.request.id` |
 
