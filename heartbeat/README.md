@@ -7,7 +7,7 @@ Pass Emploi pour détecter les indisponibilités (uptime), et écrit directement
 dans Elasticsearch — **hors** Logstash, contrairement aux logs applicatifs.
 
 > **Rétention des données dans Elasticsearch** (`heartbeat-*`, 90 j) :
-> [`stockage/metriques/README.md`](../docs/observabilite/infra/stockage/metriques/README.md).
+> [`elasticsearch/metriques/README.md`](../elasticsearch/metriques/README.md).
 > Ce README-ci documente **quoi** est supervisé (endpoints, config du binaire) ;
 > l'autre documente **combien de temps** la donnée est gardée (policy ILM).
 

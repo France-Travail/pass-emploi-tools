@@ -78,7 +78,7 @@ cluster en panne.
 | [`generated/tchap-jobs-production-rapport.console`](generated/tchap-jobs-production-rapport.console), [`generated/tchap-jobs-staging-rapport.console`](generated/tchap-jobs-staging-rapport.console) | rapport quotidien des jobs de l'api, chaque jour à 9 h 30 (heure de Paris), **générés** |
 | [`../../rules/scripts/generer-notifications-tchap.py`](../../rules/scripts/generer-notifications-tchap.py) | génère les Workflows de salon depuis les règles de [`../../rules/`](../../rules/), et les rapports depuis la liste des CRON de `pass-emploi-api` (`origin/develop`), en 3 étapes ([`../../rules/scripts/notifications/`](../../rules/scripts/notifications/) : extraire, transformer, charger) : `python3 -I rules/scripts/generer-notifications-tchap.py`, depuis `kibana/`, après toute modification d'une règle, d'un salon ou des CRON de l'api |
 | [`../../rules/generated/4-rules-tchap.console`](../../rules/generated/4-rules-tchap.console) | règle « Tchap - Envoi en échec » |
-| [`../../rules/generated/5-rules-tchap-expiration-bot.console`](../../rules/generated/5-rules-tchap-expiration-bot.console) | règle « Tchap - Expiration du compte bot », date d'expiration rangée dans Elasticsearch |
+| [`../../rules/generated/5-rules-tchap-expiration-bot.console`](../../rules/generated/5-rules-tchap-expiration-bot.console) | règle « Tchap - Expiration du compte bot » ; la date d'expiration est rangée dans Elasticsearch par [`tchap-expiration-bot.console`](../../../elasticsearch/tchap-expiration-bot.console) |
 
 ## Le message
 
@@ -193,7 +193,8 @@ et le salon d'entraide [Bots et Intégrations Tchap](https://tchap.gouv.fr/#/roo
    { "inputs": { "salon": "<id du salon>", "texte": "test", "html": "<b>test</b>" } }
    ```
 7. **Règles** : brancher les règles (ci-dessous), puis rejouer
-   [`4-rules-tchap.console`](../../rules/generated/4-rules-tchap.console) et
+   [`4-rules-tchap.console`](../../rules/generated/4-rules-tchap.console),
+   [`tchap-expiration-bot.console`](../../../elasticsearch/tchap-expiration-bot.console) (pipeline et index) et
    [`5-rules-tchap-expiration-bot.console`](../../rules/generated/5-rules-tchap-expiration-bot.console),
    puis ranger la date d'expiration du compte avec la requête du
    [runbook](../../../docs/observabilite/runbooks/runbook-tchap-expiration-bot.md),

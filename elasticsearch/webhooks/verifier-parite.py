@@ -7,7 +7,7 @@ même période, puis liste le failure store. Lecture seule.
 
 Usage :
     ES_URL=<endpoint Elasticsearch> ES_API_KEY=<clé API en lecture sur logs-alertes-*> \
-    python3 -I kibana/pipelines/webhooks/verifier-parite.py --depuis 2026-10-19T17:00:00Z [--app pass-emploi-api-prod]
+    python3 -I elasticsearch/webhooks/verifier-parite.py --depuis 2026-10-19T17:00:00Z [--app pass-emploi-api-prod]
 """
 import argparse, base64, datetime, json, os, re, subprocess, sys, time, urllib.request
 

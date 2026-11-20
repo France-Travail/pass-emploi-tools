@@ -3,8 +3,8 @@
 Toutes les briques qui produisent, transportent, stockent et supervisent la
 télémétrie de pass-emploi, et les garde-fous qui s'appliquent à leur
 dimensionnement. Le détail de chaque étape vit dans son sous-répertoire
-(`collecte/`, `process/`, `stockage/`) ; le déploiement de chaque brique dans le
-README à côté de son code (`logs/`, `elastic-agent/`, `heartbeat/`).
+(`collecte/`, `process/`) ; le déploiement de chaque brique dans le README à
+côté de son code (`logs/`, `elastic-agent/`, `heartbeat/`, `elasticsearch/`).
 
 ## Schéma global
 
@@ -62,7 +62,7 @@ graph TB
 | `pass-emploi-elastic-agent-<env>` | Scalingo, process `worker`, 1 instance | métriques des ressources partagées (Redis) | [collecte/metriques](collecte/metriques/README.md) | [`elastic-agent/README.md`](../../../elastic-agent/README.md) |
 | Heartbeat | Scalingo, process `web` | sondes HTTP d'uptime | [collecte/metriques/disponibilite](collecte/metriques/disponibilite.md) | [`heartbeat/README.md`](../../../heartbeat/README.md) |
 | SDK Elastic APM | dans api, web, connect | traces + errors | [collecte/traces](collecte/traces/README.md) | repos applicatifs |
-| Elastic Cloud (ES, Kibana, Fleet Server, APM Server) | SaaS, un seul cluster pour staging et prod | stockage, pilotage, exploitation | [stockage](stockage/README.md), [pilotage](pilotage.md) | console Elastic Cloud |
+| Elastic Cloud (ES, Kibana, Fleet Server, APM Server) | SaaS, un seul cluster pour staging et prod | stockage, pilotage, exploitation | [stockage](../../../elasticsearch/README.md), [pilotage](pilotage.md) | console Elastic Cloud |
 
 Staging et prod partagent **le même cluster ES** ; ils ne diffèrent que par le
 nom des data streams.
@@ -83,7 +83,7 @@ Versions réelles : `inventaire/inventaire-versions.sh`
   (`LOGSTASH_VERSION`, `ELASTIC_AGENT_VERSION`, `HEARTBEAT_VERSION`), puis
   redéployer : la variable seule ne change rien au binaire en cours.
 - Le nom du data stream de Heartbeat suit la version du binaire, cf.
-  [montée de version](stockage/metriques/README.md#montée-de-version-heartbeat).
+  [montée de version](../../../elasticsearch/metriques/README.md#montée-de-version-heartbeat).
 
 ## Garde-fous JVM / Scalingo
 

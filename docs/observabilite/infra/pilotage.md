@@ -36,7 +36,7 @@ Ce qui est collecté : [collecte/metriques](collecte/metriques/README.md).
 5. **Stocker `FLEET_REPLACE_TOKEN` dans Bitwarden** dès le premier déploiement,
    avec le nom de l'app et l'environnement comme libellé (cf. identité ci-dessous).
 6. **Rejouer la procédure de contrôle des rétentions**
-   ([stockage/README](stockage/README.md#procédure-de-contrôle-à-rejouer-après-toute-nouvelle-intégration-fleet)) :
+   ([elasticsearch/README](../../../elasticsearch/README.md#procédure-de-contrôle-à-rejouer-après-toute-nouvelle-intégration-fleet)) :
    toute intégration Fleet sur étagère tombe par défaut sur une policy ILM sans
    phase `delete` → rétention infinie.
 

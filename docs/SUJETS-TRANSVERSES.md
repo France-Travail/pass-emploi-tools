@@ -61,7 +61,7 @@
   `performances.md` (tirs, trajectoire x10) ;
   [`infra/infrastructure.md`](./observabilite/infra/infrastructure.md) (inventaire, garde-fous JVM/Scalingo, dimensionnement) ;
   [`infra/pilotage.md`](./observabilite/infra/pilotage.md) (Fleet, agents) ;
-  [`infra/stockage/logs/README.md`](./observabilite/infra/stockage/logs/README.md) (data streams, templates, ILM) ;
+  [`elasticsearch/logs/README.md`](../elasticsearch/logs/README.md) (data streams, templates, ILM) ;
   [`infra/format/webhooks/conventions.md`](./observabilite/infra/format/webhooks/conventions.md) (champs ECS des événements reçus par webhook) ;
   [`infra/alertes-stack-observabilite.md`](./observabilite/infra/alertes-stack-observabilite.md).
   Procédures pas-à-pas de diagnostic : [`pass-emploi-tools/docs/observabilite/runbooks/runbook-logstash.md`](./observabilite/runbooks/runbook-logstash.md)

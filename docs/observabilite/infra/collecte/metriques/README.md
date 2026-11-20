@@ -13,5 +13,5 @@ traitement de notre côté.
 | Heartbeat | autonome | uptime des apps (sondes HTTP) | `heartbeat-*` | [disponibilite.md](disponibilite.md) |
 | APM Server | Elastic Cloud | métriques APM (`metrics-apm.*`) | auto-géré | [collecte/traces](../traces/README.md) |
 
-Rétentions : [stockage/metriques](../../stockage/metriques/README.md).
+Rétentions : [elasticsearch/metriques](../../../../../elasticsearch/metriques/README.md).
 Alertes qui les lisent : [sources des données](../../../catalogue-alertes.md#sources-des-données).

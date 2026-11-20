@@ -15,8 +15,8 @@ pas de `process/traces/`.
 | **Errors** non catchées | `logs-apm.error-default` | événement discret → rangé avec les **logs** | 90 j |
 | Métriques APM | `metrics-apm.*` | mesures périodiques | 21 j pour la version 1 min (`metrics-apm-1m-retention`), 90 j pour les versions 10 et 60 min (`metrics-apm-retention`) |
 
-Rétentions et templates : [stockage/traces](../../stockage/traces/README.md)
-(et [stockage/logs](../../stockage/logs/README.md) pour `logs-apm.error`).
+Rétentions et templates : [elasticsearch/traces](../../../../../elasticsearch/traces/README.md)
+(et [elasticsearch/logs](../../../../../elasticsearch/logs/README.md) pour `logs-apm.error`).
 
 ## Corrélation avec les logs
 

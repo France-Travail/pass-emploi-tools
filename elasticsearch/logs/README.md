@@ -1,18 +1,18 @@
 # Stockage des logs
 
 Data streams, rétentions et mapping des logs dans Elasticsearch. Production des
-documents : [process/logs](../../process/logs/README.md). Import des 3 `.console`
-de ce dossier : [stockage/README](../README.md#import--ordre-et-portée).
+documents : [process/logs](../../docs/observabilite/infra/process/logs/README.md). Import des 3 `.console`
+de ce dossier : [elasticsearch/README](../README.md#import--ordre-et-portée).
 
 ## Data streams
 
 Ce qui écrit chaque data stream et comment un document y arrive : les
-[sources des données](../../../catalogue-alertes.md#sources-des-données) du
+[sources des données](../../docs/observabilite/catalogue-alertes.md#sources-des-données) du
 catalogue des alertes. Leur template et leur rétention : tableau ci-dessous.
 
 Les index `logs-logstash-*` sont les index de diagnostic de la chaîne elle-même :
 leur exploitation (alertes, KQL, actions correctives) est dans le
-[runbook Logstash](../../../runbooks/runbook-logstash.md).
+[runbook Logstash](../../docs/observabilite/runbooks/runbook-logstash.md).
 
 ## Rétention et composition des templates
 
@@ -75,7 +75,7 @@ fournis par Elasticsearch (x-pack) — on s'y réfère seulement.
 ## Archivage hors ES — Logs Archives Scalingo
 
 Deux socles d'archivage distincts (identifiés le 2026-09-23, cf.
-[ADR-003](../../../../decisions/ADR-003-usage-log-drain-scalingo.md)) :
+[ADR-003](../../docs/decisions/ADR-003-usage-log-drain-scalingo.md)) :
 
 | | Logs Archives Scalingo | Rétention ES |
 |---|---|---|

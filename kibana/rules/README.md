@@ -19,7 +19,7 @@ rules/
 ├── 2-applicatives/             ←   SLO1, SLO3…, A1 à A13…
 ├── 3-stack-observabilite/      ←   M1a à M10, M6a, M6b, M13
 ├── 4-tchap/                    ←   Tchap - Envoi en échec
-├── 5-tchap-expiration-bot/     ←   expiration du compte bot (et son pipeline, son index)
+├── 5-tchap-expiration-bot/     ←   expiration du compte bot (son pipeline et son index : ../../elasticsearch/)
 ├── scripts/                    ← les générateurs : règles, puis notifications (aucune règle dedans)
 └── generated/                  ← GÉNÉRÉ : à coller dans Dev Tools, ne pas modifier
     └── <n>-rules-<périmètre>.console

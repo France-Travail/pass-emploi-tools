@@ -4,7 +4,8 @@
 > **« Tchap - Expiration du compte bot »** (🚨, salon `o11y-production`) signale
 > que le compte du bot arrive à expiration.
 >
-> Configuration : [`rules/generated/5-rules-tchap-expiration-bot.console`](../../../kibana/rules/generated/5-rules-tchap-expiration-bot.console).
+> Configuration : le pipeline et l'index, [`elasticsearch/tchap-expiration-bot.console`](../../../elasticsearch/tchap-expiration-bot.console) ;
+> la règle, [`rules/generated/5-rules-tchap-expiration-bot.console`](../../../kibana/rules/generated/5-rules-tchap-expiration-bot.console).
 > Notifications Tchap : [Workflows Tchap](../../../kibana/workflows/tchap/README.md).
 > Toutes les requêtes se lancent dans Kibana → Dev Tools.
 
@@ -12,9 +13,9 @@ Le bot qui poste toutes nos alertes dans Tchap est un compte Tchap ordinaire :
 Tchap n'a pas de compte de service. Comme tout compte, il doit être renouvelé
 selon les [CGU Tchap](https://tchap.numerique.gouv.fr/cgu). Durées relevées dans
 les CGU le **2026-10-14** : les CGU peuvent changer, les relire à chaque
-renouvellement (§ 1, étape 2) et corriger ce tableau, la règle et le pipeline de
-[`5-rules-tchap-expiration-bot.console`](../../../kibana/rules/generated/5-rules-tchap-expiration-bot.console)
-si elles ont bougé.
+renouvellement (§ 1, étape 2) et corriger ce tableau, le pipeline de
+[`tchap-expiration-bot.console`](../../../elasticsearch/tchap-expiration-bot.console)
+et la règle (`kibana/rules/5-tchap-expiration-bot/`) si elles ont bougé.
 
 | Moment | Ce qui se passe |
 |---|---|

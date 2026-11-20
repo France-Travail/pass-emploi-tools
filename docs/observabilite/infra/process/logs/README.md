@@ -3,7 +3,7 @@
 Comment un log brut lu dans Redis devient un document ECS indexé dans le bon
 data stream. L'amont (drain → Redis) est dans
 [`../../collecte/logs/`](../../collecte/logs/README.md) ; les data streams et
-rétentions dans [`../../stockage/logs/`](../../stockage/logs/README.md).
+rétentions dans [`../../elasticsearch/logs/`](../../../../../elasticsearch/logs/README.md).
 
 ```
 Redis logstash:ingest ──► pipeline process ──┬──► logs-<env>-default              (app)

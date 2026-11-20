@@ -136,7 +136,7 @@ Sur une ligne de requête de l'api, `http.route` est exact.
   son type serait figé par le premier document, et les suivants rejetés.
 - **Namespace dédié et typé** pour une valeur numérique à sommer : un compteur
   dans `labels` serait un keyword. Un nouveau namespace demande son rename dans
-  Logstash et son mapping (cf. [stockage des logs](infra/stockage/logs/README.md)).
+  Logstash et son mapping (cf. [stockage des logs](../../elasticsearch/logs/README.md)).
 - `user.*` et `trace.id` sont posés par le mixin du logger, jamais dans le
   payload.
 

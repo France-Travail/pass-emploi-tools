@@ -6,7 +6,7 @@ les notifiers des apps Scalingo (crash, redémarrage, arrêt, déploiement, seui
 RAM/CPU…) et les CVE remontées par Dependabot via
 [`security-alerts.yml`](../../../../../.github/workflows/security-alerts.yml).
 Ils sont écrits dans un data stream par source, transformés en champs ECS par un
-ingest pipeline ([`kibana/pipelines/webhooks/`](../../../../../kibana/pipelines/webhooks/README.md)),
+ingest pipeline ([`elasticsearch/webhooks/`](../../../../../elasticsearch/webhooks/README.md)),
 et lus par des Kibana Rules : [sources des données](../../../catalogue-alertes.md#sources-des-données).
 
 ## La chaîne
@@ -50,8 +50,8 @@ transformation en champs ECS se fait dans un **ingest pipeline**.
 
 | Fichier                                                                                                        | Contenu                                                                                                                                                                                                    |
 |----------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`stockage/logs/`](../../stockage/logs/README.md) `2-component-templates.console`, `3-index-templates.console` | mapping et templates des 4 data streams (logsdb, `default_pipeline`, failure store), création à l'avance des data streams ; rétention : les briques `logs-<env>-retention-custom` existantes               |
-| [`kibana/pipelines/webhooks/`](../../../../../kibana/pipelines/webhooks/README.md)                            | les ingest pipelines (transformation en champs ECS) et l'accès en écriture des émetteurs ; ce que font les pipelines : [format/webhooks/conventions.md](../../format/webhooks/conventions.md) |
+| [`elasticsearch/logs/`](../../../../../elasticsearch/logs/README.md) `2-component-templates.console`, `3-index-templates.console` | mapping et templates des 4 data streams (logsdb, `default_pipeline`, failure store), création à l'avance des data streams ; rétention : les briques `logs-<env>-retention-custom` existantes               |
+| [`elasticsearch/webhooks/`](../../../../../elasticsearch/webhooks/README.md)                            | les ingest pipelines (transformation en champs ECS) et l'accès en écriture des émetteurs ; ce que font les pipelines : [format/webhooks/conventions.md](../../format/webhooks/conventions.md) |
 | [`kibana/discovers/webhooks/`](../../../../../kibana/discovers/webhooks/)                                     | sessions Discover des événements, des CVE et des rejets                                                                                                                                                    |
 
 **Un événement = une ligne de notification.** Les règles ne comptent que les
@@ -78,17 +78,17 @@ Tchap listent telle quelle. Le payload brut est gardé sous `scalingo.*` ou
 
 À faire dans l'ordre : chaque étape dépend de la précédente.
 
-1. **Stockage** : dans [`stockage/logs/`](../../stockage/logs/README.md), rejouer
+1. **Stockage** : dans [`elasticsearch/logs/`](../../../../../elasticsearch/logs/README.md), rejouer
    les blocs `logs-alertes*` de `2-component-templates.console`, puis de
    `3-index-templates.console`, **y compris la création des 4 data streams et
    de leur failure store** qui suit les templates : sans elle, les règles
    tombent en erreur tant qu'aucun document n'est arrivé.
-2. **Pipelines** : rejouer [`ingest-alertes-scalingo.console`](../../../../../kibana/pipelines/webhooks/ingest-alertes-scalingo.console)
-   et [`ingest-alertes-scalingo-format-slack.console`](../../../../../kibana/pipelines/webhooks/ingest-alertes-scalingo-format-slack.console)
+2. **Pipelines** : rejouer [`ingest-alertes-scalingo.console`](../../../../../elasticsearch/webhooks/ingest-alertes-scalingo.console)
+   et [`ingest-alertes-scalingo-format-slack.console`](../../../../../elasticsearch/webhooks/ingest-alertes-scalingo-format-slack.console)
    en premier, puis les trois `ingest-alertes-scalingo-<env>-default.console` et
    `ingest-alertes-github-default.console`. Les `_simulate` en fin de fichier
    doivent donner les résultats annoncés en commentaire.
-3. **Accès** : rejouer [`acces-webhooks.console`](../../../../../kibana/pipelines/webhooks/acces-webhooks.console)
+3. **Accès** : rejouer [`acces-webhooks.console`](../../../../../elasticsearch/webhooks/acces-webhooks.console)
    en remplaçant `<mot-de-passe-généré>` par un mot de passe alphanumérique,
    rangé dans le coffre de l'équipe. Copier le champ `encoded` de l'API Key.
 4. **Sessions Discover** : importer les `.ndjson` de
@@ -122,7 +122,7 @@ Tchap listent telle quelle. Le payload brut est gardé sous `scalingo.*` ou
 
    Rattacher aussi les alertes de métriques Scalingo de l'app à ce notifier.
    Une app ajoutée ou retirée l'est aussi dans `APPS` de
-   [`verifier-parite.py`](../../../../../kibana/pipelines/webhooks/verifier-parite.py).
+   [`verifier-parite.py`](../../../../../elasticsearch/webhooks/verifier-parite.py).
    Les apps de la stack sont celles que filtrent M6a et M6b (`service.name`) :
    une app de la stack ajoutée ici l'est aussi dans ces deux règles, sinon ses
    événements partent dans les salons applicatifs (A4a à A4d). Non suivies : outils
@@ -152,14 +152,14 @@ Tchap listent telle quelle. Le payload brut est gardé sous `scalingo.*` ou
    `false`, le workflow ne fait que lister les CVE dans son journal.
 
 Contrôle de complétude :
-[`verifier-parite.py`](../../../../../kibana/pipelines/webhooks/verifier-parite.py) compare, app par app, l'historique
+[`verifier-parite.py`](../../../../../elasticsearch/webhooks/verifier-parite.py) compare, app par app, l'historique
 Scalingo (`scalingo timeline`, limité aux événements sélectionnés dans le
 notifier Elastic) aux documents reçus depuis une date, et liste le failure
 store. Lecture seule ; code de sortie non nul au moindre écart.
 
 ```bash
 # ES_URL : l'endpoint Elasticsearch ; ES_API_KEY : une clé API qui peut lire les data streams logs-alertes-*
-python3 -I kibana/pipelines/webhooks/verifier-parite.py --depuis <date ISO 8601, par exemple 2026-10-19T17:00:00Z>
+python3 -I elasticsearch/webhooks/verifier-parite.py --depuis <date ISO 8601, par exemple 2026-10-19T17:00:00Z>
 ```
 
 ## Limites connues
