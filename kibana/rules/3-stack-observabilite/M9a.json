@@ -1,8 +1,6 @@
 {
   "_id": "3c65ffd4-165f-4d0b-b820-24be398f19fd",
-  "_commentaire": [
-    "# M9a — Mémoire conteneur prod (Critical)"
-  ],
+  "_question": "Un conteneur Logstash approche-t-il de sa limite mémoire Scalingo ?",
   "_message": {
     "titre": "**Mémoire conteneur Logstash prod** — un conteneur dépasse 95 % de sa limite Scalingo : OOM-kill et redémarrage imminents.",
     "gravite": "critique",

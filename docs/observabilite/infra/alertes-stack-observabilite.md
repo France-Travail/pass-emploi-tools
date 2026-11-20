@@ -3,57 +3,22 @@
 Les alertes sur **notre infra de télémétrie** (Logstash, Redis, agents Fleet, Elasticsearch) :
 elles signalent que la chaîne de logs et de métriques est en panne ou aveugle,
 pas que les utilisateurs sont touchés. Les pannes visibles des utilisateurs sont
-dans [alertes applicatives](../alertes.md). Hors alertes M11 et M12
-(AutoOps), ce sont des **Kibana Rules** qui notifient les canaux
-`o11y-production` et `o11y-staging` (même nom dans Mattermost et dans Tchap).
+dans [alertes applicatives](../alertes.md). Liste, gravités, sources et salons :
+[catalogue des alertes](../catalogue-alertes.md) ; cette page en donne le
+pourquoi et le calibrage. Hors M11 et M12 (AutoOps), ce sont des règles Kibana,
+versionnées dans [`kibana/rules/`](../../../kibana/rules/README.md).
 
 > Les Kibana Rules notifient Tchap par les [Workflows Tchap](../../../kibana/workflows/tchap/README.md). Les
-> alertes émises hors Kibana, **11 et 12 (AutoOps)**, préviennent l'équipe par
+> alertes émises hors Kibana, **M11 et M12 (AutoOps)**, préviennent l'équipe par
 > e-mail et postent directement dans Tchap, par un connecteur Webhook AutoOps en
 > `POST` (cf. leur section,
 > [ADR-004](../../decisions/ADR-004-notifications-tchap-kibana-workflows.md#alertes-émises-hors-kibana-autoops)).
 > Elles ne passent surtout pas par Elasticsearch : elles doivent alerter quand le
 > cluster va mal.
 
-**Création** : les alertes M1 à M10 et M13 sont versionnées dans
-[`rules/generated/3-rules-stack-observabilite.console`](../../../kibana/rules/generated/3-rules-stack-observabilite.console),
-qui reprend les tableaux et bodies de cette page, à rejouer dans Dev Tools.
-
 > **Contexte** : les scénarios de panne et leurs indicateurs sont documentés dans
 > [`runbooks/runbook-logstash.md`](../runbooks/runbook-logstash.md). Dashboards
-> associés : [routine-surveillance](../routine-surveillance.md). SLO :
-> [`slo/generated/1-slos.console`](../../../kibana/slo/generated/1-slos.console).
-
----
-
-## Récapitulatif des alertes
-
-| #  | Signal                                        | Index / source                                  | Condition                                                | Fréquence  | Throttle | Sévérité    |
-| -- |-----------------------------------------------|-------------------------------------------------|----------------------------------------------------------|------------|----------|-------------|
-| M1a | DLQ non vide — prod                           | `logs-logstash-dlq-prod-default`                | `Is above 0` / 5 min                                     | 1 min      | 6h       | 🚨 Critical |
-| M1b | DLQ non vide — staging/perf                   | `logs-logstash-dlq-staging/perf-default`        | `Is above 0` / 5 min                                     | 5 min      | 6h       | ⚠️Warning  |
-| M2a | Erreurs traitement — prod                     | `logs-logstash-errors-prod-default`             | `Is above 0` / 24 h                                      | 1 h        | 1 / jour, 9 h 30 | ⚠️Warning  |
-| M2b | Erreurs traitement — staging/perf             | `logs-logstash-errors-staging/perf-default`     | `Is above 0` / 5 min                                     | 5 min      | 6h       | ⚠️Warning  |
-| M3a | Silence logs applicatifs — prod               | `logs-prod-default`                             | `Is below or equals 0` / 5 min                           | 2 min      | 6h       | 🚨 Critical |
-| M3b | Silence logs router — prod                    | `logs-router-prod-default`                      | `Is below or equals 0` / 5 min                           | 2 min      | 6h       | 🚨 Critical |
-| M3c | Silence logs applicatifs — staging/perf       | `logs-staging/perf-default`                     | `Is below or equals 0` / 5 min                           | 5 min      | 6h       | ⚠️Warning  |
-| M3d | Silence logs router — staging/perf            | `logs-router-staging/perf-default`              | `Is below or equals 0` / 5 min                           | 5 min      | 6h       | ⚠️Warning  |
-| M4a | Backpressure ingest — prod                    | `metrics-logstash.pipeline-default`             | `Min` `≥ 1` / 15 min, par nœud                           | 2 min      | 6h       | 🚨 Critical |
-| M4b | Backpressure ingest — staging/perf            | `metrics-logstash.pipeline-default`             | `Min` `≥ 1` / 15 min, par nœud                           | 5 min      | 6h       | ⚠️Warning  |
-| M5a | Heap JVM élevé — prod                         | `metrics-logstash.node-default`                 | `Min` `≥ 90` / 15 min, par nœud                          | 2 min      | 6h       | 🚨 Critical |
-| M5b | Heap JVM élevé — staging/perf                 | `metrics-logstash.node-default`                 | `Min` `≥ 90` / 15 min, par nœud                          | 5 min      | 6h       | ⚠️Warning  |
-| M6a | Événements Scalingo des apps de la stack — prod | `logs-alertes-scalingo-prod-default`          | tout événement d'une app de la stack                     | 1 min      | —        | par ligne 🚨/⚠️/ℹ️ |
-| M6b | Événements Scalingo des apps de la stack — staging/perf | `logs-alertes-scalingo-staging/perf-default` | tout événement d'une app de la stack               | 5 min      | —        | par ligne ⚠️/ℹ️ |
-| M7a | Backlog Redis `logstash:ingest` — prod        | `metrics-redis.key-default`                     | `Min` `Is above 1 000` / 15 min                          | 2 min      | 6h       | 🚨 Critical |
-| M7b | Backlog Redis `logstash:ingest` — staging/perf| `metrics-redis.key-default`                     | `Min` `Is above 1 000` / 15 min                          | 5 min      | 6h       | ⚠️Warning  |
-| M8a | Elastic Agent en défaut — prod                | status_change + `metrics-elastic_agent.*beat-*` | offline/unenrolled/unhealthy ou > 25 err. output / 5 min | 1 min      | 6h       | 🚨 Critical |
-| M8b | Elastic Agent en défaut — staging             | status_change + `metrics-elastic_agent.*beat-*` | offline/unenrolled/unhealthy ou > 25 err. output / 5 min | 1 min      | 6h       | ⚠️Warning  |
-| M9a | Mémoire conteneur Logstash — prod             | `logs-scalingo.container_stats-default`         | `Max` `≥ 95 %` / 5 min, par conteneur                    | 1 min      | 6h       | 🚨 Critical |
-| M9b | Mémoire conteneur Logstash — staging/perf     | `logs-scalingo.container_stats-default`         | `Max` `≥ 95 %` / 5 min, par conteneur                    | 5 min      | 6h       | ⚠️Warning  |
-| M10 | ILM en échec ou policy sans suppression       | historique ILM (`ilm-history-7`)                | étape en échec ou policy par défaut / 24 h               | 1 h        | 1 / jour, 9 h 30 | ⚠️Warning  |
-| M11 | Disque des nœuds Elasticsearch                | AutoOps (Elastic Cloud)                         | préavis 75 %, paliers 85 / 90 / 95 %, cluster red       | —          | —        | selon l'événement (cf. [notifications AutoOps](#notifications-autoops-m11-et-m12)) |
-| M12 | Saturation de l'indexation Elasticsearch      | AutoOps (Elastic Cloud)                         | management queue ou write queue haute                    | —          | —        | selon l'événement (cf. [notifications AutoOps](#notifications-autoops-m11-et-m12)) |
-| M13 | Événement externe rejeté                      | les 4 `logs-alertes-*`, sélecteur `::failures`  | tout document / 10 min                                   | 5 min      | —        | ⚠️Warning  |
+> associés : [routine-surveillance](../routine-surveillance.md).
 
 ---
 
@@ -87,61 +52,8 @@ Session Discover : onglet « Logs non indexés : Échec de process Logstash ind�
 > PUT _data_stream/logs-logstash-dlq-perf-default
 > ```
 
-> **Data streams de métriques Logstash** (intégration Elastic Agent) :
-> - `metrics-logstash.node-default` — stats nœud : JVM heap, events in/out
-> - `metrics-logstash.pipeline-default` — stats pipeline : queue depth, workers, batch
-> - `metrics-logstash.plugins-default` — stats plugins : bulk requests ES, erreurs output
-> - `metrics-logstash.health_report-default` — état de santé global du nœud
->
-> Data view à créer dans Kibana : index pattern `metrics-logstash*`, timestamp `@timestamp`.
-
-### M1a — DLQ prod (Critical)
-
-| Paramètre               | Valeur                                                                                                                                                                                   |
-| ----------------------- |------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Rule name**           | `Logstash - Prod - Détection présence event dans DLQ`                                                                                                                                    |
-| **Type**                | Elasticsearch query rule                                                                                                                                                                 |
-| **Index**               | `logs-logstash-dlq-prod-default`                                                                                                                                                         |
-| **Condition**           | `Is above` `0`                                                                                                                                                                           |
-| **Fenêtre**             | 5 min                                                                                                                                                                                    |
-| **Fréquence**           | 1 min                                                                                                                                                                                    |
-| **Sévérité**            | Critical                                                                                                                                                                                 |
-| **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                               |
-| **Action**              | Workflow `tchap-o11y-production` — message dans le bloc de la règle                                                                                                            |
-| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
-| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue) |
-
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](../../../kibana/rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
-
-### M1b — DLQ staging / perf (Warning)
-
-| Paramètre               | Valeur                                                                                                                                                                                     |
-| ----------------------- |--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Rule name**           | `Logstash - Hors-Prod - Détection présence event dans DLQ`                                                                                                                                 |
-| **Type**                | Elasticsearch query rule                                                                                                                                                                   |
-| **Index**               | `logs-logstash-dlq-staging-default,logs-logstash-dlq-perf-default`                                                                                                                         |
-| **Condition**           | `Is above` `0`                                                                                                                                                                             |
-| **Fenêtre**             | 5 min                                                                                                                                                                                      |
-| **Fréquence**           | 5 min                                                                                                                                                                                      |
-| **Sévérité**            | Warning                                                                                                                                                                                    |
-| **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                 |
-| **Action**              | Workflow `tchap-o11y-staging` — message dans le bloc de la règle                                                                                                                 |
-| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
-| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue)   |
-
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](../../../kibana/rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
-
-**KQL de diagnostic dans Discover** (data view `logs-logstash-dlq-*`) :
-```
-service.environment: "prod"
-```
 Champs clés : `logstash.dlq.reason` (cause du rejet ES), `event.original` (payload
 complet de l'event fautif en JSON stringifié).
-
-> **Noms réels des index** (définis dans `pipeline-dlq-logstash.conf`) :
-> - `logs-logstash-dlq-prod-default`
-> - `logs-logstash-dlq-staging-default`
-> - `logs-logstash-dlq-perf-default`
 
 ---
 
@@ -150,66 +62,17 @@ complet de l'event fautif en JSON stringifié).
 **Objectif** : signaler des **logs non indexés à cause d'une erreur de transformation
 que Logstash a détectée**. Un log applicatif qui n'arrive pas dans les logs
 consultables est mis de côté dans un index de diagnostic. Ici, Logstash n'a pas
-réussi à le mettre au bon format : il l'a marqué (`_mutate_error`,
-`_jsonparsefailure`, `_rubyexception`…) et rangé dans `logs-logstash-errors-*`.
+réussi à le mettre au bon format : il l'a rangé dans `logs-logstash-errors-*`
+([routage en sortie](process/logs/pipeline.md#routage-en-sortie)).
 Une hausse signale une régression du pipeline de transformation.
 
 Session Discover : onglet « Logs non indexés : Erreur de transformation Logstash ».
 
-### M2a — Erreurs prod (Warning, bilan quotidien)
-
-| Paramètre               | Valeur                                                                                                                                                                                                         |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Rule name**           | `Logstash - Prod - Détection erreurs pipeline process`                                                                                                                                                         |
-| **Type**                | Elasticsearch query rule                                                                                                                                                                                       |
-| **Index**               | `logs-logstash-errors-prod-default`                                                                                                                                                                            |
-| **Condition**           | `Is above` `0`                                                                                                                                                                                                 |
-| **Fenêtre**             | 24 h                                                                                                                                                                                                           |
-| **Fréquence**           | 1 h                                                                                                                                                                                                            |
-| **Sévérité**            | Warning                                                                                                                                                                                                        |
-| **Notification**        | Une fois par jour : `On check intervals` / `Run when: Query matched`, avec `If alert is generated during timeframe` tous les jours de `09:30` à `10:30` (`Europe/Paris`) (onglet Actions → Settings) |
-| **Action**              | Workflow `tchap-o11y-production` — message dans le bloc de la règle                                                                                                                                  |
-| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
-| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue) |
-
-Une erreur de transformation perd un log, pas la chaîne : elle se traite dans la
-journée, pas à chaud. La règle compte les erreurs des 24 dernières heures à chaque
-exécution, et seule l'exécution qui tombe entre 9 h 30 et 10 h 30 notifie : un
-message par jour, à l'arrivée de l'équipe, week-end compris (lu le lundi). Kibana
-ne planifie pas une règle à heure fixe : c'est la plage horaire de l'action qui
-fait ce travail.
-
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](../../../kibana/rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
-
-### M2b — Erreurs staging / perf (Warning)
-
-| Paramètre               | Valeur                                                                                                                                                                                                         |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Rule name**           | `Logstash - Hors-Prod - Détection erreurs pipeline process`                                                                                                                                                    |
-| **Type**                | Elasticsearch query rule                                                                                                                                                                                       |
-| **Index**               | `logs-logstash-errors-staging-default,logs-logstash-errors-perf-default`                                                                                                                                       |
-| **Condition**           | `Is above` `0`                                                                                                                                                                                                 |
-| **Fenêtre**             | 5 min                                                                                                                                                                                                          |
-| **Fréquence**           | 5 min                                                                                                                                                                                                          |
-| **Sévérité**            | Warning                                                                                                                                                                                                        |
-| **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                               |
-| **Action**              | Workflow `tchap-o11y-staging` — message dans le bloc de la règle                                                                                                                                     |
-| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
-| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-3--rejet-de-mapping--dead-letter-queue) |
-
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](../../../kibana/rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
-
-**KQL de diagnostic dans Discover** (data view `logs-logstash-errors-*`) :
-```
-*
-```
-Trier par `@timestamp` desc. Les champs `tags` indiquent la cause
-(`_mutate_error`, `_jsonparsefailure`, `_rubyexception`…).
-
-> **Noms réels des index** (définis dans `pipeline-process.conf`) :
-> - `logs-logstash-errors-prod-default`
-> - `logs-logstash-errors-staging-default`
-> - `logs-logstash-errors-perf-default`
+**Prod sur 24 h** : une erreur de transformation perd un log, pas la chaîne, et
+se traite dans la journée, pas à chaud. La règle tourne toutes les heures sur les
+24 dernières heures : un message quand l'alerte apparaît, aucun tant qu'il reste
+des erreurs dans la fenêtre. Pas de bilan à heure fixe : l'action `.workflows`
+ignore les plages horaires (cf. [brancher une règle](../../../kibana/workflows/tchap/README.md#brancher-une-règle)).
 
 ---
 
@@ -218,76 +81,6 @@ Trier par `@timestamp` desc. Les champs `tags` indiquent la cause
 **Objectif** : détecter une quarantaine du drain Scalingo ou un crash Logstash.
 L'absence de logs dans les index applicatifs et router pendant > 5 min est le signal
 d'un arrêt complet de l'ingestion (scénario 4 du runbook).
-
-### M3a — Absence dans `logs-prod-default`
-
-| Paramètre                 | Valeur                                                                                                                                                                                                      |
-|---------------------------| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Rule name**             | `Logstash - Prod - Détection absence ingestion logs applicatifs`                                                                                                                                            |
-| **Type**                  | Elasticsearch query rule                                                                                                                                                                                    |
-| **Index**                 | `logs-prod-default`                                                                                                                                                                                         |
-| **Condition**             | `Is below or equals` `0`                                                                                                                                                                                    |
-| **Fenêtre**               | 5 min                                                                                                                                                                                                       |
-| **Fréquence**             | 2 min                                                                                                                                                                                                       |
-| **Sévérité**              | Critical                                                                                                                                                                                                    |
-| **Action**           | Workflow `tchap-o11y-production`, un message quand l'alerte apparaît, sans relance ni message de fin (cf. [Brancher une règle](../../../kibana/workflows/tchap/README.md#brancher-une-règle)) — message dans le bloc de la règle                  |
-| **Related dashboards**    | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
-| **Investigation guide**   | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
-
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](../../../kibana/rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
-
-### M3b — Absence dans `logs-router-prod-default`
-
-| Paramètre                 | Valeur                                                                                                                                                                                                      |
-|---------------------------| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Rule name**             | `Logstash - Prod - Détection absence ingestion logs router`                                                                                                                                                 |
-| **Type**                  | Elasticsearch query rule                                                                                                                                                                                    |
-| **Index**                 | `logs-router-prod-default`                                                                                                                                                                                  |
-| **Condition**             | `Is below or equals` `0`                                                                                                                                                                                    |
-| **Fenêtre**               | 5 min                                                                                                                                                                                                       |
-| **Fréquence**             | 2 min                                                                                                                                                                                                       |
-| **Sévérité**              | Critical                                                                                                                                                                                                    |
-| **Action**           | Workflow `tchap-o11y-production`, un message quand l'alerte apparaît, sans relance ni message de fin (cf. [Brancher une règle](../../../kibana/workflows/tchap/README.md#brancher-une-règle)) — message dans le bloc de la règle                  |
-| **Related dashboards**    | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
-| **Investigation guide**   | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
-
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](../../../kibana/rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
-
-### M3c — Absence dans `logs-staging-default` / `logs-perf-default`
-
-| Paramètre               | Valeur                                                                                                                                                                                                      |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Rule name**           | `Logstash - Hors-Prod - Détection absence ingestion logs applicatifs`                                                                                                                                       |
-| **Type**                | Elasticsearch query rule                                                                                                                                                                                    |
-| **Index**               | `logs-staging-default,logs-perf-default`                                                                                                                                                                    |
-| **Condition**           | `Is below or equals` `0`                                                                                                                                                                                    |
-| **Fenêtre**             | 5 min                                                                                                                                                                                                       |
-| **Fréquence**           | 5 min                                                                                                                                                                                                       |
-| **Sévérité**            | Warning                                                                                                                                                                                                     |
-| **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                            |
-| **Action**              | Workflow `tchap-o11y-staging` — message dans le bloc de la règle                                                                                                                                  |
-| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
-| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
-
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](../../../kibana/rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
-
-### M3d — Absence dans `logs-router-staging-default` / `logs-router-perf-default`
-
-| Paramètre               | Valeur                                                                                                                                                                                                      |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Rule name**           | `Logstash - Hors-Prod - Détection absence ingestion logs router`                                                                                                                                            |
-| **Type**                | Elasticsearch query rule                                                                                                                                                                                    |
-| **Index**               | `logs-router-staging-default,logs-router-perf-default`                                                                                                                                                      |
-| **Condition**           | `Is below or equals` `0`                                                                                                                                                                                    |
-| **Fenêtre**             | 5 min                                                                                                                                                                                                       |
-| **Fréquence**           | 5 min                                                                                                                                                                                                       |
-| **Sévérité**            | Warning                                                                                                                                                                                                     |
-| **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                            |
-| **Action**              | Workflow `tchap-o11y-staging` — message dans le bloc de la règle                                                                                                                                  |
-| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
-| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
-
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](../../../kibana/rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
 
 > **Corrélation** : si les deux alertes (M3a+M3b ou M3c+M3d) se déclenchent simultanément,
 > c'est un crash Logstash ou un arrêt de l'app Scalingo. Si seulement l'alerte
@@ -336,47 +129,6 @@ attendu : Redis absorbe, et un backlog qui ne se vide pas relève de l'alerte M7
 > À consulter dans le dashboard `[Metrics Logstash] Pipelines Overview` pour
 > confirmer l'accumulation une fois l'alerte déclenchée.
 
-### M4a — Backpressure prod (Critical)
-
-| Paramètre                 | Valeur                                                                                                                                                                                                   |
-|---------------------------| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Rule name**             | `Logstash - Prod - Détection backpressure ingest (inputs bloqués)`                                                                                                                                       |
-| **Type**                  | Elasticsearch query rule                                                                                                                                                                                 |
-| **Index**                 | `metrics-logstash.pipeline-default`                                                                                                                                                                      |
-| **KQL filter**            | `logstash.pipeline.name: ingest and logstash.pipeline.host.name: pass-emploi-logstash-prod-*`                                                                                                            |
-| **Aggregation**           | `Min` de `logstash.pipeline.total.flow.queue_backpressure.current`                                                                                                                                       |
-| **Regroupement**          | `Grouped over` `top 10` de `logstash.pipeline.host.name` : un calcul par nœud                                                                                                                             |
-| **Condition**             | `Is above or equals` `1`                                                                                                                                                                                 |
-| **Fenêtre**               | 15 min                                                                                                                                                                                                   |
-| **Fréquence**             | 2 min                                                                                                                                                                                                    |
-| **Sévérité**              | Critical                                                                                                                                                                                                 |
-| **Action**           | Workflow `tchap-o11y-production`, un message quand l'alerte apparaît, sans relance ni message de fin (cf. [Brancher une règle](../../../kibana/workflows/tchap/README.md#brancher-une-règle)) — message dans le bloc de la règle               |
-| **Related dashboards**    | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
-| **Investigation guide**   | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch) |
-
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](../../../kibana/rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
-
-### M4b — Backpressure staging / perf (Warning)
-
-| Paramètre               | Valeur                                                                                                                                                                                                   |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Rule name**           | `Logstash - Hors-Prod - Détection backpressure ingest (inputs bloqués)`                                                                                                                                  |
-| **Type**                | Elasticsearch query rule                                                                                                                                                                                 |
-| **Index**               | `metrics-logstash.pipeline-default`                                                                                                                                                                      |
-| **KQL filter**          | `logstash.pipeline.name: ingest and logstash.pipeline.host.name: (pass-emploi-logstash-staging-* OR pass-emploi-logstash-perf-*)`                                                                        |
-| **Aggregation**         | `Min` de `logstash.pipeline.total.flow.queue_backpressure.current`                                                                                                                                       |
-| **Regroupement**        | `Grouped over` `top 10` de `logstash.pipeline.host.name` : un calcul par nœud                                                                                                                             |
-| **Condition**           | `Is above or equals` `1`                                                                                                                                                                                 |
-| **Fenêtre**             | 15 min                                                                                                                                                                                                   |
-| **Fréquence**           | 5 min                                                                                                                                                                                                    |
-| **Sévérité**            | Warning                                                                                                                                                                                                  |
-| **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                         |
-| **Action**              | Workflow `tchap-o11y-staging` — message dans le bloc de la règle                                                                                                                               |
-| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
-| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-1--backpressure-elasticsearch) |
-
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](../../../kibana/rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
-
 ---
 
 ## Alerte M5 — Heap JVM élevé (risque GC agressif)
@@ -403,48 +155,6 @@ ici : c'est l'[alerte M9](#alerte-m9--mémoire-du-conteneur-logstash-oom-kill-sc
 > au-dessus de 90 %, mais le minimum de `process-prod-worker-2` est monté à
 > 89 %. Marge mince, à surveiller.
 
-### M5a — Heap élevé prod (Critical)
-
-| Paramètre               | Valeur                                                                                                                                                                   |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Rule name**           | `Logstash - Prod - Détection heap JVM élevé`                                                                                                                             |
-| **Type**                | Elasticsearch query rule                                                                                                                                                 |
-| **Index**               | `metrics-logstash.node-default`                                                                                                                                          |
-| **KQL filter**          | `host.name: (pass-emploi-logstash-prod-* OR pass-emploi-logstash-process-prod-*)`                                                                                        |
-| **Aggregation**         | `Min` de `logstash.node.stats.jvm.mem.heap_used_percent`                                                                                                                 |
-| **Regroupement**        | `Grouped over` `top 10` de `host.name` : un calcul par nœud                                                                                                               |
-| **Condition**           | `Is above or equals` `90`                                                                                                                                                 |
-| **Fenêtre**             | 15 min                                                                                                                                                                   |
-| **Fréquence**           | 2 min                                                                                                                                                                    |
-| **Sévérité**            | Critical                                                                                                                                                                 |
-| **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                         |
-| **Action**              | Workflow `tchap-o11y-production` — message dans le bloc de la règle                                                                                            |
-| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
-| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-2--gel-gc-jvm) |
-
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](../../../kibana/rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
-
-### M5b — Heap élevé staging / perf (Warning)
-
-| Paramètre               | Valeur                                                                                                                                                                   |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Rule name**           | `Logstash - Hors-Prod - Détection heap JVM élevé`                                                                                                                        |
-| **Type**                | Elasticsearch query rule                                                                                                                                                 |
-| **Index**               | `metrics-logstash.node-default`                                                                                                                                          |
-| **KQL filter**          | `host.name: (pass-emploi-logstash-staging-* OR pass-emploi-logstash-process-staging-* OR pass-emploi-logstash-perf-* OR pass-emploi-logstash-process-perf-*)`                                                                                             |
-| **Aggregation**         | `Min` de `logstash.node.stats.jvm.mem.heap_used_percent`                                                                                                                 |
-| **Regroupement**        | `Grouped over` `top 10` de `host.name` : un calcul par nœud                                                                                                               |
-| **Condition**           | `Is above or equals` `90`                                                                                                                                                 |
-| **Fenêtre**             | 15 min                                                                                                                                                                   |
-| **Fréquence**           | 5 min                                                                                                                                                                    |
-| **Sévérité**            | Warning                                                                                                                                                                  |
-| **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                         |
-| **Action**              | Workflow `tchap-o11y-staging` — message dans le bloc de la règle                                                                                               |
-| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
-| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-2--gel-gc-jvm) |
-
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](../../../kibana/rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
-
 ---
 
 ## Alerte M6 — Événements Scalingo des apps de la stack
@@ -460,7 +170,7 @@ Scalingo, collectés dans `logs-alertes-scalingo-<env>-default` (cf.
 [collecte par webhook](collecte/webhooks/README.md),
 dont la [mise en service](collecte/webhooks/README.md#mise-en-service)
 des notifiers). Une règle par environnement, qui liste chaque événement sur une
-ligne, préfixée de sa gravité (niveaux des anciennes X1 à X3) : en prod, 🚨
+ligne, préfixée de sa gravité : en prod, 🚨
 crash, redémarrage ou arrêt, ⚠️ seuil dépassé ; en staging / perf, ⚠️ pour
 les deux ; ℹ️ le reste. Les
 apps applicatives vont aux règles A4a à A4d des
@@ -470,55 +180,6 @@ Chaque exécution ne compte que les documents arrivés depuis la précédente
 (`excludeHitsFromPreviousRun`) : un événement = une notification, sans
 throttle. Scalingo n'envoie `app_crashed` qu'aux 2ᵉ, 5ᵉ et 12ᵉ crashs, et
 `app_crashed_repeatedly` à chaque crash : le notifier doit sélectionner les deux.
-
-### M6a — Événements Scalingo des apps de la stack, prod
-
-| Paramètre               | Valeur |
-|-------------------------|--------|
-| **Rule name**           | `Scalingo - Prod - Événements des apps de la stack` |
-| **Type**                | Elasticsearch query rule (KQL), data view `logs-alertes-scalingo-prod-default` |
-| **Requête**             | `service.name : ("pass-emploi-logstash" or "pass-emploi-logstash-process" or "pass-emploi-elastic-agent" or "pass-emploi-heartbeat")` |
-| **Fenêtre / fréquence** | 5 min / 1 min |
-| **Actions**             | Tchap via le Workflow `tchap-o11y-production` |
-| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
-
-**À vérifier** :
-1. Le Discover **[Pass Emploi] Alertes externes de Prod - Événements Scalingo**,
-   onglet « Incidents » ou « Infra » : l'événement, sa raison et son auteur.
-2. Pour un incident sur une app Logstash, l'impact sur l'ingestion : le dashboard **[Pass Emploi]
-   Supervision Stack d'Observabilité**, puis les Discover **[Pass Emploi] Logs de
-   Prod - DLQ Logstash Process** et **[Pass Emploi] Logs de Prod - Erreurs de
-   traitement Logstash Process** (logs non indexés).
-3. Les métriques (onglet Metrics) et l'activité (onglet Activity) de l'app dans
-   le **[Scalingo] Dashboard des apps**.
-
-### M6b — Événements Scalingo des apps de la stack, staging / perf
-
-| Paramètre               | Valeur |
-|-------------------------|--------|
-| **Rule name**           | `Scalingo - Hors-Prod - Événements des apps de la stack` |
-| **Type**                | Elasticsearch query rule (KQL), data view `logs-alertes-scalingo-staging-default,logs-alertes-scalingo-perf-default` |
-| **Requête**             | celle de M6a |
-| **Fenêtre / fréquence** | 10 min / 5 min |
-| **Actions**             | Tchap via le Workflow `tchap-o11y-staging` |
-| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
-
-**À vérifier** : comme M6a, avec le Discover **[Pass Emploi] Alertes externes
-Hors-Prod - Événements Scalingo** et les Discover **Logs Hors-Prod** de Logstash
-Process.
-
-**Payload Scalingo** (capture réelle d'un redémarrage) :
-```json
-{
-  "id": "6ab3fc9805b3851e56c0404f",
-  "created_at": "2026-09-23T16:21:44.047Z",
-  "type": "restart",
-  "app_id": "6a9972b3d144aa4ac4db658b",
-  "app_name": "pass-emploi-logstash-perf",
-  "user": { "username": "…", "email": "…", "id": "…" },
-  "type_data": { "scope": ["web"], "reason": "user_restart" }
-}
-```
 
 > **Alternative** : utiliser l'alerte M3 (absence de logs) comme proxy indirect du
 > crash — un crash Logstash se traduit immédiatement par un silence dans
@@ -557,52 +218,13 @@ sévère côté `process`.
 > 11 500) y passent. L'alerte part 15 à 17 min après le début de la coupure ;
 > le 14/09, la saturation est arrivée ~1 h 20 après.
 
-### M7a — Backlog Redis prod (Critical)
-
-| Paramètre                 | Valeur                                                                                                                                                                                     |
-|---------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Rule name**             | `Redis - Prod - Backlog logstash:ingest anormal`                                                                                                                                           |
-| **Type**                  | Elasticsearch query rule                                                                                                                                                                   |
-| **Index**                 | `metrics-redis.key-default`                                                                                                                                                                |
-| **KQL filter**            | `redis.key.name: "logstash:ingest" and agent.name: pass-emploi-elastic-agent-prod-*`                                                                                                       |
-| **Aggregation**           | `Min` de `redis.key.length`                                                                                                                                                                |
-| **Condition**             | `Is above` `1000`                                                                                                                                                                         |
-| **Fenêtre**               | 15 min                                                                                                                                                                                     |
-| **Fréquence**             | 2 min                                                                                                                                                                                      |
-| **Sévérité**              | Critical                                                                                                                                                                                   |
-| **Action**           | Workflow `tchap-o11y-production`, un message quand l'alerte apparaît, sans relance ni message de fin (cf. [Brancher une règle](../../../kibana/workflows/tchap/README.md#brancher-une-règle)) — message dans le bloc de la règle |
-| **Related dashboards**    | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
-| **Investigation guide**   | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-5--backlog-redis-logstashingest) |
-
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](../../../kibana/rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
-
-### M7b — Backlog Redis staging / perf (Warning)
-
-| Paramètre               | Valeur                                                                                                          |
-|-------------------------|-----------------------------------------------------------------------------------------------------------------|
-| **Rule name**           | `Redis - Hors-Prod - Backlog logstash:ingest anormal`                                                           |
-| **Type**                | Elasticsearch query rule                                                                                        |
-| **Index**               | `metrics-redis.key-default`                                                                                     |
-| **KQL filter**          | `redis.key.name: "logstash:ingest" and agent.name: (pass-emploi-elastic-agent-staging-* or pass-emploi-elastic-agent-perf-*)` |
-| **Aggregation**         | `Min` de `redis.key.length`                                                                                     |
-| **Condition**           | `Is above` `1000`                                                                                              |
-| **Fenêtre**             | 15 min                                                                                                          |
-| **Fréquence**           | 5 min                                                                                                           |
-| **Sévérité**            | Warning                                                                                                         |
-| **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)      |
-| **Action**              | Workflow `tchap-o11y-staging` — message dans le bloc de la règle                                                                                                                                                    |
-| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
-| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-5--backlog-redis-logstashingest) |
-
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](../../../kibana/rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
-
 ---
 
 ## Alerte M8 — Elastic Agent en défaut
 
 **Objectif** : détecter qu'un Elastic Agent a décroché, quelle qu'en soit la
 forme. Un agent en défaut, c'est une **supervision aveugle** : les alertes M4, M5
-et 7 lisent ses métriques et ne peuvent plus se déclencher — le silence d'un
+et M7 lisent ses métriques et ne peuvent plus se déclencher — le silence d'un
 agent ressemble à une infra saine. Contexte :
 [pilotage.md](pilotage.md#savoir-quun-agent-a-décroché).
 
@@ -650,70 +272,6 @@ agent ressemble à une infra saine. Contexte :
 > l'agent est toujours en défaut** — d'où l'absence de message de résolution.
 > L'état courant se lit dans Kibana → Fleet → Agents.
 
-### M8a — Elastic Agent en défaut prod (Critical)
-
-| Paramètre                 | Valeur                                                                                                                                                                                                                                                                                                         |
-|---------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Rule name**             | `Elastic Agent - Prod - Agent en défaut`                                                                                                                                                                                                                                                                       |
-| **Type**                  | Elasticsearch query rule (ES\|QL)                                                                                                                                                                                                                                                                              |
-| **Requête ES\|QL**        | voir ci-dessous — l'alerte part dès qu'elle renvoie au moins une ligne (une par agent en défaut)                                                                                                                                                                                                               |
-| **Fenêtre**               | 5 min                                                                                                                                                                                                                                                                                                          |
-| **Fréquence**             | 1 min                                                                                                                                                                                                                                                                                                          |
-| **Sévérité**              | Critical                                                                                                                                                                                                                                                                                                       |
-| **Action**           | Workflow `tchap-o11y-production`, un message quand l'alerte apparaît, sans relance ni message de fin (cf. [Brancher une règle](../../../kibana/workflows/tchap/README.md#brancher-une-règle)) — message dans le bloc de la règle                                                                                                                     |
-| **Action 2 (résolution)** | **Aucune** — voir note « Transition, pas état » ci-dessus                                                                                                                                                                                                                                                      |
-| **Related dashboards**    | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
-| **Investigation guide**   | dans la règle (mêmes étapes que le message) ; runbook : [pilotage des agents](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/infra/pilotage.md) et [post-mortem — agent UNENROLLED](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/post-mortems/postmortem-2026-09-unenrolled-elastic-agent.md) |
-
-**Requête ES|QL** :
-```
-FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*
-| EVAL host = COALESCE(hostname, agent.name)
-| WHERE host LIKE "*-prod-*"
-| WHERE health_status IN ("offline", "unenrolled", "unhealthy")
-     OR beat.stats.libbeat.output.write.errors IS NOT NULL
-| STATS statuts = VALUES(health_status),
-        erreurs = MAX(TO_LONG(beat.stats.libbeat.output.write.errors))
-                - MIN(TO_LONG(beat.stats.libbeat.output.write.errors))
-  BY host, component.id
-| STATS statuts = VALUES(statuts), erreurs_output = MAX(erreurs) BY host
-| WHERE statuts IS NOT NULL OR erreurs_output > 25
-```
-
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](../../../kibana/rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
-
-### M8b — Elastic Agent en défaut staging (Warning)
-
-| Paramètre               | Valeur                                                                                                                                                                                                                                                                                                         |
-|-------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Rule name**           | `Elastic Agent - Staging - Agent en défaut`                                                                                                                                                                                                                                                                    |
-| **Type**                | Elasticsearch query rule (ES\|QL)                                                                                                                                                                                                                                                                              |
-| **Requête ES\|QL**      | voir ci-dessous — l'alerte part dès qu'elle renvoie au moins une ligne (une par agent en défaut)                                                                                                                                                                                                               |
-| **Fenêtre**             | 5 min                                                                                                                                                                                                                                                                                                          |
-| **Fréquence**           | 1 min                                                                                                                                                                                                                                                                                                          |
-| **Sévérité**            | Warning                                                                                                                                                                                                                                                                                                        |
-| **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                                                                                                                                                                     |
-| **Action**              | Workflow `tchap-o11y-staging` — message dans le bloc de la règle                                                                                                                                                                                                                                     |
-| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
-| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [pilotage des agents](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/infra/pilotage.md) et [post-mortem — agent UNENROLLED](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/post-mortems/postmortem-2026-09-unenrolled-elastic-agent.md) |
-
-**Requête ES|QL** :
-```
-FROM logs-elastic_agent.status_change-default, metrics-elastic_agent.*beat-*
-| EVAL host = COALESCE(hostname, agent.name)
-| WHERE host LIKE "*-staging-*"
-| WHERE health_status IN ("offline", "unenrolled", "unhealthy")
-     OR beat.stats.libbeat.output.write.errors IS NOT NULL
-| STATS statuts = VALUES(health_status),
-        erreurs = MAX(TO_LONG(beat.stats.libbeat.output.write.errors))
-                - MIN(TO_LONG(beat.stats.libbeat.output.write.errors))
-  BY host, component.id
-| STATS statuts = VALUES(statuts), erreurs_output = MAX(erreurs) BY host
-| WHERE statuts IS NOT NULL OR erreurs_output > 25
-```
-
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](../../../kibana/rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
-
 ---
 
 ## Alerte M9 — Mémoire du conteneur Logstash (OOM-kill Scalingo)
@@ -738,47 +296,6 @@ et l'Elastic Agent co-localisé lui échappent (cf.
 > et un pic suffit à le tuer. **Seuil à recaler sur 30 jours de données**
 > (début novembre 2026).
 
-### M9a — Mémoire conteneur prod (Critical)
-
-| Paramètre                 | Valeur                                                                                                                                                                                     |
-|---------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Rule name**             | `Logstash - Prod - Mémoire conteneur proche de la limite Scalingo`                                                                                                                         |
-| **Type**                  | Elasticsearch query rule                                                                                                                                                                   |
-| **Index**                 | `logs-scalingo.container_stats-default`                                                                                                                                                    |
-| **KQL filter**            | `scalingo.app: (pass-emploi-logstash-prod or pass-emploi-logstash-process-prod)`                                                                                                           |
-| **Aggregation**           | `Max` de `scalingo.memory.pct`                                                                                                                                                             |
-| **Regroupement**          | `Grouped over` `top 10` de `host.name` : un calcul par conteneur                                                                                                                           |
-| **Condition**             | `Is above or equals` `0.95`                                                                                                                                                                |
-| **Fenêtre**               | 5 min                                                                                                                                                                                      |
-| **Fréquence**             | 1 min                                                                                                                                                                                      |
-| **Sévérité**              | Critical                                                                                                                                                                                   |
-| **Action**           | Workflow `tchap-o11y-production`, un message quand l'alerte apparaît, sans relance ni message de fin (cf. [Brancher une règle](../../../kibana/workflows/tchap/README.md#brancher-une-règle)) — message dans le bloc de la règle |
-| **Related dashboards**    | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
-| **Investigation guide**   | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
-
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](../../../kibana/rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
-
-### M9b — Mémoire conteneur staging / perf (Warning)
-
-| Paramètre               | Valeur                                                                                                                                                                  |
-|-------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Rule name**           | `Logstash - Hors-Prod - Mémoire conteneur proche de la limite Scalingo`                                                                                                 |
-| **Type**                | Elasticsearch query rule                                                                                                                                                |
-| **Index**               | `logs-scalingo.container_stats-default`                                                                                                                                 |
-| **KQL filter**          | `scalingo.app: (pass-emploi-logstash-staging or pass-emploi-logstash-process-staging or pass-emploi-logstash-perf or pass-emploi-logstash-process-perf)`                |
-| **Aggregation**         | `Max` de `scalingo.memory.pct`                                                                                                                                          |
-| **Regroupement**        | `Grouped over` `top 10` de `host.name` : un calcul par conteneur                                                                                                        |
-| **Condition**           | `Is above or equals` `0.95`                                                                                                                                             |
-| **Fenêtre**             | 5 min                                                                                                                                                                   |
-| **Fréquence**           | 5 min                                                                                                                                                                   |
-| **Sévérité**            | Warning                                                                                                                                                                 |
-| **Throttle**            | `On custom action intervals` / `Run every 6 hours` / `Run when: Query matched` (onglet Actions → Settings)                                                              |
-| **Action**              | Workflow `tchap-o11y-staging` — message dans le bloc de la règle                                                                                                    |
-| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
-| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook scénario](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-logstash.md#scénario-4--crash-du-conteneur-logstash) |
-
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](../../../kibana/rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
-
 ---
 
 ## Alerte M10 — ILM en échec ou policy sans suppression
@@ -800,41 +317,9 @@ les métriques Fleet et les logs Elastic Agent sur `metrics@lifecycle` /
 > **Limite** : un index rattaché à une policy qui n'existe pas n'écrit rien dans
 > l'historique et échappe à l'alerte (cf. [runbook ILM, scénario 3](../runbooks/runbook-ilm.md#scénario-3--policy-inexistante-non-alerté)).
 >
-> **Bilan quotidien** : rien d'urgent, l'index grossit ou attend. Même réglage que
-> l'[alerte M2a](#m2a--erreurs-prod-warning-bilan-quotidien) : fenêtre de 24 h, un
-> message par jour à 9 h 30, un seul pour tous les index concernés.
-
-### M10 — ILM en échec ou policy sans suppression (Warning, bilan quotidien)
-
-| Paramètre               | Valeur                                                                                                                                                                                                         |
-|-------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Rule name**           | `Elasticsearch - ILM en échec ou policy sans suppression`                                                                                                                                                      |
-| **Type**                | Elasticsearch query rule (ES\|QL)                                                                                                                                                                              |
-| **Requête ES\|QL**      | voir ci-dessous — l'alerte part dès qu'elle renvoie une ligne                                                                                                                                                  |
-| **Fenêtre**             | 24 h                                                                                                                                                                                                           |
-| **Fréquence**           | 1 h                                                                                                                                                                                                            |
-| **Sévérité**            | Warning                                                                                                                                                                                                        |
-| **Notification**        | Une fois par jour : `On check intervals` / `Run when: Query matched`, avec `If alert is generated during timeframe` tous les jours de `09:30` à `10:30` (`Europe/Paris`) (onglet Actions → Settings) |
-| **Action**              | Workflow `tchap-o11y-production` — message dans le bloc de la règle                                                                                                                                        |
-| **Related dashboards**  | dans la règle (onglet Related dashboards), mêmes dashboards que le message |
-| **Investigation guide** | dans la règle (mêmes étapes que le message) ; runbook : [runbook ILM](https://github.com/France-Travail/pass-emploi-tools/blob/master/docs/observabilite/runbooks/runbook-ilm.md) |
-
-**Requête ES|QL** :
-```
-FROM .ds-ilm-history-7-*
-| WHERE index LIKE "*.ds-logs-*" OR index LIKE "*.ds-metrics-*"
-     OR index LIKE "*.ds-traces-*" OR index LIKE "*.ds-heartbeat-*"
-| EVAL policy_par_defaut = policy IN ("logs", "metrics", "logs@lifecycle", "metrics@lifecycle", "metricbeat")
-                           OR policy LIKE "*-default_policy"
-| WHERE success == false OR policy_par_defaut
-| STATS index_en_echec = COUNT_DISTINCT(index) WHERE success == false,
-        index_policy_par_defaut = COUNT_DISTINCT(index) WHERE policy_par_defaut,
-        policies = VALUES(policy), exemples = VALUES(index)
-| WHERE index_en_echec > 0 OR index_policy_par_defaut > 0
-| EVAL exemples = MV_SLICE(exemples, 0, 9)
-```
-
-**Message et étapes « À vérifier »** : dans le bloc de la règle de [`rules/generated/3-rules-stack-observabilite.console`](../../../kibana/rules/generated/3-rules-stack-observabilite.console), qui fait foi ; son Investigation guide reprend les mêmes étapes.
+> **Sur 24 h** : rien d'urgent, l'index grossit ou attend. Même réglage que la prod
+> de l'[alerte M2](#alerte-m2--index-erreurs-de-traitement-non-vide), un seul
+> message pour tous les index concernés.
 
 ---
 
@@ -969,8 +454,6 @@ non remplies.
 
 ---
 
----
-
 ## Alerte M13 — Événement externe rejeté
 
 **Objectif** : ne pas perdre en silence une notification Scalingo ou GitHub.
@@ -979,26 +462,6 @@ failure store de son data stream, et son émetteur reçoit **quand même un
 succès** : sans cette règle, un changement de format chez Scalingo ou GitHub,
 ou un notifier qui vise le mauvais environnement, passerait inaperçu, et
 l'alerte que portait le document ne serait pas levée.
-
-### M13 — Événement externe rejeté (Warning)
-
-| Paramètre               | Valeur |
-|-------------------------|--------|
-| **Rule name**           | `Événements externes - Payload rejeté (failure store)` |
-| **Type**                | Elasticsearch query rule (KQL), data view sur les 4 `logs-alertes-*-default::failures` (`allowHidden`) |
-| **Requête**             | aucune : tout document |
-| **Fenêtre / fréquence** | 10 min / 5 min |
-| **Actions**             | Tchap via le Workflow `tchap-o11y-production` |
-| **Related dashboards**  | — |
-
-Une ligne par rejet : `error.type` et `error.message`.
-
-**À vérifier** :
-1. Le Discover **[Pass Emploi] Alertes externes - Rejets (failure store)** :
-   `error.type` et `error.message` donnent le motif du rejet.
-2. Le payload d'origine (`document.source`) : adapter le pipeline (cf.
-   [correspondance ECS](format/webhooks/conventions.md), rubriques « Rejets »),
-   puis le rejouer en `_simulate`.
 
 ---
 

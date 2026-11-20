@@ -1,8 +1,6 @@
 {
   "_id": "c9164880-1829-4847-acb1-5a70433ecbb8",
-  "_commentaire": [
-    "# A6 — Erreurs applicatives (Warning) : lignes en log.level error hors appels partenaires, par service et par famille."
-  ],
+  "_question": "Des erreurs s'accumulent-elles dans les apps, hors appels partenaires ?",
   "_message": {
     "titre": "**Erreurs applicatives — prod** — au moins 50 lignes en erreur en 5 min, hors appels partenaires.",
     "gravite": "avertissement",

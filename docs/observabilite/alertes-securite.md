@@ -8,21 +8,10 @@ de service**, lue dans les alertes de métriques Scalingo (cf.
 [collecte par webhook](infra/collecte/webhooks/README.md)) : aucune des deux ne
 dépend des logs des apps. Seule la **limite de débit déclenchée** (S3) les lit.
 
-## Récapitulatif
+Liste, gravités, sources et salons : [catalogue des alertes](catalogue-alertes.md) ;
+cette page en donne le pourquoi et le calibrage.
 
-| #  | Signal                    | Data stream                   | Condition                                 | Fréquence | Throttle | Sévérité    |
-|----|---------------------------|-------------------------------|-------------------------------------------|-----------|----------|-------------|
-| S1 | CVE high/critical ouverte | `logs-alertes-github-default` | `vulnerability.severity` high ou critical | 5 min     | —        | 🚨 Critical |
-| S2a | Suspicion d'attaque DDoS, prod | `logs-alertes-scalingo-prod-default` | alertes `rpm` et `5XX` de la même app à moins de 10 min, non revenues à la normale | 1 min | — | 🚨 Critical |
-| S2b | Suspicion d'attaque DDoS, staging / perf | `logs-alertes-scalingo-staging-default`, `-perf-default` | idem | 1 min | — | 🚨 Critical |
-| S3a | Limite de débit déclenchée, prod | `logs-prod-default` | au moins une ligne `rate_limit_exceeded` en 15 min | 5 min | — | ⚠️ High |
-| S3b | Limite de débit déclenchée, staging | `logs-staging-default` | idem | 5 min | — | ⚠️ High |
-
-**Création** : rejouer [`rules/generated/1-rules-securite.console`](../../kibana/rules/generated/1-rules-securite.console)
-dans Dev Tools, après les sessions Discover de
-[`discovers/webhooks/`](../../kibana/discovers/webhooks/).
-
-## S1 — CVE high ou critical ouverte (Critical)
+## S1 — CVE high ou critical ouverte
 
 **Objectif** : qu'aucune CVE high ou critical ne reste ouverte sans être vue.
 
@@ -33,27 +22,11 @@ la page de ses alertes, `labels.dependabot_url` posé par le pipeline). Chaque e
 arrivés depuis la précédente (`excludeHitsFromPreviousRun`) : un passage = une
 notification.
 
-| Paramètre               | Valeur |
-|-------------------------|--------|
-| **Rule name**           | `GitHub - CVE high ou critical ouverte` |
-| **Type**                | Elasticsearch query rule (KQL), data view `logs-alertes-github-default` |
-| **Requête**             | `vulnerability.severity : ("high" or "critical")` |
-| **Fenêtre / fréquence** | 10 min / 5 min |
-| **Actions**             | Tchap via le Workflow `tchap-monitoring-securite` : à l'écart des pannes de `monitoring-production` |
-| **Dashboards**          | les pages d'alertes Dependabot des 3 repos (liens externes, hors Related dashboards) |
+Liens vers Dependabot : dans le message, celui du repo de chaque CVE, sur son
+nom ; une règle ne sait pas choisir ses liens selon les CVE qu'elle liste, donc
+l'Investigation guide, qui ne voit pas les CVE, garde ceux des 3 repos.
 
-**À vérifier** :
-1. Le Discover **[Pass Emploi] Alertes externes - CVE Dependabot** : les CVE
-   ouvertes par repo, avec leur score.
-2. Les alertes Dependabot du repo concerné, à traiter selon leur sévérité :
-   [[GitHub] Alertes Dependabot - pass-emploi-api](https://github.com/France-Travail/pass-emploi-api/security/dependabot),
-   [[GitHub] Alertes Dependabot - pass-emploi-web](https://github.com/France-Travail/pass-emploi-web/security/dependabot),
-   [[GitHub] Alertes Dependabot - pass-emploi-connect](https://github.com/France-Travail/pass-emploi-connect/security/dependabot).
-   Dans le message, ces 3 liens fixes sont remplacés par celui du repo de chaque
-   CVE, sur son nom : une règle ne sait pas choisir les liens selon les CVE
-   qu'elle liste ; l'Investigation guide, qui ne voit pas les CVE, garde les 3.
-
-## S2a / S2b — Suspicion d'attaque DDoS (Critical)
+## S2a / S2b — Suspicion d'attaque DDoS
 
 **Objectif** : désigner l'app attaquée dès les premières minutes, même quand le
 log drain et Logstash ont décroché. Le 23/10/2026, 3 IP ont envoyé à connect
@@ -61,7 +34,7 @@ log drain et Logstash ont décroché. Le 23/10/2026, 3 IP ont envoyé à connect
 disparu pendant 25 h ; le même scénario, d'une seule IP, était passé inaperçu le
 21/10.
 
-Une règle ES|QL sur les [alertes de métriques Scalingo](alertes.md) :
+Une règle ES|QL sur les alertes de métriques Scalingo ([collecte par webhook](infra/collecte/webhooks/README.md)) :
 pour chaque app, le dernier événement de ses alertes `Requests per Minute` et
 `5xx Errors` ; elle sonne si les deux sont des dépassements, à moins de 10 min
 d'intervalle. Fenêtre de 45 min : au-delà du rappel de 30 min des alertes, une
@@ -69,32 +42,7 @@ alerte toujours dépassée y garde un événement. Le RPM seul (un pic légitime
 passe) ne la déclenche pas ; rejouée sur les 30 jours d'octobre 2026 avec les
 seuils retenus, elle n'aurait sonné que les 21 et 23/10, sur connect.
 
-| Paramètre               | Valeur |
-|-------------------------|--------|
-| **Rule name**           | `Scalingo - Prod - Suspicion d'attaque DDoS` (S2a), `Scalingo - Hors-Prod - Suspicion d'attaque DDoS` (S2b) |
-| **Type**                | Elasticsearch query rule (ES\|QL), `groupBy: all` |
-| **Fenêtre / fréquence** | 45 min / 1 min |
-| **Actions**             | Tchap via le Workflow `tchap-monitoring-securite` (S2a) ou `tchap-monitoring-staging` (S2b) |
-| **Message**             | une ligne par app : nom, requêtes par minute et 5xx relevés par Scalingo, heure du premier dépassement |
-
-**À vérifier** :
-1. Quelle app, depuis quand, et le trafic continue-t-il de monter : ses
-   métriques (onglet Metrics) dans le **[Scalingo] Dashboard des apps**.
-2. Un événement légitime l'explique-t-il : mise en service, notification de
-   masse, campagne de communication.
-3. D'où vient le trafic : si les logs du routeur arrivent encore (règle M3b au
-   repos), le Discover **[Pass Emploi] Logs de Prod - Trafic du routeur par IP** ;
-   sinon, les logs du routeur lus chez Scalingo, sans drain ni Logstash
-   (cf. [runbook](runbooks/investigation-incident.md#suspicion-de-ddos-ou-surcharge-de-linfra)),
-   puis le support Scalingo.
-
-**Création** : nouvelles règles, à créer avec `POST` (cf. l'en-tête de leur
-bloc dans [`rules/generated/1-rules-securite.console`](../../kibana/rules/generated/1-rules-securite.console)),
-après la session Discover
-[`discover-session-prod-trafic-routeur-par-ip.ndjson`](../../kibana/discovers/applicatives/discover-session-prod-trafic-routeur-par-ip.ndjson)
-et le Workflow [`tchap-monitoring-securite`](../../kibana/workflows/tchap/generated/tchap-monitoring-securite.console).
-
-## S3a / S3b — Limite de débit déclenchée (High)
+## S3a / S3b — Limite de débit déclenchée
 
 **Objectif** : savoir dès qu'une limite de débit de l'api ou de connect refuse
 des requêtes (429), qu'il s'agisse d'un abus ou d'un seuil trop bas pour un pic
@@ -111,25 +59,3 @@ montre l'état courant.
 Les champs `labels.rate_limit*` sont déclarés d'avance dans le mapping
 ([`2-component-templates.console`](infra/stockage/logs/2-component-templates.console)) :
 sans eux, la requête ES|QL échoue tant qu'aucune limite n'a refusé de requête.
-
-| Paramètre               | Valeur |
-|-------------------------|--------|
-| **Rule name**           | `Pass Emploi - Prod - Limite de débit déclenchée` (S3a), `Pass Emploi - Hors-Prod - Limite de débit déclenchée` (S3b) |
-| **Type**                | Elasticsearch query rule (ES\|QL), `groupBy: all` |
-| **Fenêtre / fréquence** | 15 min / 5 min |
-| **Actions**             | Tchap via le Workflow `tchap-monitoring-securite` (S3a) ou `tchap-monitoring-staging` (S3b) |
-| **Message**             | une ligne par app et par limite : nombre de lignes de log, palier maximal atteint (au moins 1, 10, 100… refus dans une fenêtre), heure du premier refus |
-
-**À vérifier** :
-1. Qui est limité : Discover sur `event.action: "rate_limit_exceeded"`, puis
-   `user.id` ou `client.ip`, et `url.path`.
-2. Légitime ou attaque : un pic attendu (ouverture, communication, atelier en
-   Mission Locale), ou une IP ou un compte inconnu.
-3. Si c'est légitime, monter le seuil concerné (`RATE_LIMIT_*` de l'app, cf. le
-   `CLAUDE.md` de l'app) ; si c'est une attaque, croiser avec S2a (S2b hors prod)
-   et le Discover **[Pass Emploi] Logs de Prod - Trafic du routeur par IP**.
-
-**Création** : nouvelles règles, à créer avec `POST` (cf. l'en-tête de leur
-bloc dans [`rules/generated/1-rules-securite.console`](../../kibana/rules/generated/1-rules-securite.console)),
-après le `PUT …/_mapping` des champs `labels.rate_limit*`, puis à mettre à
-jour avec `PUT`.

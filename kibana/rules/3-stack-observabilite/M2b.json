@@ -1,8 +1,6 @@
 {
   "_id": "ede49ade-b4ee-4cbb-9dd2-28078e189f7b",
-  "_commentaire": [
-    "# M2b — Erreurs staging / perf (Warning)"
-  ],
+  "_question": "Le pipeline Logstash de traitement rencontre-t-il des erreurs ?",
   "_message": {
     "titre": "**Logs hors prod non indexés : erreur de transformation Logstash** — des logs de staging/perf ne sont pas consultables dans Kibana.",
     "gravite": "avertissement",

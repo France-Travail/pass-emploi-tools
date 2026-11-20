@@ -1,8 +1,6 @@
 {
   "_id": "139c93c3-b744-4bd7-8274-bb88f77305c7",
-  "_commentaire": [
-    "# M3a — Absence dans `logs-prod-default`"
-  ],
+  "_question": "Les logs applicatifs arrivent-ils encore ?",
   "_message": {
     "titre": "**Silence Logstash** — aucun log dans `logs-prod-default` depuis 5 min. Drain en quarantaine ou Logstash crashé.",
     "gravite": "critique",

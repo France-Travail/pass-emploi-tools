@@ -1,8 +1,6 @@
 {
   "_id": "32b686a2-659f-4b57-b583-e6aedaeea5f5",
-  "_commentaire": [
-    "# M3c — Absence dans `logs-staging-default` / `logs-perf-default`"
-  ],
+  "_question": "Les logs applicatifs arrivent-ils encore ?",
   "_message": {
     "titre": "**Silence Logstash** — aucun log dans `logs-staging-default` ou `logs-perf-default` depuis 5 min. Drain en quarantaine ou Logstash crashé.",
     "gravite": "avertissement",

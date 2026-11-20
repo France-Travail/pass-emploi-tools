@@ -38,7 +38,8 @@
 - **Référence stable** : [`observabilite/README.md`](./observabilite/README.md) (index) —
   [`logs.md`](./observabilite/logs.md) (familles de lignes, `outcome`, `level`, codes HTTP, champs, redaction),
   [`slo.md`](./observabilite/slo.md) (promesses, burn rate, angles morts),
-  [`alertes.md`](./observabilite/alertes.md) (catalogue, critères, gravités),
+  [`catalogue-alertes.md`](./observabilite/catalogue-alertes.md) (toutes les règles : question, gravité, source, salon ; généré),
+  [`alertes.md`](./observabilite/alertes.md) (familles et critères des alertes applicatives),
   [`fonctionnement.md`](./observabilite/fonctionnement.md) (chemin jusqu'à Tchap, salons),
   [`routine-surveillance.md`](./observabilite/routine-surveillance.md) (dashboards, reporting),
   [`runbooks/investigation-incident.md`](./observabilite/runbooks/investigation-incident.md) (KQL d'enquête),

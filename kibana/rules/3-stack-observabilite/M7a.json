@@ -1,8 +1,6 @@
 {
   "_id": "07a8ee68-4994-4d70-b9a5-3d47f08297a5",
-  "_commentaire": [
-    "# M7a — Backlog Redis prod (Critical)"
-  ],
+  "_question": "Des logs s'accumulent-ils dans Redis sans être lus par Logstash ?",
   "_message": {
     "titre": "**Backlog Redis prod** — la liste `logstash:ingest` reste au-dessus de 1 000 événements depuis 15 min. Le pipeline `process` ne consomme plus Redis (redémarrage ou blocage de `pass-emploi-logstash-process-prod`, ou backpressure ES sévère).",
     "gravite": "critique",

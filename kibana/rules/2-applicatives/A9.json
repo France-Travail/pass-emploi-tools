@@ -1,9 +1,6 @@
 {
   "_id": "45585b60-6e45-11ec-9757-c9700cd1bb4e",
-  "_commentaire": [
-    "# A9 — Application web conseiller injoignable — prod (pass-emploi-web) (Critical) : moniteur Heartbeat `pa-web-prod-status` (https://web.pass-emploi.beta.gouv.fr/api/health).",
-    "# Règle Uptime (Heartbeat), recréée par POST avec les paramètres de la règle d'origine."
-  ],
+  "_question": "Le web conseiller est-il injoignable de l'extérieur ?",
   "_message": {
     "titre": "**Application web conseiller injoignable — prod (pass-emploi-web)**",
     "gravite": "critique",

@@ -1,8 +1,6 @@
 {
   "_id": "43e80d0c-dd21-4999-81af-92715cf44053",
-  "_commentaire": [
-    "# A4d — Opérations d'infra Scalingo des apps applicatives, staging / perf (ℹ️, salon infra-staging)"
-  ],
+  "_question": "Quelle opération d'infra a touché une app applicative (déploiement, scaling, variable) ?",
   "_message": {
     "titre": "**Opérations d'infra Scalingo des apps hors prod** ({valeur})",
     "gravite": "information",

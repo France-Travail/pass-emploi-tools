@@ -62,6 +62,7 @@ PUT _index_template/tchap-expiration-bot
   }
 }
 
+# expiration-bot — Le compte du bot Tchap expire-t-il bientôt ?
 # La règle filtre sur renouveler_a_partir_du (date passée dès J-60) dans une
 # fenêtre de 2 ans : la fenêtre de temps d'une règle ne regarde que le passé,
 # une date d'expiration future n'y entrerait jamais. Pas

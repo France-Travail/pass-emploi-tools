@@ -6,15 +6,9 @@ de ce dossier : [stockage/README](../README.md#import--ordre-et-portée).
 
 ## Data streams
 
-| Data stream | Contenu |
-|---|---|
-| `logs-{prod,staging,perf}-default` | logs applicatifs |
-| `logs-router-*-default` | logs du router Scalingo (`request_routed`) |
-| `logs-logstash-errors-*-default` | events en erreur de **traitement** Logstash (`_jsonparsefailure`, `_mutate_error`, `_rubyexception`…) |
-| `logs-logstash-dlq-*-default` | events **rejetés par ES** (conflit de mapping), relus depuis la Dead Letter Queue |
-| `logs-apm.error-default` | errors non catchées remontées par l'APM (cf. [collecte/traces](../../collecte/traces/README.md)) |
-| `logs-alertes-scalingo-{prod,staging,perf}-default` | événements des notifiers Scalingo, écrits sans Logstash (cf. [collecte par webhook](../../collecte/webhooks/README.md)) |
-| `logs-alertes-github-default` | CVE Dependabot remontées par `security-alerts.yml` (idem) |
+Ce qui écrit chaque data stream et comment un document y arrive : les
+[sources des données](../../../catalogue-alertes.md#sources-des-données) du
+catalogue des alertes. Leur template et leur rétention : tableau ci-dessous.
 
 Les index `logs-logstash-*` sont les index de diagnostic de la chaîne elle-même :
 leur exploitation (alertes, KQL, actions correctives) est dans le

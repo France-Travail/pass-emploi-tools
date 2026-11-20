@@ -1,8 +1,7 @@
 {
   "_id": "c16f2ab5-6103-4f69-bdc3-b4a10a38deb0",
-  "_commentaire": [
-    "# M6a — Événements Scalingo des apps de la stack, prod (gravité par ligne)"
-  ],
+  "_question": "Une app de la stack d'observabilité a-t-elle un événement Scalingo ?",
+  "_gravite": "selon l'événement",
   "_message": {
     "titre": "**Événements Scalingo des apps de la stack, prod** ({valeur})",
     "gravite": "information",

@@ -1,8 +1,6 @@
 {
   "_id": "9f9c07f9-07a9-40a3-a882-4a701e81b83c",
-  "_commentaire": [
-    "# M5b — Heap élevé staging / perf (Warning)"
-  ],
+  "_question": "La heap JVM de Logstash est-elle saturée ?",
   "_message": {
     "titre": "**Heap JVM Logstash staging/perf** — le heap reste au-dessus de 90 % depuis 15 min : le GC ne libère plus.",
     "gravite": "avertissement",

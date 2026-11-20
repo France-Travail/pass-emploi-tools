@@ -14,4 +14,4 @@ traitement de notre côté.
 | APM Server | Elastic Cloud | métriques APM (`metrics-apm.*`) | auto-géré | [collecte/traces](../traces/README.md) |
 
 Rétentions : [stockage/metriques](../../stockage/metriques/README.md).
-Alertes qui les exploitent (4, 5, 7, 8) : [alertes de la stack](../../alertes-stack-observabilite.md).
+Alertes qui les lisent : [sources des données](../../../catalogue-alertes.md#sources-des-données).

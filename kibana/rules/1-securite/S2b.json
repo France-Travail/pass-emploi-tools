@@ -1,19 +1,6 @@
 {
   "_id": "8e5a1d34-2f7b-4c90-a6d8-3b4c5e6f7a81",
-  "_commentaire": [
-    "# S2b — Suspicion d'attaque DDoS, de staging ou de perf (Critical) : alertes de métriques Scalingo RPM et 5xx",
-    "# de la même app, à moins de 10 min d'intervalle, pas encore revenues à la normale.",
-    "# Nouvelle règle : la première fois, la créer avec POST sur la même URL, en ajoutant",
-    "# \"rule_type_id\" et \"consumer\" à la racine du corps, au même niveau que \"name\" (pas dans \"params\") :",
-    "#   POST kbn:/api/alerting/rule/8e5a1d34-2f7b-4c90-a6d8-3b4c5e6f7a81",
-    "#   {",
-    "#     \"rule_type_id\": \".es-query\",",
-    "#     \"consumer\": \"alerts\",",
-    "#     \"name\": \"Scalingo - Hors-Prod - Suspicion d'attaque DDoS\",",
-    "#     \"tags\": [...], \"artifacts\": {...}, \"schedule\": {...}, \"params\": {...}, \"actions\": [...]",
-    "#   }",
-    "# Ensuite, ce bloc tel quel, en PUT (qui refuse ces deux champs)."
-  ],
+  "_question": "Une app subit-elle une attaque par déni de service (pic de trafic et de 5xx à la fois) ?",
   "_message": {
     "titre": "**Suspicion d'attaque DDoS — staging / perf** — requêtes par minute et erreurs 5xx au-delà de leurs seuils sur la même app.",
     "gravite": "critique",

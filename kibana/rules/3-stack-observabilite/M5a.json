@@ -1,8 +1,6 @@
 {
   "_id": "f8ff266d-84dc-4673-b95c-c3d32bf2ff04",
-  "_commentaire": [
-    "# M5a — Heap élevé prod (Critical)"
-  ],
+  "_question": "La heap JVM de Logstash est-elle saturée ?",
   "_message": {
     "titre": "**Heap JVM Logstash prod** — le heap reste au-dessus de 90 % depuis 15 min : le GC ne libère plus, pauses stop-the-world et `OutOfMemoryError` en vue.",
     "gravite": "critique",

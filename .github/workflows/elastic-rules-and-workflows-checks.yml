@@ -1,7 +1,7 @@
 # Vérifie les règles d'alerte Kibana, les Workflows Kibana qui envoient ces alertes dans
 # Tchap, les intégrations Fleet de l'agent dédié et les dashboards des bases
-# (kibana/rules/, workflows/tchap/, agents/, dashboards/) : leurs
-# fichiers générés doivent correspondre à leurs sources, et passer les contrôles et les
+# (kibana/rules/, workflows/tchap/, agents/, dashboards/) et le catalogue des alertes
+# (docs/observabilite/catalogue-alertes.md) : leurs fichiers générés doivent correspondre à leurs sources, et passer les contrôles et les
 # tests des générateurs.
 #
 # Les générateurs se lancent à la main (cf. kibana/workflows/tchap/README.md) :
@@ -20,11 +20,13 @@ on:
   pull_request:
     paths:
       - 'kibana/**'
+      - 'docs/observabilite/catalogue-alertes.md'
       - '.github/workflows/elastic-rules-and-workflows-checks.yml'
   push:
     branches: [master]
     paths:
       - 'kibana/**'
+      - 'docs/observabilite/catalogue-alertes.md'
       - '.github/workflows/elastic-rules-and-workflows-checks.yml'
   workflow_dispatch:
 

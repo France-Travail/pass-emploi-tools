@@ -22,12 +22,9 @@
 # Anomalies (A12, A13) : la dernière heure comparée à la même heure des 7 jours
 # précédents. Seuils prudents, sans calibrage sur l'historique : à ajuster.
 #
-# A4a / A4b : incidents Scalingo des apps applicatives (🚨 / ⚠️), Tchap
-# monitoring-production / monitoring-staging.
-# A4c / A4d : opérations d'infra Scalingo des mêmes apps (ℹ️), Tchap infra-production /
-# infra-staging. Les deux paires se partagent les événements par labels.categorie
-# (not "infra" / "infra") : chacun est relayé par une seule règle.
-# A5a / A5b : jobs en échec, Tchap jobs-production / jobs-staging.
+# A4a / A4b (incidents) et A4c / A4d (opérations d'infra) se partagent les événements
+# Scalingo par labels.categorie (not "infra" / "infra") : chacun est relayé par une
+# seule règle.
 #
 # Message de chaque règle : la clé « _message » de son fichier <code>.json, dans
 # ../2-applicatives/, au format pivot (../README.md, « Le message d'une règle »).
@@ -36,13 +33,14 @@
 # règle). L'API publique ne les renvoie pas dans ses réponses : les vérifier
 # dans l'interface.
 #
-# SLO1 et SLO3 — SLO burn rate. Objectif et seuils : ../../slo/seuils.json (cf. ../../slo/README.md).
+# SLO1 et SLO3 : objectif et seuils de burn rate dans ../../slo/seuils.json (cf. ../../slo/README.md).
 #
 # Invité et conseiller départemental : quelques tentatives par jour, un seul échec
 # sur 1 h vaut 100 % d'échecs. Une seule fenêtre, longue, qui exige plusieurs
 # échecs : invité ≥ 20 % d'échecs sur 72 h (~18 tentatives), conseiller
 # départemental ≥ 20 % sur 168 h (~10 tentatives).
 
+# SLO1 — Des utilisateurs sont-ils empêchés d'utiliser un parcours de l'API ?
 DELETE kbn:/api/alerting/rule/ae2694af-e78e-497c-88cf-4cd43e4b01f8
 POST kbn:/api/alerting/rule/ae2694af-e78e-497c-88cf-4cd43e4b01f8
 {
@@ -149,6 +147,7 @@ POST kbn:/api/alerting/rule/ae2694af-e78e-497c-88cf-4cd43e4b01f8
   ]
 }
 
+# SLO3-jeune-france-travail — Les jeunes France Travail arrivent-ils à se connecter ?
 DELETE kbn:/api/alerting/rule/72914c41-01ed-4ce7-ae68-a1b5eb445773
 POST kbn:/api/alerting/rule/72914c41-01ed-4ce7-ae68-a1b5eb445773
 {
@@ -255,6 +254,7 @@ POST kbn:/api/alerting/rule/72914c41-01ed-4ce7-ae68-a1b5eb445773
   ]
 }
 
+# SLO3-milo-conseiller — Les conseillers Milo arrivent-ils à se connecter ?
 DELETE kbn:/api/alerting/rule/2b97fa70-0c0c-4192-95d6-3c1168063976
 POST kbn:/api/alerting/rule/2b97fa70-0c0c-4192-95d6-3c1168063976
 {
@@ -361,6 +361,7 @@ POST kbn:/api/alerting/rule/2b97fa70-0c0c-4192-95d6-3c1168063976
   ]
 }
 
+# SLO3-milo-jeune — Les jeunes Milo arrivent-ils à se connecter ?
 DELETE kbn:/api/alerting/rule/7a614dbc-e1cd-4bfe-b0a5-e42c9e53b4b4
 POST kbn:/api/alerting/rule/7a614dbc-e1cd-4bfe-b0a5-e42c9e53b4b4
 {
@@ -467,6 +468,7 @@ POST kbn:/api/alerting/rule/7a614dbc-e1cd-4bfe-b0a5-e42c9e53b4b4
   ]
 }
 
+# SLO3-conseiller-france-travail — Les conseillers France Travail arrivent-ils à se connecter ?
 DELETE kbn:/api/alerting/rule/ca02fee2-9d18-46bd-b2b9-dd96d8a6d593
 POST kbn:/api/alerting/rule/ca02fee2-9d18-46bd-b2b9-dd96d8a6d593
 {
@@ -573,6 +575,7 @@ POST kbn:/api/alerting/rule/ca02fee2-9d18-46bd-b2b9-dd96d8a6d593
   ]
 }
 
+# SLO3-invite — Les invités arrivent-ils à se connecter ?
 DELETE kbn:/api/alerting/rule/8c760b1b-5859-410e-9a0d-829fb0499412
 POST kbn:/api/alerting/rule/8c760b1b-5859-410e-9a0d-829fb0499412
 {
@@ -637,6 +640,7 @@ POST kbn:/api/alerting/rule/8c760b1b-5859-410e-9a0d-829fb0499412
   ]
 }
 
+# SLO3-conseiller-departemental — Les conseillers départementaux arrivent-ils à se connecter ?
 DELETE kbn:/api/alerting/rule/00f15660-40ba-4fb1-a59d-6345ce07c360
 POST kbn:/api/alerting/rule/00f15660-40ba-4fb1-a59d-6345ce07c360
 {
@@ -701,7 +705,7 @@ POST kbn:/api/alerting/rule/00f15660-40ba-4fb1-a59d-6345ce07c360
   ]
 }
 
-# A1 — Partenaire en panne (Warning) : part des appels en log.level error (5xx, timeout, réseau) par domaine.
+# A1 — Un partenaire est-il en panne (part de ses appels en erreur) ?
 DELETE kbn:/api/alerting/rule/1b751543-4233-4857-8fe6-8141a7c2d040
 POST kbn:/api/alerting/rule/1b751543-4233-4857-8fe6-8141a7c2d040
 {
@@ -769,7 +773,7 @@ POST kbn:/api/alerting/rule/1b751543-4233-4857-8fe6-8141a7c2d040
   ]
 }
 
-# A4a — Incidents Scalingo des apps applicatives, prod (gravité par ligne)
+# A4a — Une app applicative a-t-elle un incident Scalingo (crash, arrêt, seuil de métrique) ?
 DELETE kbn:/api/alerting/rule/1b97f0e0-870f-498d-8dd7-1c2f9aeba665
 POST kbn:/api/alerting/rule/1b97f0e0-870f-498d-8dd7-1c2f9aeba665
 {
@@ -848,7 +852,7 @@ POST kbn:/api/alerting/rule/1b97f0e0-870f-498d-8dd7-1c2f9aeba665
   ]
 }
 
-# A4b — Incidents Scalingo des apps applicatives, staging / perf (gravité par ligne)
+# A4b — Une app applicative a-t-elle un incident Scalingo (crash, arrêt, seuil de métrique) ?
 DELETE kbn:/api/alerting/rule/07c9c5d7-e8fe-4964-ac8d-684b1c4c39b8
 POST kbn:/api/alerting/rule/07c9c5d7-e8fe-4964-ac8d-684b1c4c39b8
 {
@@ -922,7 +926,7 @@ POST kbn:/api/alerting/rule/07c9c5d7-e8fe-4964-ac8d-684b1c4c39b8
   ]
 }
 
-# A4c — Opérations d'infra Scalingo des apps applicatives, prod (ℹ️, salon infra-production)
+# A4c — Quelle opération d'infra a touché une app applicative (déploiement, scaling, variable) ?
 DELETE kbn:/api/alerting/rule/121f4b04-f90d-4423-af1f-ae1344a5f7db
 POST kbn:/api/alerting/rule/121f4b04-f90d-4423-af1f-ae1344a5f7db
 {
@@ -997,7 +1001,7 @@ POST kbn:/api/alerting/rule/121f4b04-f90d-4423-af1f-ae1344a5f7db
   ]
 }
 
-# A4d — Opérations d'infra Scalingo des apps applicatives, staging / perf (ℹ️, salon infra-staging)
+# A4d — Quelle opération d'infra a touché une app applicative (déploiement, scaling, variable) ?
 DELETE kbn:/api/alerting/rule/43e80d0c-dd21-4999-81af-92715cf44053
 POST kbn:/api/alerting/rule/43e80d0c-dd21-4999-81af-92715cf44053
 {
@@ -1072,8 +1076,8 @@ POST kbn:/api/alerting/rule/43e80d0c-dd21-4999-81af-92715cf44053
   ]
 }
 
-# A5a — Jobs en échec, prod (version dégradée : un job qui plante ou introuvable ; un job
-# qui rapporte un échec sans planter n'est pas vu, cf. ../../../docs/observabilite/alertes.md)
+# A5a — Un job a-t-il planté, ou son handler est-il introuvable ?
+# Version dégradée : un job qui rapporte un échec sans planter n'est pas vu.
 DELETE kbn:/api/alerting/rule/a03feacb-ddf8-4e04-af82-48f77b07a86e
 POST kbn:/api/alerting/rule/a03feacb-ddf8-4e04-af82-48f77b07a86e
 {
@@ -1146,7 +1150,8 @@ POST kbn:/api/alerting/rule/a03feacb-ddf8-4e04-af82-48f77b07a86e
   ]
 }
 
-# A5b — Jobs en échec, staging / perf (même version dégradée que A5a)
+# A5b — Un job a-t-il planté, ou son handler est-il introuvable ?
+# Version dégradée : un job qui rapporte un échec sans planter n'est pas vu.
 DELETE kbn:/api/alerting/rule/9dbcb316-60cd-481e-8717-33ffe0275e7d
 POST kbn:/api/alerting/rule/9dbcb316-60cd-481e-8717-33ffe0275e7d
 {
@@ -1219,7 +1224,7 @@ POST kbn:/api/alerting/rule/9dbcb316-60cd-481e-8717-33ffe0275e7d
   ]
 }
 
-# A6 — Erreurs applicatives (Warning) : lignes en log.level error hors appels partenaires, par service et par famille.
+# A6 — Des erreurs s'accumulent-elles dans les apps, hors appels partenaires ?
 DELETE kbn:/api/alerting/rule/c9164880-1829-4847-acb1-5a70433ecbb8
 POST kbn:/api/alerting/rule/c9164880-1829-4847-acb1-5a70433ecbb8
 {
@@ -1293,9 +1298,7 @@ POST kbn:/api/alerting/rule/c9164880-1829-4847-acb1-5a70433ecbb8
   ]
 }
 
-# A7 — Erreurs du front (Warning). Remplace les 7 règles APM des services disparus.
-# Nouvelle règle : absente de la prod avant le 2026-10-20, la créer avec POST
-# (même corps plus "rule_type_id": ".es-query" et "consumer": "alerts").
+# A7 — Le web conseiller lève-t-il des erreurs JavaScript ?
 DELETE kbn:/api/alerting/rule/52c66a2a-2ee1-4de2-bc5c-642a96395405
 POST kbn:/api/alerting/rule/52c66a2a-2ee1-4de2-bc5c-642a96395405
 {
@@ -1360,8 +1363,7 @@ POST kbn:/api/alerting/rule/52c66a2a-2ee1-4de2-bc5c-642a96395405
   ]
 }
 
-# A8 — API injoignable — prod (pass-emploi-api) (Critical) : moniteur Heartbeat `pa-back-prod-status` (https://api.pass-emploi.beta.gouv.fr/health).
-# Règle Uptime (Heartbeat), recréée par POST avec les paramètres de la règle d'origine.
+# A8 — L'API est-elle injoignable de l'extérieur ?
 DELETE kbn:/api/alerting/rule/44d7b9b0-6e45-11ec-9757-c9700cd1bb4e
 POST kbn:/api/alerting/rule/44d7b9b0-6e45-11ec-9757-c9700cd1bb4e
 {
@@ -1425,8 +1427,7 @@ POST kbn:/api/alerting/rule/44d7b9b0-6e45-11ec-9757-c9700cd1bb4e
   ]
 }
 
-# A9 — Application web conseiller injoignable — prod (pass-emploi-web) (Critical) : moniteur Heartbeat `pa-web-prod-status` (https://web.pass-emploi.beta.gouv.fr/api/health).
-# Règle Uptime (Heartbeat), recréée par POST avec les paramètres de la règle d'origine.
+# A9 — Le web conseiller est-il injoignable de l'extérieur ?
 DELETE kbn:/api/alerting/rule/45585b60-6e45-11ec-9757-c9700cd1bb4e
 POST kbn:/api/alerting/rule/45585b60-6e45-11ec-9757-c9700cd1bb4e
 {
@@ -1485,8 +1486,7 @@ POST kbn:/api/alerting/rule/45585b60-6e45-11ec-9757-c9700cd1bb4e
   ]
 }
 
-# A10 — Service d'authentification injoignable — prod (pass-emploi-connect) (Critical) : moniteur Heartbeat `pass-emploi-connect-status` (https://id.pass-emploi.beta.gouv.fr/health).
-# Règle Uptime (Heartbeat), recréée par POST avec les paramètres de la règle d'origine.
+# A10 — Le service d'authentification est-il injoignable de l'extérieur ?
 DELETE kbn:/api/alerting/rule/4439f310-6e45-11ec-9757-c9700cd1bb4e
 POST kbn:/api/alerting/rule/4439f310-6e45-11ec-9757-c9700cd1bb4e
 {
@@ -1545,8 +1545,7 @@ POST kbn:/api/alerting/rule/4439f310-6e45-11ec-9757-c9700cd1bb4e
   ]
 }
 
-# A11 — Certificat TLS bientôt expiré (Warning), un message par certificat et par jour.
-# Règle Uptime (Heartbeat), recréée par POST avec les paramètres de la règle d'origine.
+# A11 — Un certificat TLS expire-t-il bientôt ?
 DELETE kbn:/api/alerting/rule/6dd99b60-9886-11ec-9757-c9700cd1bb4e
 POST kbn:/api/alerting/rule/6dd99b60-9886-11ec-9757-c9700cd1bb4e
 {
@@ -1586,7 +1585,7 @@ POST kbn:/api/alerting/rule/6dd99b60-9886-11ec-9757-c9700cd1bb4e
   ]
 }
 
-# A12 — Refus anormaux d'un parcours (Warning) : taux de 4xx de la dernière heure, contre la même heure des 7 jours précédents.
+# A12 — Un parcours refuse-t-il plus de demandes que d'habitude ?
 DELETE kbn:/api/alerting/rule/ca62d522-859b-4f3c-8601-5b4bbce2060e
 POST kbn:/api/alerting/rule/ca62d522-859b-4f3c-8601-5b4bbce2060e
 {
@@ -1666,7 +1665,7 @@ POST kbn:/api/alerting/rule/ca62d522-859b-4f3c-8601-5b4bbce2060e
   ]
 }
 
-# A13 — Refus partenaire anormaux (Warning) : taux d'échecs par partenaire et par code de la dernière heure, contre la même heure des 7 jours précédents.
+# A13 — Un partenaire refuse-t-il plus de nos appels que d'habitude ?
 DELETE kbn:/api/alerting/rule/3bc475a7-47d5-4320-b5b4-507727329571
 POST kbn:/api/alerting/rule/3bc475a7-47d5-4320-b5b4-507727329571
 {

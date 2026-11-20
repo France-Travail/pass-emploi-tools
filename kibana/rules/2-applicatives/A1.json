@@ -1,8 +1,6 @@
 {
   "_id": "1b751543-4233-4857-8fe6-8141a7c2d040",
-  "_commentaire": [
-    "# A1 — Partenaire en panne (Warning) : part des appels en log.level error (5xx, timeout, réseau) par domaine."
-  ],
+  "_question": "Un partenaire est-il en panne (part de ses appels en erreur) ?",
   "_message": {
     "titre": "**Partenaire en panne — prod** — au moins 20 % des appels vers un partenaire en panne (5xx, timeout, réseau) sur 10 min.",
     "gravite": "avertissement",

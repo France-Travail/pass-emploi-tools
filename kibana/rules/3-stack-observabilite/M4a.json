@@ -1,8 +1,6 @@
 {
   "_id": "204d560c-b6a6-4b5c-b4af-8d1fa6ce345c",
-  "_commentaire": [
-    "# M4a — Backpressure prod (Critical)"
-  ],
+  "_question": "L'ingestion Logstash est-elle bloquée (backpressure) ?",
   "_message": {
     "titre": "**Backpressure Logstash prod** — le pipeline `ingest` a au moins un thread HTTP bloqué en continu depuis 15 min (`queue_backpressure ≥ 1`) : l'écriture dans Redis ne suit plus, le drain Scalingo attend.",
     "gravite": "critique",

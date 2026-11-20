@@ -1,7 +1,9 @@
 # Alertes applicatives
 
 Chaque alerte répond à **une question**. Elles sont rangées par famille, et
-nommées par ce qu'elles détectent.
+nommées par ce qu'elles détectent. Cette page dit quelles familles existent et
+pourquoi ; la liste des règles, leur gravité, leur source et leur salon sont
+dans le [catalogue des alertes](catalogue-alertes.md), généré depuis les règles.
 
 ## Gravités
 
@@ -26,21 +28,21 @@ Définies par **l'impact**, pas par la source.
 
 *Des utilisateurs sont-ils empêchés de faire ce qu'ils viennent faire ?*
 
-| Alerte | Critère | Gravité |
-|---|---|---|
-| Disponibilité d'un parcours | burn rate du [SLO de disponibilité](slo.md) | 🚨 sur 1 h, ⚠️ sur 6 h |
-| Connexion d'un mode d'authentification | burn rate du [SLO de connexion](slo.md) | 🚨 sur 1 h, ⚠️ sur 6 h |
+| Alerte | Critère |
+|---|---|
+| Disponibilité d'un parcours | burn rate du [SLO de disponibilité](slo.md) |
+| Connexion d'un mode d'authentification | burn rate du [SLO de connexion](slo.md) |
 
 ## Vu de l'extérieur
 
 *Ce que reçoit l'utilisateur, indépendamment de nos logs.* Ces alertes restent
 un filet quand la chaîne de logs est aveugle.
 
-| Alerte | Critère | Gravité |
-|---|---|---|
-| Service injoignable | sonde Heartbeat en échec (api, web, connect) | 🚨, ✅ au rétablissement |
-| 5xx au routeur | alerte de métrique Scalingo | ⚠️ (le SLO porte le 🚨) |
-| Certificat bientôt expiré | sonde Heartbeat | ⚠️ |
+| Alerte | Critère |
+|---|---|
+| Service injoignable | sonde Heartbeat en échec (api, web, connect), avec un message au rétablissement |
+| 5xx au routeur | alerte de métrique Scalingo ; jamais critique, c'est le SLO qui porte le 🚨 |
+| Certificat bientôt expiré | sonde Heartbeat |
 
 ## Diagnostic
 
@@ -49,11 +51,11 @@ cause (cf. [qui doit lire](logs.md#loglevel--qui-doit-lire)). Ces alertes
 accompagnent une alerte de promesse, ou révèlent un bug que le SLO ne voit pas
 (job, traitement après la réponse).
 
-| Alerte | Critère | Gravité |
-|---|---|---|
-| Partenaire en panne | part des appels partenaires en `error`, par domaine, au-dessus d'un volume minimum | ⚠️ |
-| Erreurs applicatives | lignes `error` hors appels partenaires, par service et par famille (base de données, sinon l'`event.action`) | ⚠️ |
-| Erreurs du front | erreurs JavaScript du web conseiller (RUM) | ⚠️ |
+| Alerte | Critère |
+|---|---|
+| Partenaire en panne | part des appels partenaires en `error`, par domaine, au-dessus d'un volume minimum |
+| Erreurs applicatives | lignes `error` hors appels partenaires, par service et par famille (base de données, sinon l'`event.action`) |
+| Erreurs du front | erreurs JavaScript du web conseiller (RUM) |
 
 ## Anomalies
 
@@ -61,10 +63,10 @@ accompagnent une alerte de promesse, ou révèlent un bug que le SLO ne voit pas
 même heure des 7 jours précédents. Un parcours qui refuse 40 % des demandes
 par nature ne les déclenche pas, un passage soudain à 80 % oui.
 
-| Alerte | Critère | Gravité |
-|---|---|---|
-| Refus anormaux d'un parcours | taux de 4xx du parcours, comparé à son historique | ⚠️ |
-| Refus partenaire anormaux | taux de `failure` par domaine **et** par status, comparé à son historique | ⚠️ |
+| Alerte | Critère |
+|---|---|
+| Refus anormaux d'un parcours | taux de 4xx du parcours, comparé à son historique |
+| Refus partenaire anormaux | taux de `failure` par domaine **et** par status, comparé à son historique |
 
 Grouper par status isole un signal qui serait noyé dans le taux global : un
 pic de 401 (nos identifiants ont expiré) au milieu des 404 métier d'un
@@ -72,17 +74,17 @@ partenaire.
 
 ## Charge
 
-| Alerte | Critère | Gravité |
-|---|---|---|
-| Trafic anormal | requêtes par minute, alerte de métrique Scalingo | ⚠️ |
+| Alerte | Critère |
+|---|---|
+| Trafic anormal | requêtes par minute, alerte de métrique Scalingo |
 
 ## Événements
 
-| Alerte | Critère | Gravité | Salon |
-|---|---|---|---|
-| Crash ou arrêt d'une app | événement Scalingo | 🚨 | monitoring |
-| Job en échec | un message par job | ⚠️ | jobs |
-| Opération d'infra (déploiement, scaling, variable) | événement Scalingo | ℹ️ | infra |
+| Alerte | Critère |
+|---|---|
+| Crash ou arrêt d'une app | événement Scalingo |
+| Job en échec | un message par job |
+| Opération d'infra (déploiement, scaling, variable) | événement Scalingo |
 
 ## Environnements
 
