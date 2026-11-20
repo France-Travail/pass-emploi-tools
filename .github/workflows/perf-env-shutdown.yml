@@ -50,9 +50,11 @@ jobs:
       # tolère ce seul message ; toute autre sortie fait échouer le step.
       - name: Scaler chaque app à 0
         run: |
+          # Le process Logstash n'écoute pas en HTTP : il tourne en worker, comme en prod.
+          type_de() { case "$1" in pass-emploi-logstash-process-perf) echo worker ;; *) echo web ;; esac; }
           for app in $APPS; do
             echo "::group::$app"
-            sortie="$(scalingo --region "$SCALINGO_REGION" --app "$app" scale web:0 2>&1)" && {
+            sortie="$(scalingo --region "$SCALINGO_REGION" --app "$app" scale "$(type_de "$app"):0" 2>&1)" && {
               echo "$sortie"
             } || {
               echo "$sortie"

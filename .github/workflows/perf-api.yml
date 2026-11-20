@@ -239,6 +239,11 @@ jobs:
             scaler "$app" "web:$nb:$taille" || { echo "::endgroup::"; exit 1; }
             echo "::endgroup::"
           done
+          # Le process Logstash, en worker comme en prod, avant l'ingest : il vide le Redis
+          # que l'ingest remplit.
+          echo "::group::pass-emploi-logstash-process-perf (taille inchangée)"
+          scaler pass-emploi-logstash-process-perf worker:1 || { echo "::endgroup::"; exit 1; }
+          echo "::endgroup::"
           echo "::group::pass-emploi-logstash-perf (taille inchangée)"
           scaler pass-emploi-logstash-perf web:1 || { echo "::endgroup::"; exit 1; }
           echo "::endgroup::"
@@ -502,5 +507,9 @@ jobs:
         if: always() && env.ARRET_APRES_TIR == 'true'
         run: |
           for app in $APPS; do
-            scalingo --region "$SCALINGO_REGION" --app "$app" scale web:0
+            if [ "$app" = pass-emploi-logstash-process-perf ]; then
+              scalingo --region "$SCALINGO_REGION" --app "$app" scale worker:0
+            else
+              scalingo --region "$SCALINGO_REGION" --app "$app" scale web:0
+            fi
           done

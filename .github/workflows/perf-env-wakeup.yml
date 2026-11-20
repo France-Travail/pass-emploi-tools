@@ -29,7 +29,8 @@ concurrency:
 
 env:
   SCALINGO_REGION: osc-secnum-fr1
-  APPS: pass-emploi-connect-perf pass-emploi-api-perf mock-externes-perf pass-emploi-logstash-perf pass-emploi-logstash-process-perf pass-emploi-elastic-agent-perf
+  # Le process Logstash avant l'ingest : il vide le Redis que l'ingest remplit.
+  APPS: pass-emploi-connect-perf pass-emploi-api-perf mock-externes-perf pass-emploi-logstash-process-perf pass-emploi-logstash-perf pass-emploi-elastic-agent-perf
 
 jobs:
   scale-up:
@@ -48,9 +49,11 @@ jobs:
       # seul message ; toute autre sortie fait échouer le step normalement.
       - name: Scaler chaque app à 1
         run: |
+          # Le process Logstash n'écoute pas en HTTP : il tourne en worker, comme en prod.
+          type_de() { case "$1" in pass-emploi-logstash-process-perf) echo worker ;; *) echo web ;; esac; }
           for app in $APPS; do
             echo "::group::$app"
-            sortie="$(scalingo --region "$SCALINGO_REGION" --app "$app" scale web:1 2>&1)" && {
+            sortie="$(scalingo --region "$SCALINGO_REGION" --app "$app" scale "$(type_de "$app"):1" 2>&1)" && {
               echo "$sortie"
             } || {
               echo "$sortie"
