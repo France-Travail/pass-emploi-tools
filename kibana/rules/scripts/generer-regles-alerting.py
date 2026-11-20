@@ -240,8 +240,9 @@ SOURCES = [
 def slos_du_modele():
     """{id du SLO : (son nom, l'index qu'il lit)}, lus dans ../../slo/_modele.console."""
     texte = open(os.path.join(SLO, '_modele.console')).read()
-    return {i: (nom, index) for i, nom, index in
-            re.findall(r'^@@SLO (\S+)@@\n\{.*?"name": "([^"]*)".*?"index": "([^"]*)"', texte, flags=re.M | re.S)}
+    blocs = re.split(r'^@@SLO (\S+)@@\n', texte, flags=re.M)[1:]
+    return {i: (re.search(r'"name": "([^"]*)"', b).group(1), re.search(r'"index": "([^"]*)"', b).group(1))
+            for i, b in zip(blocs[::2], blocs[1::2])}
 
 
 def gravite(d):
