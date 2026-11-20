@@ -120,6 +120,12 @@ répondu. **Absent = aucune route n'a répondu** (URL inconnue, scan) : c'est ce
 qui distingue un robot d'un 404 métier. Le parcours est absent lui aussi quand
 la requête est refusée avant le routage (JSON malformé, URL inconnue).
 
+**`url.template`** est calculé à la lecture depuis `url.path`, sur toutes les
+lignes qui en portent un (appels partenaires, router, connect). Un segment qui
+contient un chiffre devient `:id`, sauf lettres suivies d'un ou deux chiffres
+(`v2`, `oauth2`). C'est une approximation : un id sans chiffre reste en clair.
+Sur une ligne de requête de l'api, `http.route` est exact.
+
 ## Champs
 
 - Namespaces ECS standards : `event`, `error`, `http`, `url`, `user`,
