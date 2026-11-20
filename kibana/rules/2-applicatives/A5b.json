@@ -1,11 +1,12 @@
 {
   "_id": "9dbcb316-60cd-481e-8717-33ffe0275e7d",
+  "_question": "Un job a-t-il planté, ou son handler est-il introuvable ?",
   "_commentaire": [
-    "# A5b — Jobs en échec, staging / perf (même version dégradée que A5a)"
+    "# Version dégradée : un job qui rapporte un échec sans planter n'est pas vu."
   ],
   "_message": {
     "titre": "**Jobs en échec — hors prod** ({valeur})",
-    "gravite": "information",
+    "gravite": "avertissement",
     "sections": [
       {
         "titre": "À vérifier",

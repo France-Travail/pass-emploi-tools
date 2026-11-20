@@ -13,12 +13,9 @@
 # Anomalies (A12, A13) : la dernière heure comparée à la même heure des 7 jours
 # précédents. Seuils prudents, sans calibrage sur l'historique : à ajuster.
 #
-# A4a / A4b : incidents Scalingo des apps applicatives (🚨 / ⚠️), Tchap
-# monitoring-production / monitoring-staging.
-# A4c / A4d : opérations d'infra Scalingo des mêmes apps (ℹ️), Tchap infra-production /
-# infra-staging. Les deux paires se partagent les événements par labels.categorie
-# (not "infra" / "infra") : chacun est relayé par une seule règle.
-# A5a / A5b : jobs en échec, Tchap jobs-production / jobs-staging.
+# A4a / A4b (incidents) et A4c / A4d (opérations d'infra) se partagent les événements
+# Scalingo par labels.categorie (not "infra" / "infra") : chacun est relayé par une
+# seule règle.
 #
 # Message de chaque règle : la clé « _message » de son fichier <code>.json, dans
 # ../2-applicatives/, au format pivot (../README.md, « Le message d'une règle »).
@@ -27,7 +24,7 @@
 # règle). L'API publique ne les renvoie pas dans ses réponses : les vérifier
 # dans l'interface.
 #
-# SLO1 et SLO3 — SLO burn rate. Objectif et seuils : ../../slo/seuils.json (cf. ../../slo/README.md).
+# SLO1 et SLO3 : objectif et seuils de burn rate dans ../../slo/seuils.json (cf. ../../slo/README.md).
 #
 # Invité et conseiller départemental : quelques tentatives par jour, un seul échec
 # sur 1 h vaut 100 % d'échecs. Une seule fenêtre, longue, qui exige plusieurs

@@ -6,7 +6,8 @@
 |---|---|
 | [logs.md](logs.md) | Qu'émettent les apps, et comment se construit chaque champ ? |
 | [slo.md](slo.md) | Que promet-on aux utilisateurs, et comment le mesure-t-on ? |
-| [alertes.md](alertes.md) | Quelles alertes, sur quels critères, avec quelle gravité ? |
+| [catalogue-alertes.md](catalogue-alertes.md) | Quelles alertes existent, avec quelle gravité, sur quoi, dans quel salon ? |
+| [alertes.md](alertes.md) | Pourquoi ces alertes applicatives, sur quels critères ? |
 | [alertes-securite.md](alertes-securite.md) | Quelles alertes de sécurité ? |
 | [fonctionnement.md](fonctionnement.md) | Comment un signal va de l'app jusqu'à Tchap ? |
 

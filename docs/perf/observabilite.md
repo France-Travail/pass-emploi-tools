@@ -48,6 +48,6 @@ mobile), propagé sur tous les événements du funnel.
 - SLO : [`kibana/slo/generated/1-slos.console`](../../kibana/slo/generated/1-slos.console) ; causes d'échec du login : [runbook d'investigation](../observabilite/runbooks/investigation-incident.md#limite--les-flux-non-authentifiés) ;
   alertes : [applicatives](../observabilite/alertes.md) et
   [stack d'observabilité](../observabilite/infra/alertes-stack-observabilite.md) ;
-  définitions de rétention versionnées sous [`stockage/`](../observabilite/infra/stockage/README.md).
+  définitions de rétention versionnées sous [`elasticsearch/`](../../elasticsearch/README.md).
 - Le dashboard de tir de perf (phase 2 du chantier) et le dashboard de pilotage
   jour J dérivent des mêmes SLI — mêmes requêtes, fenêtres différentes.

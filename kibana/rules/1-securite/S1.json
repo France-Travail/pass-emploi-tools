@@ -1,8 +1,6 @@
 {
   "_id": "67846c2c-45d1-45be-89f5-ce9a340240a0",
-  "_commentaire": [
-    "# S1 — CVE high/critical encore ouvertes, à chaque passage de security-alerts.yml (Critical)"
-  ],
+  "_question": "Une CVE high ou critical reste-t-elle ouverte sur un de nos repos ?",
   "_message": {
     "titre": "**CVE high/critical ouvertes** ({valeur})",
     "gravite": "critique",

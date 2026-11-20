@@ -38,7 +38,8 @@
 - **Référence stable** : [`observabilite/README.md`](./observabilite/README.md) (index) —
   [`logs.md`](./observabilite/logs.md) (familles de lignes, `outcome`, `level`, codes HTTP, champs, redaction),
   [`slo.md`](./observabilite/slo.md) (promesses, burn rate, angles morts),
-  [`alertes.md`](./observabilite/alertes.md) (catalogue, critères, gravités),
+  [`catalogue-alertes.md`](./observabilite/catalogue-alertes.md) (toutes les règles : question, gravité, source, salon ; généré),
+  [`alertes.md`](./observabilite/alertes.md) (familles et critères des alertes applicatives),
   [`fonctionnement.md`](./observabilite/fonctionnement.md) (chemin jusqu'à Tchap, salons),
   [`routine-surveillance.md`](./observabilite/routine-surveillance.md) (dashboards, reporting),
   [`runbooks/investigation-incident.md`](./observabilite/runbooks/investigation-incident.md) (KQL d'enquête),
@@ -60,7 +61,7 @@
   `performances.md` (tirs, trajectoire x10) ;
   [`infra/infrastructure.md`](./observabilite/infra/infrastructure.md) (inventaire, garde-fous JVM/Scalingo, dimensionnement) ;
   [`infra/pilotage.md`](./observabilite/infra/pilotage.md) (Fleet, agents) ;
-  [`infra/stockage/logs/README.md`](./observabilite/infra/stockage/logs/README.md) (data streams, templates, ILM) ;
+  [`elasticsearch/logs/README.md`](../elasticsearch/logs/README.md) (data streams, templates, ILM) ;
   [`infra/format/webhooks/conventions.md`](./observabilite/infra/format/webhooks/conventions.md) (champs ECS des événements reçus par webhook) ;
   [`infra/alertes-stack-observabilite.md`](./observabilite/infra/alertes-stack-observabilite.md).
   Procédures pas-à-pas de diagnostic : [`pass-emploi-tools/docs/observabilite/runbooks/runbook-logstash.md`](./observabilite/runbooks/runbook-logstash.md)

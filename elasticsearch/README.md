@@ -1,13 +1,21 @@
-# Stockage — rétention et mapping dans Elasticsearch
+# Elasticsearch — rétention, mapping et ingest pipelines
 
-Templates et politiques de rétention ES custom de pass-emploi, organisés **par
-télémétrie** (au sens ECS — logs / traces / métriques), pas par mode d'ingestion :
+Les objets Elasticsearch custom de pass-emploi. Les templates et les politiques de
+rétention sont organisés **par télémétrie** (au sens ECS — logs / traces /
+métriques), pas par mode d'ingestion :
 
 | Sous-dossier                | Télémétrie                                                        | Nature                                             |
 |------------------------------|--------------------------------------------------------------------|-----------------------------------------------------|
-| [`logs/`](./logs/README.md)         | logs applicatifs, router, DLQ/erreurs Logstash, erreurs APM         | événements discrets (une ligne = un fait daté)      |
-| [`traces/`](./traces/README.md)     | traces APM (`traces-apm`, `traces-apm.rum`)                        | durée/latence d'une requête (spans, transactions)   |
-| [`metriques/`](./metriques/README.md) | Fleet (Logstash, Redis, hosts, agents, Fleet Server) + Heartbeat    | mesures numériques/périodiques de supervision infra |
+| [`logs/`](logs/README.md)         | logs applicatifs, router, DLQ/erreurs Logstash, erreurs APM         | événements discrets (une ligne = un fait daté)      |
+| [`traces/`](traces/README.md)     | traces APM (`traces-apm`, `traces-apm.rum`)                        | durée/latence d'une requête (spans, transactions)   |
+| [`metriques/`](metriques/README.md) | Fleet (Logstash, Redis, hosts, agents, Fleet Server) + Heartbeat    | mesures numériques/périodiques de supervision infra |
+
+À côté, les objets des données écrites sans Logstash ni agent :
+
+| Fichier | Contenu |
+|---|---|
+| [`webhooks/`](webhooks/README.md) | ingest pipelines et accès des événements reçus par webhook (Scalingo, Dependabot) |
+| [`tchap-expiration-bot.console`](tchap-expiration-bot.console) | pipeline et modèle de l'index qui range la date d'expiration du bot Tchap |
 
 > **`logs-apm.error` est dans `logs/`, pas `traces/`**, malgré son origine APM :
 > une erreur est un événement discret (une ligne = un fait), pas une mesure de
@@ -28,7 +36,7 @@ télémétrie** (au sens ECS — logs / traces / métriques), pas par mode d'ing
 >   les templates sont déjà fournis par un package Fleet (cf. `metriques/`).
 >
 > **Alertes** : hors de ce dossier, dans
-> [alertes de la stack](../alertes-stack-observabilite.md) — une alerte mélange
+> [alertes de la stack](../docs/observabilite/infra/alertes-stack-observabilite.md) — une alerte mélange
 > souvent plusieurs télémétries (ex. l'alerte M4 lit `metrics-logstash.pipeline`
 > pour détecter un problème qui impacte `logs-prod`).
 >
@@ -60,10 +68,10 @@ télémétrie** (au sens ECS — logs / traces / métriques), pas par mode d'ing
    ```
    GET .ds-*/_ilm/explain?only_managed=true&filter_path=indices.*.index,indices.*.policy
    ```
-   Correction : [runbook ILM, scénario 1](../../runbooks/runbook-ilm.md#scénario-1--index-sur-une-policy-par-défaut).
-   En continu, l'[alerte M10](../alertes-stack-observabilite.md#alerte-m10--ilm-en-échec-ou-policy-sans-suppression)
+   Correction : [runbook ILM, scénario 1](../docs/observabilite/runbooks/runbook-ilm.md#scénario-1--index-sur-une-policy-par-défaut).
+   En continu, l'[alerte M10](../docs/observabilite/infra/alertes-stack-observabilite.md#alerte-m10--ilm-en-échec-ou-policy-sans-suppression)
    signale les nouveaux index dans ce cas. Les index frozen sont cachés :
-   cf. [runbook ILM](../../runbooks/runbook-ilm.md#index-frozen-introuvable).
+   cf. [runbook ILM](../docs/observabilite/runbooks/runbook-ilm.md#index-frozen-introuvable).
 
 > **Règle d'or** : à chaque nouvelle intégration Fleet installée (nouvel agent,
 > nouvelle policy), rejouer les étapes 1, 2 et 4 avant de considérer l'intégration
@@ -74,8 +82,9 @@ télémétrie** (au sens ECS — logs / traces / métriques), pas par mode d'ing
 
 Chaque sous-dossier (`logs/`, `traces/`, `metriques/`) est un **bundle
 indépendant** : importer ses 3 fichiers dans l'ordre (`1` → `2` → `3`), les
-bundles entre eux n'ont pas d'ordre imposé. Deux briques sont **partagées entre
-deux bundles** (jamais redéfinies deux fois) :
+bundles entre eux n'ont pas d'ordre imposé. `webhooks/` se rejoue après `logs/`,
+qui déclare ses data streams ; `tchap-expiration-bot.console`, avant sa règle.
+Deux briques sont **partagées entre deux bundles** (jamais redéfinies deux fois) :
 - `apm-retention-custom` — définie dans `traces/2-component-templates.console`,
   référencée (vidée, no-op) par `traces/3-index-templates.console` **et**
   `logs/3-index-templates.console` (flux `logs-apm.error`).

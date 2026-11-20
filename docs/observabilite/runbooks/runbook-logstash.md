@@ -6,7 +6,7 @@
 > Contexte et invariants durables : [collecte/logs](../infra/collecte/logs/README.md),
 > [process/logs](../infra/process/logs/README.md), [infrastructure.md](../infra/infrastructure.md).
 > Définitions des alertes de la stack d'observabilité : [`infra/alertes-stack-observabilite.md`](../infra/alertes-stack-observabilite.md).
-> Rétention par télémétrie (logs/traces/métriques) : [`stockage/`](../infra/stockage/README.md).
+> Rétention par télémétrie (logs/traces/métriques) : [`elasticsearch/`](../../../elasticsearch/README.md).
 > Dashboards Fleet Logstash :
 > https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/integrations/detail/logstash-2.11.3/assets
 
@@ -230,10 +230,8 @@ dans les logs Scalingo de l'app `pass-emploi-logstash-prod`, chercher les lignes
 - **DLQ** (`logs-logstash-dlq-*`) : events rejetés par Elasticsearch (conflit de
   mapping, document malformé). Gérés par le pipeline `dead_letter_queue` qui les
   indexe dans `logs-logstash-dlq-{env}-default`.
-- **Erreurs de traitement** (`logs-logstash-errors-*`) : events ayant déclenché une
-  erreur Logstash pendant les filtres (`_mutate_error`, `_jsonparsefailure`,
-  `_rubyexception`…). Indexés dans `logs-logstash-errors-{env}-default` par le
-  pipeline `process`.
+- **Erreurs de traitement** (`logs-logstash-errors-*`) : events dont un filtre du
+  pipeline `process` a échoué ([routage en sortie](../infra/process/logs/pipeline.md#routage-en-sortie)).
 
 ### KQL de diagnostic
 
@@ -265,7 +263,7 @@ Des `_ignored` indiquent un dépassement de `total_fields.limit` → prévoir un
 
 **Si DLQ non vide (conflit de mapping)** :
 1. Identifier le champ fautif via `logstash.dlq.reason` dans `logs-logstash-dlq-*`.
-2. Corriger le mapping dans `docs/observabilite/infra/stockage/logs/2-component-templates.console`
+2. Corriger le mapping dans `elasticsearch/logs/2-component-templates.console`
    (ajouter le champ dans `pass-emploi-logs@mappings` ou le template concerné).
 3. Appliquer via Kibana Dev Tools et faire un rollover :
    ```
@@ -287,7 +285,7 @@ Des `_ignored` indiquent un dépassement de `total_fields.limit` → prévoir un
 
 ### Références
 
-- [stockage/logs — Pièges connus](../infra/stockage/logs/README.md#pièges-connus)
+- [elasticsearch/logs — Pièges connus](../../../elasticsearch/logs/README.md#pièges-connus)
 - [`logs/pipeline-dlq-logstash.conf`](../../../logs/pipeline-dlq-logstash.conf)
 - [`logs/pipeline-process.conf`](../../../logs/pipeline-process.conf)
 

@@ -13,7 +13,7 @@ d'env (par `appname`, `ENVIRONMENT` en fallback), **drops** de bruit
 (healthchecks Scalingo, bootstrap NestJS `RouterExplorer` & co, lignes non-JSON
 du conteneur `postdeploy`).
 
-Routage en sortie :
+## Routage en sortie
 
 | Condition | Data stream |
 |---|---|

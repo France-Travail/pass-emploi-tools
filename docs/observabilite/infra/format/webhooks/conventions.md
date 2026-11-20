@@ -11,7 +11,7 @@ Cette matrice redit volontairement ce que font les pipelines, **par exception**
 Elastic du repo sont peu familiers à l'équipe, qui a besoin de lire la
 correspondance sans lire le Painless des pipelines, comme pour les logs.
 
-Ce fichier décrit **ce que font les pipelines** de [`kibana/pipelines/webhooks/`](../../../../../kibana/pipelines/webhooks/README.md) :
+Ce fichier décrit **ce que font les pipelines** de [`elasticsearch/webhooks/`](../../../../../elasticsearch/webhooks/README.md) :
 toute modification d'un pipeline se reporte ici dans la même PR, et inversement.
 La chaîne, les accès et la mise en service : [collecte par webhook](../../collecte/webhooks/README.md).
 
@@ -21,7 +21,7 @@ La chaîne, les accès et la mise en service : [collecte par webhook](../../coll
 |---|---|
 | Un data stream par source | `logs-alertes-<source>-<env>-default` (Scalingo, un par environnement) ou `logs-alertes-<source>-default` (GitHub). Le pipeline est le `default_pipeline` du data stream : l'émetteur n'a rien à préciser. |
 | Payload brut gardé | Tout le payload est déplacé sous `<source>.*` (`scalingo.*`, `github.*`), en `dynamic: false` : lisible dans le document, **non indexé** (on ne cherche pas dedans). Seule exception : l'email de l'auteur Scalingo, supprimé. |
-| Champs ECS indexés | Uniquement ceux des tableaux ci-dessous. Mappings : `logs-alertes@mappings` (`event.id`, `.kind`, `.provider`, `.reason`) et `logs-alertes-<source>@mappings`, dans [`stockage/logs/2-component-templates.console`](../../stockage/logs/2-component-templates.console) ; le reste suit `ecs@mappings` (`labels.*` en keyword). |
+| Champs ECS indexés | Uniquement ceux des tableaux ci-dessous. Mappings : `logs-alertes@mappings` (`event.id`, `.kind`, `.provider`, `.reason`) et `logs-alertes-<source>@mappings`, dans [`elasticsearch/logs/2-component-templates.console`](../../../../../elasticsearch/logs/2-component-templates.console) ; le reste suit `ecs@mappings` (`labels.*` en keyword). |
 | `event.provider` | Le nom de la source : `scalingo`, `github`. |
 | `event.action` | Verbe au passé, snake_case, comme pour les logs (cf. [taxonomie](../../../logs.md)). Un type inconnu de la source n'est pas rejeté : il sort en `<source>_<type>`. |
 | `message` | **La ligne de notification** de l'événement, en texte brut, construite par le pipeline. Les règles et les Workflows Tchap l'affichent telle quelle, une ligne par document (tag `tchap-lignes`). C'est la seule différence assumée avec les logs ECS des apps, où `message` = `event.action` : ici, un document = une notification. |
@@ -242,23 +242,25 @@ Exemple : `pass-emploi-api : CVE-2026-00000 — axios (high) : Exemple de vulné
 
 ## Qui lit quels champs
 
-| Règle | Data streams | Champs lus |
-|---|---|---|
-| A4a à A4d | `logs-alertes-scalingo-prod-default` ; `-staging-` et `-perf-default` | `service.name` (hors apps de la stack), `labels.categorie` (incident ou infra), `message` |
-| M6a, M6b | mêmes data streams | `service.name` (apps de la stack : Logstash, Elastic Agent, Heartbeat), `message` |
-| S1 | `logs-alertes-github-default` | `vulnerability.severity` (`high`, `critical`), `message` |
-| 14 | les 4 failure stores | le document rejeté et son erreur |
+Les data streams lus par chaque règle : [catalogue des alertes](../../../catalogue-alertes.md).
+
+| Règle | Champs lus |
+|---|---|
+| A4a à A4d | `service.name` (hors apps de la stack), `labels.categorie` (incident ou infra), `message` |
+| M6a, M6b | `service.name` (apps de la stack : Logstash, Elastic Agent, Heartbeat), `message` |
+| S1 | `vulnerability.severity` (`high`, `critical`), `message` |
+| M13 | le document rejeté et son erreur, dans les failure stores |
 
 ## Ajouter une source
 
 1. Choisir le data stream (`logs-alertes-<source>[-<env>]-default`), puis
    créer ses templates et son failure store
-   ([`stockage/logs/`](../../stockage/logs/README.md)).
-2. Écrire son pipeline dans [`kibana/pipelines/webhooks/`](../../../../../kibana/pipelines/webhooks/README.md), avec ses `_simulate` sur
+   ([`elasticsearch/logs/`](../../../../../elasticsearch/logs/README.md)).
+2. Écrire son pipeline dans [`elasticsearch/webhooks/`](../../../../../elasticsearch/webhooks/README.md), avec ses `_simulate` sur
    des captures réelles. Il doit poser au moins `@timestamp`, `event.provider`,
    `event.kind`, `event.action`, `event.id`, `service.name` et `message`, et
    ranger le payload brut sous `<source>.*` en `dynamic: false`.
 3. Ajouter sa section ici : payload attendu, matrice, gabarit du message, rejets.
 4. Créer son accès en écriture seule
-   ([`acces-webhooks.console`](../../../../../kibana/pipelines/webhooks/acces-webhooks.console))
+   ([`acces-webhooks.console`](../../../../../elasticsearch/webhooks/acces-webhooks.console))
    et sa règle, puis ajouter son failure store à la règle M13.

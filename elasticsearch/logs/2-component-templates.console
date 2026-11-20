@@ -63,11 +63,41 @@ PUT _component_template/pass-emploi-logs@mappings
           "rate_limit":        { "type": "keyword", "ignore_above": 1024 },
           "rate_limit_palier": { "type": "keyword", "ignore_above": 1024 }
         } }
+      },
+      "runtime": {
+        "url.template": {
+          "type": "keyword",
+          "script": { "source": """
+            if (doc['url.path'].size() == 0) { return; }
+            String path = doc['url.path'].value;
+            int q = path.indexOf('?');
+            if (q >= 0) { path = path.substring(0, q); }
+            emit(/\/(?![a-zA-Z]++\d{1,2}(?:\/|$))[^\/\d]*+\d[^\/]*+/.matcher(path).replaceAll('/:id'));
+          """ }
+        }
       }
     }
   },
   "_meta": { "description": "Champs ECS custom CEJ, communs app + router", "managed_by": "pass-emploi-tools" },
-  "version": 5
+  "version": 6
+}
+
+# Le template ne vaut que pour les prochains backing indices : ce PUT pose le
+# même runtime field sur les existants. À rejouer à chaque modification du script.
+PUT logs-prod-default,logs-staging-default,logs-perf-default,logs-router-*-default/_mapping
+{
+  "runtime": {
+    "url.template": {
+      "type": "keyword",
+      "script": { "source": """
+        if (doc['url.path'].size() == 0) { return; }
+        String path = doc['url.path'].value;
+        int q = path.indexOf('?');
+        if (q >= 0) { path = path.substring(0, q); }
+        emit(/\/(?![a-zA-Z]++\d{1,2}(?:\/|$))[^\/\d]*+\d[^\/]*+/.matcher(path).replaceAll('/:id'));
+      """ }
+    }
+  }
 }
 
 # labels.rate_limit et .rate_limit_palier déclarés d'avance : les règles S3a / S3b
@@ -204,7 +234,7 @@ PUT _component_template/logs-apm.error@custom
 # logs-alertes-scalingo-<env>-default (notifiers Scalingo) et
 # logs-alertes-github-default (CVE Dependabot). Rétention : les briques
 # logs-<env>-retention-custom ci-dessus, comme les logs applicatifs du même env.
-# Champs posés par les ingest pipelines de ../../../../../kibana/pipelines/webhooks/.
+# Champs posés par les ingest pipelines de ../webhooks/.
 PUT _component_template/logs-alertes@mappings
 {
   "template": {

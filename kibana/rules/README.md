@@ -2,7 +2,8 @@
 
 Les règles d'alerte Kibana sont **générées** : chaque règle est décrite par un
 fichier JSON, et un script assemble les fichiers `.console` qui se collent dans
-Kibana → Dev Tools. Un second script produit, depuis les mêmes JSON, les Workflows
+Kibana → Dev Tools, et le [catalogue des alertes](../../docs/observabilite/catalogue-alertes.md).
+Un second script produit, depuis les mêmes JSON, les Workflows
 qui envoient les alertes dans Tchap.
 
 Ce qu'elles signalent et pourquoi : [alertes applicatives](../../docs/observabilite/alertes.md),
@@ -18,7 +19,7 @@ rules/
 ├── 2-applicatives/             ←   SLO1, SLO3…, A1 à A13…
 ├── 3-stack-observabilite/      ←   M1a à M10, M6a, M6b, M13
 ├── 4-tchap/                    ←   Tchap - Envoi en échec
-├── 5-tchap-expiration-bot/     ←   expiration du compte bot (et son pipeline, son index)
+├── 5-tchap-expiration-bot/     ←   expiration du compte bot (son pipeline et son index : ../../elasticsearch/)
 ├── scripts/                    ← les générateurs : règles, puis notifications (aucune règle dedans)
 └── generated/                  ← GÉNÉRÉ : à coller dans Dev Tools, ne pas modifier
     └── <n>-rules-<périmètre>.console
@@ -26,7 +27,9 @@ rules/
 
 | Je veux changer… | Je modifie… |
 |---|---|
-| une règle : seuil, requête, fréquence, message, étapes « À vérifier » | son fichier `<périmètre>/<code>.json` |
+| une règle : seuil, requête, fréquence, message, étapes « À vérifier », question du catalogue | son fichier `<périmètre>/<code>.json` |
+| le titre d'un périmètre dans le catalogue | `SECTIONS` dans `scripts/generer-regles-alerting.py` |
+| ce qui écrit un index lu par une règle, dans le catalogue (« Sources des données ») | `SOURCES` dans `scripts/generer-regles-alerting.py` |
 | un commentaire d'en-tête, une note entre deux règles, une requête qui n'est pas une règle (pipeline, index…) | `<périmètre>/_modele.console` |
 | la page qui explique une alerte (seuil, calibrage) | `../alertes-*.md` |
 
@@ -43,7 +46,9 @@ Le fichier généré supprime puis recrée chaque règle (`DELETE` puis `POST` s
 | Clé | Rôle |
 |---|---|
 | `_id` | identifiant de la règle dans Kibana, stable d'un déploiement à l'autre |
-| `_commentaire` | lignes de commentaire écrites au-dessus de la règle dans le fichier généré |
+| `_question` | la question à laquelle l'alerte répond, terminée par « ? » : colonne « À quoi elle sert » du catalogue, et commentaire au-dessus de la règle dans le fichier généré |
+| `_gravite` | facultatif : la gravité affichée dans le catalogue quand chaque ligne du message porte la sienne (événements Scalingo) ; sinon, elle se lit dans `_message` |
+| `_commentaire` | facultatif : un fait non évident, écrit au-dessus de la règle dans le fichier généré |
 | `_message` | le message de la règle au format pivot, indépendant du canal (cf. [ci-dessous](#le-message-dune-règle)) |
 
 Les étapes « À vérifier » suivent les
@@ -116,7 +121,8 @@ python3 -I rules/scripts/generer-notifications-tchap.py
 
 1. `generer-regles-alerting.py` écrit `generated/<n>-rules-<périmètre>.console` : le
    `_modele.console` du périmètre, où chaque repère `@@REGLE <code>@@` est
-   remplacé par la règle `<code>.json`.
+   remplacé par la règle `<code>.json`. Il écrit aussi le
+   [catalogue des alertes](../../docs/observabilite/catalogue-alertes.md).
 2. `generer-notifications-tchap.py` écrit les Workflows Tchap
    (`../workflows/tchap/generated/`), depuis les mêmes JSON.
 
@@ -130,10 +136,10 @@ sources sans rien écrire.
 ([`elastic-rules-and-workflows-checks.yml`](../../.github/workflows/elastic-rules-and-workflows-checks.yml))
 échoue si :
 
-- un fichier de `generated/` ne correspond plus à ses sources (générateur oublié,
+- un fichier de `generated/`, ou le catalogue, ne correspond plus à ses sources (générateur oublié,
   ou fichier généré modifié à la main) ;
 - un générateur refuse une règle : JSON invalide, règle placée dans aucun
-  `_modele.console` ou deux fois, code défini deux fois, `_message` absent ou
+  `_modele.console` ou deux fois, code défini deux fois, `_question` absente, `_message` absent ou
   invalide, Workflow de salon inconnu, règle ES|QL dont le champ de temps n'est
   pas `@timestamp` ou sans `_message.resultat.ligne`.
 
@@ -161,4 +167,6 @@ Manuel, jamais par le CI :
    répertoire du périmètre, sous le nom `<code>.json`, et l'adapter : nouvel `_id`
    (un UUID), `rule_type_id` et `consumer` du type de la règle.
 2. Placer le repère `@@REGLE <code>@@` dans le `_modele.console` du périmètre.
+   Si elle lit un index qu'aucun motif de `SOURCES` ne couvre, y ajouter qui
+   l'écrit : le générateur refuse un index sans source.
 3. Générer, commiter, déployer.

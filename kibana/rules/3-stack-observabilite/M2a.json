@@ -1,8 +1,6 @@
 {
   "_id": "dd107070-c841-4580-9923-db2ef37c795d",
-  "_commentaire": [
-    "# M2a — Erreurs prod (Warning, bilan quotidien)"
-  ],
+  "_question": "Le pipeline Logstash de traitement rencontre-t-il des erreurs ?",
   "_message": {
     "titre": "**Logs de prod non indexés : erreur de transformation Logstash — bilan des 24 h** — {valeur} logs de prod ne sont pas consultables dans Kibana.",
     "gravite": "avertissement",

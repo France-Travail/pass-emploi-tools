@@ -61,10 +61,10 @@ les logs à examiner.
 | [`rules/generated/3-rules-stack-observabilite.console`](rules/generated/3-rules-stack-observabilite.console) | règles M1 à M10 et M13, cf. [alertes de la stack](../docs/observabilite/infra/alertes-stack-observabilite.md) |
 | [`rules/generated/1-rules-securite.console`](rules/generated/1-rules-securite.console) | règle S1, cf. [alertes de sécurité](../docs/observabilite/alertes-securite.md) |
 | [`rules/generated/4-rules-tchap.console`](rules/generated/4-rules-tchap.console) | règle « Tchap - Envoi en échec », sans action |
-| [`rules/generated/5-rules-tchap-expiration-bot.console`](rules/generated/5-rules-tchap-expiration-bot.console) | règle « Tchap - Expiration du compte bot » et l'index de sa date, cf. [runbook](../docs/observabilite/runbooks/runbook-tchap-expiration-bot.md) |
+| [`rules/generated/5-rules-tchap-expiration-bot.console`](rules/generated/5-rules-tchap-expiration-bot.console) | règle « Tchap - Expiration du compte bot » (l'index de sa date : [`elasticsearch/tchap-expiration-bot.console`](../elasticsearch/tchap-expiration-bot.console)), cf. [runbook](../docs/observabilite/runbooks/runbook-tchap-expiration-bot.md) |
 | [`workflows/tchap/`](workflows/tchap/README.md) | connecteur Tchap et Workflows de notification (tchap-client, un par salon) |
 
-Les rétentions (ILM, templates) sont dans [`stockage/`](../docs/observabilite/infra/stockage/README.md#import--ordre-et-portée).
+Les objets Elasticsearch (rétentions, templates, ingest pipelines) sont dans [`elasticsearch/`](../elasticsearch/README.md).
 
 ## Importer
 
@@ -86,7 +86,8 @@ remplace aussi ses réglages d'affichage, sans effet sur les données.
 Copier le fichier entier dans Dev Tools et exécuter toutes ses requêtes, dans l'ordre :
 `slo/generated/1-slos.console`, puis `rules/generated/2-rules-applicatives.console`,
 `3-rules-stack-observabilite.console`, `1-rules-securite.console`, `4-rules-tchap.console`
-et `5-rules-tchap-expiration-bot.console`.
+et `5-rules-tchap-expiration-bot.console`. Avant ce dernier, rejouer
+`../elasticsearch/tchap-expiration-bot.console`, qui crée le pipeline et l'index qu'il lit.
 
 **Idempotent** : chaque SLO et chaque règle est supprimé puis recréé avec le même
 id (`DELETE` puis `POST`). On rejoue le fichier entier, que l'objet existe déjà ou

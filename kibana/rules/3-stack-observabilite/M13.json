@@ -1,8 +1,8 @@
 {
   "_id": "ae398f47-0ed9-427e-a090-cf774acc7d16",
+  "_question": "Un événement externe (webhook) a-t-il été rejeté à l'indexation ?",
   "_commentaire": [
-    "# M13 — Événement externe rejeté par son pipeline ou par Elasticsearch (Warning). L'émetteur",
-    "# reçoit 201 même quand le document part au failure store."
+    "# L'émetteur reçoit 201 même quand le document part au failure store."
   ],
   "_message": {
     "titre": "**Événements externes rejetés — des notifications Scalingo ou GitHub ne sont pas arrivées dans Kibana : leur émetteur a pourtant reçu un succès** ({valeur})",

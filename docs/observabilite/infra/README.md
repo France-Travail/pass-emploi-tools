@@ -17,9 +17,9 @@ format ──► collecte ──► process ──► stockage
 | **format** | [standard des logs](../logs.md) ; webhooks : [format/webhooks](format/webhooks/conventions.md) | — | — |
 | **collecte** | [collecte/logs](collecte/logs/README.md) ; webhooks : [collecte/webhooks](collecte/webhooks/README.md) | [collecte/metriques](collecte/metriques/README.md) | [collecte/traces](collecte/traces/README.md) |
 | **process** | [process/logs](process/logs/README.md) | — (écriture directe) | — (APM Server) |
-| **stockage** | [stockage/logs](stockage/logs/README.md) | [stockage/metriques](stockage/metriques/README.md) | [stockage/traces](stockage/traces/README.md) |
+| **stockage** | [elasticsearch/logs](../../../elasticsearch/logs/README.md) | [elasticsearch/metriques](../../../elasticsearch/metriques/README.md) | [elasticsearch/traces](../../../elasticsearch/traces/README.md) |
 
-Principes et import des templates Elasticsearch : [stockage/README.md](stockage/README.md).
+Principes et import des templates Elasticsearch : [elasticsearch/README.md](../../../elasticsearch/README.md).
 
 Décisions : [ADR-002](../../decisions/ADR-002-buffer-redis-logstash.md) (buffer Redis),
 [ADR-003](../../decisions/ADR-003-usage-log-drain-scalingo.md) (log drain Scalingo),

@@ -11,7 +11,7 @@ Un seul agent dédié évite les doublons de métriques qui surviendraient si ch
 instance Logstash monitorait la même ressource.
 
 > **Rétention des métriques dans Elasticsearch** (`metrics-redis.*`,
-> `metrics-postgresql.*`, `metrics-sql.postgresql_*`, `logs-scalingo.*`) : [`stockage/metriques/README.md`](../docs/observabilite/infra/stockage/metriques/README.md), section
+> `metrics-postgresql.*`, `metrics-sql.postgresql_*`, `logs-scalingo.*`) : [`elasticsearch/metriques/README.md`](../elasticsearch/metriques/README.md), section
 > `metriques/`. Ce README-ci documente **quoi** superviser (Fleet, intégrations) ;
 > l'autre documente **combien de temps** la donnée est gardée (policies ILM).
 

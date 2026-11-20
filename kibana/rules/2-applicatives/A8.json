@@ -1,9 +1,6 @@
 {
   "_id": "44d7b9b0-6e45-11ec-9757-c9700cd1bb4e",
-  "_commentaire": [
-    "# A8 — API injoignable — prod (pass-emploi-api) (Critical) : moniteur Heartbeat `pa-back-prod-status` (https://api.pass-emploi.beta.gouv.fr/health).",
-    "# Règle Uptime (Heartbeat), recréée par POST avec les paramètres de la règle d'origine."
-  ],
+  "_question": "L'API est-elle injoignable de l'extérieur ?",
   "_message": {
     "titre": "**API injoignable — prod (pass-emploi-api)**",
     "gravite": "critique",

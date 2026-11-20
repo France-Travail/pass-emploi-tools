@@ -19,7 +19,7 @@ versionnée dans `heartbeat/heartbeat.template.yml`).
 Elastic classe `heartbeat` en `data_stream.type: logs`, mais c'est une **mesure
 périodique** (un ping toutes les 5 s), pas un événement métier discret : on le
 range et on le retient avec les métriques (90 j, cf.
-[stockage/metriques](../../stockage/metriques/README.md)).
+[elasticsearch/metriques](../../../../../elasticsearch/metriques/README.md)).
 
 Déploiement, variables d'environnement, buildpacks :
 [`heartbeat/README.md`](../../../../../heartbeat/README.md).

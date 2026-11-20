@@ -17,15 +17,17 @@ qu'elle ne soit visible côté apps (cf. philosophie des
 
 ## Data streams
 
-| Data stream | Contenu | Usage |
-|---|---|---|
-| `metrics-logstash.node-default` | stats nœud : JVM heap, events in/out (champs GC mappés mais vides) | alerte M5 (heap) |
-| `metrics-logstash.pipeline-default` | stats pipeline : queue depth, workers, batch | alerte M4 (backpressure) |
-| `metrics-logstash.plugins-default` | stats plugins : bulk requests ES, erreurs output | diagnostic (compteurs cumulatifs, non alertables) |
-| `metrics-logstash.health_report-default` | état de santé global du nœud | diagnostic |
-| `metrics-redis.{info,key,keyspace}-default` | mémoire, connexions, longueur de `logstash:ingest` (`redis.key.length`) | alerte M7 (backlog) |
-| `metrics-system.*-default` | 11 datasets — agent dédié uniquement | diagnostic |
-| `logs-scalingo.container_stats-default` | mémoire totale de chaque conteneur Logstash, vue par Scalingo (`scalingo.memory.*`) | dashboard, alerte M9 (mémoire conteneur) |
+| Data stream | Contenu |
+|---|---|
+| `metrics-logstash.node-default` | stats nœud : JVM heap, events in/out (champs GC mappés mais vides) |
+| `metrics-logstash.pipeline-default` | stats pipeline : queue depth, workers, batch |
+| `metrics-logstash.plugins-default` | stats plugins : bulk requests ES, erreurs output (compteurs cumulatifs, non alertables) |
+| `metrics-logstash.health_report-default` | état de santé global du nœud |
+| `metrics-redis.{info,key,keyspace}-default` | mémoire, connexions, longueur de `logstash:ingest` (`redis.key.length`) |
+| `metrics-system.*-default` | 11 datasets — agent dédié uniquement |
+| `logs-scalingo.container_stats-default` | mémoire totale de chaque conteneur Logstash, vue par Scalingo (`scalingo.memory.*`) |
+
+Les alertes qui les lisent : [sources des données](../../../catalogue-alertes.md#sources-des-données).
 
 Data view Kibana : `metrics-logstash*` (timestamp `@timestamp`). La taille de la
 DLQ (`queue_size_in_bytes`) n'est **pas** exposée par l'intégration : l'alerte DLQ

@@ -1,8 +1,6 @@
 {
   "_id": "b100ff40-7409-4859-ac44-755ad2401f03",
-  "_commentaire": [
-    "# M1b — DLQ staging / perf (Warning)"
-  ],
+  "_question": "Des logs ont-ils été écartés en Dead Letter Queue faute d'être indexables ?",
   "_message": {
     "titre": "**Logs hors prod non indexés : échec de process Logstash indéterminé** — des logs de staging/perf ne sont pas consultables dans Kibana, sans erreur détectée par Logstash.",
     "gravite": "avertissement",
