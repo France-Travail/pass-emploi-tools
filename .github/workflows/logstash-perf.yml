@@ -18,12 +18,15 @@
 #   LOGSTASH_PERF_URL         URL HTTPS de l'instance Logstash perf Scalingo
 #   LOGSTASH_PERF_USER        Identifiant Basic Auth
 #   LOGSTASH_PERF_PASSWORD    Mot de passe Basic Auth
-#   ELASTICSEARCH_HOST        URL Elasticsearch Cloud (pour la purge post-test)
-#   ELASTICSEARCH_USER        Identifiant ES (doit avoir DELETE sur logs-perf-*)
-#   ELASTICSEARCH_PASSWORD    Mot de passe ES
+#   ELASTICSEARCH_HOST        URL Elasticsearch Cloud (rapport post-test)
+#   ELASTICSEARCH_API_KEY_RESTRICTED_READ_ONLY
+#                             Clé API en lecture seule (logs-perf-default,
+#                             logs-router-perf-default compris)
 #
 # Cible : instance Logstash dédiée perf (pass-emploi-logstash-perf sur Scalingo).
-# Données isolées dans logs-perf-default (appname=*-perf), purgées après chaque test.
+# Données isolées dans logs-perf-default (appname=*-perf). Le workflow ne
+# supprime rien : la politique ILM logs-perf-retention les efface, et le
+# rapport ne compte que la fenêtre du test.
 # Cf. docs/observabilite/infra/process/logs/performances.md pour le contexte.
 
 name: Logstash - Test de non régression des performances
@@ -68,19 +71,16 @@ jobs:
           LOGSTASH_USER: ${{ secrets.LOGSTASH_PERF_USER }}
           LOGSTASH_PASSWORD: ${{ secrets.LOGSTASH_PERF_PASSWORD }}
           ES_HOST: ${{ secrets.ELASTICSEARCH_HOST }}
-          ES_USER: ${{ secrets.ELASTICSEARCH_USER }}
-          ES_PASSWORD: ${{ secrets.ELASTICSEARCH_PASSWORD }}
+          ES_API_KEY: ${{ secrets.ELASTICSEARCH_API_KEY_RESTRICTED_READ_ONLY }}
         run: |
           echo "LOGSTASH_URL  : length=${#LOGSTASH_URL}  prefix=${LOGSTASH_URL:0:8}"
           echo "LOGSTASH_USER : length=${#LOGSTASH_USER}"
           echo "ES_HOST       : length=${#ES_HOST}  prefix=${ES_HOST:0:8}"
-          echo "ES_USER       : length=${#ES_USER}"
           [ -n "$LOGSTASH_URL" ]      || { echo "::error::Secret LOGSTASH_PERF_URL manquant"; exit 1; }
           [ -n "$LOGSTASH_USER" ]     || { echo "::error::Secret LOGSTASH_PERF_USER manquant"; exit 1; }
           [ -n "$LOGSTASH_PASSWORD" ] || { echo "::error::Secret LOGSTASH_PERF_PASSWORD manquant"; exit 1; }
           [ -n "$ES_HOST" ]           || { echo "::error::Secret ELASTICSEARCH_HOST manquant"; exit 1; }
-          [ -n "$ES_USER" ]           || { echo "::error::Secret ELASTICSEARCH_USER manquant"; exit 1; }
-          [ -n "$ES_PASSWORD" ]       || { echo "::error::Secret ELASTICSEARCH_PASSWORD manquant"; exit 1; }
+          [ -n "$ES_API_KEY" ]        || { echo "::error::Secret ELASTICSEARCH_API_KEY_RESTRICTED_READ_ONLY manquant"; exit 1; }
 
       - name: Définir les paramètres du test
         run: |
@@ -175,10 +175,24 @@ jobs:
         if: always()
         env:
           ES_HOST: ${{ secrets.ELASTICSEARCH_HOST }}
-          ES_USER: ${{ secrets.ELASTICSEARCH_USER }}
-          ES_PASSWORD: ${{ secrets.ELASTICSEARCH_PASSWORD }}
+          ES_API_KEY: ${{ secrets.ELASTICSEARCH_API_KEY_RESTRICTED_READ_ONLY }}
         run: |
           echo "Fenêtre : $TEST_START → $TEST_END"
+
+          # Recherche en lecture seule ; une réponse autre que 200 arrête l'étape avec
+          # le code et le type d'erreur d'Elasticsearch.
+          rechercher() {
+            local chemin="$1" corps="$2" code
+            code=$(curl -s -o reponse.json -w '%{http_code}' \
+              -H "Authorization: ApiKey ${ES_API_KEY}" \
+              -H "Content-Type: application/json" \
+              -X POST "${ES_HOST}/${chemin}" -d "$corps")
+            if [ "$code" != 200 ]; then
+              echo "::error::Elasticsearch a répondu ${code} sur ${chemin%%/*} : $(jq -r '.error.type // .error // "réponse illisible"' reponse.json 2>/dev/null)"  >&2
+              exit 1
+            fi
+            cat reponse.json
+          }
 
           # Compter les 499 nginx sur le routeur Logstash pendant le test
           QUERY_499=$(cat <<EOF
@@ -197,11 +211,7 @@ jobs:
           }
           EOF
           )
-          COUNT_499=$(curl -s \
-            -u "${ES_USER}:${ES_PASSWORD}" \
-            -H "Content-Type: application/json" \
-            -X POST "${ES_HOST}/${ROUTER_INDEX}/_search" \
-            -d "$QUERY_499" | jq '.hits.total.value // "N/A"')
+          COUNT_499=$(rechercher "${ROUTER_INDEX}/_search" "$QUERY_499" | jq '.hits.total.value // "N/A"')
 
           # Compter les logs applicatifs indexés pendant le test.
           # Identification par INDEX (logs-perf-default, routé via appname=*-perf),
@@ -218,11 +228,7 @@ jobs:
           }
           EOF
           )
-          COUNT_INDEXED=$(curl -s \
-            -u "${ES_USER}:${ES_PASSWORD}" \
-            -H "Content-Type: application/json" \
-            -X POST "${ES_HOST}/logs-perf-default/_search?ignore_unavailable=true" \
-            -d "$QUERY_INDEXED" | jq '.hits.total.value // "N/A"')
+          COUNT_INDEXED=$(rechercher "logs-perf-default/_search?ignore_unavailable=true" "$QUERY_INDEXED" | jq '.hits.total.value // "N/A"')
 
           # Histogramme par tranche de 1 minute pour détecter le seuil de saturation
           # Si une tranche tombe à 0, Logstash a saturé à ce moment-là
@@ -245,11 +251,7 @@ jobs:
           }
           EOF
           )
-          HISTO=$(curl -s \
-            -u "${ES_USER}:${ES_PASSWORD}" \
-            -H "Content-Type: application/json" \
-            -X POST "${ES_HOST}/logs-perf-default/_search?ignore_unavailable=true" \
-            -d "$QUERY_HISTO" | jq -r '
+          HISTO=$(rechercher "logs-perf-default/_search?ignore_unavailable=true" "$QUERY_HISTO" | jq -r '
               .aggregations.par_1min.buckets[]
               | "| \(.key_as_string) | \(.doc_count) |"
             ')
@@ -273,22 +275,3 @@ jobs:
             echo "|---------|--------------|"
             echo "$HISTO"
           } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Purge logs de test Elasticsearch
-        if: always()
-        env:
-          ES_HOST: ${{ secrets.ELASTICSEARCH_HOST }}
-          ES_USER: ${{ secrets.ELASTICSEARCH_USER }}
-          ES_PASSWORD: ${{ secrets.ELASTICSEARCH_PASSWORD }}
-        run: |
-          # Purge par INDEX : logs-perf-default ne contient QUE les données de
-          # test (routage appname=*-perf dans pipeline-process.conf) → match_all
-          # sans risque pour staging/prod. Ne PAS purger par service.name : avec
-          # le strip du suffixe d'env, "pass-emploi-api" matcherait AUSSI la prod.
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
-            -X POST \
-            -u "${ES_USER}:${ES_PASSWORD}" \
-            -H "Content-Type: application/json" \
-            -d '{ "query": { "match_all": {} } }' \
-            "${ES_HOST}/logs-perf-default/_delete_by_query?conflicts=proceed&ignore_unavailable=true")
-          echo "Purge logs-perf-default : HTTP $RESPONSE"

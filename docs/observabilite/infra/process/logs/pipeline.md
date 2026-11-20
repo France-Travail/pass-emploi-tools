@@ -19,7 +19,7 @@ Routage en sortie :
 |---|---|
 | tag d'échec de filtre (`_jsonparsefailure`, `_mutate_error`, `_rubyexception`, `_kv_filter_*`, `_dateparsefailure`…) | `logs-logstash-errors-<env>-default` |
 | tag `router` | `logs-router-<env>-default` |
-| sinon | `logs-<env>-default` (`appname=*-perf` → `logs-perf-default`, purgeable après tir) |
+| sinon | `logs-<env>-default` (`appname=*-perf` → `logs-perf-default`, effacé par l'ILM `logs-perf-retention`) |
 
 ## Frontière in-app / Logstash
 
