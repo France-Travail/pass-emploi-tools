@@ -82,8 +82,8 @@ if [ -x "${HOME}/.jdk/bin/java" ]; then
   export LS_JAVA_HOME="${HOME}/.jdk"
 fi
 # Le buildpack JVM fixe le heap selon la taille du conteneur (-Xmx1536m en XL) : le heap
-# reste celui de LS_JAVA_OPTS.
-unset JAVA_TOOL_OPTIONS JAVA_OPTS
+# reste celui de LS_JAVA_OPTS. JAVA_HOME, ignoré, ne ferait qu'ajouter un avertissement.
+unset JAVA_TOOL_OPTIONS JAVA_OPTS JAVA_HOME
 
 exec logstash \
   --config.reload.automatic \
