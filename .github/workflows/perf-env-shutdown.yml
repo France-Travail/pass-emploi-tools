@@ -31,7 +31,10 @@ concurrency:
 
 env:
   SCALINGO_REGION: osc-secnum-fr1
-  APPS: pass-emploi-connect-perf pass-emploi-api-perf mock-externes-perf pass-emploi-logstash-perf pass-emploi-logstash-process-perf pass-emploi-elastic-agent-perf
+  APPS_WEB: pass-emploi-connect-perf pass-emploi-api-perf mock-externes-perf pass-emploi-logstash-perf pass-emploi-elastic-agent-perf
+  # Le worker de l'api, allumé par perf-job-archivage.yml, exécuterait les crons planifiés
+  # toute la nuit : il s'éteint ici, mais le réveil ne le rallume pas.
+  APPS_WORKER: pass-emploi-logstash-process-perf pass-emploi-api-perf
 
 jobs:
   scale-down:
@@ -50,25 +53,16 @@ jobs:
       # tolère ce seul message ; toute autre sortie fait échouer le step.
       - name: Scaler chaque app à 0
         run: |
-          # Le process Logstash n'écoute pas en HTTP : il tourne en worker, comme en prod.
-          type_de() { case "$1" in pass-emploi-logstash-process-perf) echo worker ;; *) echo web ;; esac; }
-          for app in $APPS; do
-            echo "::group::$app"
-            sortie="$(scalingo --region "$SCALINGO_REGION" --app "$app" scale "$(type_de "$app"):0" 2>&1)" && {
-              echo "$sortie"
-            } || {
-              echo "$sortie"
-              echo "$sortie" | grep -qi 'no change in containers formation' || { echo "::endgroup::"; exit 1; }
-            }
-            echo "::endgroup::"
+          for groupe in "web:$APPS_WEB" "worker:$APPS_WORKER"; do
+            type="${groupe%%:*}"
+            for app in ${groupe#*:}; do
+              echo "::group::$app ($type)"
+              sortie="$(scalingo --region "$SCALINGO_REGION" --app "$app" scale "$type:0" 2>&1)" && {
+                echo "$sortie"
+              } || {
+                echo "$sortie"
+                echo "$sortie" | grep -qi 'no change in containers formation' || { echo "::endgroup::"; exit 1; }
+              }
+              echo "::endgroup::"
+            done
           done
-
-      # Le worker de l'api, allumé par perf-job-archivage.yml, exécuterait les
-      # crons planifiés toute la nuit sur l'environnement de perf.
-      - name: Éteindre le worker de l'api
-        run: |
-          sortie="$(scalingo --region "$SCALINGO_REGION" --app pass-emploi-api-perf scale worker:0 2>&1)" || {
-            echo "$sortie"
-            echo "$sortie" | grep -qi 'no change in containers formation' || exit 1
-          }
-          echo "$sortie"
