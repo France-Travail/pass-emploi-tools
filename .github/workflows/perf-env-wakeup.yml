@@ -29,7 +29,9 @@ concurrency:
 
 env:
   SCALINGO_REGION: osc-secnum-fr1
-  APPS: pass-emploi-connect-perf pass-emploi-api-perf mock-externes-perf pass-emploi-logstash-perf pass-emploi-logstash-process-perf pass-emploi-elastic-agent-perf
+  # Les workers démarrent avant les web : le process Logstash vide le Redis que l'ingest remplit.
+  APPS_WORKER: pass-emploi-logstash-process-perf
+  APPS_WEB: pass-emploi-connect-perf pass-emploi-api-perf mock-externes-perf pass-emploi-logstash-perf pass-emploi-elastic-agent-perf
 
 jobs:
   scale-up:
@@ -48,13 +50,16 @@ jobs:
       # seul message ; toute autre sortie fait échouer le step normalement.
       - name: Scaler chaque app à 1
         run: |
-          for app in $APPS; do
-            echo "::group::$app"
-            sortie="$(scalingo --region "$SCALINGO_REGION" --app "$app" scale web:1 2>&1)" && {
-              echo "$sortie"
-            } || {
-              echo "$sortie"
-              echo "$sortie" | grep -qi 'no change in containers formation' || { echo "::endgroup::"; exit 1; }
-            }
-            echo "::endgroup::"
+          for groupe in "worker:$APPS_WORKER" "web:$APPS_WEB"; do
+            type="${groupe%%:*}"
+            for app in ${groupe#*:}; do
+              echo "::group::$app ($type)"
+              sortie="$(scalingo --region "$SCALINGO_REGION" --app "$app" scale "$type:1" 2>&1)" && {
+                echo "$sortie"
+              } || {
+                echo "$sortie"
+                echo "$sortie" | grep -qi 'no change in containers formation' || { echo "::endgroup::"; exit 1; }
+              }
+              echo "::endgroup::"
+            done
           done

@@ -8,7 +8,7 @@
 # Rapport quotidien des jobs de pass-emploi-api (prod), chaque jour à 9 h 30
 # (heure de Paris), dans le salon Tchap jobs-production. Généré par rules/scripts/generer-notifications-tchap.py
 # depuis la liste des CRON de pass-emploi-api (origin/develop) : ne pas modifier à
-# la main. Spécification : ../../../../../docs/observabilite/alertes.md.
+# la main. Spécification : docs/observabilite/alertes.md.
 # Mise à jour : le PUT ci-dessous, le Workflow existant déjà. Première création (404
 # sur le PUT) : POST, en ajoutant l'id au corps, à côté de "yaml" :
 #   POST kbn:/api/workflows/workflow

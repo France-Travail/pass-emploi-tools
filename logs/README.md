@@ -9,9 +9,19 @@ Application Scalingo déployant **Logstash** et **Elastic Agent** en mode coloca
 Définis dans `.buildpacks`, dans cet ordre :
 
 ```
+https://github.com/Scalingo/buildpack-jvm-common.git
 https://github.com/France-Travail/elastic-agent-buildpack
 https://github.com/France-Travail/logstash-buildpack
 ```
+
+**Java** : Logstash tourne sur le JDK installé par le buildpack JVM de Scalingo (Azul Zulu),
+dont `system.properties` fixe la version majeure. Chaque build prend la dernière version de
+cette majeure : un correctif de Java s'applique en redéployant, sans attendre une version de
+Logstash. `start.sh` y fait pointer `LS_JAVA_HOME` ; sans lui, Logstash reprendrait le JDK de
+son archive. Il retire aussi `JAVA_TOOL_OPTIONS` et `JAVA_OPTS`, que le buildpack JVM remplit
+d'un heap calculé sur la taille du conteneur (le heap reste celui de `LS_JAVA_OPTS`), et
+`JAVA_HOME`, que Logstash ignore.
+Vérifier dans un conteneur ponctuel : `scalingo -a <app> run 'java -version'`.
 
 ## Architecture
 

@@ -1,4 +1,4 @@
-# SLO Kibana — prod. Ce qu'ils promettent : ../../docs/observabilite/slo.md.
+# SLO Kibana — prod. Ce qu'ils promettent : docs/observabilite/slo.md.
 #
 # L'objectif de chaque SLO (sa cible, et son pourcentage dans une description) vient de
 # seuils.json, à la clé du code de sa règle burn rate (rules/2-applicatives/SLO*.json).

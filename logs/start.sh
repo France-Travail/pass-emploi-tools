@@ -76,6 +76,15 @@ if [ -n "$REDIS_CA_CERT_BASE64" ]; then
   echo "$REDIS_CA_CERT_BASE64" | base64 -d > /app/certs/redis-ca.pem
 fi
 
+# Logstash ignore JAVA_HOME : sans LS_JAVA_HOME, il prend le JDK de son archive, que seule
+# une nouvelle version de Logstash met à jour. Celui du buildpack JVM suit system.properties.
+if [ -x "${HOME}/.jdk/bin/java" ]; then
+  export LS_JAVA_HOME="${HOME}/.jdk"
+fi
+# Le buildpack JVM fixe le heap selon la taille du conteneur (-Xmx1536m en XL) : le heap
+# reste celui de LS_JAVA_OPTS. JAVA_HOME, ignoré, ne ferait qu'ajouter un avertissement.
+unset JAVA_TOOL_OPTIONS JAVA_OPTS JAVA_HOME
+
 exec logstash \
   --config.reload.automatic \
   --path.settings /app/config
