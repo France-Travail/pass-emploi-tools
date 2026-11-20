@@ -31,4 +31,4 @@ Modifier un pipeline : reporter le changement dans
 rejouer en `_simulate` avant de l'appliquer.
 
 Les data streams, leurs mappings et leur rétention :
-[`stockage/logs/`](../../../docs/observabilite/infra/stockage/logs/README.md).
+[`elasticsearch/logs/`](../../../elasticsearch/logs/README.md).

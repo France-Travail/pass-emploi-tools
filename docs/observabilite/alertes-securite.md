@@ -57,5 +57,5 @@ déclenche à son tour n'envoie pas de nouveau message ; la règle, dans Kibana,
 montre l'état courant.
 
 Les champs `labels.rate_limit*` sont déclarés d'avance dans le mapping
-([`2-component-templates.console`](infra/stockage/logs/2-component-templates.console)) :
+([`2-component-templates.console`](../../elasticsearch/logs/2-component-templates.console)) :
 sans eux, la requête ES|QL échoue tant qu'aucune limite n'a refusé de requête.

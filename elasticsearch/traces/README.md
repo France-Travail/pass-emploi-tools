@@ -1,6 +1,6 @@
 # Stockage des traces
 
-Rétention des traces APM. Collecte : [collecte/traces](../../collecte/traces/README.md). Import des 3 `.console` de ce dossier : [stockage/README](../README.md#import--ordre-et-portée).
+Rétention des traces APM. Collecte : [collecte/traces](../../docs/observabilite/infra/collecte/traces/README.md). Import des 3 `.console` de ce dossier : [elasticsearch/README](../README.md#import--ordre-et-portée).
 
 
 | Data stream                | Index template                     | Rétention (ILM)      | Cible |

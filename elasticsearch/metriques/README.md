@@ -1,6 +1,6 @@
 # Stockage des métriques
 
-Rétention des métriques Fleet et Heartbeat. Collecte : [collecte/metriques](../../collecte/metriques/README.md). Import des 3 `.console` de ce dossier : [stockage/README](../README.md#import--ordre-et-portée).
+Rétention des métriques Fleet et Heartbeat. Collecte : [collecte/metriques](../../docs/observabilite/infra/collecte/metriques/README.md). Import des 3 `.console` de ce dossier : [elasticsearch/README](../README.md#import--ordre-et-portée).
 
 
 | Data stream                                                              | Rétention (ILM)              | Cible |
@@ -60,7 +60,7 @@ Rétention des métriques Fleet et Heartbeat. Collecte : [collecte/metriques](..
 
 
 > Procédure de contrôle à rejouer après toute nouvelle intégration Fleet :
-> [stockage/README](../README.md#procédure-de-contrôle-à-rejouer-après-toute-nouvelle-intégration-fleet).
+> [elasticsearch/README](../README.md#procédure-de-contrôle-à-rejouer-après-toute-nouvelle-intégration-fleet).
 
 ## Montée de version Heartbeat
 

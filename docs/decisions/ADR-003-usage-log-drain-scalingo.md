@@ -172,7 +172,7 @@ journalisation.
   l'écriture `stdout` elle-même. Le socle légal continue de fonctionner **même pendant
   une quarantaine du drain** : les deux mécanismes sont indépendants. Rien à
   construire : c'est déjà la situation actuelle, simplement non documentée dans nos
-  docs internes (depuis documenté dans [`stockage/logs`](../observabilite/infra/stockage/logs/README.md#archivage-hors-es--logs-archives-scalingo)).
+  docs internes (depuis documenté dans [`elasticsearch/logs`](../../elasticsearch/logs/README.md#archivage-hors-es--logs-archives-scalingo)).
 * **2 — Shipper direct / 3 — Broker direct** : décision de design à figer
   explicitement. Si le code applicatif continue d'écrire sur `stdout` **en plus** du
   nouveau canal (double-écrit), le socle légal survit gratuitement. S'il est
@@ -182,12 +182,12 @@ journalisation.
   sans garde-fou technique qui alerte dessus**. Complexité : figer et documenter ce
   choix ; assumer un double coût d'écriture si on le préserve.
 * **4 — Compensation APM** : rétentions APM (traces 30j, errors 90j —
-  [`stockage/traces`](../observabilite/infra/stockage/traces/README.md)) sans rapport avec ce socle — n'en tient pas lieu.
+  [`elasticsearch/traces`](../../elasticsearch/traces/README.md)) sans rapport avec ce socle — n'en tient pas lieu.
 
 ### Socle 2 — Elasticsearch ILM (indexé, cherchable, 180 jours prod)
 
-Source : [`stockage/logs/1-ilm-policies.console`](../observabilite/infra/stockage/logs/1-ilm-policies.console)
-et [`stockage/logs/README.md`](../observabilite/infra/stockage/logs/README.md). La policy
+Source : [`elasticsearch/logs/1-ilm-policies.console`](../../elasticsearch/logs/1-ilm-policies.console)
+et [`elasticsearch/logs/README.md`](../../elasticsearch/logs/README.md). La policy
 `logs-prod-retention` a bien `delete.min_age: 180d` configuré, mais **sans phase
 cold/frozen** : *« la phase cold/frozen de l'archive 30→180 j reste à ajouter quand le
 tier froid existera (devis) [...] l'appliquer fait croître le flux vers ~1,8 To sur
@@ -225,7 +225,7 @@ plusieurs mois »*.
 * Zéro nouvelle infrastructure à opérer — cohérent avec le dimensionnement actuel de
   l'équipe.
 * Filet légal Logs Archives (1 an) déjà actif sans configuration — documenté dans
-  [`stockage/logs`](../observabilite/infra/stockage/logs/README.md#archivage-hors-es--logs-archives-scalingo).
+  [`elasticsearch/logs`](../../elasticsearch/logs/README.md#archivage-hors-es--logs-archives-scalingo).
 * Permet de concentrer l'effort sur les leviers déjà identifiés et non réalisés :
   mesurer le plafond d'une instance Logstash (req/min avant 429/499), scaler ES,
   déporter du parsing vers les ingest pipelines ES (cf.
@@ -345,7 +345,7 @@ plusieurs mois »*.
       par conteneur) face au débit réel mesuré de `pass-emploi-api` — risque de perte
       silencieuse (`overflow` puis drop) distinct de la quarantaine, non chiffré à date.
 * [x] Documenter le socle **Logs Archives** (1 an, lié à `stdout`) — fait dans
-      [`stockage/logs`](../observabilite/infra/stockage/logs/README.md#archivage-hors-es--logs-archives-scalingo).
+      [`elasticsearch/logs`](../../elasticsearch/logs/README.md#archivage-hors-es--logs-archives-scalingo).
 * [ ] Mesurer le **plafond d'une instance Logstash** (req/min avant 429/499) — next step
       déjà identifié dans le
       [post-mortem 2026-07, §7](../observabilite/post-mortems/postmortem-2026-07-blackout-logs.md#7-next-steps--tenir-à-x10),
@@ -357,7 +357,7 @@ plusieurs mois »*.
 * [drain-scalingo.md](../observabilite/infra/collecte/logs/drain-scalingo.md) — invariant quarantaine ; [infrastructure.md](../observabilite/infra/infrastructure.md) — garde-fous JVM/Scalingo
 * [runbook-logstash.md](../observabilite/runbooks/runbook-logstash.md) — signature de la backpressure ES (scénario 1)
 * [ADR-002-buffer-redis-logstash.md](./ADR-002-buffer-redis-logstash.md) — risque de saturation mémoire Redis déjà documenté
-* [stockage/logs/README.md](../observabilite/infra/stockage/logs/README.md) — rétention ES 180j, gap cold/frozen
+* [elasticsearch/logs/README.md](../../elasticsearch/logs/README.md) — rétention ES 180j, gap cold/frozen
 * [logs/pipeline-ingest.conf](../../logs/pipeline-ingest.conf) — pipeline d'ingestion actuel (input HTTP uniquement)
 * [perf/.../LogstashIngestSimulation.scala](../../perf/src/gatling/scala/passemploi/test/LogstashIngestSimulation.scala) — simulation de charge du drain HTTP actuel
 * [Doc Scalingo — Log Drains](https://doc.scalingo.com/platform/app/log-drain)

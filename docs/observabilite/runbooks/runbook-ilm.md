@@ -3,7 +3,7 @@
 > **Type** : tutoriel (Diataxis). Quoi faire quand l'[alerte M10](../infra/alertes-stack-observabilite.md#alerte-m10--ilm-en-échec-ou-policy-sans-suppression)
 > sonne : un index n'applique pas la rétention prévue.
 >
-> Rétentions attendues et scripts : [`stockage/`](../infra/stockage/README.md).
+> Rétentions attendues et scripts : [`elasticsearch/`](../../../elasticsearch/README.md).
 > Toutes les requêtes se lancent dans Kibana → Dev Tools.
 
 Un index qui n'applique pas sa rétention ne casse rien tout de suite : il grossit
@@ -29,7 +29,7 @@ et [Index frozen introuvable](#index-frozen-introuvable).
 Les policies Elastic `@lifecycle` n'ont pas de phase `delete` : rétention infinie.
 
 **Cause habituelle** : la brique `<type>-<dataset>@custom` qui porte notre policy
-manque (scripts `stockage/*/2-component-templates.console` jamais rejoués, ou
+manque (scripts `elasticsearch/*/2-component-templates.console` jamais rejoués, ou
 nouvelle intégration Fleet). Les index créés depuis retombent sur la policy du
 package.
 
@@ -40,7 +40,7 @@ package.
    - le data stream affiche une policy par défaut → étape 2 puis 3 ;
    - il affiche la bonne policy → les anciens index seuls sont en cause : étape 3.
 2. **Rejouer les briques** du bundle concerné, dans l'ordre :
-   `stockage/<logs|traces|metriques>/1-ilm-policies.console` puis
+   `elasticsearch/<logs|traces|metriques>/1-ilm-policies.console` puis
    `2-component-templates.console`. Pour une nouvelle intégration, ajouter
    d'abord sa brique `@custom` dans `2-component-templates.console`.
 3. **Rattacher les index existants** à la policy de leur data stream (appliqué à
@@ -87,7 +87,7 @@ it doesn't exist`. ILM ne compte pas ce cas comme un échec d'étape :
 **l'alerte M10 ne le voit pas**.
 
 **Cause** : des index ont été rattachés à une policy avant sa création (cas du
-2026-10-05). Rejouer `stockage/<bundle>/1-ilm-policies.console`. Le message
+2026-10-05). Rejouer `elasticsearch/<bundle>/1-ilm-policies.console`. Le message
 disparaît au prochain changement d'étape de l'index ; rien d'autre à faire si la
 policy existe : `GET _ilm/policy/<policy>?filter_path=*.modified_date`.
 

@@ -150,7 +150,7 @@ apps:
   où `state.json` contient `url`, `auth_url`, `apps` et `secret.api_token`.
 - **Après installation** : créer le template `logs-scalingo.container_stats@custom`
   et rejouer le contrôle des rétentions
-  ([stockage/metriques](../../docs/observabilite/infra/stockage/metriques/README.md)).
+  ([elasticsearch/metriques](../../elasticsearch/metriques/README.md)).
 
 | Champ produit                                                   | Source `/stats`                                                        |
 |-----------------------------------------------------------------|------------------------------------------------------------------------|

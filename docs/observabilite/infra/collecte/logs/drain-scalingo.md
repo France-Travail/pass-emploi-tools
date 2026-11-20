@@ -39,7 +39,7 @@ Exploration d'un mécanisme de collecte alternatif, cf.
   risques déjà documentés déplacés plutôt que traités).
 - **Deux socles d'archivage distincts identifiés** : Logs Archives Scalingo (brut,
   non indexé, 1 an, lié au `stdout`, indépendant du drain) vs rétention ES — cf.
-  [stockage/logs](../../stockage/logs/README.md#archivage-hors-es--logs-archives-scalingo).
+  [elasticsearch/logs](../../../../../elasticsearch/logs/README.md#archivage-hors-es--logs-archives-scalingo).
 - **Suites ouvertes** : confirmation à obtenir du support Scalingo sur le comportement
   quarantaine en syslog ; vérification du plafond d'ingestion Scalingo (16 384
   lignes/min et 64 MiB/min par conteneur) face au débit réel de `pass-emploi-api`.

@@ -64,7 +64,7 @@ les logs à examiner.
 | [`rules/generated/5-rules-tchap-expiration-bot.console`](rules/generated/5-rules-tchap-expiration-bot.console) | règle « Tchap - Expiration du compte bot » et l'index de sa date, cf. [runbook](../docs/observabilite/runbooks/runbook-tchap-expiration-bot.md) |
 | [`workflows/tchap/`](workflows/tchap/README.md) | connecteur Tchap et Workflows de notification (tchap-client, un par salon) |
 
-Les rétentions (ILM, templates) sont dans [`stockage/`](../docs/observabilite/infra/stockage/README.md#import--ordre-et-portée).
+Les rétentions (ILM, templates) sont dans [`elasticsearch/`](../elasticsearch/README.md#import--ordre-et-portée).
 
 ## Importer
 

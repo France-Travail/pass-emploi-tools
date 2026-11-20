@@ -50,7 +50,7 @@ transformation en champs ECS se fait dans un **ingest pipeline**.
 
 | Fichier                                                                                                        | Contenu                                                                                                                                                                                                    |
 |----------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`stockage/logs/`](../../stockage/logs/README.md) `2-component-templates.console`, `3-index-templates.console` | mapping et templates des 4 data streams (logsdb, `default_pipeline`, failure store), création à l'avance des data streams ; rétention : les briques `logs-<env>-retention-custom` existantes               |
+| [`elasticsearch/logs/`](../../../../../elasticsearch/logs/README.md) `2-component-templates.console`, `3-index-templates.console` | mapping et templates des 4 data streams (logsdb, `default_pipeline`, failure store), création à l'avance des data streams ; rétention : les briques `logs-<env>-retention-custom` existantes               |
 | [`kibana/pipelines/webhooks/`](../../../../../kibana/pipelines/webhooks/README.md)                            | les ingest pipelines (transformation en champs ECS) et l'accès en écriture des émetteurs ; ce que font les pipelines : [format/webhooks/conventions.md](../../format/webhooks/conventions.md) |
 | [`kibana/discovers/webhooks/`](../../../../../kibana/discovers/webhooks/)                                     | sessions Discover des événements, des CVE et des rejets                                                                                                                                                    |
 
@@ -78,7 +78,7 @@ Tchap listent telle quelle. Le payload brut est gardé sous `scalingo.*` ou
 
 À faire dans l'ordre : chaque étape dépend de la précédente.
 
-1. **Stockage** : dans [`stockage/logs/`](../../stockage/logs/README.md), rejouer
+1. **Stockage** : dans [`elasticsearch/logs/`](../../../../../elasticsearch/logs/README.md), rejouer
    les blocs `logs-alertes*` de `2-component-templates.console`, puis de
    `3-index-templates.console`, **y compris la création des 4 data streams et
    de leur failure store** qui suit les templates : sans elle, les règles
