@@ -41,9 +41,8 @@ PUT _ilm/policy/logs-router-retention
 }
 
 # Logs de test de perf (workflow logstash-perf, appname=*-perf) — 2 j.
-# Filet de sécurité : le nettoyage nominal est la purge post-test du workflow ;
-# l'ILM couvre les runs interrompus (job annulé, purge en échec) et supprime les
-# backing indices que _delete_by_query ne touche pas. 2 j laissent le temps de
+# Seul nettoyage : le workflow ne supprime rien (sa clé est en lecture seule) et
+# son rapport ne compte que la fenêtre du test. 2 j laissent le temps de
 # débugger un run de la veille ; au-delà la donnée n'a aucune valeur.
 PUT _ilm/policy/logs-perf-retention
 {
