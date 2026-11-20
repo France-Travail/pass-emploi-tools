@@ -83,7 +83,7 @@ unique par événement, ni variable dans l'URL, ni moyen d'appeler un Workflow.
   quelle : elle devient les Kibana Rules 6a / 6b, sur les événements Scalingo
   collectés dans Elasticsearch, qui notifient Tchap par les Workflows.
 
-Configuration : [alertes de la stack, alertes 11 et 12](../observabilite/infra/alertes-stack-observabilite.md#alerte-11--disque-des-nœuds-elasticsearch-autoops).
+Configuration : [alertes de la stack, alertes 11 et 12](../observabilite/infra/alertes-stack-observabilite.md#alerte-m11--disque-des-nœuds-elasticsearch-autoops).
 
 ## Avantages et Inconvénients des Solutions
 
