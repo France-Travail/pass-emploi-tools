@@ -1,56 +1,7 @@
-# Expiration du compte bot Tchap. Spécification et procédure :
+# Expiration du compte bot Tchap : la règle. Spécification et procédure :
 # ../../../docs/observabilite/runbooks/runbook-tchap-expiration-bot.md.
 #
-# Le compte du bot est un compte Tchap ordinaire : il expire s'il n'est pas
-# renouvelé (CGU du 2026-10-14 : lien envoyé par email 11 mois après
-# l'inscription ou le dernier renouvellement, expiration 60 jours plus tard ; à
-# revérifier à chaque renouvellement, cf. runbook). Matrix ne donne pas
-# cette date au titulaire du compte, et un bot expiré ne peut plus notifier :
-# on range la date dans Elasticsearch et on alerte dans les 60 jours qui
-# précèdent, tant que le bot fonctionne encore.
-# À rejouer dans l'ordre : pipeline, modèle d'index, règle. Idempotent. La date du
-# compte ne s'écrit pas ici, pour qu'un rejeu ne l'écrase pas : cf. runbook, à la
-# création du bot puis à chaque renouvellement. Sans elle, la règle n'a rien à lire.
-
-PUT _ingest/pipeline/tchap-expiration-bot
-{
-  "description": "Date à partir de laquelle renouveler le compte bot Tchap, et ligne de notification",
-  "processors": [
-    {
-      "script": {
-        "description": "renouveler_a_partir_du = expire_le - 60 jours (date d'envoi du lien de renouvellement)",
-        "source": """
-          LocalDate expiration = LocalDate.parse(ctx.expire_le.substring(0, 10));
-          ctx.renouveler_a_partir_du = expiration.minusDays(60).toString();
-          ctx.message = ctx.compte + ' expire le ' + expiration
-            + ' : cliquer le lien de renouvellement reçu par email, puis mettre à jour la date';
-        """
-      }
-    }
-  ]
-}
-
-# Modèle de l'index : idempotent, il s'applique quand l'index est créé, à la
-# première écriture de la date du compte.
-PUT _index_template/tchap-expiration-bot
-{
-  "index_patterns": ["tchap-expiration-bot"],
-  "priority": 500,
-  "template": {
-    "settings": {
-      "number_of_replicas": 1,
-      "index.default_pipeline": "tchap-expiration-bot"
-    },
-    "mappings": {
-      "dynamic": "strict",
-      "properties": {
-        "compte": { "type": "keyword" },
-        "expire_le": { "type": "date" },
-        "renouveler_a_partir_du": { "type": "date" },
-        "message": { "type": "text" }
-      }
-    }
-  }
-}
+# Elle lit l'index tchap-expiration-bot : son pipeline et son modèle sont dans
+# ../../../elasticsearch/tchap-expiration-bot.console, à rejouer avant elle.
 
 @@REGLE expiration-bot@@

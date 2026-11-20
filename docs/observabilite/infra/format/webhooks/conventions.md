@@ -11,7 +11,7 @@ Cette matrice redit volontairement ce que font les pipelines, **par exception**
 Elastic du repo sont peu familiers à l'équipe, qui a besoin de lire la
 correspondance sans lire le Painless des pipelines, comme pour les logs.
 
-Ce fichier décrit **ce que font les pipelines** de [`kibana/pipelines/webhooks/`](../../../../../kibana/pipelines/webhooks/README.md) :
+Ce fichier décrit **ce que font les pipelines** de [`elasticsearch/webhooks/`](../../../../../elasticsearch/webhooks/README.md) :
 toute modification d'un pipeline se reporte ici dans la même PR, et inversement.
 La chaîne, les accès et la mise en service : [collecte par webhook](../../collecte/webhooks/README.md).
 
@@ -256,11 +256,11 @@ Les data streams lus par chaque règle : [catalogue des alertes](../../../catalo
 1. Choisir le data stream (`logs-alertes-<source>[-<env>]-default`), puis
    créer ses templates et son failure store
    ([`elasticsearch/logs/`](../../../../../elasticsearch/logs/README.md)).
-2. Écrire son pipeline dans [`kibana/pipelines/webhooks/`](../../../../../kibana/pipelines/webhooks/README.md), avec ses `_simulate` sur
+2. Écrire son pipeline dans [`elasticsearch/webhooks/`](../../../../../elasticsearch/webhooks/README.md), avec ses `_simulate` sur
    des captures réelles. Il doit poser au moins `@timestamp`, `event.provider`,
    `event.kind`, `event.action`, `event.id`, `service.name` et `message`, et
    ranger le payload brut sous `<source>.*` en `dynamic: false`.
 3. Ajouter sa section ici : payload attendu, matrice, gabarit du message, rejets.
 4. Créer son accès en écriture seule
-   ([`acces-webhooks.console`](../../../../../kibana/pipelines/webhooks/acces-webhooks.console))
+   ([`acces-webhooks.console`](../../../../../elasticsearch/webhooks/acces-webhooks.console))
    et sa règle, puis ajouter son failure store à la règle M13.
