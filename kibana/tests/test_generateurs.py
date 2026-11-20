@@ -1,13 +1,14 @@
 """Tests des générateurs de règles Kibana et de Workflows Tchap.
 
 Lancer depuis la racine du repo : python3 -I -m unittest discover -s kibana/tests -v
-Chaque test travaille sur une copie de rules/, slo/ et workflows/tchap/ dans un répertoire
-temporaire : il ne modifie jamais le repo. Ni Kibana, ni pass-emploi-api ne sont nécessaires.
+Chaque test travaille sur une copie de rules/, slo/, workflows/tchap/ et du catalogue des
+alertes dans un répertoire temporaire : il ne modifie jamais le repo. Ni Kibana, ni pass-emploi-api ne sont nécessaires.
 """
 import glob, json, os, re, shutil, subprocess, sys, tempfile, unittest, warnings
 
 SUPERVISION = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WORKFLOWS = 'system-connector-.workflows'
+CATALOGUE = os.path.join('docs', 'observabilite', 'catalogue-alertes.md')
 SALONS = list(json.load(open(os.path.join(SUPERVISION, 'workflows', 'tchap', 'salons.json'))))
 
 
@@ -16,16 +17,23 @@ def setUpModule():
 
 
 class CopieDuRepo:
-    """Copie de rules/ et workflows/tchap/ ; lance les générateurs dans la copie."""
+    """Copie de rules/, workflows/tchap/ et du catalogue, rangés comme dans le repo ; lance
+    les générateurs dans la copie."""
 
     def __enter__(self):
-        self.dossier = tempfile.mkdtemp()
+        self.racine = tempfile.mkdtemp()
+        self.dossier = os.path.join(self.racine, 'kibana')
         for chemin in ('rules', 'slo', os.path.join('workflows', 'tchap')):
             shutil.copytree(os.path.join(SUPERVISION, chemin), os.path.join(self.dossier, chemin))
+        os.makedirs(os.path.dirname(os.path.join(self.racine, CATALOGUE)))
+        shutil.copy(os.path.join(SUPERVISION, '..', CATALOGUE), os.path.join(self.racine, CATALOGUE))
         return self
 
     def __exit__(self, *erreur):
-        shutil.rmtree(self.dossier)
+        shutil.rmtree(self.racine)
+
+    def catalogue(self):
+        return open(os.path.join(self.racine, CATALOGUE)).read()
 
     def chemin(self, *morceaux):
         return os.path.join(self.dossier, *morceaux)
@@ -75,6 +83,74 @@ class TestReglesGenerees(unittest.TestCase):
                 for _, corps in requetes(open(fichier).read()):
                     for action in (corps or {}).get('actions', []):
                         self.assertEqual(action['id'], WORKFLOWS, f'{os.path.basename(fichier)} : {corps["name"]}')
+
+
+class TestCatalogue(unittest.TestCase):
+    def modifier(self, repo, dossier, code, modifier):
+        chemin = repo.regle_json(dossier, code)
+        regle = json.load(open(chemin))
+        modifier(regle)
+        json.dump(regle, open(chemin, 'w'), ensure_ascii=False, indent=2)
+
+    def test_une_ligne_par_regle(self):
+        with CopieDuRepo() as repo:
+            self.assertEqual(repo.generer_regles().returncode, 0)
+            lignes = re.findall(r'^\| (\S+) \| .*\?', repo.catalogue(), flags=re.M)
+            codes = [os.path.basename(f)[:-5] for f in glob.glob(repo.chemin('rules', '[0-9]*-*', '*.json'))]
+            self.assertCountEqual(lignes, codes)
+
+    def test_gravite_d_une_regle_burn_rate_par_fenetre(self):
+        with CopieDuRepo() as repo:
+            self.assertEqual(repo.generer_regles().returncode, 0)
+            self.assertRegex(repo.catalogue(), r'\| SLO1 \| [^|]+ \| 🚨 sur 1 h · ⚠️ sur 6 h \|')
+
+    def test_la_question_change_le_catalogue_et_le_commentaire_de_la_regle(self):
+        with CopieDuRepo() as repo:
+            self.modifier(repo, '2-applicatives', 'A6', lambda r: r.update(_question='Une question neuve ?'))
+            self.assertEqual(repo.generer_regles().returncode, 0)
+            self.assertIn('| A6 | Une question neuve ? |', repo.catalogue())
+            self.assertIn('# A6 — Une question neuve ?', open(repo.chemin('rules', 'generated', '2-rules-applicatives.console')).read())
+
+    def test_question_absente_ou_sans_point_d_interrogation(self):
+        for modifier in (lambda r: r.pop('_question'), lambda r: r.update(_question='Erreurs applicatives')):
+            with self.subTest(), CopieDuRepo() as repo:
+                self.modifier(repo, '2-applicatives', 'A6', modifier)
+                r = repo.generer_regles()
+                self.assertNotEqual(r.returncode, 0)
+                self.assertIn('A6.json : « _question » attendue', r.stderr)
+
+    def remplacer_l_index_de_a7(self, repo, index):
+        def remplacer(regle):
+            esql = regle['params']['esqlQuery']['esql']
+            regle['params']['esqlQuery']['esql'] = esql.replace('FROM logs-apm.error-*', f'FROM {index}')
+        self.modifier(repo, '2-applicatives', 'A7', remplacer)
+
+    def test_chaque_source_liste_les_regles_qui_la_lisent(self):
+        with CopieDuRepo() as repo:
+            self.assertEqual(repo.generer_regles().returncode, 0)
+            self.assertRegex(repo.catalogue(), r'\n\| `logs-apm\.error-\*` \| [^|]+ \| [^|]+ \| A7 \|\n')
+            self.assertRegex(repo.catalogue(), r'\n\| `logs-<env>-default` \| [^\n]*\bSLO1\b')
+
+    def test_index_lu_sans_source(self):
+        with CopieDuRepo() as repo:
+            self.remplacer_l_index_de_a7(repo, 'logs-inconnu-default')
+            r = repo.generer_regles()
+            self.assertNotEqual(r.returncode, 0)
+            self.assertIn('A7.json : logs-inconnu-default absent de SOURCES', r.stderr)
+
+    def test_source_lue_par_aucune_regle(self):
+        with CopieDuRepo() as repo:
+            self.remplacer_l_index_de_a7(repo, 'logs-prod-default')
+            r = repo.generer_regles()
+            self.assertNotEqual(r.returncode, 0)
+            self.assertIn('`logs-apm.error-*` lue par aucune règle', r.stderr)
+
+    def test_catalogue_modifie_a_la_main(self):
+        with CopieDuRepo() as repo:
+            open(os.path.join(repo.racine, CATALOGUE), 'a').write('ajout')
+            r = repo.generer_regles('--verifier')
+            self.assertNotEqual(r.returncode, 0)
+            self.assertIn('catalogue-alertes.md : diffère de ses sources', r.stdout)
 
 
 class TestSeuilsDesSlo(unittest.TestCase):

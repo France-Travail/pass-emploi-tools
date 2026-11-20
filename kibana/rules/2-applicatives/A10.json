@@ -1,9 +1,6 @@
 {
   "_id": "4439f310-6e45-11ec-9757-c9700cd1bb4e",
-  "_commentaire": [
-    "# A10 — Service d'authentification injoignable — prod (pass-emploi-connect) (Critical) : moniteur Heartbeat `pass-emploi-connect-status` (https://id.pass-emploi.beta.gouv.fr/health).",
-    "# Règle Uptime (Heartbeat), recréée par POST avec les paramètres de la règle d'origine."
-  ],
+  "_question": "Le service d'authentification est-il injoignable de l'extérieur ?",
   "_message": {
     "titre": "**Service d'authentification injoignable — prod (pass-emploi-connect)**",
     "gravite": "critique",

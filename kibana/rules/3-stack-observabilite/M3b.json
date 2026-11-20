@@ -1,8 +1,6 @@
 {
   "_id": "6c2a2a83-9c40-4f40-af8d-911402932417",
-  "_commentaire": [
-    "# M3b — Absence dans `logs-router-prod-default`"
-  ],
+  "_question": "Les logs du routeur Scalingo arrivent-ils encore ?",
   "_message": {
     "titre": "**Silence Logstash** — aucun log router dans `logs-router-prod-default` depuis 5 min. Drain en quarantaine ou Logstash crashé.",
     "gravite": "critique",

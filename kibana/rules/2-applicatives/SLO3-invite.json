@@ -1,5 +1,6 @@
 {
   "_id": "8c760b1b-5859-410e-9a0d-829fb0499412",
+  "_question": "Les invités arrivent-ils à se connecter ?",
   "_message": {
     "titre": "**SLO menacé — connexion en mode invité (prod)**",
     "fenetres": {

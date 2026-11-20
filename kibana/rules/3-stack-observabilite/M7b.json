@@ -1,8 +1,6 @@
 {
   "_id": "720d949a-f73f-43e5-bc46-ff22c7b96cfb",
-  "_commentaire": [
-    "# M7b — Backlog Redis staging / perf (Warning)"
-  ],
+  "_question": "Des logs s'accumulent-ils dans Redis sans être lus par Logstash ?",
   "_message": {
     "titre": "**Backlog Redis staging/perf** — la liste `logstash:ingest` reste au-dessus de 1 000 événements depuis 15 min. Le pipeline `process` ne consomme plus Redis.",
     "gravite": "avertissement",

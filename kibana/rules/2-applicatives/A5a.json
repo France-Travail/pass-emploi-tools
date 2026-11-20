@@ -1,12 +1,12 @@
 {
   "_id": "a03feacb-ddf8-4e04-af82-48f77b07a86e",
+  "_question": "Un job a-t-il planté, ou son handler est-il introuvable ?",
   "_commentaire": [
-    "# A5a — Jobs en échec, prod (version dégradée : un job qui plante ou introuvable ; un job",
-    "# qui rapporte un échec sans planter n'est pas vu, cf. ../../../docs/observabilite/alertes.md)"
+    "# Version dégradée : un job qui rapporte un échec sans planter n'est pas vu."
   ],
   "_message": {
     "titre": "**Jobs en échec — prod** ({valeur})",
-    "gravite": "information",
+    "gravite": "avertissement",
     "sections": [
       {
         "titre": "À vérifier",

@@ -1,18 +1,6 @@
 {
   "_id": "763950dd-eb65-426c-ae3a-714c35f1bc83",
-  "_commentaire": [
-    "# S3a — Limite de débit déclenchée, prod (High) : lignes rate_limit_exceeded de l'api ou de connect.",
-    "# Nouvelle règle : la première fois, la créer avec POST sur la même URL, en ajoutant",
-    "# \"rule_type_id\" et \"consumer\" à la racine du corps, au même niveau que \"name\" (pas dans \"params\") :",
-    "#   POST kbn:/api/alerting/rule/763950dd-eb65-426c-ae3a-714c35f1bc83",
-    "#   {",
-    "#     \"rule_type_id\": \".es-query\",",
-    "#     \"consumer\": \"alerts\",",
-    "#     \"name\": \"Pass Emploi - Prod - Limite de débit déclenchée\",",
-    "#     \"tags\": [...], \"artifacts\": {...}, \"schedule\": {...}, \"params\": {...}, \"actions\": [...]",
-    "#   }",
-    "# Ensuite, ce bloc tel quel, en PUT (qui refuse ces deux champs)."
-  ],
+  "_question": "Notre limite de débit bloque-t-elle des requêtes ?",
   "_message": {
     "titre": "**Limite de débit déclenchée — prod** — des requêtes sont refusées en 429.",
     "gravite": "avertissement",

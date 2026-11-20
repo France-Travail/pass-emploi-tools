@@ -242,12 +242,14 @@ Exemple : `pass-emploi-api : CVE-2026-00000 — axios (high) : Exemple de vulné
 
 ## Qui lit quels champs
 
-| Règle | Data streams | Champs lus |
-|---|---|---|
-| A4a à A4d | `logs-alertes-scalingo-prod-default` ; `-staging-` et `-perf-default` | `service.name` (hors apps de la stack), `labels.categorie` (incident ou infra), `message` |
-| M6a, M6b | mêmes data streams | `service.name` (apps de la stack : Logstash, Elastic Agent, Heartbeat), `message` |
-| S1 | `logs-alertes-github-default` | `vulnerability.severity` (`high`, `critical`), `message` |
-| 14 | les 4 failure stores | le document rejeté et son erreur |
+Les data streams lus par chaque règle : [catalogue des alertes](../../../catalogue-alertes.md).
+
+| Règle | Champs lus |
+|---|---|
+| A4a à A4d | `service.name` (hors apps de la stack), `labels.categorie` (incident ou infra), `message` |
+| M6a, M6b | `service.name` (apps de la stack : Logstash, Elastic Agent, Heartbeat), `message` |
+| S1 | `vulnerability.severity` (`high`, `critical`), `message` |
+| M13 | le document rejeté et son erreur, dans les failure stores |
 
 ## Ajouter une source
 

@@ -1,8 +1,6 @@
 {
   "_id": "da91356c-39dc-4033-bc47-83421974a049",
-  "_commentaire": [
-    "# M4b — Backpressure staging / perf (Warning)"
-  ],
+  "_question": "L'ingestion Logstash est-elle bloquée (backpressure) ?",
   "_message": {
     "titre": "**Backpressure Logstash staging/perf** — le pipeline `ingest` a au moins un thread HTTP bloqué en continu depuis 15 min (`queue_backpressure ≥ 1`).",
     "gravite": "avertissement",

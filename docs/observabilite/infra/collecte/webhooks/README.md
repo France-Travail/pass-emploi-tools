@@ -7,14 +7,7 @@ RAM/CPU…) et les CVE remontées par Dependabot via
 [`security-alerts.yml`](../../../../../.github/workflows/security-alerts.yml).
 Ils sont écrits dans un data stream par source, transformés en champs ECS par un
 ingest pipeline ([`kibana/pipelines/webhooks/`](../../../../../kibana/pipelines/webhooks/README.md)),
-et lus par des Kibana Rules rangées par périmètre :
-
-| Données                                                                       | Alertes                                                                                 |
-|-------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
-| Événements Scalingo des apps applicatives                                     | A4a à A4d dans les [alertes applicatives](../../../alertes.md)    |
-| Événements Scalingo des apps de la stack (Logstash, Elastic Agent, Heartbeat) | M6a, M6b dans les [alertes de la stack](../../alertes-stack-observabilite.md) |
-| CVE Dependabot                                                                | S1 dans les [alertes de sécurité](../../../alertes-securite.md)                |
-| Événements rejetés (failure store)                                            | 14 dans les [alertes de la stack](../../alertes-stack-observabilite.md)     |
+et lus par des Kibana Rules : [sources des données](../../../catalogue-alertes.md#sources-des-données).
 
 ## La chaîne
 

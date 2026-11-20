@@ -1,8 +1,6 @@
 {
   "_id": "121f4b04-f90d-4423-af1f-ae1344a5f7db",
-  "_commentaire": [
-    "# A4c — Opérations d'infra Scalingo des apps applicatives, prod (ℹ️, salon infra-production)"
-  ],
+  "_question": "Quelle opération d'infra a touché une app applicative (déploiement, scaling, variable) ?",
   "_message": {
     "titre": "**Opérations d'infra Scalingo des apps de prod** ({valeur})",
     "gravite": "information",

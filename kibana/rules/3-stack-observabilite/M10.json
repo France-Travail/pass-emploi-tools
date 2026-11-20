@@ -1,8 +1,6 @@
 {
   "_id": "fb66693b-f17a-4cd0-baf5-113e7e153604",
-  "_commentaire": [
-    "# M10 — ILM en échec ou policy sans suppression (Warning, bilan quotidien)"
-  ],
+  "_question": "L'ILM échoue-t-il, ou un index vit-il sous une policy qui ne supprime rien ?",
   "_message": {
     "titre": "**Rétention ILM — bilan des 24 h** — des index n'appliquent pas leur rétention : étape ILM en échec ou policy par défaut sans suppression.",
     "gravite": "avertissement",

@@ -1,8 +1,6 @@
 {
   "_id": "26888801-090e-41ee-839b-73d2832330a8",
-  "_commentaire": [
-    "# Envois Tchap en échec (tchap-client et Workflows de salon)"
-  ],
+  "_question": "Les notifications Tchap partent-elles encore ?",
   "name": "Tchap - Envoi en échec",
   "rule_type_id": ".es-query",
   "consumer": "alerts",

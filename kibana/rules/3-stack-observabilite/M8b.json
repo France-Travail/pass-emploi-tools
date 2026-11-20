@@ -1,8 +1,6 @@
 {
   "_id": "8d593176-8752-4369-a37f-6b42fa3890b2",
-  "_commentaire": [
-    "# M8b — Elastic Agent en défaut staging (Warning)"
-  ],
+  "_question": "Un Elastic Agent est-il hors service, ou échoue-t-il à envoyer ?",
   "_message": {
     "titre": "**Elastic Agent en défaut — staging** — les alertes Logstash/Redis (4, 5, 7) peuvent être aveugles.",
     "gravite": "avertissement",

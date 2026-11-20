@@ -1,8 +1,6 @@
 {
   "_id": "f181937f-c75f-4232-bfa4-221997d1cfe1",
-  "_commentaire": [
-    "# M3d — Absence dans `logs-router-staging-default` / `logs-router-perf-default`"
-  ],
+  "_question": "Les logs du routeur Scalingo arrivent-ils encore ?",
   "_message": {
     "titre": "**Silence Logstash** — aucun log router dans `logs-router-staging-default` ou `logs-router-perf-default` depuis 5 min. Drain en quarantaine ou Logstash crashé.",
     "gravite": "avertissement",

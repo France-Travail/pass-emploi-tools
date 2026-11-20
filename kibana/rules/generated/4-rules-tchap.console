@@ -19,7 +19,7 @@
 # puis POST) ; rejouer tout le fichier, qu'elle existe déjà ou non. Une règle
 # recréée perd son historique d'alertes.
 
-# Envois Tchap en échec (tchap-client et Workflows de salon)
+# tchap-envoi-echec — Les notifications Tchap partent-elles encore ?
 DELETE kbn:/api/alerting/rule/26888801-090e-41ee-839b-73d2832330a8
 POST kbn:/api/alerting/rule/26888801-090e-41ee-839b-73d2832330a8
 {

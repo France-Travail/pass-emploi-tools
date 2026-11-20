@@ -1,10 +1,6 @@
 {
   "_id": "52c66a2a-2ee1-4de2-bc5c-642a96395405",
-  "_commentaire": [
-    "# A7 — Erreurs du front (Warning). Remplace les 7 règles APM des services disparus.",
-    "# Nouvelle règle : absente de la prod avant le 2026-10-20, la créer avec POST",
-    "# (même corps plus \"rule_type_id\": \".es-query\" et \"consumer\": \"alerts\")."
-  ],
+  "_question": "Le web conseiller lève-t-il des erreurs JavaScript ?",
   "_message": {
     "titre": "**Erreurs du front — prod** — plus de 200 erreurs JavaScript en 5 min dans l'app web conseiller.",
     "gravite": "avertissement",

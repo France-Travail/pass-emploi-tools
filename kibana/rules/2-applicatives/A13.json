@@ -1,8 +1,6 @@
 {
   "_id": "3bc475a7-47d5-4320-b5b4-507727329571",
-  "_commentaire": [
-    "# A13 — Refus partenaire anormaux (Warning) : taux d'échecs par partenaire et par code de la dernière heure, contre la même heure des 7 jours précédents."
-  ],
+  "_question": "Un partenaire refuse-t-il plus de nos appels que d'habitude ?",
   "_message": {
     "titre": "**Refus partenaire anormaux — prod** — le taux d'un code d'échec d'un partenaire a au moins doublé par rapport à la même heure des 7 derniers jours.",
     "gravite": "avertissement",

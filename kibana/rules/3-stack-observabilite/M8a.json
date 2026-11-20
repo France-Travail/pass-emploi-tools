@@ -1,8 +1,6 @@
 {
   "_id": "bbb9d642-f012-4747-8154-49162245a364",
-  "_commentaire": [
-    "# M8a — Elastic Agent en défaut prod (Critical)"
-  ],
+  "_question": "Un Elastic Agent est-il hors service, ou échoue-t-il à envoyer ?",
   "_message": {
     "titre": "**Elastic Agent en défaut — prod** — les alertes Logstash/Redis (4, 5, 7) peuvent être aveugles.",
     "gravite": "critique",

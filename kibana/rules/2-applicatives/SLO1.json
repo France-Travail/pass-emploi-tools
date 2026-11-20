@@ -1,5 +1,6 @@
 {
   "_id": "ae2694af-e78e-497c-88cf-4cd43e4b01f8",
+  "_question": "Des utilisateurs sont-ils empêchés d'utiliser un parcours de l'API ?",
   "_message": {
     "titre": "**SLO menacé — disponibilité par parcours (prod)**",
     "fenetres": {

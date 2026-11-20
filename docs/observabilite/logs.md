@@ -115,10 +115,11 @@ posé sur la ligne de requête : c'est ce que fait l'utilisateur, pas le nom de
 la route. Le SLO de disponibilité se calcule par parcours : **renommer un
 parcours casse son historique**.
 
-La ligne de requête porte aussi **`http.route`**, le modèle de la route qui a
-répondu. **Absent = aucune route n'a répondu** (URL inconnue, scan) : c'est ce
+La ligne de requête de l'api porte aussi **`http.route`**, le modèle de la route
+qui a répondu. **Absent = aucune route n'a répondu** (URL inconnue, scan) : c'est ce
 qui distingue un robot d'un 404 métier. Le parcours est absent lui aussi quand
-la requête est refusée avant le routage (JSON malformé, URL inconnue).
+la requête est refusée avant le routage (JSON malformé, URL inconnue). Ni
+connect ni les appels partenaires (`external_api_call`) ne portent `http.route`.
 
 **`url.template`** est calculé à la lecture depuis `url.path`, sur toutes les
 lignes qui en portent un (appels partenaires, router, connect). Un segment qui

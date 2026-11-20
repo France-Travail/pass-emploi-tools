@@ -1,8 +1,7 @@
 {
   "_id": "1b97f0e0-870f-498d-8dd7-1c2f9aeba665",
-  "_commentaire": [
-    "# A4a — Incidents Scalingo des apps applicatives, prod (gravité par ligne)"
-  ],
+  "_question": "Une app applicative a-t-elle un incident Scalingo (crash, arrêt, seuil de métrique) ?",
+  "_gravite": "selon l'événement",
   "_message": {
     "titre": "**Incidents Scalingo des apps de prod** ({valeur})",
     "gravite": "information",

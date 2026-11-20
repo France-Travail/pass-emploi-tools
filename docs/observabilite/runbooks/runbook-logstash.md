@@ -230,10 +230,8 @@ dans les logs Scalingo de l'app `pass-emploi-logstash-prod`, chercher les lignes
 - **DLQ** (`logs-logstash-dlq-*`) : events rejetés par Elasticsearch (conflit de
   mapping, document malformé). Gérés par le pipeline `dead_letter_queue` qui les
   indexe dans `logs-logstash-dlq-{env}-default`.
-- **Erreurs de traitement** (`logs-logstash-errors-*`) : events ayant déclenché une
-  erreur Logstash pendant les filtres (`_mutate_error`, `_jsonparsefailure`,
-  `_rubyexception`…). Indexés dans `logs-logstash-errors-{env}-default` par le
-  pipeline `process`.
+- **Erreurs de traitement** (`logs-logstash-errors-*`) : events dont un filtre du
+  pipeline `process` a échoué ([routage en sortie](../infra/process/logs/pipeline.md#routage-en-sortie)).
 
 ### KQL de diagnostic
 
