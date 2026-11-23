@@ -49,8 +49,8 @@ PUT _index_template/logs-perf@template-custom
   },
   "data_stream": { "hidden": false, "allow_custom_routing": false },
   "allow_auto_create": true,
-  "_meta": { "description": "Logs de test de perf Logstash (Gatling), purgés après chaque run", "managed_by": "pass-emploi-tools" },
-  "version": 2
+  "_meta": { "description": "Logs de test de perf Logstash (Gatling), effacés par l'ILM logs-perf-retention", "managed_by": "pass-emploi-tools" },
+  "version": 3
 }
 
 # Erreurs de traitement Logstash (mutate_error, jsonparsefailure, etc.).
