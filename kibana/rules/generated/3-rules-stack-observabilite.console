@@ -1653,16 +1653,21 @@ POST kbn:/api/alerting/rule/fb66693b-f17a-4cd0-baf5-113e7e153604
      OR index LIKE "*.ds-traces-*" OR index LIKE "*.ds-heartbeat-*"
 | EVAL policy_par_defaut = policy IN ("logs", "metrics", "logs@lifecycle", "metrics@lifecycle", "metricbeat")
                            OR policy LIKE "*-default_policy"
-| WHERE success == false OR policy_par_defaut
-| STATS index_en_echec = COUNT_DISTINCT(index) WHERE success == false,
-        index_policy_par_defaut = COUNT_DISTINCT(index) WHERE policy_par_defaut,
-        policies = VALUES(policy), exemples = VALUES(index)
+| STATS dernier_echec = MAX(@timestamp) WHERE success == false,
+        dernier_succes = MAX(@timestamp) WHERE success == true,
+        etapes_par_defaut = COUNT(*) WHERE policy_par_defaut,
+        policies_index = VALUES(policy) BY index
+| EVAL bloque = dernier_echec IS NOT NULL AND (dernier_succes IS NULL OR dernier_echec > dernier_succes)
+| WHERE bloque OR etapes_par_defaut > 0
+| STATS index_en_echec = COUNT(*) WHERE bloque,
+        index_policy_par_defaut = COUNT(*) WHERE etapes_par_defaut > 0,
+        policies = VALUES(policies_index), index_concernes = VALUES(index)
 | WHERE index_en_echec > 0 OR index_policy_par_defaut > 0
-| EVAL exemples = MV_SLICE(exemples, 0, 9)"""
+| EVAL index_concernes = MV_SLICE(index_concernes, 0, 9)"""
     },
     "timeField": "@timestamp",
-    "timeWindowSize": 24,
-    "timeWindowUnit": "h",
+    "timeWindowSize": 7,
+    "timeWindowUnit": "d",
     "threshold": [
       0
     ],

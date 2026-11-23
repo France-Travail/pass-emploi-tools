@@ -301,25 +301,35 @@ et l'Elastic Agent co-localisé lui échappent (cf.
 ## Alerte M10 — ILM en échec ou policy sans suppression
 
 **Objectif** : signaler un index de nos flux qui n'applique pas sa rétention. Soit
-une étape ILM a échoué (index bloqué), soit l'index est sur une policy par défaut
+sa dernière étape ILM est en échec (index bloqué), soit l'index est sur une policy par défaut
 d'Elastic, sans phase `delete` : il grossit sans jamais être supprimé. Cas vécu :
 les métriques Fleet et les logs Elastic Agent sur `metrics@lifecycle` /
 `logs@lifecycle` jusqu'au 2026-10-05, faute des briques `@custom`.
 
 > **Source** : l'historique ILM (data stream caché `ilm-history-7`), une ligne par
 > étape exécutée : `index`, `policy`, `success`. ES|QL ne voit ce data stream
-> caché que par ses index : `FROM .ds-ilm-history-7-*`.
+> caché que par ses index : `FROM .ds-ilm-history-7-*`. Un index est bloqué si son
+> dernier échec est postérieur à sa dernière étape réussie : une erreur que l'ILM
+> relance seul ne sonne pas. L'historique garde le nom de l'index au moment de
+> l'étape, même après son passage en `partial-…`.
 >
 > **Calibrage** (30 jours au 2026-10-06) : 0 étape en échec ; 112 étapes sur
 > `metrics@lifecycle` et 17 sur `logs@lifecycle`, toutes antérieures à la
 > correction du 2026-10-05. L'alerte aurait sonné dès le premier jour.
 >
-> **Limite** : un index rattaché à une policy qui n'existe pas n'écrit rien dans
-> l'historique et échappe à l'alerte (cf. [runbook ILM, scénario 3](../runbooks/runbook-ilm.md#scénario-3--policy-inexistante-non-alerté)).
+> **Calibrage du dernier état** (30 jours au 2026-11-23) : 3 étapes en échec
+> (`forcemerge` et `searchable_snapshot` vers frozen, le 08/11, le 15/11 et le
+> 23/11), toutes relancées avec succès par l'ILM : 0 index bloqué.
+> L'ancienne règle, qui comptait tout échec des 24 h, a sonné pour chacune.
 >
-> **Sur 24 h** : rien d'urgent, l'index grossit ou attend. Même réglage que la prod
-> de l'[alerte M2](#alerte-m2--index-erreurs-de-traitement-non-vide), un seul
-> message pour tous les index concernés.
+> **Limites** : un index rattaché à une policy qui n'existe pas n'écrit rien dans
+> l'historique et échappe à l'alerte (cf. [runbook ILM, scénario 3](../runbooks/runbook-ilm.md#scénario-3--policy-inexistante-non-alerté)).
+> Un index bloqué sur une erreur que l'ILM ne relance pas n'écrit plus rien et sort
+> de l'alerte au bout des 7 jours de la fenêtre.
+>
+> **Sur 7 jours** : rien d'urgent, l'index grossit ou attend. Un seul message pour
+> tous les index concernés, comme la prod de
+> l'[alerte M2](#alerte-m2--index-erreurs-de-traitement-non-vide).
 
 ---
 
