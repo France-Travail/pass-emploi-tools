@@ -395,6 +395,18 @@ PUT _component_template/metrics-sql.postgresql_table_stats@custom
                 },
                 "last_autovacuum": {
                   "type": "keyword"
+                },
+                "toast_n_live_tup": {
+                  "type": "long"
+                },
+                "toast_n_dead_tup": {
+                  "type": "long"
+                },
+                "toast_last_autovacuum": {
+                  "type": "keyword"
+                },
+                "toast_taille_octets": {
+                  "type": "long"
                 }
               }
             }
