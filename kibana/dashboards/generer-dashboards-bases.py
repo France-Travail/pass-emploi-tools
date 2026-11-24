@@ -188,11 +188,17 @@ HAUTEUR_VERROUS = 16
 
 def postgresql():
     panneaux = [encadre(modele('investiguer-postgresql-infrastructure.md'), 9, largeur=36),
-                encadre(modele('investiguer-postgresql-requetes.md'), 16, y=56, largeur=36)] + panneaux_postgresql()
-    for panneau_ in panneaux:
-        if panneau_['gridData']['y'] >= 45:
+                encadre(modele('investiguer-postgresql-requetes.md'), 16, y=44, largeur=36)] + panneaux_postgresql()
+    # Les verrous et les deadlocks viennent des requêtes de l'app : ils ouvrent la partie « requêtes ».
+    places = {'Erreurs de collecte': 33, 'Remise à zéro des statistiques': 44,
+              'Verrous et transactions longues': 60, 'Deadlocks (cumul)': 60}
+    for panneau_ in panneaux[2:]:
+        titre = panneau_['embeddableConfig']['attributes']['title']
+        if titre in places:
+            panneau_['gridData']['y'] = places[titre]
+        elif panneau_['gridData']['y'] >= 72:
             panneau_['gridData']['y'] += HAUTEUR_VERROUS
-    return panneaux + panneaux_verrous(45)
+    return panneaux + panneaux_verrous(72)
 
 
 def panneaux_verrous(y):

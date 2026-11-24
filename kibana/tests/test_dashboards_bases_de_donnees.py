@@ -90,10 +90,10 @@ class TestDashboardsBasesDeDonnees(unittest.TestCase):
 
     def test_postgresql_infrastructure_puis_requetes(self):
         infrastructure = {'Certificat de l\'autorité', 'Mémoire des nœuds de données (% de la limite)', 'CPU des nœuds de données (%)',
-                          'Swap des nœuds de données', 'Connexions en train d\'exécuter une requête', 'Verrous et transactions longues',
-                          'Deadlocks (cumul)', 'Sessions qui en bloquent d\'autres', 'Erreurs de collecte'}
+                          'Swap des nœuds de données', 'Connexions en train d\'exécuter une requête', 'Erreurs de collecte'}
         requetes = {'Requêtes les plus lentes, en moyenne (pg_stat_statements)', 'Requêtes les plus appelées', 'Sélectivité des index',
-                    'Hygiène des index', 'Entretien des tables', 'Remise à zéro des statistiques', 'Index jamais utilisés (hors contraintes)'}
+                    'Hygiène des index', 'Entretien des tables', 'Remise à zéro des statistiques', 'Index jamais utilisés (hors contraintes)',
+                    'Verrous et transactions longues', 'Deadlocks (cumul)', 'Sessions qui en bloquent d\'autres'}
         for ligne in open(FICHIER):
             attributs = json.loads(ligne)['attributes']
             if 'PostgreSQL' not in attributs['title']:
@@ -153,7 +153,7 @@ class TestDashboardsBasesDeDonnees(unittest.TestCase):
             self.assertIn('Modèle de requête', infobulle)
             encadres = sorted(p['gridData']['y'] for p in panneaux if p['type'] == 'markdown')
             g = graphes[0]['gridData']
-            self.assertLessEqual(g['y'] + g['h'], encadres[1])
+            self.assertGreaterEqual(g['y'], encadres[1])
 
     @unittest.skipUnless(os.environ.get('MOTS_INTERDITS'), 'MOTS_INTERDITS absent : mots propres au client du support d\'audit, fournis hors du repo')
     def test_aucune_donnee_du_support(self):
