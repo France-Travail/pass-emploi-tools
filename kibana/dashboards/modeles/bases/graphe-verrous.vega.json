@@ -142,6 +142,11 @@
           "type": "formula",
           "as": "target",
           "expr": "datum.bloque"
+        },
+        {
+          "type": "formula",
+          "as": "sens",
+          "expr": "datum.verrou == 'transactionid' ? 'Attend la fin de la transaction qui a modifié la même ligne (le cas le plus courant).' : datum.verrou == 'tuple' ? 'Plusieurs sessions veulent modifier la même ligne en même temps.' : datum.verrou == 'relation' ? 'Attend une table entière : souvent une migration (ALTER TABLE) ou un LOCK TABLE.' : datum.verrou == 'advisory' ? 'Verrou applicatif posé volontairement par le code.' : 'Autre type de verrou : voir le runbook PostgreSQL.'"
         }
       ]
     },
@@ -391,6 +396,11 @@
           "type": "formula",
           "as": "visible",
           "expr": "datum.n.visible"
+        },
+        {
+          "type": "formula",
+          "as": "sens",
+          "expr": "!datum.visible ? 'Session d\\'un autre utilisateur de la base (console, outil) : la supervision ne voit pas son détail. Voir le runbook pour la retrouver.' : indexof(datum.etat, 'aborted') >= 0 ? 'Une requête de sa transaction a échoué et la transaction n\\'a jamais été annulée : elle garde ses verrous. Chercher l\\'erreur dans les logs de l\\'api.' : indexof(datum.etat, 'idle in transaction') == 0 ? 'Transaction ouverte qui n\\'exécute plus rien : souvent un await sur autre chose que la base (appel HTTP, file de jobs) dans un bloc sequelize.transaction. Elle garde ses verrous jusqu\\'à la fin du bloc.' : datum.etat == 'active' ? 'Requête en cours d\\'exécution, qui tient ses verrous jusqu\\'à la fin de sa transaction : job, export ou migration ?' : indexof(datum.etat, 'en attente') == 0 ? 'Cette requête attend qu\\'une autre transaction se termine : elle n\\'est pas en cause, c\\'est la session au bout de la flèche qui l\\'est.' : 'État non relevé.'"
         }
       ]
     }
@@ -487,7 +497,7 @@
             "signal": "datum.visible ? [] : [3, 3]"
           },
           "tooltip": {
-            "signal": "{'title': 'Session ' + datum.pid + ' (' + datum.role + ')', 'Modèle de requête': datum.modele, 'État': datum.etat, 'Application': datum.application || '—', 'Durée (s)': datum.duree_s, 'Base': datum.base}"
+            "signal": "{'title': 'Session ' + datum.pid + ' (' + datum.role + ')', 'Ce que ça veut dire': datum.sens, 'Modèle de requête': datum.modele, 'État': datum.etat, 'Application': datum.application || '—', 'Durée (s)': datum.duree_s, 'Base': datum.base}"
           }
         }
       },
@@ -571,7 +581,7 @@
             "value": 2
           },
           "tooltip": {
-            "signal": "{'title': 'Session ' + split(datum.bloqueur, ':')[1] + ' → session ' + split(datum.bloque, ':')[1], 'Verrou attendu': datum.verrou, 'Attente maximale (s)': datum.attente_max_s, 'Vu de': timeFormat(datum.debut, '%H:%M'), 'à': timeFormat(datum.fin, '%H:%M')}"
+            "signal": "{'title': 'Session ' + split(datum.bloqueur, ':')[1] + ' bloque la session ' + split(datum.bloque, ':')[1], 'Ce que ça veut dire': datum.sens, 'Verrou attendu': datum.verrou, 'Attente maximale (s)': datum.attente_max_s, 'Vu de': timeFormat(datum.debut, '%H:%M'), 'à': timeFormat(datum.fin, '%H:%M')}"
           }
         }
       },

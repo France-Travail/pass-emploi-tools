@@ -53,6 +53,7 @@ LIBELLES = {
     'base': 'Base', 'politique': 'Politique mémoire', 'maxmemory': 'maxmemory',
     'bloqueur': 'Session (pid)', 'sessions_bloquees': 'Sessions bloquées', 'transaction_s': 'Transaction ouverte (s)',
     'attente_max_s': 'Attente max (s)', 'modele': 'Modèle de requête', 'application': 'Application',
+    'etat': 'État du bloqueur', 'que_faire': 'Que faire',
 }
 
 
@@ -84,7 +85,7 @@ def panneau(titre, description, esql, params, vis, x, y, w, h, abscisse=None, se
         if borne:
             visualisation['yLeftExtent'] = {'mode': 'custom', 'lowerBound': 0, 'upperBound': borne}
     else:
-        texte_long = {'requete', 'span.name', 'modele'}
+        texte_long = {'requete', 'span.name', 'modele', 'que_faire'}
         visualisation = {'columns': [{'columnId': n, 'isTransposed': False, 'isMetric': type_lens(t) == 'number',
                                       **({'width': 620} if n in texte_long else {})}
                                      for n, t in cols],
@@ -204,10 +205,10 @@ def postgresql():
 def panneaux_verrous(y):
     p = {'base': json.dumps(bases('postgresql')[0][2])}
     return [
-        graphe_vega('Qui bloque qui', 'Chaque relevé (1 min) des sessions qui attendent un verrou : une flèche va de la session qui bloque vers celle qui attend. Survoler une session pour son modèle de requête (sans valeur), son état et sa durée. Toutes les bases supervisées, sur la période du dashboard. Session en pointillés : bloqueur d\'un autre utilisateur, invisible de la supervision.',
+        graphe_vega('Qui bloque qui', 'Un cercle par session, une flèche de la session qui bloque (rouge) vers celle qui attend (orange) ; orange foncé : au milieu d\'une chaîne. Plus le cercle est grand, plus la transaction (ou l\'attente) dure. Survoler une session : son modèle de requête (sans valeur), son état et ce qu\'il veut dire ; survoler une flèche : le verrou attendu. Pointillés : bloqueur d\'un autre utilisateur, invisible de la supervision. Relevé chaque minute, toutes les bases supervisées de la période.',
                     'graphe-verrous.vega.json', 0, y, 32, HAUTEUR_VERROUS),
-        panneau('Sessions qui en bloquent d\'autres', 'Sessions qui ont bloqué au moins une autre session sur la période : combien, depuis quand leur transaction est ouverte, et leur dernier modèle de requête connu.',
-                f'FROM metrics-sql.postgresql_verrous-*\n| WHERE {BASE}\n| STATS sessions_bloquees = COUNT_DISTINCT(sql.metrics.bloque_pid), transaction_s = MAX(sql.metrics.bloqueur_transaction_s), attente_max_s = MAX(sql.metrics.attente_s), modele = MAX(sql.metrics.bloqueur_modele), application = MAX(sql.metrics.bloqueur_application), derniere = MAX(@timestamp) BY bloqueur = sql.metrics.bloqueur_pid\n| EVAL modele = COALESCE(modele, "non visible ou requête en cours")\n| SORT sessions_bloquees DESC, derniere DESC\n| KEEP bloqueur, sessions_bloquees, transaction_s, attente_max_s, modele, application, derniere\n| LIMIT 20',
+        panneau('Sessions qui en bloquent d\'autres', 'Les sessions qui ont bloqué au moins une autre session sur la période, la plus gênante en tête : souvent la seule à traiter. Transaction ouverte : depuis combien de temps elle tient ses verrous. La colonne « Que faire » donne la piste selon son état ; le détail est dans le runbook PostgreSQL.',
+                f'FROM metrics-sql.postgresql_verrous-*\n| WHERE {BASE}\n| STATS sessions_bloquees = COUNT_DISTINCT(sql.metrics.bloque_pid), transaction_s = MAX(sql.metrics.bloqueur_transaction_s), attente_max_s = MAX(sql.metrics.attente_s), modele = MAX(sql.metrics.bloqueur_modele), application = MAX(sql.metrics.bloqueur_application), etat = MAX(sql.metrics.bloqueur_etat), derniere = MAX(@timestamp) BY bloqueur = sql.metrics.bloqueur_pid\n| EVAL modele = COALESCE(modele, "non visible ou requête en cours"), que_faire = CASE(etat LIKE "idle in transaction (aborted)*", "transaction en échec jamais annulée : chercher l\'erreur dans les logs de l\'api", etat LIKE "idle in transaction*", "transaction restée ouverte : chercher un await hors base dans le bloc sequelize.transaction", etat == "active", "requête longue en cours : job, export ou migration ?", "session d\'un autre utilisateur : console ou outil connecté ?")\n| SORT sessions_bloquees DESC, derniere DESC\n| KEEP bloqueur, sessions_bloquees, transaction_s, attente_max_s, etat, que_faire, modele, application, derniere\n| LIMIT 20',
                 p, 'lnsDatatable', 32, y, 16, HAUTEUR_VERROUS),
     ]
 
@@ -264,10 +265,10 @@ def panneaux_postgresql():
         panneau('Entretien des tables', 'Au dernier relevé, tables d\'au moins 1 000 lignes : part de lignes mortes, modifications depuis le dernier ANALYZE, derniers ANALYZE et VACUUM (manuels ou automatiques). En tête, les tables les plus en retard.',
                 f'FROM metrics-sql.postgresql_table_stats-*\n| WHERE {BASE}\n| INLINE STATS dernier = MAX(@timestamp)\n| WHERE @timestamp == dernier AND sql.metrics.n_live_tup + sql.metrics.n_dead_tup >= 1000\n| EVAL part_lignes_mortes = CASE(sql.metrics.n_live_tup + sql.metrics.n_dead_tup > 0, ROUND(sql.metrics.n_dead_tup * 100.0 / (sql.metrics.n_live_tup + sql.metrics.n_dead_tup), 1), 0.0), part_modifiee = CASE(sql.metrics.n_live_tup > 0, ROUND(sql.metrics.n_mod_since_analyze * 100.0 / sql.metrics.n_live_tup, 1), 0.0)\n| SORT part_lignes_mortes DESC, part_modifiee DESC\n| KEEP sql.metrics.table, part_lignes_mortes, part_modifiee, sql.metrics.last_autoanalyze, sql.metrics.last_analyze, sql.metrics.last_autovacuum, sql.metrics.last_vacuum, sql.metrics.n_live_tup\n| LIMIT 20',
                 p, 'lnsDatatable', 0, 142, 48, 14),
-        panneau('Verrous et transactions longues', 'Chaque minute : plus vieille transaction ouverte, sessions ouvertes dans une transaction sans rien faire, sessions qui attendent un verrou. Une transaction qui dure bloque le vacuum et peut bloquer les écritures.',
+        panneau('Verrous et transactions longues', 'Une courbe par mesure, relevée chaque minute. Plus vieille transaction (s) : depuis combien de temps la plus ancienne transaction de l\'api est ouverte ; quelques secondes est normal, au-delà d\'une minute une transaction est restée ouverte. Sessions idle in transaction : des transactions ouvertes qui n\'exécutent rien (souvent un await sur autre chose que la base dans un bloc sequelize.transaction). Sessions en attente de verrou : des requêtes immobilisées par une autre transaction ; plus de zéro pendant plusieurs relevés = un blocage, à lire dans « Qui bloque qui ».',
                 f'FROM metrics-sql.postgresql_activite-*\n| WHERE {BASE}\n| STATS transaction_la_plus_longue_s = MAX(sql.metrics.plus_vieille_transaction_s), sessions_idle_in_transaction = MAX(sql.metrics.sessions_idle_in_transaction), sessions_en_attente_de_verrou = MAX(sql.metrics.sessions_en_attente_verrou) BY {TRANCHE}',
                 p, 'lnsXY', 0, 33, 32, 12, 'tranche', ['transaction_la_plus_longue_s', 'sessions_idle_in_transaction', 'sessions_en_attente_de_verrou']),
-        panneau('Deadlocks (cumul)', 'Deadlocks de la base depuis la remise à zéro des statistiques : une pente = des deadlocks en cours.',
+        panneau('Deadlocks (cumul)', 'Nombre total de deadlocks depuis la remise à zéro des statistiques. Un deadlock : deux transactions s\'attendent mutuellement ; PostgreSQL en annule une au bout d\'une seconde (erreur « deadlock detected » dans l\'api). Une courbe plate est normale ; une pente = des deadlocks en cours, à chercher dans les erreurs de l\'api.',
                 f'FROM metrics-postgresql.database-*\n| WHERE {BASE} AND postgresql.database.name IS NOT NULL AND postgresql.database.name NOT IN ("postgres", "template0", "template1", "")\n| STATS deadlocks = MAX(TO_LONG(postgresql.database.deadlocks)) BY {TRANCHE}',
                 p, 'lnsXY', 32, 33, 16, 12, 'tranche', ['deadlocks']),
         panneau('Swap des nœuds de données', 'Le vrai signal de manque de mémoire : un swap qui monte. La mémoire à 100 % la nuit, elle, est le cache des sauvegardes.',
