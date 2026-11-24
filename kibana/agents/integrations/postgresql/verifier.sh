@@ -9,8 +9,9 @@ declare -A attendues=(
   [table_stats.sql]="table seq_scan seq_tup_read idx_scan n_live_tup n_dead_tup n_mod_since_analyze last_analyze last_autoanalyze last_vacuum last_autovacuum n_tup_ins n_tup_upd n_tup_del stats_reset"
   [index_hygiene.sql]="table index valide doublon_de index_de_la_table taille_index_octets taille_table_octets taille_index_table_octets"
   [activite.sql]="plus_vieille_transaction_s sessions_idle_in_transaction sessions_en_attente_verrou plus_longue_attente_verrou_s"
+  [verrous.sql]="bloque_pid bloqueur_pid bloqueur_visible attente_s type_verrou bloque_application bloque_requete_id bloque_modele bloqueur_etat bloqueur_application bloqueur_transaction_s bloqueur_requete_id bloqueur_modele"
 )
-for f in statements.sql index_stats.sql table_stats.sql index_hygiene.sql activite.sql; do
+for f in statements.sql index_stats.sql table_stats.sql index_hygiene.sql activite.sql verrous.sql; do
   if [ ! -f "$f" ]; then echo "$f : ABSENT"; echec=1; continue; fi
   debut=$(date +%s%N)
   sortie=$(psql "$SCALINGO_POSTGRESQL_URL" -X -A -F '|' -v ON_ERROR_STOP=1 -f "$f" 2>&1) || { echo "$f : ERREUR $sortie"; echec=1; continue; }

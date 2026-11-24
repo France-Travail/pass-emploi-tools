@@ -51,6 +51,8 @@ LIBELLES = {
     'lectures_sans_index': 'Lectures sans index', 'lectures_par_index': 'Lectures par index', 'lignes': 'Lignes',
     'derniere': 'Dernière', 'scans': 'Scans', 'lignes_par_scan': 'Lignes lues par scan', 'part_table_par_scan': 'Part de la table par scan (%)', 'part_recuperee': 'Part récupérée (%)', 'index_de_la_table': 'Index', 'taille_index_mo': 'Index (Mo)', 'taille_table_mo': 'Table (Mo)', 'poids_index_table': 'Index / table', 'probleme': 'Problème', 'part_lignes_mortes': 'Lignes mortes (%)', 'part_modifiee': 'Modifiée depuis ANALYZE (%)', 'sql.metrics.last_autoanalyze': 'Dernier autoanalyze', 'sql.metrics.last_analyze': 'Dernier ANALYZE', 'sql.metrics.last_autovacuum': 'Dernier autovacuum', 'sql.metrics.last_vacuum': 'Dernier VACUUM', 'sql.metrics.n_live_tup': 'Lignes', 'expire_le': 'Expire le', 'jours_restants': 'Jours restants', 'statistiques': 'Statistiques', 'depuis': 'Depuis', 'component.id': 'Intégration', 'erreur': 'Erreur', 'occurrences': 'Occurrences',
     'base': 'Base', 'politique': 'Politique mémoire', 'maxmemory': 'maxmemory',
+    'bloqueur': 'Session (pid)', 'sessions_bloquees': 'Sessions bloquées', 'transaction_s': 'Transaction ouverte (s)',
+    'attente_max_s': 'Attente max (s)', 'modele': 'Modèle de requête', 'application': 'Application',
 }
 
 
@@ -82,7 +84,7 @@ def panneau(titre, description, esql, params, vis, x, y, w, h, abscisse=None, se
         if borne:
             visualisation['yLeftExtent'] = {'mode': 'custom', 'lowerBound': 0, 'upperBound': borne}
     else:
-        texte_long = {'requete', 'span.name'}
+        texte_long = {'requete', 'span.name', 'modele'}
         visualisation = {'columns': [{'columnId': n, 'isTransposed': False, 'isMetric': type_lens(t) == 'number',
                                       **({'width': 620} if n in texte_long else {})}
                                      for n, t in cols],
@@ -109,6 +111,18 @@ def panneau(titre, description, esql, params, vis, x, y, w, h, abscisse=None, se
         'panelIndex': indice,
         'gridData': {'x': x, 'y': y, 'w': w, 'h': h, 'i': indice},
     }
+
+
+def graphe_vega(titre, description, fichier, x, y, w, h):
+    indice = str(uuid.uuid5(uuid.NAMESPACE_URL, 'panneau ' + titre))
+    spec = json.dumps(json.loads(modele(fichier)), ensure_ascii=False, indent=1)
+    return {'type': 'visualization',
+            'embeddableConfig': {'savedVis': {'title': titre, 'description': description, 'type': 'vega',
+                                              'params': {'spec': spec}, 'uiState': {},
+                                              'data': {'aggs': [], 'searchSource': {'query': {'query': '', 'language': 'kuery'},
+                                                                                    'filter': []}}},
+                                 'title': titre, 'description': description, 'enhancements': {}},
+            'panelIndex': indice, 'gridData': {'x': x, 'y': y, 'w': w, 'h': h, 'i': indice}}
 
 
 def controle(*definitions):
@@ -169,9 +183,27 @@ FILTRE_TABLE_REQUETE = ('(?table == "toutes" OR LOCATE(sql.metrics.requete, CONC
                         ' OR LOCATE(sql.metrics.requete, CONCAT(" ", ?table, ",")) > 0)')
 
 
+HAUTEUR_VERROUS = 16
+
+
 def postgresql():
-    return [encadre(modele('investiguer-postgresql-infrastructure.md'), 9, largeur=36),
-            encadre(modele('investiguer-postgresql-requetes.md'), 16, y=56, largeur=36)] + panneaux_postgresql()
+    panneaux = [encadre(modele('investiguer-postgresql-infrastructure.md'), 9, largeur=36),
+                encadre(modele('investiguer-postgresql-requetes.md'), 16, y=56, largeur=36)] + panneaux_postgresql()
+    for panneau_ in panneaux:
+        if panneau_['gridData']['y'] >= 45:
+            panneau_['gridData']['y'] += HAUTEUR_VERROUS
+    return panneaux + panneaux_verrous(45)
+
+
+def panneaux_verrous(y):
+    p = {'base': json.dumps(bases('postgresql')[0][2])}
+    return [
+        graphe_vega('Qui bloque qui', 'Chaque relevé (1 min) des sessions qui attendent un verrou : une flèche va de la session qui bloque vers celle qui attend. Survoler une session pour son modèle de requête (sans valeur), son état et sa durée. Toutes les bases supervisées, sur la période du dashboard. Session en pointillés : bloqueur d\'un autre utilisateur, invisible de la supervision.',
+                    'graphe-verrous.vega.json', 0, y, 32, HAUTEUR_VERROUS),
+        panneau('Sessions qui en bloquent d\'autres', 'Sessions qui ont bloqué au moins une autre session sur la période : combien, depuis quand leur transaction est ouverte, et leur dernier modèle de requête connu.',
+                f'FROM metrics-sql.postgresql_verrous-*\n| WHERE {BASE}\n| STATS sessions_bloquees = COUNT_DISTINCT(sql.metrics.bloque_pid), transaction_s = MAX(sql.metrics.bloqueur_transaction_s), attente_max_s = MAX(sql.metrics.attente_s), modele = MAX(sql.metrics.bloqueur_modele), application = MAX(sql.metrics.bloqueur_application), derniere = MAX(@timestamp) BY bloqueur = sql.metrics.bloqueur_pid\n| EVAL modele = COALESCE(modele, "non visible ou requête en cours")\n| SORT sessions_bloquees DESC, derniere DESC\n| KEEP bloqueur, sessions_bloquees, transaction_s, attente_max_s, modele, application, derniere\n| LIMIT 20',
+                p, 'lnsDatatable', 32, y, 16, HAUTEUR_VERROUS),
+    ]
 
 
 def panneaux_postgresql():

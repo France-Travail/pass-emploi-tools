@@ -1,0 +1,593 @@
+{
+  "$schema": "https://vega.github.io/schema/vega/v5.json",
+  "autosize": "none",
+  "padding": 8,
+  "signals": [
+    {
+      "name": "rayon",
+      "value": 14
+    }
+  ],
+  "data": [
+    {
+      "name": "lignes",
+      "url": {
+        "index": "metrics-sql.postgresql_verrous-*",
+        "%context%": true,
+        "%timefield%": "@timestamp",
+        "body": {
+          "size": 2000,
+          "_source": false,
+          "fields": [
+            "@timestamp",
+            "labels.base",
+            "sql.metrics.*"
+          ],
+          "sort": [
+            {
+              "@timestamp": "desc"
+            }
+          ]
+        }
+      },
+      "format": {
+        "property": "hits.hits"
+      },
+      "transform": [
+        {
+          "type": "formula",
+          "as": "f",
+          "expr": "datum.fields"
+        },
+        {
+          "type": "formula",
+          "as": "base",
+          "expr": "datum.f['labels.base'] && datum.f['labels.base'][0] != null ? datum.f['labels.base'][0] : ''"
+        },
+        {
+          "type": "formula",
+          "as": "t",
+          "expr": "toDate(datum.f['@timestamp'][0])"
+        },
+        {
+          "type": "formula",
+          "as": "bloque",
+          "expr": "datum.base + ':' + datum.f['sql.metrics.bloque_pid'][0]"
+        },
+        {
+          "type": "formula",
+          "as": "bloqueur",
+          "expr": "datum.base + ':' + datum.f['sql.metrics.bloqueur_pid'][0]"
+        },
+        {
+          "type": "formula",
+          "as": "visible",
+          "expr": "datum.f['sql.metrics.bloqueur_visible'] && datum.f['sql.metrics.bloqueur_visible'][0] != null ? datum.f['sql.metrics.bloqueur_visible'][0] : false"
+        },
+        {
+          "type": "formula",
+          "as": "attente_s",
+          "expr": "datum.f['sql.metrics.attente_s'] && datum.f['sql.metrics.attente_s'][0] != null ? datum.f['sql.metrics.attente_s'][0] : 0"
+        },
+        {
+          "type": "formula",
+          "as": "transaction_s",
+          "expr": "datum.f['sql.metrics.bloqueur_transaction_s'] && datum.f['sql.metrics.bloqueur_transaction_s'][0] != null ? datum.f['sql.metrics.bloqueur_transaction_s'][0] : 0"
+        },
+        {
+          "type": "formula",
+          "as": "verrou",
+          "expr": "datum.f['sql.metrics.type_verrou'] && datum.f['sql.metrics.type_verrou'][0] != null ? datum.f['sql.metrics.type_verrou'][0] : 'inconnu'"
+        },
+        {
+          "type": "formula",
+          "as": "modele_bloque",
+          "expr": "datum.f['sql.metrics.bloque_modele'] && datum.f['sql.metrics.bloque_modele'][0] != null ? datum.f['sql.metrics.bloque_modele'][0] : null"
+        },
+        {
+          "type": "formula",
+          "as": "modele_bloqueur",
+          "expr": "datum.f['sql.metrics.bloqueur_modele'] && datum.f['sql.metrics.bloqueur_modele'][0] != null ? datum.f['sql.metrics.bloqueur_modele'][0] : null"
+        },
+        {
+          "type": "formula",
+          "as": "app_bloque",
+          "expr": "datum.f['sql.metrics.bloque_application'] && datum.f['sql.metrics.bloque_application'][0] != null ? datum.f['sql.metrics.bloque_application'][0] : ''"
+        },
+        {
+          "type": "formula",
+          "as": "app_bloqueur",
+          "expr": "datum.f['sql.metrics.bloqueur_application'] && datum.f['sql.metrics.bloqueur_application'][0] != null ? datum.f['sql.metrics.bloqueur_application'][0] : ''"
+        },
+        {
+          "type": "formula",
+          "as": "etat_bloqueur",
+          "expr": "datum.f['sql.metrics.bloqueur_etat'] && datum.f['sql.metrics.bloqueur_etat'][0] != null ? datum.f['sql.metrics.bloqueur_etat'][0] : 'inconnu'"
+        }
+      ]
+    },
+    {
+      "name": "liens",
+      "source": "lignes",
+      "transform": [
+        {
+          "type": "aggregate",
+          "groupby": [
+            "bloqueur",
+            "bloque",
+            "verrou"
+          ],
+          "fields": [
+            "attente_s",
+            "t",
+            "t"
+          ],
+          "ops": [
+            "max",
+            "min",
+            "max"
+          ],
+          "as": [
+            "attente_max_s",
+            "debut",
+            "fin"
+          ]
+        },
+        {
+          "type": "formula",
+          "as": "source",
+          "expr": "datum.bloqueur"
+        },
+        {
+          "type": "formula",
+          "as": "target",
+          "expr": "datum.bloque"
+        }
+      ]
+    },
+    {
+      "name": "modeles_connus",
+      "source": "lignes",
+      "transform": [
+        {
+          "type": "fold",
+          "fields": [
+            "modele_bloque",
+            "modele_bloqueur"
+          ],
+          "as": [
+            "role_modele",
+            "modele"
+          ]
+        },
+        {
+          "type": "formula",
+          "as": "id",
+          "expr": "datum.role_modele == 'modele_bloque' ? datum.bloque : datum.bloqueur"
+        },
+        {
+          "type": "filter",
+          "expr": "datum.modele != null"
+        },
+        {
+          "type": "aggregate",
+          "groupby": [
+            "id"
+          ],
+          "fields": [
+            "t"
+          ],
+          "ops": [
+            "argmax"
+          ],
+          "as": [
+            "d"
+          ]
+        },
+        {
+          "type": "formula",
+          "as": "modele",
+          "expr": "datum.d.modele"
+        }
+      ]
+    },
+    {
+      "name": "cotes_bloques",
+      "source": "lignes",
+      "transform": [
+        {
+          "type": "aggregate",
+          "groupby": [
+            "bloque"
+          ],
+          "fields": [
+            "t"
+          ],
+          "ops": [
+            "argmax"
+          ],
+          "as": [
+            "d"
+          ]
+        },
+        {
+          "type": "formula",
+          "as": "id",
+          "expr": "datum.bloque"
+        },
+        {
+          "type": "formula",
+          "as": "bloqueur",
+          "expr": "false"
+        },
+        {
+          "type": "formula",
+          "as": "modele",
+          "expr": "'modèle inconnu (requête en cours)'"
+        },
+        {
+          "type": "formula",
+          "as": "application",
+          "expr": "datum.d.app_bloque"
+        },
+        {
+          "type": "formula",
+          "as": "duree_s",
+          "expr": "datum.d.attente_s"
+        },
+        {
+          "type": "formula",
+          "as": "etat",
+          "expr": "'en attente d\\'un verrou (' + datum.d.verrou + ')'"
+        },
+        {
+          "type": "formula",
+          "as": "base",
+          "expr": "datum.d.base"
+        },
+        {
+          "type": "formula",
+          "as": "visible",
+          "expr": "true"
+        }
+      ]
+    },
+    {
+      "name": "cotes_bloqueurs",
+      "source": "lignes",
+      "transform": [
+        {
+          "type": "aggregate",
+          "groupby": [
+            "bloqueur"
+          ],
+          "fields": [
+            "t"
+          ],
+          "ops": [
+            "argmax"
+          ],
+          "as": [
+            "d"
+          ]
+        },
+        {
+          "type": "formula",
+          "as": "id",
+          "expr": "datum.bloqueur"
+        },
+        {
+          "type": "formula",
+          "as": "bloqueur",
+          "expr": "true"
+        },
+        {
+          "type": "formula",
+          "as": "modele",
+          "expr": "datum.d.visible ? 'modèle inconnu (requête en cours)' : 'session d\\'un autre utilisateur, non visible'"
+        },
+        {
+          "type": "formula",
+          "as": "application",
+          "expr": "datum.d.app_bloqueur"
+        },
+        {
+          "type": "formula",
+          "as": "duree_s",
+          "expr": "datum.d.transaction_s"
+        },
+        {
+          "type": "formula",
+          "as": "etat",
+          "expr": "datum.d.etat_bloqueur"
+        },
+        {
+          "type": "formula",
+          "as": "base",
+          "expr": "datum.d.base"
+        },
+        {
+          "type": "formula",
+          "as": "visible",
+          "expr": "datum.d.visible"
+        }
+      ]
+    },
+    {
+      "name": "noeuds",
+      "source": [
+        "cotes_bloqueurs",
+        "cotes_bloques"
+      ],
+      "transform": [
+        {
+          "type": "aggregate",
+          "groupby": [
+            "id"
+          ],
+          "fields": [
+            "bloqueur",
+            "bloqueur"
+          ],
+          "ops": [
+            "argmax",
+            "count"
+          ],
+          "as": [
+            "n",
+            "roles"
+          ]
+        },
+        {
+          "type": "formula",
+          "as": "pid",
+          "expr": "split(datum.id, ':')[1]"
+        },
+        {
+          "type": "formula",
+          "as": "role",
+          "expr": "datum.roles > 1 ? 'bloque et bloqué' : (datum.n.bloqueur ? 'bloqueur' : 'bloqué')"
+        },
+        {
+          "type": "lookup",
+          "from": "modeles_connus",
+          "key": "id",
+          "fields": [
+            "id"
+          ],
+          "values": [
+            "modele"
+          ],
+          "as": [
+            "modele_connu"
+          ]
+        },
+        {
+          "type": "formula",
+          "as": "modele",
+          "expr": "datum.modele_connu != null ? datum.modele_connu : datum.n.modele"
+        },
+        {
+          "type": "formula",
+          "as": "application",
+          "expr": "datum.n.application"
+        },
+        {
+          "type": "formula",
+          "as": "duree_s",
+          "expr": "datum.n.duree_s"
+        },
+        {
+          "type": "formula",
+          "as": "etat",
+          "expr": "datum.n.etat"
+        },
+        {
+          "type": "formula",
+          "as": "base",
+          "expr": "datum.n.base"
+        },
+        {
+          "type": "formula",
+          "as": "visible",
+          "expr": "datum.n.visible"
+        }
+      ]
+    }
+  ],
+  "scales": [
+    {
+      "name": "couleur",
+      "type": "ordinal",
+      "domain": [
+        "bloqueur",
+        "bloque et bloqué",
+        "bloqué"
+      ],
+      "range": [
+        "#d00000",
+        "#ff7f0e",
+        "#ffa500"
+      ]
+    },
+    {
+      "name": "taille",
+      "type": "sqrt",
+      "domain": {
+        "data": "noeuds",
+        "field": "duree_s"
+      },
+      "zero": true,
+      "range": [
+        120,
+        1600
+      ]
+    }
+  ],
+  "legends": [
+    {
+      "fill": "couleur",
+      "orient": "top-left",
+      "title": "Session",
+      "symbolType": "circle"
+    }
+  ],
+  "marks": [
+    {
+      "type": "text",
+      "encode": {
+        "update": {
+          "x": {
+            "signal": "width / 2"
+          },
+          "y": {
+            "signal": "height / 2"
+          },
+          "align": {
+            "value": "center"
+          },
+          "text": {
+            "signal": "length(data('noeuds')) == 0 ? 'Aucune session bloquée sur la période' : ''"
+          },
+          "fill": {
+            "value": "#69707d"
+          },
+          "fontSize": {
+            "value": 14
+          }
+        }
+      }
+    },
+    {
+      "name": "sessions",
+      "type": "symbol",
+      "zindex": 1,
+      "from": {
+        "data": "noeuds"
+      },
+      "encode": {
+        "enter": {
+          "stroke": {
+            "value": "#ffffff"
+          },
+          "strokeWidth": {
+            "value": 1.5
+          }
+        },
+        "update": {
+          "fill": {
+            "scale": "couleur",
+            "field": "role"
+          },
+          "size": {
+            "scale": "taille",
+            "field": "duree_s"
+          },
+          "strokeDash": {
+            "signal": "datum.visible ? [] : [3, 3]"
+          },
+          "tooltip": {
+            "signal": "{'title': 'Session ' + datum.pid + ' (' + datum.role + ')', 'Modèle de requête': datum.modele, 'État': datum.etat, 'Application': datum.application || '—', 'Durée (s)': datum.duree_s, 'Base': datum.base}"
+          }
+        }
+      },
+      "transform": [
+        {
+          "type": "force",
+          "signal": "simulation",
+          "iterations": 300,
+          "static": true,
+          "forces": [
+            {
+              "force": "center",
+              "x": {
+                "signal": "width / 2"
+              },
+              "y": {
+                "signal": "height / 2"
+              }
+            },
+            {
+              "force": "collide",
+              "radius": {
+                "signal": "rayon * 2"
+              }
+            },
+            {
+              "force": "nbody",
+              "strength": -80
+            },
+            {
+              "force": "link",
+              "links": "liens",
+              "id": "datum.id",
+              "distance": 110
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "text",
+      "from": {
+        "data": "sessions"
+      },
+      "encode": {
+        "update": {
+          "x": {
+            "field": "x"
+          },
+          "y": {
+            "field": "y",
+            "offset": 22
+          },
+          "align": {
+            "value": "center"
+          },
+          "text": {
+            "field": "datum.pid"
+          },
+          "fontSize": {
+            "value": 10
+          },
+          "fill": {
+            "value": "#343741"
+          }
+        }
+      }
+    },
+    {
+      "type": "path",
+      "from": {
+        "data": "liens"
+      },
+      "interactive": true,
+      "encode": {
+        "update": {
+          "stroke": {
+            "value": "#98a2b3"
+          },
+          "strokeWidth": {
+            "value": 2
+          },
+          "tooltip": {
+            "signal": "{'title': 'Session ' + split(datum.bloqueur, ':')[1] + ' → session ' + split(datum.bloque, ':')[1], 'Verrou attendu': datum.verrou, 'Attente maximale (s)': datum.attente_max_s, 'Vu de': timeFormat(datum.debut, '%H:%M'), 'à': timeFormat(datum.fin, '%H:%M')}"
+          }
+        }
+      },
+      "transform": [
+        {
+          "type": "linkpath",
+          "require": {
+            "signal": "simulation"
+          },
+          "shape": "line",
+          "sourceX": "datum.source.x",
+          "sourceY": "datum.source.y",
+          "targetX": "datum.target.x",
+          "targetY": "datum.target.y"
+        }
+      ]
+    }
+  ]
+}

@@ -6,7 +6,7 @@ import filecmp, json, os, shutil, subprocess, sys, tempfile, unittest
 AGENTS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'agents')
 ATTENDUES_PROD = ['postgresql-activite-prod', 'postgresql-api-prod', 'postgresql-index-hygiene-prod',
                   'postgresql-index-stats-prod', 'postgresql-statements-prod', 'postgresql-table-stats-prod',
-                  'redis-api-prod', 'redis-connect-prod', 'scalingo-database-stats-prod']
+                  'postgresql-verrous-prod', 'redis-api-prod', 'redis-connect-prod', 'scalingo-database-stats-prod']
 
 
 class CopieDesAgents:
@@ -40,7 +40,8 @@ class TestGenerateurIntegrations(unittest.TestCase):
         with CopieDesAgents() as copie:
             copie.generer()
             for nom, fichier in (('statements', 'statements'), ('index-stats', 'index_stats'), ('table-stats', 'table_stats'),
-                                 ('index-hygiene', 'index_hygiene'), ('activite', 'activite')):
+                                 ('index-hygiene', 'index_hygiene'), ('activite', 'activite'),
+                                 ('verrous', 'verrous')):
                 with self.subTest(nom):
                     integration = json.load(open(copie.chemin('generated', 'prod', f'postgresql-{nom}-prod.json')))
                     flux = integration['inputs']['sql-sql/metrics']['streams']['sql.sql']['vars']

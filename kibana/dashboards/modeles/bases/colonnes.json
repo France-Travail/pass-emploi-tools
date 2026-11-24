@@ -498,5 +498,35 @@
       "scalingo.database.instance",
       "keyword"
     ]
+  ],
+  "PostgreSQL / Sessions qui en bloquent d'autres": [
+    [
+      "bloqueur",
+      "keyword"
+    ],
+    [
+      "sessions_bloquees",
+      "long"
+    ],
+    [
+      "transaction_s",
+      "long"
+    ],
+    [
+      "attente_max_s",
+      "long"
+    ],
+    [
+      "modele",
+      "keyword"
+    ],
+    [
+      "application",
+      "keyword"
+    ],
+    [
+      "derniere",
+      "date"
+    ]
   ]
 }

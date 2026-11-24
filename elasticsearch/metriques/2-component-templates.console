@@ -506,6 +506,38 @@ PUT _component_template/metrics-sql.postgresql_activite@custom
   }
 }
 
+# Paires session bloquée / session qui la bloque (pg_blocking_pids), une ligne par paire et par
+# relevé. Le modèle de requête vient de pg_stat_statements : normalisé, sans valeur.
+PUT _component_template/metrics-sql.postgresql_verrous@custom
+{
+  "template": {
+    "settings": { "index": { "lifecycle": { "name": "metrics-fleet-retention" } } },
+    "mappings": {
+      "properties": {
+        "sql": { "properties": { "metrics": { "properties": {
+          "bloque_pid": { "type": "keyword" },
+          "bloqueur_pid": { "type": "keyword" },
+          "bloqueur_visible": { "type": "boolean" },
+          "attente_s": { "type": "long" },
+          "type_verrou": { "type": "keyword" },
+          "bloque_application": { "type": "keyword" },
+          "bloque_requete_id": { "type": "keyword" },
+          "bloque_modele": { "type": "keyword", "ignore_above": 2000 },
+          "bloqueur_etat": { "type": "keyword" },
+          "bloqueur_application": { "type": "keyword" },
+          "bloqueur_transaction_s": { "type": "long" },
+          "bloqueur_requete_id": { "type": "keyword" },
+          "bloqueur_modele": { "type": "keyword", "ignore_above": 2000 }
+        } } } }
+      }
+    }
+  },
+  "_meta": {
+    "description": "Retention et types des verrous PostgreSQL (qui bloque qui)",
+    "managed_by": "pass-emploi-tools"
+  }
+}
+
 # ─── Métriques des instances de bases Scalingo (CEL sur l'agent dédié) ───
 # Input CEL = data stream de type logs, mais mesure périodique : rétention métriques.
 PUT _component_template/logs-scalingo.database_stats@custom
