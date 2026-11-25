@@ -14,7 +14,7 @@ pass-emploi-elastic-agent-perf   ← cette app (1 seule instance)
         ├── Intégration Redis → Redis de l'api (redis-api-prod : info, keyspace, key sur les files Bull)
         ├── Intégration Redis → Redis de connect (redis-connect-prod : info, keyspace)
         ├── Intégration PostgreSQL → base de l'api (postgresql-api-prod : database, activity, bgwriter)
-        ├── SQL Input ×5 → statistiques des requêtes, des index, des tables de la base de l'api
+        ├── SQL Input ×6 → statistiques des requêtes, des index, des tables, et verrous de la base de l'api
         ├── Intégration Custom API (CEL) → API Scalingo /stats (mémoire des conteneurs)
         └── Intégration Custom API (CEL) → API des bases Scalingo /metrics (instances des bases)
 ```
@@ -81,7 +81,7 @@ Choix portés par les modèles (`modeles/`), à ne pas défaire :
 
 ## PostgreSQL et statistiques SQL
 
-Une intégration PostgreSQL et cinq SQL Input, toutes sur la même URL et le même
+Une intégration PostgreSQL et six SQL Input, toutes sur la même URL et le même
 utilisateur :
 
 | Intégration                      | Package    | Dataset                                                 | Réglages                                                                                                                                                                                                            |
@@ -92,6 +92,7 @@ utilisateur :
 | `postgresql-table-stats-<env>`   | SQL Input  | `sql.postgresql_table_stats`                            | requête de [`integrations/postgresql/table_stats.sql`](integrations/postgresql/table_stats.sql)                                                                                                                     |
 | `postgresql-index-hygiene-<env>` | SQL Input  | `sql.postgresql_index_hygiene`                          | requête de [`integrations/postgresql/index_hygiene.sql`](integrations/postgresql/index_hygiene.sql), *Period* `1h`                                                                                                  |
 | `postgresql-activite-<env>`      | SQL Input  | `sql.postgresql_activite`                               | requête de [`integrations/postgresql/activite.sql`](integrations/postgresql/activite.sql), *Period* `1m`                                                                                                            |
+| `postgresql-verrous-<env>`       | SQL Input  | `sql.postgresql_verrous`                                | requête de [`integrations/postgresql/verrous.sql`](integrations/postgresql/verrous.sql), *Period* `1m` : une ligne par paire session bloquée / session qui bloque, modèle de requête sans valeur |
 
 Les SQL Input sont de type **Metrics** : le dataset doit donner
 `metrics-sql.<dataset>-default`, sinon ni rétention ni dashboards. Périodes :
