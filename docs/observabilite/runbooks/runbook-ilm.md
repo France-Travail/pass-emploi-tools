@@ -57,13 +57,17 @@ package.
 
 ## Scénario 2 — Étape ILM en échec
 
-**Signature** : `success: false` dans l'historique ILM. L'index est bloqué sur
-une étape (`step: ERROR`) et n'avance plus vers les phases suivantes.
+**Signature** : la dernière étape de l'index dans l'historique ILM est en échec
+(`success: false`). L'index est bloqué sur une étape (`step: ERROR`) et n'avance
+plus vers les phases suivantes. Le nom donné par l'alerte est celui du moment de
+l'échec : l'index a pu prendre depuis le préfixe `partial-` ou `restored-`.
 
 1. **Lire la cause** :
    ```
    GET .ds-*,partial-*/_ilm/explain?expand_wildcards=all&only_errors=true&filter_path=indices.*.index,indices.*.phase,indices.*.failed_step,indices.*.step_info
    ```
+   Si l'index n'y figure plus, l'ILM a relancé l'étape avec succès depuis l'alerte
+   (cas d'une erreur passagère de `forcemerge` ou de snapshot) : rien à faire.
 2. **Corriger selon `step_info`** :
 
    | Cause | Correction |

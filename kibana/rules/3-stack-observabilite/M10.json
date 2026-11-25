@@ -2,7 +2,7 @@
   "_id": "fb66693b-f17a-4cd0-baf5-113e7e153604",
   "_question": "L'ILM échoue-t-il, ou un index vit-il sous une policy qui ne supprime rien ?",
   "_message": {
-    "titre": "**Rétention ILM — bilan des 24 h** — des index n'appliquent pas leur rétention : étape ILM en échec ou policy par défaut sans suppression.",
+    "titre": "**Rétention ILM — index bloqués** — des index n'appliquent pas leur rétention : dernière étape ILM en échec, ou policy par défaut sans suppression (sur 7 jours).",
     "gravite": "avertissement",
     "sections": [
       {
@@ -16,7 +16,7 @@
         "lignes": [
           "1. Quels index n'appliquent pas leur rétention : le Discover [[Pass Emploi] Historique ILM - Index hors rétention](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/discover#/view/3f3c69ef-e515-4be4-b679-eff837c92ecb)",
           "2. Si l'index porte une policy d'Elastic par défaut (`logs@lifecycle`, `metrics@lifecycle`) : il ne sera jamais supprimé, lui rattacher la policy de l'équipe (runbook ILM)",
-          "3. Si une étape ILM a échoué (`success` à `false`) : lire l'erreur de l'étape, corriger, puis relancer ILM sur l'index (runbook ILM)"
+          "3. Si une étape ILM a échoué : son nom dans « index concernes » est celui du moment de l'échec, l'index a pu prendre depuis le préfixe `partial-` ou `restored-`. Lire l'erreur, corriger, puis relancer ILM sur l'index (runbook ILM)"
         ]
       }
     ],
@@ -53,11 +53,11 @@
   "params": {
     "searchType": "esqlQuery",
     "esqlQuery": {
-      "esql": "FROM .ds-ilm-history-7-*\n| WHERE index LIKE \"*.ds-logs-*\" OR index LIKE \"*.ds-metrics-*\"\n     OR index LIKE \"*.ds-traces-*\" OR index LIKE \"*.ds-heartbeat-*\"\n| EVAL policy_par_defaut = policy IN (\"logs\", \"metrics\", \"logs@lifecycle\", \"metrics@lifecycle\", \"metricbeat\")\n                           OR policy LIKE \"*-default_policy\"\n| WHERE success == false OR policy_par_defaut\n| STATS index_en_echec = COUNT_DISTINCT(index) WHERE success == false,\n        index_policy_par_defaut = COUNT_DISTINCT(index) WHERE policy_par_defaut,\n        policies = VALUES(policy), exemples = VALUES(index)\n| WHERE index_en_echec > 0 OR index_policy_par_defaut > 0\n| EVAL exemples = MV_SLICE(exemples, 0, 9)"
+      "esql": "FROM .ds-ilm-history-7-*\n| WHERE index LIKE \"*.ds-logs-*\" OR index LIKE \"*.ds-metrics-*\"\n     OR index LIKE \"*.ds-traces-*\" OR index LIKE \"*.ds-heartbeat-*\"\n| EVAL policy_par_defaut = policy IN (\"logs\", \"metrics\", \"logs@lifecycle\", \"metrics@lifecycle\", \"metricbeat\")\n                           OR policy LIKE \"*-default_policy\"\n| STATS dernier_echec = MAX(@timestamp) WHERE success == false,\n        dernier_succes = MAX(@timestamp) WHERE success == true,\n        etapes_par_defaut = COUNT(*) WHERE policy_par_defaut,\n        policies_index = VALUES(policy) BY index\n| EVAL bloque = dernier_echec IS NOT NULL AND (dernier_succes IS NULL OR dernier_echec > dernier_succes)\n| WHERE bloque OR etapes_par_defaut > 0\n| STATS index_en_echec = COUNT(*) WHERE bloque,\n        index_policy_par_defaut = COUNT(*) WHERE etapes_par_defaut > 0,\n        policies = VALUES(policies_index), index_concernes = VALUES(index)\n| WHERE index_en_echec > 0 OR index_policy_par_defaut > 0\n| EVAL index_concernes = MV_SLICE(index_concernes, 0, 9)"
     },
     "timeField": "@timestamp",
-    "timeWindowSize": 24,
-    "timeWindowUnit": "h",
+    "timeWindowSize": 7,
+    "timeWindowUnit": "d",
     "threshold": [
       0
     ],
