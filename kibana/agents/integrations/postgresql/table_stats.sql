@@ -18,7 +18,7 @@ select
   coalesce(t.n_live_tup, 0) as toast_n_live_tup,
   coalesce(t.n_dead_tup, 0) as toast_n_dead_tup,
   coalesce(t.last_autovacuum::text, 'jamais') as toast_last_autovacuum,
-  coalesce(pg_relation_size(t.relid), 0) as toast_taille_octets,
+  coalesce(pg_total_relation_size(t.relid), 0) as toast_taille_octets,
   coalesce((select stats_reset from pg_stat_database where datname = current_database())::text, 'jamais') as stats_reset
 from pg_stat_user_tables s
 join pg_class c on c.oid = s.relid
