@@ -404,6 +404,16 @@
           "type": "formula",
           "as": "sens",
           "expr": "!datum.visible ? 'Session d\\'un autre utilisateur de la base (console, outil) : la supervision ne voit pas son détail. Voir le runbook pour la retrouver.' : indexof(datum.etat, 'aborted') >= 0 ? 'Une requête de sa transaction a échoué et la transaction n\\'a jamais été annulée : elle garde ses verrous. Chercher l\\'erreur dans les logs de l\\'api.' : indexof(datum.etat, 'idle in transaction') == 0 ? 'Transaction ouverte qui n\\'exécute plus rien : souvent un await sur autre chose que la base (appel HTTP, file de jobs) dans un bloc sequelize.transaction. Elle garde ses verrous jusqu\\'à la fin du bloc.' : datum.etat == 'active' ? 'Requête en cours d\\'exécution, qui tient ses verrous jusqu\\'à la fin de sa transaction : job, export ou migration ?' : indexof(datum.etat, 'en attente') == 0 ? 'Cette requête attend qu\\'une autre transaction se termine : elle n\\'est pas en cause, c\\'est la session au bout de la flèche qui l\\'est.' : 'État non relevé.'"
+        },
+        {
+          "type": "formula",
+          "as": "cible_x",
+          "expr": "width / 2"
+        },
+        {
+          "type": "formula",
+          "as": "cible_y",
+          "expr": "height / 2"
         }
       ]
     }
@@ -528,13 +538,24 @@
             },
             {
               "force": "nbody",
-              "strength": -80
+              "strength": -40,
+              "distanceMax": 200
             },
             {
               "force": "link",
               "links": "liens",
               "id": "datum.id",
-              "distance": 110
+              "distance": 70
+            },
+            {
+              "force": "x",
+              "x": "datum.cible_x",
+              "strength": 0.08
+            },
+            {
+              "force": "y",
+              "y": "datum.cible_y",
+              "strength": 0.12
             }
           ]
         }
@@ -551,8 +572,7 @@
             "field": "x"
           },
           "y": {
-            "field": "y",
-            "offset": 22
+            "signal": "datum.y + sqrt(datum.size / PI) + 10"
           },
           "align": {
             "value": "center"
@@ -567,7 +587,8 @@
             "value": "#343741"
           }
         }
-      }
+      },
+      "zindex": 2
     },
     {
       "type": "path",
@@ -600,7 +621,38 @@
           "targetX": "datum.target.x",
           "targetY": "datum.target.y"
         }
-      ]
+      ],
+      "name": "traces_liens"
+    },
+    {
+      "type": "symbol",
+      "zindex": 1,
+      "interactive": false,
+      "from": {
+        "data": "traces_liens"
+      },
+      "encode": {
+        "update": {
+          "shape": {
+            "value": "triangle-right"
+          },
+          "size": {
+            "value": 70
+          },
+          "fill": {
+            "value": "#69707d"
+          },
+          "angle": {
+            "signal": "atan2(datum.datum.target.y - datum.datum.source.y, datum.datum.target.x - datum.datum.source.x) * 180 / PI"
+          },
+          "x": {
+            "signal": "datum.datum.target.x - cos(atan2(datum.datum.target.y - datum.datum.source.y, datum.datum.target.x - datum.datum.source.x)) * (sqrt(datum.datum.target.size / PI) + 6)"
+          },
+          "y": {
+            "signal": "datum.datum.target.y - sin(atan2(datum.datum.target.y - datum.datum.source.y, datum.datum.target.x - datum.datum.source.x)) * (sqrt(datum.datum.target.size / PI) + 6)"
+          }
+        }
+      }
     }
   ]
 }

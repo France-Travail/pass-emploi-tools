@@ -151,6 +151,11 @@ class TestDashboardsBasesDeDonnees(unittest.TestCase):
             self.assertTrue(spec['data'][0]['url']['%context%'])
             infobulle = json.dumps(spec['marks'], ensure_ascii=False)
             self.assertIn('Modèle de requête', infobulle)
+            disposition = next(t for m in spec['marks'] if m.get('name') == 'sessions'
+                               for t in m['transform'] if t['type'] == 'force')
+            forces = {f['force'] for f in disposition['forces']}
+            self.assertLessEqual({'x', 'y'}, forces, 'sans rappel vers le centre, les blocages sans lien entre eux sortent du cadre')
+            self.assertIn('triangle-right', infobulle, 'sans pointe, on ne voit pas qui bloque qui')
             encadres = sorted(p['gridData']['y'] for p in panneaux if p['type'] == 'markdown')
             g = graphes[0]['gridData']
             self.assertGreaterEqual(g['y'], encadres[1])

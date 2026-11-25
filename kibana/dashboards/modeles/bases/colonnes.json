@@ -81,6 +81,10 @@
       "double"
     ],
     [
+      "part_lignes_mortes_toast",
+      "double"
+    ],
+    [
       "part_modifiee",
       "double"
     ],
@@ -97,12 +101,20 @@
       "keyword"
     ],
     [
+      "sql.metrics.toast_last_autovacuum",
+      "keyword"
+    ],
+    [
       "sql.metrics.last_vacuum",
       "keyword"
     ],
     [
       "sql.metrics.n_live_tup",
       "long"
+    ],
+    [
+      "taille_toast_mo",
+      "double"
     ]
   ],
   "PostgreSQL / Erreurs de collecte": [
@@ -178,6 +190,20 @@
     ],
     [
       "derniere_remise_a_zero",
+      "keyword"
+    ]
+  ],
+  "PostgreSQL / Lignes mortes des tables TOAST": [
+    [
+      "lignes_mortes_toast",
+      "long"
+    ],
+    [
+      "tranche",
+      "date"
+    ],
+    [
+      "sql.metrics.table",
       "keyword"
     ]
   ],

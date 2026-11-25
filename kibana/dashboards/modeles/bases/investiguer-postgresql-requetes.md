@@ -8,4 +8,5 @@
 6. **Table lue sans index** : `EXPLAIN (ANALYZE)` sur la requête. Un `Seq Scan` sur une petite table est normal ; une écriture se teste entre `BEGIN` et `ROLLBACK`.
 7. **Plan qui se dégrade d'un coup** : estimations loin du réel, ou beaucoup de modifications depuis le dernier `ANALYZE` (« Entretien des tables ») : `ANALYZE` sur la table.
 8. **Après une migration** : aucun index invalide (« Index invalides ou en doublon ») : un `CREATE INDEX CONCURRENTLY` interrompu laisse un index que le planificateur ignore.
-9. **Table lente sans changement de code** : son entretien. Lignes mortes nombreuses ou `ANALYZE` ancien : `VACUUM (ANALYZE)` sur la table.
+9. **Table lente sans changement de code** : son entretien. Lignes mortes nombreuses, dans la table ou sa table TOAST, ou `ANALYZE` ancien : `VACUUM (ANALYZE)` sur la table.
+10. **Disque saturé sans requête lourde en cause** : un autovacuum de table TOAST, qui la relit en entier. « Lignes mortes des tables TOAST » retombe à sa fin.
