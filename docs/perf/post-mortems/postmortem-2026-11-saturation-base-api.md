@@ -147,9 +147,11 @@ Limites :
   divisé par 2,8. Elle est trompeuse : le 25/11, un vacuum de la TOAST tombait
   dans cette fenêtre, pas le 26/11.
 - #580 n'est pas mesurable dans ces logs : aucun archivage n'a tourné depuis.
-- La hausse des actions d'un jeune hors vacuum n'est pas expliquée. Le nouvel
-  index `action(id_jeune, date_creation)` pourrait être choisi à tort pour un
-  filtre sur `date_echeance`. Non vérifié.
+- La hausse des actions d'un jeune hors vacuum n'est pas expliquée. Le plan
+  d'exécution relevé le 26/11, sur un jeune qui a 12 actions, utilise toujours
+  `idx_action_id_jeune` (2,6 ms, 8 blocs lus sur disque sur 15) : le nouvel
+  index n'est pas en cause dans ce cas. Pas vérifié sur un jeune qui a
+  beaucoup d'actions.
 
 Effet de bord de #581 : les annulations portent sur les actions à qualifier du
 conseiller. Côté utilisateur, rien ne change : ces requêtes dépassaient déjà le
@@ -172,5 +174,5 @@ Suivies sur le board :
 8. Vacuum de la TOAST de `cache_api_partenaire` : il sature encore la base à
    chaque passage. Leviers : moins de réécritures du cache, vacuum ralenti,
    ou revoir ce stockage.
-9. Actions d'un jeune par date d'échéance : vérifier le plan d'exécution depuis
-   #582.
+9. Actions d'un jeune par date d'échéance : expliquer la hausse des requêtes
+   lentes hors vacuum depuis le 25/11.
