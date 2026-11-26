@@ -98,3 +98,5 @@
   partenaires, harnais de tir, mode dégradé/runbooks, plan Scalingo),
   `observabilite.md`, `harnais.md` (ce qui est mocké et pourquoi, invariants du
   harnais), `volumetrie-prod.md`.
+  Post-mortem associé : [`perf/post-mortems/postmortem-2026-11-saturation-base-api.md`](./perf/post-mortems/postmortem-2026-11-saturation-base-api.md)
+  (cascades sans index, vacuum de TOAST, requêtes SQL orphelines du web).
