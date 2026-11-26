@@ -156,24 +156,42 @@ Effet de bord de #581 : les annulations portent sur les actions à qualifier du
 conseiller. Côté utilisateur, rien ne change : ces requêtes dépassaient déjà le
 timeout HTTP de 10 s.
 
-## 5. Suites identifiées
+## 5. Actions réalisées
+
+- [api #580](https://github.com/France-Travail/pass-emploi-api/pull/580) : 9 index, dont les 4 clés étrangères vers `jeune` sans
+  index (24/11).
+- `ALTER TABLE` manuel sur la TOAST de `cache_api_partenaire`, seuil
+  d'autovacuum à 5 % (24/11 au soir ; déduit du rythme des vacuums du 25/11).
+- [api #583](https://github.com/France-Travail/pass-emploi-api/pull/583) : le cache partenaire ne réécrit plus un résultat
+  inchangé ; seuil d'autovacuum de la TOAST passé en migration (25/11).
+- [api #582](https://github.com/France-Travail/pass-emploi-api/pull/582) : index `action(id_jeune, date_creation)` pour les
+  compteurs de portefeuille MiLo (25/11).
+- [api #581](https://github.com/France-Travail/pass-emploi-api/pull/581) : `statement_timeout` de 10 s sur le process web (25/11).
+- [api #586](https://github.com/France-Travail/pass-emploi-api/pull/586) : deux erreurs non interceptées n'arrêtent plus le
+  process. L'échec de l'enregistrement du suivi d'un job faisait planter le
+  worker (24/11, 10h11). La notification des nouvelles immersions, annulée par
+  le `statement_timeout` de #581, a fait planter `web-1` le 26/11 à 15h01.
+
+## 6. Suites identifiées
 
 Suivies sur le board :
 
-1. Intercepter l'échec de l'enregistrement du suivi de job (crash du worker).
-2. Pause et arrêt par type de job pour les jobs par lots, délai entre les lots,
+1. Pause et arrêt par type de job pour les jobs par lots, délai entre les lots,
    priorité à la reprise seulement.
-3. Actions à qualifier du conseiller : le filtre `statut` /
+2. Actions à qualifier du conseiller : le filtre `statut` /
    `qualification_heures` n'est porté par aucun index. La requête relit toutes
    les actions des jeunes du conseiller pour n'en garder que quelques-unes.
    Piste : index partiel sur les actions à qualifier.
-4. `NOTIFIER_RENDEZVOUS_PE` : partir du dernier passage réussi, pas des 2 h
+3. `NOTIFIER_RENDEZVOUS_PE` : partir du dernier passage réussi, pas des 2 h
    précédant l'exécution.
-5. Convention « toute clé étrangère a son index ».
-6. Autoscaler du worker : critère à revoir.
-7. Base : `log_lock_waits`, `idle_in_transaction_session_timeout`.
-8. Vacuum de la TOAST de `cache_api_partenaire` : il sature encore la base à
+4. Convention « toute clé étrangère a son index ».
+5. Autoscaler du worker : critère à revoir.
+6. Base : `log_lock_waits`, `idle_in_transaction_session_timeout`.
+7. Vacuum de la TOAST de `cache_api_partenaire` : il sature encore la base à
    chaque passage. Leviers : moins de réécritures du cache, vacuum ralenti,
    ou revoir ce stockage.
+8. Notification des nouvelles immersions : la passer en job worker, pour
+   qu'elle ne soit plus annulée au bout de 10 s
+   ([api #587](https://github.com/France-Travail/pass-emploi-api/pull/587)).
 9. Latence du disque de l'addon (environ 9 ms par page lue hors cache, RAM
    saturée) : ce que garantissent les plans Scalingo supérieurs.
