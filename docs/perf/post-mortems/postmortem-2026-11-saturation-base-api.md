@@ -19,9 +19,10 @@ une cause unique, mais trois mécanismes qui s'additionnent :
 | Autovacuum de la TOAST de `cache_api_partenaire` (15 Go) | Chaque appel partenaire réécrivait son JSON, même inchangé. Au seuil par défaut, un passage relit la TOAST d'un bloc : 70 min et 7,9 Go de WAL le matin, 39 min l'après-midi | ALTER manuel le 24/11 au soir, puis #583 |
 | Requêtes SQL du web jamais annulées | Le timeout HTTP coupe la réponse à 10 s, mais la requête continue en base (jusqu'à 299 s). Elles s'accumulent et épuisent les pools de connexions | #581 : `statement_timeout` ; #582 : index `action(id_jeune, date_creation)` |
 
-Le 26/11 au matin, comparé au 25/11 sur la même fenêtre, le temps cumulé des
-requêtes lentes est divisé par 2,8 et les requêtes de plus de 10 s passent de
-85 à 2 (§ 4).
+Le 26/11, les compteurs de portefeuille MiLo ne pèsent plus presque rien et
+l'autovacuum de la TOAST passe environ trois fois moins souvent. Mais **chaque
+passage sature encore la base** : le 26/11 de 11h05 à 11h27, il a provoqué des
+salves de 5xx. Hors vacuum, la charge de la base est inchangée (§ 4).
 
 ## 1. Chronologie
 
@@ -97,34 +98,62 @@ suppressions du job.
 
 ## 4. Effet des correctifs (mesuré le 26/11)
 
-Logs de l'addon PostgreSQL (requêtes de plus de 500 ms), fenêtre 08h16–09h19,
-mercredi 25/11 (avant #581, #582 et #583) contre jeudi 26/11 :
+Mercredi 25/11 (avant #581, #582 et #583) contre jeudi 26/11, de 08h16 à 13h16.
+Sources : logs du routeur, et logs de l'addon PostgreSQL (requêtes de plus de
+500 ms, disponibles à partir de 10h22 pour le 25/11).
+
+**Trafic** (routeur) : 1,38 M requêtes le 25/11, 1,34 M le 26/11.
+
+| Routeur, 08h16–13h16 | 25/11 | 26/11 |
+|---|---|---|
+| 5xx | 936 | 881, dont 599 entre 11h et 12h |
+| Requêtes > 5 s | 1 549 | 1 259, dont 622 entre 11h et 12h |
+
+**Autovacuum de la TOAST** :
+
+| | Passages en journée | Durée | Pages relues | WAL |
+|---|---|---|---|---|
+| 24/11, seuil par défaut | toutes les 5h20 | 70 et 39 min | 83 % (15h55) | ~7,8 Go |
+| 25/11, après l'ALTER manuel (5 %) | toutes les 1h40 (09h11, 10h53, 12h34) | 9 à 14 min | ~36 % | ~2,2 Go |
+| 26/11, après #583 | un seul, 5h50 après le précédent (11h05) | 22 min | 45 % | 2,8 Go |
+
+#583 divise par environ 3,4 le rythme des chunks morts (309 k en 5h50, contre
+environ 300 k en 1h40). Mais un passage plus espacé relit plus de pages et dure
+plus longtemps.
+
+**Base, 10h22–13h16, pendant et hors vacuum** (temps cumulé des requêtes de plus
+de 500 ms, par minute) :
 
 | | 25/11 | 26/11 |
 |---|---|---|
-| Requêtes > 500 ms | 2 655 | 1 484 |
-| > 5 s | 222 | 55 |
-| > 10 s | 85 | 2 |
-| Temps cumulé | 5 982 s | 2 167 s |
-| Annulées par `statement_timeout` | — | 38 |
-| Compteurs portefeuille MiLo lents | 567 (2 022 s) | 87 (158 s) |
-| Upserts `cache_api_partenaire` lents | 1 141 (1 758 s) | 653 (634 s) |
+| Pendant un vacuum de la TOAST | 468 s/min (26 min) | 532 s/min (23 min) |
+| Hors vacuum | 30 s/min | 29 s/min |
 
-Autovacuum de la TOAST :
-- 24/11, seuil par défaut : 70 et 39 min, environ 7,8 Go de WAL, toutes les 5h20 ;
-- 25/11 matin, après l'ALTER manuel (seuil à 5 %) : 9 à 14 min, environ 2,2 Go
-  de WAL, toutes les 1h40 environ ;
-- après #583 (25/11, 14h36) : passages à 21h34 et 05h15, puis aucun jusqu'à
-  09h19 le 26/11. Les intervalles de soirée et de nuit ne valent pas une mesure
-  de journée.
+Le 26/11, le vacuum de 11h05–11h27 coïncide avec les salves de 5xx de 11h06,
+11h17 et 11h23 (60 à 130 par minute) et avec 305 des 350 annulations par
+`statement_timeout` de la fenêtre.
 
-Limites : pas de normalisation par le trafic (l'autoscaler était à 3 conteneurs
-web les deux matins). #580 n'est pas mesurable dans ces logs : aucun archivage
-n'a tourné depuis.
+**Par requête, 10h22–13h16** :
 
-Effet de bord de #581 : les 38 annulations du 26/11 sont toutes la liste des
-actions à qualifier du conseiller et son `count`. Côté utilisateur, rien ne
-change : ces requêtes dépassaient déjà le timeout HTTP de 10 s.
+| Requêtes lentes (> 500 ms) | 25/11 | 26/11 |
+|---|---|---|
+| Compteurs de portefeuille MiLo (#582) | 913 (3 115 s) | 311 (638 s) |
+| Actions à qualifier du conseiller et leur `count` | 302 + 302 | 484 + 483 |
+| Actions d'un jeune par date d'échéance, hors vacuum | 154 (183 s) | 273 (453 s) |
+| Upserts `cache_api_partenaire`, hors vacuum | 1 534 (1 559 s) | 1 286 (1 299 s) |
+
+Limites :
+- Une mesure faite le matin du 26/11 sur 08h16–09h19 montrait un temps cumulé
+  divisé par 2,8. Elle est trompeuse : le 25/11, un vacuum de la TOAST tombait
+  dans cette fenêtre, pas le 26/11.
+- #580 n'est pas mesurable dans ces logs : aucun archivage n'a tourné depuis.
+- La hausse des actions d'un jeune hors vacuum n'est pas expliquée. Le nouvel
+  index `action(id_jeune, date_creation)` pourrait être choisi à tort pour un
+  filtre sur `date_echeance`. Non vérifié.
+
+Effet de bord de #581 : les annulations portent sur les actions à qualifier du
+conseiller. Côté utilisateur, rien ne change : ces requêtes dépassaient déjà le
+timeout HTTP de 10 s.
 
 ## 5. Suites identifiées
 
@@ -140,3 +169,8 @@ Suivies sur le board :
 5. Convention « toute clé étrangère a son index ».
 6. Autoscaler du worker : critère à revoir.
 7. Base : `log_lock_waits`, `idle_in_transaction_session_timeout`.
+8. Vacuum de la TOAST de `cache_api_partenaire` : il sature encore la base à
+   chaque passage. Leviers : moins de réécritures du cache, vacuum ralenti,
+   ou revoir ce stockage.
+9. Actions d'un jeune par date d'échéance : vérifier le plan d'exécution depuis
+   #582.
