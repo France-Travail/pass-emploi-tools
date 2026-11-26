@@ -161,7 +161,7 @@ timeout HTTP de 10 s.
 - [api #580](https://github.com/France-Travail/pass-emploi-api/pull/580) : 9 index, dont les 4 clés étrangères vers `jeune` sans
   index (24/11).
 - `ALTER TABLE` manuel sur la TOAST de `cache_api_partenaire`, seuil
-  d'autovacuum à 5 % (24/11 au soir ; déduit du rythme des vacuums du 25/11).
+  d'autovacuum à 5 % (24/11 au soir).
 - [api #583](https://github.com/France-Travail/pass-emploi-api/pull/583) : le cache partenaire ne réécrit plus un résultat
   inchangé ; seuil d'autovacuum de la TOAST passé en migration (25/11).
 - [api #582](https://github.com/France-Travail/pass-emploi-api/pull/582) : index `action(id_jeune, date_creation)` pour les
