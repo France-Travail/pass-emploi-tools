@@ -147,11 +147,10 @@ Limites :
   divisé par 2,8. Elle est trompeuse : le 25/11, un vacuum de la TOAST tombait
   dans cette fenêtre, pas le 26/11.
 - #580 n'est pas mesurable dans ces logs : aucun archivage n'a tourné depuis.
-- La hausse des actions d'un jeune hors vacuum n'est pas expliquée. Le plan
-  d'exécution relevé le 26/11, sur un jeune qui a 12 actions, utilise toujours
-  `idx_action_id_jeune` (2,6 ms, 8 blocs lus sur disque sur 15) : le nouvel
-  index n'est pas en cause dans ce cas. Pas vérifié sur un jeune qui a
-  beaucoup d'actions.
+- La hausse des actions d'un jeune hors vacuum n'est pas due au plan
+  d'exécution. Relevé le 26/11 sur un jeune à 253 actions : `idx_action_id_jeune`,
+  196 pages lues sur disque en 1,8 s, soit environ 9 ms par lecture. Le plan
+  est correct ; c'est la latence du disque qui limite.
 
 Effet de bord de #581 : les annulations portent sur les actions à qualifier du
 conseiller. Côté utilisateur, rien ne change : ces requêtes dépassaient déjà le
@@ -164,8 +163,10 @@ Suivies sur le board :
 1. Intercepter l'échec de l'enregistrement du suivi de job (crash du worker).
 2. Pause et arrêt par type de job pour les jobs par lots, délai entre les lots,
    priorité à la reprise seulement.
-3. Actions à qualifier du conseiller : index partiels `WHERE annule = false`
-   inutilisables, requête à revoir.
+3. Actions à qualifier du conseiller : le filtre `statut` /
+   `qualification_heures` n'est porté par aucun index. La requête relit toutes
+   les actions des jeunes du conseiller pour n'en garder que quelques-unes.
+   Piste : index partiel sur les actions à qualifier.
 4. `NOTIFIER_RENDEZVOUS_PE` : partir du dernier passage réussi, pas des 2 h
    précédant l'exécution.
 5. Convention « toute clé étrangère a son index ».
@@ -174,5 +175,5 @@ Suivies sur le board :
 8. Vacuum de la TOAST de `cache_api_partenaire` : il sature encore la base à
    chaque passage. Leviers : moins de réécritures du cache, vacuum ralenti,
    ou revoir ce stockage.
-9. Actions d'un jeune par date d'échéance : expliquer la hausse des requêtes
-   lentes hors vacuum depuis le 25/11.
+9. Latence du disque de l'addon (environ 9 ms par page lue hors cache, RAM
+   saturée) : ce que garantissent les plans Scalingo supérieurs.
