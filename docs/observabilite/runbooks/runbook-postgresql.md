@@ -1,4 +1,4 @@
-# Runbook — PostgreSQL : transaction longue et verrous
+# Runbook — PostgreSQL : verrous, transactions longues et saturation
 
 > **Type** : tutoriel (Diataxis). Quoi faire quand le panneau « Verrous et
 > transactions longues » du dashboard [[Pass Emploi] Bases de données - PostgreSQL](https://pass-emploi.kb.eu-west-3.aws.elastic-cloud.com/app/dashboards#/view/66b0c0ac-d034-489b-ab0a-7b07539074ff)
@@ -106,9 +106,59 @@ ticket ni un salon.
   du bloqueur, sortir de la transaction ce qui n'est pas une requête à la base, et
   l'ouvrir en ticket.
 
+## 5. La base sature sans bloqueur net
+
+Déclencheurs : alerte Scalingo « High 5xx » ou temps de réponse sur le salon
+monitoring-production, des `SequelizeConnectionAcquireTimeoutError` dans les
+logs de l'api (pool de connexions épuisé), un worker qui crashe. Le panneau des
+verrous monte sans bloqueur qui ressort : la base est lente pour tout le monde.
+
+1. **Ce qui a changé** : déploiements, scale, crashes et alertes de l'app. Les
+   heures de la timeline sont en **UTC**.
+   ```bash
+   scalingo --region osc-secnum-fr1 --app pass-emploi-api-prod timeline
+   ```
+2. **Ce que fait la base** : les logs de l'addon PostgreSQL portent les requêtes
+   de plus de 500 ms (`LOG:  duration:`), la fin de chaque autovacuum
+   (`automatic vacuum of table`, avec `elapsed` et le volume de WAL) et les
+   requêtes du web annulées par leur timeout
+   (`canceling statement due to statement timeout`).
+   ```bash
+   scalingo --region osc-secnum-fr1 --app pass-emploi-api-prod addons   # id de l'addon PostgreSQL
+   scalingo --region osc-secnum-fr1 --app pass-emploi-api-prod --addon <id> logs-archives
+   ```
+   Chaque tranche donne une URL à télécharger avec `curl`, qui expire en
+   quelques minutes : télécharger aussitôt après avoir listé. Seules les 10
+   dernières tranches sont proposées (`-p` est sans effet) : pour analyser une
+   journée après coup, télécharger le jour même. Les archives arrivent avec
+   jusqu'à plus d'une heure de retard ; pour la dernière heure,
+   `… --addon <id> logs --lines 50000`. Télécharger dans un répertoire
+   temporaire, à supprimer après analyse : les requêtes contiennent des valeurs
+   réelles. Chaque ligne commence par l'heure de Paris, le champ `time=` est en
+   UTC. Une requête s'étale sur plusieurs lignes, pas forcément dans l'ordre :
+   les regrouper par horodatage à la seconde.
+
+   Un autovacuum de plusieurs dizaines de minutes sur une grosse TOAST sature
+   les IO disque ; le retour au calme coïncide avec sa fin.
+3. **Qui consomme** : `pg_stat_statements` et `pg_stat_user_tables` cumulent
+   depuis leur dernière remise à zéro. Une lecture seule ne dit rien : comparer
+   deux relevés, ou le delta des datasets `metrics-sql.postgresql_*` dans Kibana
+   ([`kibana/agents/`](../../../kibana/agents/README.md)). Les TOAST n'apparaissent
+   pas dans `pg_stat_user_tables` : passer par `pg_stat_all_tables` et
+   `pg_class.reltoastrelid`. `pgsql-console` est interactive et n'accepte pas de
+   requêtes en entrée standard ; pour un script, `db-tunnel` puis un client SQL.
+4. **Soulager** : couper les workers arrête **tous** les jobs, crons compris.
+   ```bash
+   scalingo --region osc-secnum-fr1 --app pass-emploi-api-prod scale worker:0
+   ```
+   À la reprise, les jobs prévus pendant la coupure partent en retard, et un job
+   qui ne traite que les dernières heures avant son exécution en perd une
+   partie. Relancer : `scale worker:<n>`.
+
 ## Limites
 
 - Un blocage de moins d'une minute peut passer entre deux relevés.
+- Les requêtes de moins de 500 ms n'apparaissent pas dans les logs de l'addon.
 - Le modèle d'une requête encore en cours est inconnu : `pg_stat_statements` ne
   l'enregistre qu'une fois terminée.
 - Le graphe montre toutes les bases supervisées de la période : le sélecteur
