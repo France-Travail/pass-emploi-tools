@@ -127,8 +127,12 @@ verrous monte sans bloqueur qui ressort : la base est lente pour tout le monde.
    scalingo --region osc-secnum-fr1 --app pass-emploi-api-prod addons   # id de l'addon PostgreSQL
    scalingo --region osc-secnum-fr1 --app pass-emploi-api-prod --addon <id> logs-archives
    ```
-   Chaque tranche donne une URL à télécharger avec `curl`. Les archives arrivent
-   avec jusqu'à plus d'une heure de retard. Télécharger dans un répertoire
+   Chaque tranche donne une URL à télécharger avec `curl`, qui expire en
+   quelques minutes : télécharger aussitôt après avoir listé. Seules les 10
+   dernières tranches sont proposées (`-p` est sans effet) : pour analyser une
+   journée après coup, télécharger le jour même. Les archives arrivent avec
+   jusqu'à plus d'une heure de retard ; pour la dernière heure,
+   `… --addon <id> logs --lines 50000`. Télécharger dans un répertoire
    temporaire, à supprimer après analyse : les requêtes contiennent des valeurs
    réelles. Chaque ligne commence par l'heure de Paris, le champ `time=` est en
    UTC. Une requête s'étale sur plusieurs lignes, pas forcément dans l'ordre :

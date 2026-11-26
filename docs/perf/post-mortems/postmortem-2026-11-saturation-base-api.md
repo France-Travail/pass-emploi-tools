@@ -1,8 +1,8 @@
 # Post-mortem — Saturation de la base de l'api (24 novembre 2026)
 
 > **Type** : trace datée. Trois épisodes de saturation de la base PostgreSQL de
-> `pass-emploi-api-prod` le mardi 24/11/2026, leurs causes, les quatre correctifs
-> livrés les 24 et 25/11 et leur effet mesuré le 26/11.
+> `pass-emploi-api-prod` le mardi 24/11/2026, leurs causes, les correctifs
+> livrés du 24 au 26/11 et leur effet mesuré le 26/11.
 >
 > Heures en heure de Paris. Que faire quand ça recommence :
 > [runbook PostgreSQL § 5](../../observabilite/runbooks/runbook-postgresql.md#5-la-base-sature-sans-bloqueur-net).
@@ -133,6 +133,13 @@ Le 26/11, le vacuum de 11h05–11h27 coïncide avec les salves de 5xx de 11h06,
 11h17 et 11h23 (60 à 130 par minute) et avec 305 des 350 annulations par
 `statement_timeout` de la fenêtre.
 
+Un second épisode, de 14h54 à 15h03 le 26/11, survient **sans vacuum** : jusqu'à
+87 requêtes de plus de 5 s par minute, 247 annulations par `statement_timeout`
+dans l'heure. Les upserts de `cache_api_partenaire` dominent (881 lentes,
+2 742 s en 10 min, jusqu'à 19 s), suivis de 105 `INSERT` lents dans
+`notification_jeune`, signe d'un envoi de notifications en masse dont l'origine
+n'est pas identifiée. Le cache pèse donc aussi hors vacuum, par ses écritures.
+
 **Par requête, 10h22–13h16** :
 
 | Requêtes lentes (> 500 ms) | 25/11 | 26/11 |
@@ -152,9 +159,14 @@ Limites :
   196 pages lues sur disque en 1,8 s, soit environ 9 ms par lecture. Le plan
   est correct ; c'est la latence du disque qui limite.
 
-Effet de bord de #581 : les annulations portent sur les actions à qualifier du
-conseiller. Côté utilisateur, rien ne change : ces requêtes dépassaient déjà le
-timeout HTTP de 10 s.
+Effets de bord de #581 :
+- Les annulations portent surtout sur les actions à qualifier du conseiller.
+  Côté utilisateur, rien ne change : ces requêtes dépassaient déjà le timeout
+  HTTP de 10 s.
+- La notification des nouvelles immersions, lancée depuis le web sans être
+  attendue, est annulée quand sa recherche dépasse 10 s. Son erreur non
+  interceptée a fait planter `web-1` le 26/11 à 15h01 (corrigé par #586 ; la
+  notification passe en job worker avec #587).
 
 ## 5. Actions réalisées
 
@@ -180,8 +192,10 @@ Suivies sur le board :
    priorité à la reprise seulement.
 2. Actions à qualifier du conseiller : le filtre `statut` /
    `qualification_heures` n'est porté par aucun index. La requête relit toutes
-   les actions des jeunes du conseiller pour n'en garder que quelques-unes.
-   Piste : index partiel sur les actions à qualifier.
+   les actions des jeunes du conseiller pour n'en garder que quelques-unes :
+   pour un conseiller de 21 jeunes, environ 500 actions lues (estimation du
+   plan, 3 s à froid) pour une trentaine retenues. Piste : index partiel sur les
+   actions à qualifier.
 3. `NOTIFIER_RENDEZVOUS_PE` : partir du dernier passage réussi, pas des 2 h
    précédant l'exécution.
 4. Convention « toute clé étrangère a son index ».
