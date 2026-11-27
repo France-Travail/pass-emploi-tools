@@ -231,7 +231,7 @@ agent ressemble à une infra saine. Contexte :
 | Défaut détecté                                                                                                                 | Signal                                 | Source                                     |
 |--------------------------------------------------------------------------------------------------------------------------------|----------------------------------------|--------------------------------------------|
 | **offline** — ne contacte plus Fleet Server depuis 5 min (seuil fixe Fleet)                                                    | `health_status == "offline"`           | `logs-elastic_agent.status_change-default` |
-| **unenrolled** — retiré de Fleet ([post-mortem du 11/09/2026](../post-mortems/postmortem-2026-09-unenrolled-elastic-agent.md)) | `health_status == "unenrolled"`        | idem                                       |
+| **unenrolled** — retiré de Fleet ([post-mortem du 11/09/2026](../../post-mortems/postmortem-2026-09-unenrolled-elastic-agent.md)) | `health_status == "unenrolled"`        | idem                                       |
 | **unhealthy** — tourne, mais un composant est en erreur ou dégradé                                                             | `health_status == "unhealthy"`         | idem                                       |
 | **erreurs d'output** — tourne, mais ses écritures vers ES échouent (peut rester `Healthy`)                                     | > 25 erreurs d'écriture sur la fenêtre | `metrics-elastic_agent.*beat-*`            |
 

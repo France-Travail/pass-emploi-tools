@@ -45,7 +45,7 @@ quarantaine. **Découpler recevoir de traiter** :
 - **À mesurer** : plafond d'**une** instance (req/min avant 429/499) → marge linéaire
   + seuil de bascule vers l'option A puis B.
 
-Détail et justification : [postmortem-2026-07-blackout-logs.md § 7](../../../post-mortems/postmortem-2026-07-blackout-logs.md#7-next-steps--tenir-à-x10).
+Détail et justification : [postmortem-2026-07-blackout-logs.md § 7](../../../../post-mortems/postmortem-2026-07-blackout-logs.md#7-next-steps--tenir-à-x10).
 
 ## Étape 1 — architecture 2 pipelines avec persistent queue (2026-07)
 

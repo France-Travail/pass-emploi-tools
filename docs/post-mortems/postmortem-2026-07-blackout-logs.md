@@ -4,7 +4,7 @@
 > modes de panne distincts** qu'on a démêlés, et **comment la chaîne d'ingestion
 > tiendra (ou pas) à x10 utilisateurs**.
 >
-> Garde-fous durables : [infrastructure.md](../infra/infrastructure.md#garde-fous-jvm--scalingo) ; playbook de diagnostic : [runbook-logstash](../runbooks/runbook-logstash.md#playbook-de-diagnostic-de-lingestion).
+> Garde-fous durables : [infrastructure.md](../observabilite/infra/infrastructure.md#garde-fous-jvm--scalingo) ; playbook de diagnostic : [runbook-logstash](../observabilite/runbooks/runbook-logstash.md#playbook-de-diagnostic-de-lingestion).
 > Incident **distinct** du précédent (5xx/GC de juin, heap sous-dimensionnée) :
 > [postmortem-2026-06-logstash-5xx.md](postmortem-2026-06-logstash-5xx.md).
 > Celui-ci part **après** le correctif `-Xmx1g` de cette campagne-là.
@@ -165,13 +165,13 @@ Le diagnostic a été **sinueux** ; consigner les impasses évite de les refaire
 
 **Outil de diagnostic clé** : les **router logs** contiennent l'app source dans le
 path (`?appname=pass-emploi-api-prod`) → on peut ventiler volume, 429, 499 et trous
-**par app**. C'est ce qui a isolé le mode B. Détail dans [runbook-logstash](../runbooks/runbook-logstash.md#playbook-de-diagnostic-de-lingestion).
+**par app**. C'est ce qui a isolé le mode B. Détail dans [runbook-logstash](../observabilite/runbooks/runbook-logstash.md#playbook-de-diagnostic-de-lingestion).
 
 ---
 
 ## 5. Garde-fous appris à la dure
 
-Résumé — détail complet dans [infrastructure.md](../infra/infrastructure.md#garde-fous-jvm--scalingo) et [collecte/logs](../infra/collecte/logs/README.md#les-2-modes-de-panne--signatures) :
+Résumé — détail complet dans [infrastructure.md](../observabilite/infra/infrastructure.md#garde-fous-jvm--scalingo) et [collecte/logs](../observabilite/infra/collecte/logs/README.md#les-2-modes-de-panne--signatures) :
 
 - **XL Scalingo = 2 Go** (pas 4) → **`-Xmx` ≤ ~1 Go**. `-Xmx2g` = OOM-kill.
 - **Heap piloté via `LS_JAVA_OPTS`** (`JAVA_OPTS` est ignoré par Logstash — correction du 2026-09-30).
@@ -186,7 +186,7 @@ Config déployée au 2026-07-02 :
 
 > **Correction (2026-09-30)** : le heap Logstash se règle via **`LS_JAVA_OPTS`** ;
 > `JAVA_OPTS` est ignoré par le lanceur. Les mentions de `JAVA_OPTS` ci-dessous
-> sont erronées, cf. [infrastructure.md](../infra/infrastructure.md#garde-fous-jvm--scalingo).
+> sont erronées, cf. [infrastructure.md](../observabilite/infra/infrastructure.md#garde-fous-jvm--scalingo).
 
 - **4× XL** (2 Go), heap **`-Xms1g -Xmx1g`** (posé via `JAVA_OPTS`).
 - **PQ retirée** (du repo et du déployé) — **temporairement**, pour un test

@@ -208,7 +208,7 @@ identique à l'ancienne architecture mono-service.
 | `ELASTIC_AGENT_FLAVOR`    | `basic`             | Flavor OCI : `basic`, `servers`, `complete`                                                                                                               |
 | `ELASTIC_AGENT_TAGS`      | —                   | ⚠️ Vivement conseillé — tags Fleet (ex: `scalingo,pass-emploi-logstash`) pour filtrer les agents dans l'interface Fleet de Kibana.                         |
 | `ELASTIC_AGENT_GO_OPTS`   | `GOMEMLIMIT=256MiB` | Options Go runtime                                                                                                                                        |
-| `ELASTIC_AGENT_ID_SUFFIX` | —                   | Versionne un agent pour forcer une nouvelle identité Fleet — voir [post-mortem du 11/09/2026](../docs/observabilite/post-mortems/postmortem-2026-09-unenrolled-elastic-agent.md). |
+| `ELASTIC_AGENT_ID_SUFFIX` | —                   | Versionne un agent pour forcer une nouvelle identité Fleet — voir [post-mortem du 11/09/2026](../docs/post-mortems/postmortem-2026-09-unenrolled-elastic-agent.md). |
 
 > **`ELASTIC_AGENT_ID` n'est pas à configurer dans Scalingo.** Il est dérivé automatiquement
 > dans `start.sh` à partir du `HOSTNAME` du container (`uuid5(NAMESPACE_DNS, HOSTNAME)`),

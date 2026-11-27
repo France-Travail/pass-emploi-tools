@@ -1,11 +1,11 @@
-# Post-mortem — Saturation de la base de l'api (24 novembre 2026)
+    # Post-mortem — Saturation de la base de l'api (24 novembre 2026)
 
 > **Type** : trace datée. Trois épisodes de saturation de la base PostgreSQL de
 > `pass-emploi-api-prod` le mardi 24/11/2026, leurs causes, les correctifs
 > livrés du 24 au 26/11 et leur effet mesuré le 26/11.
 >
 > Heures en heure de Paris. Que faire quand ça recommence :
-> [runbook PostgreSQL § 5](../../observabilite/runbooks/runbook-postgresql.md#5-la-base-sature-sans-bloqueur-net).
+> [runbook PostgreSQL § 5](../observabilite/runbooks/runbook-postgresql.md#5-la-base-sature-sans-bloqueur-net).
 
 ## TL;DR
 

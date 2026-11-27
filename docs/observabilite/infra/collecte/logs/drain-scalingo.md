@@ -6,7 +6,7 @@ qu'indirectement (logs router) : ses règles sont à connaître par cœur, car e
 transforment un hoquet de Logstash en perte de logs.
 
 > Récit de l'incident qui a produit ces règles :
-> [postmortem-2026-07-blackout-logs.md](../../../post-mortems/postmortem-2026-07-blackout-logs.md).
+> [postmortem-2026-07-blackout-logs.md](../../../../post-mortems/postmortem-2026-07-blackout-logs.md).
 
 ## Garde-fous durables
 

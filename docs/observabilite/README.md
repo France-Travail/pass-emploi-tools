@@ -17,7 +17,7 @@
 |---|---|
 | [routine-surveillance.md](routine-surveillance.md) | Que regarder sans attendre une alerte ? |
 | [runbooks/](runbooks/) | Que faire quand ça casse ? |
-| [post-mortems/](post-mortems/) | Que s'est-il passé lors des incidents précédents ? |
+| [../post-mortems/](../post-mortems/) | Que s'est-il passé lors des incidents précédents ? |
 
 ## Déployer
 

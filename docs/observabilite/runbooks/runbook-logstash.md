@@ -156,7 +156,7 @@ HTTP ralentit → les drains reçoivent des 429 → quarantaine.
 ### Références
 
 - [collecte/logs — Mode A](../infra/collecte/logs/README.md#les-2-modes-de-panne--signatures)
-- [postmortem-2026-07-blackout-logs.md — §2](../post-mortems/postmortem-2026-07-blackout-logs.md)
+- [postmortem-2026-07-blackout-logs.md — §2](../../post-mortems/postmortem-2026-07-blackout-logs.md)
 
 ---
 
@@ -208,7 +208,7 @@ dans les logs Scalingo de l'app `pass-emploi-logstash-prod`, chercher les lignes
 ### Références
 
 - [infrastructure.md — Garde-fous JVM](../infra/infrastructure.md#garde-fous-jvm--scalingo)
-- [postmortem-2026-06-logstash-5xx.md](../post-mortems/postmortem-2026-06-logstash-5xx.md)
+- [postmortem-2026-06-logstash-5xx.md](../../post-mortems/postmortem-2026-06-logstash-5xx.md)
 
 ---
 
@@ -361,7 +361,7 @@ http.response.status_code: (429 OR 499) AND service.environment: "prod"
 ### Références
 
 - [drain-scalingo.md — Quarantaine](../infra/collecte/logs/drain-scalingo.md)
-- [postmortem-2026-07-blackout-logs.md — §3 Mode B](../post-mortems/postmortem-2026-07-blackout-logs.md)
+- [postmortem-2026-07-blackout-logs.md — §3 Mode B](../../post-mortems/postmortem-2026-07-blackout-logs.md)
 - [alertes de la stack — Alerte M6 (événements Scalingo de la stack)](../infra/alertes-stack-observabilite.md#alerte-m6--événements-scalingo-des-apps-de-la-stack)
 
 ---

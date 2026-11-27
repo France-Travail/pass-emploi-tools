@@ -8,7 +8,7 @@
 
 En amont de tout chantier de code, l'équipe explore un mécanisme de collecte de logs
 alternatif au couple **Logstash + Log Drains Scalingo**, pour éviter les instabilités
-documentées dans [postmortem-2026-07-blackout-logs.md](../observabilite/post-mortems/postmortem-2026-07-blackout-logs.md)
+documentées dans [postmortem-2026-07-blackout-logs.md](../post-mortems/postmortem-2026-07-blackout-logs.md)
 (« Mode B » : quarantaine du drain déclenchée par `pass-emploi-api`).
 
 Mécanisme observé (doc Scalingo, citée dans le post-mortem et reconfirmée par capture
@@ -33,7 +33,7 @@ PQ→Redis ([ADR-002](./ADR-002-buffer-redis-logstash.md)) ont déjà réduit la
 l'**éliminent** pas : la quarantaine est une propriété du **drain** (couche plateforme
 Scalingo, comptage d'échecs + backoff punitif), pas du receveur Logstash. Le risque est
 qualifié de **latent** dans le post-mortem et **s'aggrave mécaniquement** avec la
-croissance du débit d'api (cf. [§7 — Next steps, tenir à x10](../observabilite/post-mortems/postmortem-2026-07-blackout-logs.md#7-next-steps--tenir-à-x10)).
+croissance du débit d'api (cf. [§7 — Next steps, tenir à x10](../post-mortems/postmortem-2026-07-blackout-logs.md#7-next-steps--tenir-à-x10)).
 
 **Question** : faut-il changer de mécanisme de collecte de logs (transport du drain,
 envoi applicatif direct, broker en amont) pour éliminer structurellement ce risque, ou
@@ -76,7 +76,7 @@ rester sur le drain HTTPS actuel et composer avec le risque résiduel ?
   l'anticipation d'un OOM, mais **pas** la mémoire hors-heap (Netty/direct memory,
   JRuby, metaspace) qui peut provoquer un `SIGKILL` du kernel Scalingo sans que le heap
   JVM ne l'annonce (cf.
-  [postmortem-2026-06](../observabilite/post-mortems/postmortem-2026-06-logstash-5xx.md)) —
+  [postmortem-2026-06](../post-mortems/postmortem-2026-06-logstash-5xx.md)) —
   aucune alerte ne surveille aujourd'hui la RAM **totale** du conteneur
   `logstash-process`, ce qui est un gap distinct de la question de la quarantaine (cf.
   [§ Suites à donner](#suites-à-donner)).
@@ -229,7 +229,7 @@ plusieurs mois »*.
 * Permet de concentrer l'effort sur les leviers déjà identifiés et non réalisés :
   mesurer le plafond d'une instance Logstash (req/min avant 429/499), scaler ES,
   déporter du parsing vers les ingest pipelines ES (cf.
-  [§7 — Next steps, tenir à x10](../observabilite/post-mortems/postmortem-2026-07-blackout-logs.md#7-next-steps--tenir-à-x10)
+  [§7 — Next steps, tenir à x10](../post-mortems/postmortem-2026-07-blackout-logs.md#7-next-steps--tenir-à-x10)
   du post-mortem 2026-07).
 * Aucune régression sur le socle légal d'archivage (contrairement aux options 2/3, où
   ce socle devient conditionnel à un choix de design).
@@ -348,12 +348,12 @@ plusieurs mois »*.
       [`elasticsearch/logs`](../../elasticsearch/logs/README.md#archivage-hors-es--logs-archives-scalingo).
 * [ ] Mesurer le **plafond d'une instance Logstash** (req/min avant 429/499) — next step
       déjà identifié dans le
-      [post-mortem 2026-07, §7](../observabilite/post-mortems/postmortem-2026-07-blackout-logs.md#7-next-steps--tenir-à-x10),
+      [post-mortem 2026-07, §7](../post-mortems/postmortem-2026-07-blackout-logs.md#7-next-steps--tenir-à-x10),
       non réalisé à date.
 
 ## Liens
 
-* [postmortem-2026-07-blackout-logs.md](../observabilite/post-mortems/postmortem-2026-07-blackout-logs.md) — description du Mode B (quarantaine drain), preuve empirique, voir aussi son [§7 — Next steps, tenir à x10](../observabilite/post-mortems/postmortem-2026-07-blackout-logs.md#7-next-steps--tenir-à-x10)
+* [postmortem-2026-07-blackout-logs.md](../post-mortems/postmortem-2026-07-blackout-logs.md) — description du Mode B (quarantaine drain), preuve empirique, voir aussi son [§7 — Next steps, tenir à x10](../post-mortems/postmortem-2026-07-blackout-logs.md#7-next-steps--tenir-à-x10)
 * [drain-scalingo.md](../observabilite/infra/collecte/logs/drain-scalingo.md) — invariant quarantaine ; [infrastructure.md](../observabilite/infra/infrastructure.md) — garde-fous JVM/Scalingo
 * [runbook-logstash.md](../observabilite/runbooks/runbook-logstash.md) — signature de la backpressure ES (scénario 1)
 * [ADR-002-buffer-redis-logstash.md](./ADR-002-buffer-redis-logstash.md) — risque de saturation mémoire Redis déjà documenté

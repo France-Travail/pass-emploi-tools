@@ -57,7 +57,7 @@ et [`elastic-agent/README.md`](../../../elastic-agent/README.md).
   agent reste visible `UNENROLLED`, inoffensif mais permanent (Fleet ne permet pas
   de le supprimer via l'UI).
 
-Récit complet : [postmortem-2026-09-unenrolled-elastic-agent.md](../post-mortems/postmortem-2026-09-unenrolled-elastic-agent.md).
+Récit complet : [postmortem-2026-09-unenrolled-elastic-agent.md](../../post-mortems/postmortem-2026-09-unenrolled-elastic-agent.md).
 
 ## Ressources d'un agent
 
